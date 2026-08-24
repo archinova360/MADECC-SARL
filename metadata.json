@@ -1,0 +1,6 @@
+{
+  "name": "MADECC Group",
+  "description": "A production-ready full-stack website and administrative platform for MADECC Group, a premier construction and project management company.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,371 @@
+export interface User {
+  id: number;
+  uid: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'staff' | 'client' | 'social_media_reviewer';
+  createdAt: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface Project {
+  id: number;
+  title: string;
+  description: string;
+  budget: string | null;
+  currency?: string;
+  currency_code?: string;
+  location: string;
+  startDate: string | null;
+  endDate: string | null;
+  status: 'planning' | 'in-progress' | 'completed' | 'on-hold';
+  categoryId: number | null;
+  image: string;
+  videoUrl?: string | null;
+  createdAt: string;
+  progress?: ProjectProgress[];
+}
+
+export interface ProjectProgress {
+  id: number;
+  projectId: number;
+  milestoneName: string;
+  percentage: number;
+  date: string;
+  description: string;
+  status: 'pending' | 'active' | 'completed';
+}
+
+export interface BlogPost {
+  id: number;
+  title: string;
+  content: string;
+  authorId: number | null;
+  publishedAt: string;
+  image: string;
+  videoUrl?: string | null;
+  summary: string;
+  category: string;
+}
+
+export interface Review {
+  id: number;
+  authorName: string;
+  rating: number;
+  text: string;
+  approved: boolean;
+  approvedAt: string | null;
+  projectName: string | null;
+  createdAt: string;
+}
+
+export interface Appointment {
+  id: number;
+  clientName: string;
+  clientEmail: string;
+  serviceName: string;
+  appointmentDate: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'read' | 'replied';
+  createdAt: string;
+}
+
+export interface NewsletterSubscriber {
+  id: number;
+  email: string;
+  status: 'subscribed' | 'unsubscribed';
+  createdAt: string;
+}
+
+export interface Service {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  priceRange: string | null;
+  details: string | null;
+}
+
+export interface GalleryItem {
+  id: number;
+  title: string;
+  imageUrl: string;
+  videoUrl?: string | null;
+  category: string;
+  createdAt: string;
+}
+
+export interface HeroBanner {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string;
+  videoUrl?: string | null;
+  displayOrder: number;
+  active: boolean;
+}
+
+export interface CompanyDocument {
+  id: number;
+  title: string;
+  fileUrl: string;
+  docType: string;
+  version: string;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: number;
+  userId: string | null;
+  userEmail: string | null;
+  action: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface TeamMember {
+  id: number;
+  name: string;
+  role: string;
+  specialization: string;
+  image: string | null;
+  email: string | null;
+  createdAt: string;
+}
+
+export interface SignedContract {
+  id: number;
+  contractNo: string;
+  clientName: string;
+  clientNiu: string | null;
+  clientEmail: string | null;
+  clientAddress: string | null;
+  clientCity: string | null;
+  contractProject: string;
+  contractProjectLocation: string | null;
+  contractValue: string;
+  contractDuration: string | null;
+  contractScope: string | null;
+  contractDate: string | null;
+  contractAgreedBalance: string | null;
+  contractAdvancePayment: string | null;
+  representativeName: string | null;
+  representativeTitle: string | null;
+  signatoryTitle: string | null;
+  typedClientSignature: string;
+  drawnClientSignature: string | null;
+  verificationToken: string;
+  signedAt: string;
+}
+
+export interface SignedReceipt {
+  id: number;
+  receiptNo: string;
+  clientName: string;
+  clientNiu: string | null;
+  receiptProject: string;
+  invoiceTotalAmount?: string | null;
+  receiptAmount: string;
+  remainingBalance?: string | null;
+  receiptTaxRate: string;
+  receiptMethod: string;
+  receiptMemo: string | null;
+  receiptSignatory: string;
+  receiptTypedSign: string;
+  drawnCfoSignature: string | null;
+  verificationToken: string;
+  signedAt: string;
+}
+
+// ==========================================
+// CMS & FRONTEND MANAGEMENT SYSTEM TYPES
+// ==========================================
+
+export interface HeroSectionConfig {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  primaryCta: {
+    text: string;
+    link: string;
+    visible: boolean;
+  };
+  secondaryCta: {
+    text: string;
+    link: string;
+    visible: boolean;
+  };
+  tertiaryCta: {
+    text: string;
+    link: string;
+    visible: boolean;
+  };
+  mediaType: 'video' | 'image' | 'slideshow';
+  videoUrl?: string | null;
+  posterUrl?: string | null;
+  imageUrl: string;
+  mobileImageUrl?: string | null;
+  videoSettings: {
+    autoplay: boolean;
+    muted: boolean;
+    loop: boolean;
+    playsInline: boolean;
+    disableOnMobile: boolean;
+    overlayOpacity: number; // 0 to 100
+  };
+  showHero: boolean;
+  showVideo: boolean;
+  trustBadges: Array<{
+    icon: string;
+    text: string;
+  }>;
+}
+
+export interface PageSection {
+  id: string;
+  type: 'hero' | 'about' | 'services' | 'projects' | 'why_choose_us' | 'process' | 'stats' | 'testimonials' | 'team' | 'faq' | 'cta' | 'rich_text' | 'media_showcase' | 'custom';
+  title: string;
+  subtitle?: string;
+  content?: string;
+  mediaUrl?: string | null;
+  mediaType?: 'image' | 'video';
+  layout?: 'grid' | 'carousel' | 'split' | 'fullwidth' | 'stacked';
+  enabled: boolean;
+  displayOrder: number;
+  data?: Record<string, any>;
+  ctaText?: string;
+  ctaLink?: string;
+}
+
+export interface SeoConfig {
+  seoTitle: string;
+  metaDescription: string;
+  canonicalUrl?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  keywords?: string;
+  robotsIndex: boolean;
+}
+
+export interface PageContent {
+  id: number;
+  slug: string;
+  title: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
+  heroConfig: HeroSectionConfig;
+  sections: PageSection[];
+  seo: SeoConfig;
+  draftData?: {
+    heroConfig: HeroSectionConfig;
+    sections: PageSection[];
+    seo: SeoConfig;
+  };
+  publishedData?: {
+    heroConfig: HeroSectionConfig;
+    sections: PageSection[];
+    seo: SeoConfig;
+  };
+  version: number;
+  lastSavedBy?: string;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaItem {
+  id: number;
+  title: string;
+  filename: string;
+  fileUrl: string;
+  fileType: 'image' | 'video' | 'document' | 'audio' | 'logo' | 'icon';
+  mimeType?: string;
+  fileSize?: number;
+  dimensions?: string;
+  altText?: string;
+  caption?: string;
+  category: string;
+  tags?: string[];
+  usedIn?: string[];
+  status: 'ACTIVE' | 'ARCHIVED';
+  uploadedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SiteSettings {
+  id: number;
+  siteName: string;
+  tagline: string;
+  phone: string;
+  emergencyPhone: string;
+  email: string;
+  officeAddressYaounde: string;
+  officeAddressDouala: string;
+  businessHours: string;
+  whatsappNumber: string;
+  facebookUrl?: string;
+  linkedinUrl?: string;
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  twitterUrl?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  globalSeo: SeoConfig;
+  navigationLinks: Array<{
+    id: string;
+    label: string;
+    href: string;
+    order: number;
+    isEnabled: boolean;
+    isDropdown?: boolean;
+    children?: Array<{ label: string; href: string }>;
+  }>;
+  footerContent: {
+    aboutText: string;
+    copyrightText: string;
+    accreditationBadges: string[];
+  };
+  emergencyBanner?: {
+    enabled: boolean;
+    message: string;
+    linkText?: string;
+    linkUrl?: string;
+    badgeType?: 'info' | 'warning' | 'urgent';
+  };
+  updatedBy?: string;
+  updatedAt: string;
+}
+
+export interface CmsRevision {
+  id: number;
+  module?: string;
+  recordId?: string | number;
+  pageSlug?: string;
+  version?: number;
+  versionNumber?: number;
+  title?: string;
+  changeSummary?: string;
+  author?: string;
+  snapshot?: any;
+  snapshotData?: any;
+  createdBy?: string;
+  createdAt: string;
+}
+

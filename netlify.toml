@@ -1,0 +1,26 @@
+# Netlify Configuration File
+# This file enables seamless full-stack deployment of both your React frontend
+# and Express backend server as a Netlify Serverless Function under a single domain.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# 1. Route all API calls to our Express Serverless Function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# 2. Support standard React Router SPA paths (fallback to index.html for frontend routing)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

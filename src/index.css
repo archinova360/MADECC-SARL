@@ -1,0 +1,196 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Print Stylesheet overrides for perfect document alignments */
+@media print {
+  /* Hide the entire screen app UI completely */
+  body > * {
+    visibility: hidden !important;
+  }
+
+  /* Force display of our dedicated print container only */
+  .print-only-container, .print-only-container * {
+    visibility: visible !important;
+    display: block !important;
+  }
+
+  .print-only-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: white !important;
+    color: black !important;
+    font-family: "Inter", "Helvetica Neue", sans-serif !important;
+    font-size: 10.5pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Force background colors to print correctly in PDF engine */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Individual A4 Page wrappers */
+  .print-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    padding: 12mm 18mm !important;
+    box-sizing: border-box !important;
+    min-height: 285mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background-color: white !important;
+  }
+
+  /* Keep specific block elements together to avoid mid-paragraph splits */
+  .print-section-keep {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 15px !important;
+  }
+
+  /* Page layout setup */
+  @page {
+    size: A4 portrait;
+    margin: 0mm !important; /* Managed by .print-page padding for accuracy */
+  }
+
+  /* Cameroon Ministry of Secondary Education Standardized Dual-Language Header */
+  .minesec-header {
+    border-bottom: 1.5px solid #000 !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 18px !important;
+    line-height: 1.25 !important;
+  }
+
+  .minesec-header-columns {
+    display: flex !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    text-align: center !important;
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+  }
+
+  .minesec-subinfo {
+    text-align: center !important;
+    font-size: 8.5pt !important;
+    font-weight: bold !important;
+    margin-top: 4px !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* Assessment Header Table */
+  .assessment-meta-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 15px !important;
+    font-size: 9pt !important;
+  }
+
+  .assessment-meta-table td {
+    border: 1px solid #000 !important;
+    padding: 5px 8px !important;
+    vertical-align: middle !important;
+  }
+
+  /* CBA Marks / Competency rubrics tables */
+  .cba-marks-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .cba-marks-table th, .cba-marks-table td {
+    border: 1.5px solid #000 !important;
+    padding: 7px 9px !important;
+    font-size: 8.5pt !important;
+    text-align: left !important;
+  }
+
+  .cba-marks-table th {
+    background-color: #f1f5f9 !important;
+    font-weight: 700 !important;
+  }
+
+  /* Standard print typography */
+  .print-only-container h1 {
+    font-size: 16pt !important;
+    font-weight: 800 !important;
+    color: black !important;
+    margin-top: 15px !important;
+    margin-bottom: 10px !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .print-only-container h2 {
+    font-size: 12.5pt !important;
+    font-weight: 700 !important;
+    color: black !important;
+    margin-top: 18px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid black !important;
+    padding-bottom: 2px !important;
+    text-transform: uppercase !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .print-only-container h3 {
+    font-size: 10.5pt !important;
+    font-weight: 700 !important;
+    color: black !important;
+    margin-top: 12px !important;
+    margin-bottom: 5px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .print-only-container p, .print-only-container li {
+    font-size: 10pt !important;
+    color: #111 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .print-only-container ul, .print-only-container ol {
+    margin-left: 20px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .print-only-container li {
+    margin-bottom: 4px !important;
+  }
+
+  .print-only-container blockquote {
+    border-left: 3px solid black !important;
+    padding-left: 10px !important;
+    margin: 10px 0 !important;
+    font-style: italic !important;
+  }
+
+  /* Footer print definitions */
+  .print-footer {
+    margin-top: auto !important;
+    border-top: 1px solid black !important;
+    padding-top: 6px !important;
+    font-size: 7.5pt !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+}

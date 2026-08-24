@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /login
+
+# Host & Sitemap
+Host: https://madeccgroup.online
+Sitemap: https://madeccgroup.online/sitemap.xml
+

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MADECC Group - Compliance Construction & Document Studio</title>
+    <link rel="icon" type="image/jpeg" href="/madecc_favicon_1783370994073.jpg" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915"
+     crossorigin="anonymous"></script>
+     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915"
+     crossorigin="anonymous"></script>
+     <meta name="google-adsense-account" content="ca-pub-7227721489757915">
+    <script>
+      // Suppress benign Vite dev server WebSocket disconnect warnings caused by platform HMR disablement
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = String(event.reason && (event.reason.message || event.reason) || '');
+        if (reason.indexOf('WebSocket') !== -1 || reason.indexOf('websocket') !== -1 || reason.indexOf('failed to connect to websocket') !== -1) {
+          event.preventDefault();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        var msg = String(event.message || (event.error && event.error.message) || '');
+        if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('websocket') !== -1 || msg.indexOf('failed to connect to websocket') !== -1) {
+          event.preventDefault();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Hidden forms for Netlify static detection -->
+    <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="name" />
+      <input type="email" name="email" />
+      <input type="text" name="subject" />
+      <textarea name="message"></textarea>
+    </form>
+    <form name="booking" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="clientName" />
+      <input type="email" name="email" />
+      <input type="text" name="phone" />
+      <input type="date" name="date" />
+      <input type="text" name="time" />
+      <input type="text" name="service" />
+      <textarea name="notes"></textarea>
+    </form>
+    <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="email" name="email" />
+    </form>
+    <form name="reviews" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="authorName" />
+      <input type="number" name="rating" />
+      <textarea name="text"></textarea>
+      <input type="text" name="projectName" />
+    </form>
+  </body>
+</html>
+

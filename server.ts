@@ -3699,28 +3699,9 @@ MADECC Group — Douala & Yaoundé, Cameroon
   function generateAntiBotChallenge(): { challengeId: string; equation: string; expiresAt: string } {
     const challengeId = `CHAL-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
     
-    // Equations of form ax + bx ± c = d where x is integer
-    const presets = [
-      { a: 15, b: 5, c: 10, sign: '-', x: 5 }, // 15x + 5x - 10 = 90
-      { a: 12, b: 8, c: 20, sign: '-', x: 5 }, // 12x + 8x - 20 = 80
-      { a: 10, b: 6, c: 14, sign: '+', x: 4 }, // 10x + 6x + 14 = 78
-      { a: 8, b: 7, c: 15, sign: '-', x: 6 },  // 8x + 7x - 15 = 75
-      { a: 14, b: 6, c: 20, sign: '+', x: 3 }, // 14x + 6x + 20 = 80
-      { a: 18, b: 2, c: 10, sign: '-', x: 5 }, // 18x + 2x - 10 = 90
-      { a: 9, b: 11, c: 25, sign: '+', x: 5 }, // 9x + 11x + 25 = 125
-      { a: 16, b: 4, c: 30, sign: '-', x: 7 }, // 16x + 4x - 30 = 110
-    ];
-
-    const p = presets[Math.floor(Math.random() * presets.length)];
-    const x = p.x;
-    let d: number;
-    if (p.sign === '-') {
-      d = (p.a + p.b) * x - p.c;
-    } else {
-      d = (p.a + p.b) * x + p.c;
-    }
-
-    const equation = `${p.a}x + ${p.b}x ${p.sign} ${p.c} = ${d}`;
+    // User-specified Anti-Bot challenge: 15x + 5x - 10 = 90 -> 20x = 100 -> x = 5
+    const equation = '15x + 5x - 10 = 90';
+    const x = 5;
     const now = Date.now();
     const expiresAtMs = now + 10 * 60 * 1000; // 10 minutes
 
@@ -5894,6 +5875,182 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
     }
   });
 
+  // ==========================================
+  // --- PROJECT BUDGET CALCULATOR ENDPOINTS ---
+  // ==========================================
+  app.get('/api/budget-calculator/rates', async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        rates: {
+          basePerM2: {
+            Economy: 195000,
+            Standard: 285000,
+            Premium: 420000,
+            Luxury: 650000
+          },
+          currency: 'XAF',
+          regionFactors: {
+            Centre: 1.0,
+            Littoral: 1.05,
+            West: 1.08,
+            South: 1.12,
+            SouthWest: 1.15,
+            NorthWest: 1.18,
+            East: 1.22,
+            Adamawa: 1.25,
+            North: 1.30,
+            FarNorth: 1.35
+          },
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/budget-calculator/lead', async (req, res) => {
+    try {
+      const {
+        estimateReference,
+        clientName,
+        clientEmail,
+        clientPhone,
+        preferredContactMethod,
+        projectTimeline,
+        notes,
+        projectType,
+        totalFloorAreaM2,
+        estimatedBudgetExpected,
+        location
+      } = req.body;
+
+      if (!clientName || (!clientPhone && !clientEmail)) {
+        return res.status(400).json({ error: 'Client Name and Contact Phone/Email are required' });
+      }
+
+      // 1. Dispatch Administrator Notification via SMTP
+      const adminSubject = `[Budget Estimate Lead] Ref: ${estimateReference || 'N/A'} - ${clientName}`;
+      const adminText = `
+MADECC GROUP — NEW BUDGET CALCULATOR LEAD
+
+Estimate Reference: ${estimateReference || 'N/A'}
+Client Name: ${clientName}
+Email: ${clientEmail || 'N/A'}
+Phone / WhatsApp: ${clientPhone || 'N/A'}
+Preferred Contact: ${preferredContactMethod || 'WhatsApp'}
+Project Timeline: ${projectTimeline || 'Immediate'}
+Location: ${location || 'Cameroon'}
+Project Type: ${projectType || 'N/A'}
+Floor Area: ${totalFloorAreaM2 ? `${totalFloorAreaM2} m²` : 'N/A'}
+Expected Budget: ${estimatedBudgetExpected ? `XAF ${Number(estimatedBudgetExpected).toLocaleString()}` : 'Calculated on Site'}
+
+Client Notes / Objectives:
+${notes || 'None provided'}
+
+Received Timestamp: ${new Date().toLocaleString()} (WAT)
+Dispatched to: kreboya603@gmail.com, madeccco5@gmail.com
+      `;
+
+      const adminHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
+          <div style="background: #0f172a; padding: 20px 24px; text-align: center; border-bottom: 4px solid #f59e0b;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px;">MADECC GROUP — ESTIMATING DESK</h2>
+            <p style="color: #cbd5e1; margin: 4px 0 0 0; font-size: 13px;">New Budget Estimate &amp; Quantity Surveying Lead</p>
+          </div>
+          <div style="padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-top: none;">
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 20px;">
+              <p style="margin: 0; font-size: 14px; font-weight: bold; color: #92400e;">Estimate Reference: ${estimateReference || 'WEB-EST-' + Date.now().toString(36).toUpperCase()}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold; width: 40%;">Client Name:</td><td style="padding: 8px 0; font-weight: 600; color: #0f172a;">${clientName}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Phone / WhatsApp:</td><td style="padding: 8px 0; font-weight: 600; color: #0f172a;">${clientPhone || 'N/A'}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Email:</td><td style="padding: 8px 0;"><a href="mailto:${clientEmail || ''}" style="color: #2563eb;">${clientEmail || 'N/A'}</a></td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Preferred Contact:</td><td style="padding: 8px 0; color: #0f172a;">${preferredContactMethod || 'WhatsApp'}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Project Timeline:</td><td style="padding: 8px 0; color: #0f172a;">${projectTimeline || '1-3 Months'}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Location:</td><td style="padding: 8px 0; color: #0f172a;">${location || 'Cameroon'}</td></tr>
+              ${estimatedBudgetExpected ? `<tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Estimated Budget:</td><td style="padding: 8px 0; font-weight: bold; color: #d97706;">XAF ${Number(estimatedBudgetExpected).toLocaleString()}</td></tr>` : ''}
+            </table>
+
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 6px; font-size: 13px; color: #334155; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+              <strong>Client Notes:</strong><br />
+              ${notes || 'No extra notes provided.'}
+            </div>
+
+            <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 20px;">
+              Notification dispatched to <strong>kreboya603@gmail.com</strong> and <strong>madeccco5@gmail.com</strong>.
+            </p>
+          </div>
+        </div>
+      `;
+
+      sendNotificationEmail(adminSubject, adminText, adminHtml, {
+        to: ['kreboya603@gmail.com', 'madeccco5@gmail.com'],
+        replyTo: clientEmail || 'kreboya603@gmail.com'
+      }).catch(err => {
+        console.error('[SMTP_BUDGET_LEAD_NOTIFY_ERROR]', err);
+      });
+
+      // 2. Client Auto-confirmation if email was supplied
+      if (clientEmail && clientEmail.includes('@')) {
+        const clientSubject = `Your MADECC Project Estimate Summary [Ref: ${estimateReference || 'MADECC'}]`;
+        const clientText = `
+Dear ${clientName},
+
+Thank you for calculating your project estimate with MADECC Group. Our Quantity Surveying and Engineering department has received your request and will contact you via ${preferredContactMethod || 'WhatsApp'} to discuss formal BOQ generation and architectural reviews.
+
+Reference Code: ${estimateReference || 'N/A'}
+Contact Desk: +237 683 316 486 (WhatsApp / Call) | kreboya603@gmail.com
+
+Best regards,
+MADECC Group Engineering Team
+Yaoundé Mbankolo & Douala, Cameroon
+        `;
+
+        const clientHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
+            <div style="background: #0f172a; padding: 20px 24px; text-align: center; border-bottom: 4px solid #f59e0b;">
+              <h2 style="color: #ffffff; margin: 0; font-size: 20px;">MADECC GROUP S.A.</h2>
+              <p style="color: #cbd5e1; margin: 4px 0 0 0; font-size: 13px;">Civil Engineering &amp; Quantity Surveying</p>
+            </div>
+            <div style="padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-top: none;">
+              <p style="font-size: 15px; margin-top: 0;">Dear <strong>${clientName}</strong>,</p>
+              <p>Thank you for using the <strong>MADECC Group Project Budget Calculator</strong>. Our technical engineering and estimating team has received your project details.</p>
+              
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin: 20px 0;">
+                <p style="margin: 0 0 8px 0; font-size: 13px;"><strong>Estimate Reference:</strong> <span style="color: #d97706; font-family: monospace; font-weight: bold;">${estimateReference || 'CONFIRMED'}</span></p>
+                <p style="margin: 0; font-size: 13px; color: #475569;">A senior quantity surveyor will reach out to you via <strong>${preferredContactMethod || 'WhatsApp'}</strong> (${clientPhone || clientEmail}) to review architectural drawings and schedule an on-site soil/feasibility inspection.</p>
+              </div>
+
+              <div style="background: #f1f5f9; padding: 14px 16px; border-radius: 6px; margin-top: 20px; font-size: 12px; color: #475569;">
+                <strong>Direct Engineering Support:</strong><br />
+                Phone / WhatsApp: <a href="tel:237683316486" style="color: #d97706; text-decoration: none; font-weight: bold;">+237 683 316 486</a><br />
+                Email: <a href="mailto:kreboya603@gmail.com" style="color: #d97706; text-decoration: none;">kreboya603@gmail.com</a> | <a href="mailto:madeccco5@gmail.com" style="color: #d97706; text-decoration: none;">madeccco5@gmail.com</a><br />
+                Headquarters: Yaoundé Mbankolo, Cameroon
+              </div>
+
+              <p style="margin-top: 24px; font-size: 13px; color: #64748b;">Sincerely,<br><strong style="color: #0f172a;">MADECC Estimating &amp; Client Advisory Desk</strong></p>
+            </div>
+          </div>
+        `;
+
+        sendEmail(clientEmail.trim(), clientSubject, clientText, clientHtml).catch(err => {
+          console.error('[SMTP_BUDGET_LEAD_CLIENT_CONFIRM_ERROR]', err);
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Your estimate inquiry has been forwarded to MADECC Quantity Surveyors. Confirmation dispatched to your contact.',
+        estimateReference
+      });
+    } catch (error: any) {
+      console.error('[BUDGET_LEAD_SUBMIT_ERROR]', error);
+      res.status(500).json({ error: error.message || 'Failed to submit budget lead' });
+    }
+  });
+
   // Helper function to auto-seed default Tenders
   async function ensureTenderDefaults() {
     const existing = await db.select().from(tenders);
@@ -6590,7 +6747,7 @@ Phone: +237 683 316 486
             subtitle: 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.',
             eyebrow: 'Construction & Civil Engineering — Cameroon',
             mediaType: 'video',
-            videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-construction-site-with-cranes-and-workers-40915-large.mp4',
+            videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
             posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
             imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
             videoSettings: {
@@ -7157,8 +7314,45 @@ Phone: +237 683 316 486
   // ==========================================
   // --- HERO BANNERS ENDPOINTS ---
   // ==========================================
+  async function ensureHeroBannersDefaults() {
+    try {
+      const existing = await db.select().from(heroBanners);
+      if (existing.length === 0) {
+        await db.insert(heroBanners).values([
+          {
+            title: 'Premier Infrastructure & Civil Engineering in Central Africa',
+            subtitle: 'Engineering durable commercial towers, road networks, and state-of-the-art industrial facilities built to international safety and Eurocode standards.',
+            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=85',
+            videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+            displayOrder: 1,
+            active: true
+          },
+          {
+            title: 'Precision Structural Concrete & Modern Architecture',
+            subtitle: 'Turnkey residential and commercial high-rises engineered with certified soil testing and rigorous quality compliance.',
+            imageUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1920&q=85',
+            videoUrl: 'https://cdn.jsdelivr.net/npm/video-media-samples@1.0.0/big-buck-bunny-480p-30sec.mp4',
+            displayOrder: 2,
+            active: true
+          },
+          {
+            title: 'Highways, Bridges & Heavy Earthworks',
+            subtitle: 'Rapid mobilization and precision execution across Cameroon road corridors and logistics hubs.',
+            imageUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1920&q=85',
+            videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+            displayOrder: 3,
+            active: true
+          }
+        ]);
+      }
+    } catch (e: any) {
+      console.warn('[DB Fallback] Failed to seed default hero banners:', e?.message || e);
+    }
+  }
+
   app.get('/api/banners', async (req, res) => {
     try {
+      await ensureHeroBannersDefaults();
       const banners = await db.select().from(heroBanners).where(eq(heroBanners.active, true)).orderBy(heroBanners.displayOrder);
       res.json(banners);
     } catch (error: any) {
@@ -7169,6 +7363,7 @@ Phone: +237 683 316 486
 
   app.get('/api/banners/all', requireAdmin, async (req, res) => {
     try {
+      await ensureHeroBannersDefaults();
       const banners = await db.select().from(heroBanners).orderBy(heroBanners.displayOrder);
       res.json(banners);
     } catch (error: any) {

@@ -75,6 +75,9 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
   const [submittingEoi, setSubmittingEoi] = useState(false);
   const [eoiSuccess, setEoiSuccess] = useState<string | null>(null);
   const [eoiError, setEoiError] = useState('');
+  const [eoiCaptcha, setEoiCaptcha] = useState('');
+  const [eoiCaptchaError, setEoiCaptchaError] = useState(false);
+  const [eoiAgreeTerms, setEoiAgreeTerms] = useState(true);
 
   const defaultTenders: Tender[] = [
     {
@@ -245,6 +248,18 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
       return;
     }
 
+    if (!eoiAgreeTerms) {
+      setEoiError('Please agree to our terms and conditions before submitting.');
+      return;
+    }
+
+    if (eoiCaptcha.trim() !== '5') {
+      setEoiCaptchaError(true);
+      setEoiError('Incorrect anti-bot verification answer. Please solve 15x + 5x - 10 = 90 (x = 5).');
+      return;
+    }
+
+    setEoiCaptchaError(false);
     setSubmittingEoi(true);
     setEoiError('');
 
@@ -776,6 +791,44 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Anti-Bot Verification */}
+                <div className="bg-slate-950/60 border border-slate-800 p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-300 font-mono uppercase text-[10px]">
+                      Anti-Bot Human Verification *
+                    </span>
+                    <span className="font-mono text-amber-400 text-[10px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                      15x + 5x - 10 = 90
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={eoiCaptcha}
+                    onChange={(e) => {
+                      setEoiCaptcha(e.target.value);
+                      setEoiCaptchaError(false);
+                    }}
+                    placeholder="Enter value of x (e.g. 5)"
+                    className={`w-full bg-slate-900 border ${eoiCaptchaError ? 'border-red-500' : 'border-slate-800'} rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500`}
+                  />
+                </div>
+
+                {/* Terms Agreement */}
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="eoiAgreeTerms"
+                    required
+                    checked={eoiAgreeTerms}
+                    onChange={(e) => setEoiAgreeTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500"
+                  />
+                  <label htmlFor="eoiAgreeTerms" className="text-xs text-slate-400 leading-tight select-none">
+                    I agree to the terms and conditions of procurement and consent to being contacted regarding this tender expression of interest.
+                  </label>
                 </div>
 
                 <div className="pt-2 flex justify-end gap-3">

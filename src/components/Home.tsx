@@ -26,7 +26,8 @@ import {
   Award,
   Layers,
   Ruler,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { Service, Project, Review, HeroBanner, PageContent, HeroSectionConfig } from '../types.ts';
 import LucideIcon from './LucideIcon.tsx';
@@ -83,7 +84,11 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [reviewCaptcha, setReviewCaptcha] = useState('');
   const [reviewCaptchaError, setReviewCaptchaError] = useState(false);
+  const [agreeReviewTerms, setAgreeReviewTerms] = useState(false);
   const [reviewErrorMsg, setReviewErrorMsg] = useState('');
+
+  // Interactive Technical Standard Modals State
+  const [activeTechnicalModal, setActiveTechnicalModal] = useState<'eurocode' | 'boq' | 'cube-tests' | null>(null);
 
   // Expanded Service Card index
   const [expandedServiceId, setExpandedServiceId] = useState<number | null>(null);
@@ -206,9 +211,14 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
     e.preventDefault();
     if (!newAuthor || !newText) return;
 
+    if (!agreeReviewTerms) {
+      setReviewErrorMsg('Please agree to our Terms & Conditions and Privacy Policy before submitting.');
+      return;
+    }
+
     if (reviewCaptcha.trim() !== '5') {
       setReviewCaptchaError(true);
-      setReviewErrorMsg('Incorrect anti-bot verification answer. Please solve the equation correctly.');
+      setReviewErrorMsg('Incorrect anti-bot verification answer. Please solve the equation correctly (x = 5).');
       return;
     }
 
@@ -263,205 +273,85 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
           CMS DRIVEN HERO BANNER & VIDEO REEL SECTION
           ========================================== */}
       <section className="relative min-h-[680px] bg-slate-950 overflow-hidden" id="hero-section">
-        {loading ? (
-          <HeroBannerSkeleton />
-        ) : cmsPageData?.heroConfig && (cmsPageData.heroConfig.mediaType === 'video' || Boolean(cmsPageData.heroConfig.videoUrl)) ? (
-          <HeroVideoPlayer config={cmsPageData.heroConfig}>
-            <div className="max-w-3xl text-white space-y-6 animate-in fade-in duration-500">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
-                  <Building2 className="w-3.5 h-3.5" /> {cmsPageData.heroConfig.eyebrow || 'Construction & Engineering — Cameroon'}
-                </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md">
-                  <MapPin className="w-3 h-3 text-amber-500" /> HQ: Yaoundé (Mbankolo) &bull; Douala (Akwa)
-                </span>
-              </div>
-
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
-                {cmsPageData.heroConfig.title || 'Building Cameroon’s Future with Structural Precision & Integrity'}
-              </h1>
-
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-normal max-w-2xl">
-                {cmsPageData.heroConfig.subtitle || 'Premier civil engineering, turnkey residential villas, commercial complexes, and transparent quantity surveying across Yaoundé, Douala, Kribi, and all 10 regions.'}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-4 pt-3">
-                {cmsPageData.heroConfig.primaryCta?.visible !== false && (
-                  <button
-                    onClick={() => setCurrentTab(cmsPageData.heroConfig?.primaryCta?.link || 'request-quote')}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
-                    id="hero-cta-quote"
-                  >
-                    {cmsPageData.heroConfig.primaryCta?.text || 'Request a Free Quote'} <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-
-                {cmsPageData.heroConfig.secondaryCta?.visible !== false && (
-                  <button
-                    onClick={() => setCurrentTab(cmsPageData.heroConfig?.secondaryCta?.link || 'budget-calculator')}
-                    className="bg-slate-900/80 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/50 transition-all flex items-center gap-2"
-                    id="hero-cta-calculator"
-                  >
-                    <Calculator className="w-4 h-4 text-amber-500" /> {cmsPageData.heroConfig.secondaryCta?.text || 'Calculate Budget (FCFA)'}
-                  </button>
-                )}
-
-                {cmsPageData.heroConfig.tertiaryCta?.visible !== false && (
-                  <button
-                    onClick={() => setCurrentTab(cmsPageData.heroConfig?.tertiaryCta?.link || 'booking')}
-                    className="text-xs font-semibold text-slate-300 hover:text-amber-400 transition-colors underline underline-offset-4 py-2"
-                  >
-                    {cmsPageData.heroConfig.tertiaryCta?.text || 'Schedule Technical Consultation →'}
-                  </button>
-                )}
-              </div>
-
-              {/* Quick Trust Highlights */}
-              <div className="pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-slate-400">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Eurocode 2 / BAEL 91 Codes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Fixed-Price Itemized BOQ</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>28-Day Concrete Cube Tests</span>
-                </div>
-              </div>
+        <HeroVideoPlayer config={cmsPageData?.heroConfig} banners={banners}>
+          <div className="max-w-3xl text-white space-y-6 animate-in fade-in duration-500">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
+                <Building2 className="w-3.5 h-3.5" /> Construction & Civil Engineering — Cameroon
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md shadow-sm">
+                <MapPin className="w-3 h-3 text-amber-500" /> HQ: Yaoundé (Mbankolo) • Douala (Akwa)
+              </span>
             </div>
-          </HeroVideoPlayer>
-        ) : banners.length > 0 ? (
-          banners.map((banner, index) => (
-            <div
-              key={banner.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                index === currentBannerIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-            >
-              {/* Cover Image */}
-              <img 
-                src={getOptimizedImageUrl(banner.imageUrl, 1600, 80)}
-                alt={banner.title}
-                className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
-                fetchPriority={index === 0 ? "high" : "low"}
-                loading={index === 0 ? "eager" : "lazy"}
-                decoding={index === 0 ? "sync" : "async"}
-                referrerPolicy="no-referrer"
-              />
 
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/30 animate-in fade-in duration-500" />
-              
-              <div className="absolute inset-0 flex items-center">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-                  <div className="max-w-3xl text-white space-y-6">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
-                        <Building2 className="w-3.5 h-3.5" /> Construction & Engineering — Cameroon
-                      </span>
-                      <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md">
-                        <MapPin className="w-3 h-3 text-amber-500" /> HQ: Yaoundé (Mbankolo)
-                      </span>
-                    </div>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white drop-shadow-md">
+              MADECC Group — Building Cameroon’s Future
+            </h1>
 
-                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
-                      {banner.title}
-                    </h1>
+            <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
+              Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.
+            </p>
 
-                    <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-normal max-w-2xl">
-                      {banner.subtitle}
-                    </p>
+            <div className="flex flex-wrap items-center gap-4 pt-3">
+              <button
+                onClick={() => setCurrentTab('request-a-quote')}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 cursor-pointer"
+                id="hero-cta-quote"
+              >
+                Request a Free Quote <ArrowRight className="w-4 h-4" />
+              </button>
 
-                    <div className="flex flex-wrap items-center gap-4 pt-3">
-                      <button
-                        onClick={() => setCurrentTab('request-quote')}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
-                        id="hero-cta-quote"
-                      >
-                        Request a Free Quote <ArrowRight className="w-4 h-4" />
-                      </button>
+              <button
+                onClick={() => setCurrentTab('budget-calculator')}
+                className="bg-slate-900/90 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/60 hover:text-amber-400 transition-all flex items-center gap-2 shadow-md cursor-pointer"
+                id="hero-cta-calculator"
+              >
+                <Calculator className="w-4 h-4 text-amber-500" /> Calculate Budget (FCFA)
+              </button>
 
-                      <button
-                        onClick={() => setCurrentTab('budget-calculator')}
-                        className="bg-slate-900/80 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/50 transition-all flex items-center gap-2"
-                        id="hero-cta-calculator"
-                      >
-                        <Calculator className="w-4 h-4 text-amber-500" /> Calculate Budget (FCFA)
-                      </button>
-
-                      <button
-                        onClick={() => setCurrentTab('booking')}
-                        className="text-xs font-semibold text-slate-300 hover:text-amber-400 transition-colors underline underline-offset-4 py-2"
-                      >
-                        Schedule Technical Consultation →
-                      </button>
-                    </div>
-
-                    {/* Quick Trust Highlights */}
-                    <div className="pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-slate-400">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Eurocode 2 / BAEL 91 Codes</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Fixed-Price Itemized BOQ</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>28-Day Concrete Cube Tests</span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
+              <button
+                onClick={() => setCurrentTab('schedule-consultation')}
+                className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                id="hero-cta-consultation"
+              >
+                Schedule Consultation →
+              </button>
             </div>
-          ))
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-400">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-full border-4 border-slate-800 border-t-amber-500 animate-spin mx-auto" />
-              <p className="text-sm font-mono tracking-widest uppercase">Loading Engineering Portal...</p>
+
+            {/* Quick Trust Highlights with Interactive Modals */}
+            <div className="pt-6 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTechnicalModal('eurocode')}
+                className="group flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-all text-left text-slate-300 hover:text-white cursor-pointer"
+                title="Click to view Eurocode 2 & BAEL 91 structural standards"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="font-semibold">Eurocode 2 / BAEL 91 Codes</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTechnicalModal('boq')}
+                className="group flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-all text-left text-slate-300 hover:text-white cursor-pointer"
+                title="Click to view fixed-price BOQ details"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="font-semibold">Fixed-Price Itemized BOQ</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTechnicalModal('cube-tests')}
+                className="group flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-all text-left text-slate-300 hover:text-white cursor-pointer"
+                title="Click to view 28-day concrete cube crush test certification"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="font-semibold">28-Day Concrete Cube Tests</span>
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Carousel controls */}
-        {(!cmsPageData?.heroConfig || (cmsPageData.heroConfig.mediaType !== 'video' && !cmsPageData.heroConfig.videoUrl)) && banners.length > 1 && (
-          <>
-            <button
-              onClick={() => setCurrentBannerIndex((prev) => (prev - 1 + banners.length) % banners.length)}
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900 text-white p-2.5 rounded-full transition-colors border border-slate-800 z-30"
-              aria-label="Previous banner"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setCurrentBannerIndex((prev) => (prev + 1) % banners.length)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900 text-white p-2.5 rounded-full transition-colors border border-slate-800 z-30"
-              aria-label="Next banner"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-
-            {/* Banner Indicators */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30">
-              {banners.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentBannerIndex(idx)}
-                  className={`h-2 rounded-full transition-all ${
-                    idx === currentBannerIndex ? 'w-8 bg-amber-500' : 'w-2 bg-slate-700 hover:bg-slate-500'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
+        </HeroVideoPlayer>
       </section>
 
       {/* ==========================================
@@ -1124,6 +1014,21 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
                     />
                   </div>
 
+                  {/* Terms & Conditions Agreement */}
+                  <div className="flex items-start gap-2.5 pt-1">
+                    <input
+                      type="checkbox"
+                      id="agreeReviewTerms"
+                      checked={agreeReviewTerms}
+                      onChange={(e) => setAgreeReviewTerms(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-950 text-amber-500 focus:ring-amber-500/20"
+                      required
+                    />
+                    <label htmlFor="agreeReviewTerms" className="text-[11px] text-slate-400 leading-tight select-none">
+                      I agree to the <button type="button" onClick={() => setCurrentTab('terms')} className="text-amber-400 hover:underline">Terms & Conditions</button> and <button type="button" onClick={() => setCurrentTab('privacy')} className="text-amber-400 hover:underline">Privacy Policy</button>.
+                    </label>
+                  </div>
+
                   {reviewErrorMsg && (
                     <div className="bg-red-950/40 border border-red-800 text-red-300 p-3 rounded-lg text-xs">
                       <span>{reviewErrorMsg}</span>
@@ -1133,7 +1038,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
                   <button
                     type="submit"
                     disabled={submittingReview}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
                   >
                     {submittingReview ? 'Submitting...' : 'Post Client Review'}
                   </button>
@@ -1245,6 +1150,197 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
 
         </div>
       </section>
+
+      {/* ==========================================
+          INTERACTIVE TECHNICAL STANDARD MODALS
+          ========================================== */}
+      {activeTechnicalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setActiveTechnicalModal(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition-colors"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {activeTechnicalModal === 'eurocode' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Eurocode 2 & BAEL 91 Structural Codes</h3>
+                    <p className="text-xs text-amber-500 font-mono">EN 1992-1-1 & Certified National Order of Civil Engineers (ONIGC)</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+                  <p>
+                    At <strong>MADECC Group</strong>, every beam, column, slab, and foundation is rigorously calculated under <strong className="text-white">Eurocode 2 (EN 1992-1-1)</strong> and validated against French-Cameroonian <strong className="text-white">BAEL 91 (Béton Armé aux États Limites)</strong> standards.
+                  </p>
+                  <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-slate-400">Structural Safety Limit State:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">ELU (Ultimate) & ELS (Serviceability)</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-slate-400">Earthquake & Wind Load:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Eurocode 1 & 8 Zone Cameroon</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Engineering Approval:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Stamped by Licensed ONIGC Engineers</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Calculations account for equatorial soil conditions in Yaoundé (lateritic clay), Douala (coastal marine alluvial soil), and Kribi (high water table).
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => {
+                      setActiveTechnicalModal(null);
+                      setCurrentTab('schedule-consultation');
+                    }}
+                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                  >
+                    Schedule Consultation With Our Engineers
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTechnicalModal(null);
+                      setCurrentTab('request-a-quote');
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                  >
+                    Request Structural Quote
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTechnicalModal === 'boq' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Fixed-Price Itemized BOQ (Devis Quantitatif Estimatif)</h3>
+                    <p className="text-xs text-amber-500 font-mono">100% Transparent Unit Costing in FCFA (XAF) • Zero Hidden Fees</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+                  <p>
+                    MADECC Group eliminates contractor inflation and unexpected price hikes through a rigorous, transparent <strong className="text-white">Bill of Quantities (BOQ / DQE)</strong>.
+                  </p>
+                  <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-slate-400">Material Transparency:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Exact Kg of FE E500 rebar & cement bags</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-slate-400">Contractual Commitment:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Firm Fixed-Price Contract</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Disbursement Schedule:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Milestone-linked payments with proof</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Designed specifically for local clients and Cameroonians in the diaspora (France, USA, Canada, UK, Germany) to supervise financial disbursements with complete confidence.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => {
+                      setActiveTechnicalModal(null);
+                      setCurrentTab('budget-calculator');
+                    }}
+                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                  >
+                    Open Online Budget Calculator
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTechnicalModal(null);
+                      setCurrentTab('request-a-quote');
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                  >
+                    Request Custom Itemized BOQ
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTechnicalModal === 'cube-tests' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">28-Day Concrete Cube Compressive Tests</h3>
+                    <p className="text-xs text-amber-500 font-mono">NF EN 12390-3 • C25/30 & C30/37 Lab Certification</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+                  <p>
+                    We never compromise on structural integrity. For every major concrete pour (footings, columns, suspended slabs, lintels), sample concrete test cubes are cast on-site and crushed under hydraulic press at accredited laboratory facilities (Labo-Génie or accredited national testing labs).
+                  </p>
+                  <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-slate-400">7-Day Curing Test:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Minimum 65% design strength validation</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-slate-400">14-Day Curing Test:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">Minimum 90% strength validation</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">28-Day Official Strength:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">≥ 25 MPa to 35 MPa (Certified Certificate)</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Clients receive copies of all certified crushing reports, slump cone tests, and cement batch quality tracking documents for the project record.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => {
+                      setActiveTechnicalModal(null);
+                      setCurrentTab('schedule-consultation');
+                    }}
+                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                  >
+                    Schedule Quality Inspection
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTechnicalModal(null);
+                      setCurrentTab('contact');
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                  >
+                    Contact Quality Control Lab
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

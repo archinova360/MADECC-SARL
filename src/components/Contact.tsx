@@ -21,6 +21,7 @@ export default function Contact() {
 
   const [captcha, setCaptcha] = useState('');
   const [captchaError, setCaptchaError] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
 
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [responseMsg, setResponseMsg] = useState('');
@@ -29,6 +30,12 @@ export default function Contact() {
     e.preventDefault();
     if (!name || !email || !subject || !message) return;
     
+    if (!agreeTerms) {
+      setStatus('error');
+      setResponseMsg('Please agree to our terms and conditions before submitting.');
+      return;
+    }
+
     if (captcha.trim() !== '5') {
       setCaptchaError(true);
       setStatus('error');
@@ -284,6 +291,20 @@ export default function Contact() {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="agreeContactTerms"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="w-4 h-4 text-amber-500 rounded border-slate-700 bg-slate-900 focus:ring-amber-500 mt-0.5"
+                    required
+                  />
+                  <label htmlFor="agreeContactTerms" className="text-xs text-slate-400 select-none leading-relaxed">
+                    I agree to MADECC Group's terms & conditions and privacy policy and consent to being contacted regarding my inquiry.
+                  </label>
                 </div>
 
                 {status === 'error' && (

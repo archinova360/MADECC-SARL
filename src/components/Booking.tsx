@@ -12,7 +12,11 @@ import {
 } from 'lucide-react';
 import { Service } from '../types.ts';
 
-export default function Booking() {
+interface BookingProps {
+  setCurrentTab?: (tab: string) => void;
+}
+
+export default function Booking({ setCurrentTab }: BookingProps = {}) {
   const [services, setServices] = useState<Service[]>([]);
   
   // Form fields
@@ -24,6 +28,7 @@ export default function Booking() {
 
   const [captcha, setCaptcha] = useState('');
   const [captchaError, setCaptchaError] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
 
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [msg, setMsg] = useState('');
@@ -49,6 +54,12 @@ export default function Booking() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientEmail || !serviceName || !appointmentDate) return;
+
+    if (!agreeTerms) {
+      setStatus('error');
+      setMsg('Please accept the Terms & Conditions and Privacy Policy.');
+      return;
+    }
 
     if (captcha.trim() !== '5') {
       setCaptchaError(true);
@@ -303,6 +314,22 @@ export default function Booking() {
                       required
                     />
                   </div>
+                </div>
+
+                {/* Terms and Privacy Checkbox */}
+                <div className="pt-1">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={agreeTerms}
+                      onChange={(e) => setAgreeTerms(e.target.checked)}
+                      className="w-4 h-4 text-amber-500 rounded border-slate-700 bg-slate-900 focus:ring-amber-500 mt-0.5"
+                      required
+                    />
+                    <span className="text-xs text-slate-400 leading-relaxed">
+                      I agree to the <a href="/terms" onClick={(e) => { e.preventDefault(); setCurrentTab?.('terms'); }} className="text-amber-500 hover:underline">Terms &amp; Conditions</a> and <a href="/privacy" onClick={(e) => { e.preventDefault(); setCurrentTab?.('privacy'); }} className="text-amber-500 hover:underline">Privacy Policy</a>.
+                    </span>
+                  </label>
                 </div>
 
                 {status === 'error' && (

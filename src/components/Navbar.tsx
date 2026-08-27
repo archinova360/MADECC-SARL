@@ -208,6 +208,7 @@ export default function Navbar({
   const menuItems = [
     { id: 'home', label: t('nav_home') },
     { id: 'services', label: 'Services' },
+    { id: 'schedule-consultation', label: 'Consultation' },
     { id: 'projects', label: t('nav_projects') },
     { id: 'blog', label: 'Insights & Guides' },
     { id: 'budget-calculator', label: 'Budget Calculator' },

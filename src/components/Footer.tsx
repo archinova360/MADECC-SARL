@@ -115,6 +115,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 { label: 'FAQ / Help Centre', id: 'faq' },
                 { label: 'Projects Portfolio', id: 'projects' },
                 { label: 'Project Budget Calculator', id: 'budget-calculator' },
+                { label: 'Schedule Consultation', id: 'schedule-consultation' },
                 { label: 'Construction Cost Guide', id: 'construction-cost-guide' },
                 { label: 'Request a Quote', id: 'request-a-quote' },
                 { label: 'About MADECC', id: 'about' },

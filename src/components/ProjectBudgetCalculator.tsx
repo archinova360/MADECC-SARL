@@ -87,6 +87,9 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
   const [preferredContact, setPreferredContact] = useState<'WhatsApp' | 'Call' | 'Email'>('WhatsApp');
   const [projectTimeline, setProjectTimeline] = useState<string>('Within 1-3 Months');
   const [notes, setNotes] = useState<string>('');
+  const [leadCaptcha, setLeadCaptcha] = useState<string>('');
+  const [leadCaptchaError, setLeadCaptchaError] = useState<boolean>(false);
+  const [agreeLeadTerms, setAgreeLeadTerms] = useState<boolean>(false);
 
   // Calculation States
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
@@ -181,6 +184,18 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
     if (!calculationResult || !calculationResult.estimateReference) return;
     if (!clientName || (!clientPhone && !clientEmail)) {
       if (showToast) showToast('Please provide your name and phone number or email.', 'error');
+      return;
+    }
+
+    // Anti-Bot verification: 15x + 5x - 10 = 90 -> 20x = 100 -> x = 5
+    if (leadCaptcha.trim() !== '5') {
+      setLeadCaptchaError(true);
+      if (showToast) showToast('Verification error: please solve the anti-bot math question (x = 5).', 'error');
+      return;
+    }
+
+    if (!agreeLeadTerms) {
+      if (showToast) showToast('Please agree to our terms and conditions before submitting.', 'error');
       return;
     }
 
@@ -1084,10 +1099,48 @@ I would like to discuss this project and request a formal BOQ.`;
                       />
                     </div>
 
+                    {/* Anti-Bot Verification Check */}
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 uppercase text-[11px]">
+                          Anti-Bot Verification
+                        </span>
+                        <span className="font-mono text-amber-700 font-bold text-[11px] bg-amber-100 px-2 py-0.5 rounded">
+                          Solve: 15x + 5x - 10 = 90
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={leadCaptcha}
+                        onChange={(e) => {
+                          setLeadCaptcha(e.target.value);
+                          setLeadCaptchaError(false);
+                        }}
+                        placeholder="What is x? (e.g. 5)"
+                        className={`w-full bg-white border ${leadCaptchaError ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-300'} rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-amber-500`}
+                      />
+                    </div>
+
+                    {/* Terms & Conditions Agreement */}
+                    <div className="flex items-start gap-2.5 pt-1">
+                      <input
+                        type="checkbox"
+                        id="agreeLeadTerms"
+                        required
+                        checked={agreeLeadTerms}
+                        onChange={(e) => setAgreeLeadTerms(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <label htmlFor="agreeLeadTerms" className="text-xs text-slate-600 leading-tight select-none">
+                        I agree to the <button type="button" onClick={() => onNavigateToTab && onNavigateToTab('terms')} className="text-amber-600 font-semibold hover:underline">Terms and Conditions</button> and consent to being contacted by MADECC Group regarding this project.
+                      </label>
+                    </div>
+
                     <button
                       type="submit"
                       disabled={isSubmittingLead}
-                      className="px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+                      className="px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer"
                     >
                       {isSubmittingLead ? (
                         <>

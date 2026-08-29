@@ -88,8 +88,16 @@ export default function Footer({ setCurrentTab }: FooterProps) {
           {/* Column 1: Brand & Bio */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="bg-amber-500 text-slate-950 p-2 rounded-lg">
-                <HardHat className="w-5 h-5" />
+              <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
+                <img 
+                  src="/logo.png" 
+                  alt="MADECC Group Logo" 
+                  className="h-full w-full object-contain"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
               </div>
               <span className="font-sans font-extrabold text-lg tracking-tight text-white">
                 MADECC<span className="text-amber-500">GROUP</span>

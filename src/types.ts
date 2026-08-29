@@ -369,3 +369,198 @@ export interface CmsRevision {
   createdAt: string;
 }
 
+// =========================================================================
+// SAAS MULTI-TENANT TYPES & RBAC
+// =========================================================================
+
+export type TenantRole = 
+  | 'SUPER_ADMIN'
+  | 'OWNER' 
+  | 'ADMIN' 
+  | 'PROJECT_MANAGER' 
+  | 'ESTIMATOR' 
+  | 'ENGINEER' 
+  | 'STAFF' 
+  | 'VIEWER';
+
+export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING_APPROVAL' | 'CANCELLED';
+
+export type PlanCode = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+
+export type SubscriptionStatus = 'ACTIVE' | 'PENDING_CONFIRMATION' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
+
+export type PaymentMethodCode = 'MTN_MOMO' | 'ORANGE_MONEY' | 'VISA_CARD' | 'BANK_WIRE' | 'CASH';
+
+export interface TenantSettings {
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  fontFamily?: string;
+  tagline?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  companyAddress?: string;
+  phone?: string;
+  email?: string;
+  whatsappNumber?: string;
+  currency?: string;
+  taxNumber?: string;
+  registrationNumber?: string;
+  socialLinks?: {
+    facebook?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+    twitter?: string;
+  };
+  features?: Record<string, boolean>;
+}
+
+export interface Tenant {
+  id: number;
+  name: string;
+  slug: string;
+  legalName?: string | null;
+  logoUrl?: string | null;
+  faviconUrl?: string | null;
+  primaryDomain?: string | null;
+  customDomain?: string | null;
+  status: TenantStatus;
+  planCode: PlanCode;
+  currency: string;
+  timezone?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  country?: string | null;
+  settings?: TenantSettings | null;
+  aiCreditsBalance: number;
+  storageUsageBytes: number;
+  isFlagship: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantMembership {
+  id: number;
+  tenantId: number;
+  userId: string;
+  email: string;
+  fullName?: string | null;
+  role: TenantRole;
+  permissions?: string[] | null;
+  status: 'ACTIVE' | 'INVITED' | 'SUSPENDED';
+  invitedBy?: string | null;
+  invitedAt?: string | null;
+  lastActiveAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  tenant?: Tenant;
+}
+
+export interface SaaSPlan {
+  id: number;
+  code: PlanCode;
+  name: string;
+  description?: string | null;
+  monthlyPrice: number;
+  annualPrice: number;
+  currency: string;
+  maxUsers: number;
+  maxProjects: number;
+  maxStorageGb: number;
+  aiCreditsMonthly: number;
+  features?: string[] | null;
+  isPopular?: boolean;
+  status: 'ACTIVE' | 'ARCHIVED';
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantSubscription {
+  id: number;
+  tenantId: number;
+  planCode: PlanCode;
+  billingCycle: 'MONTHLY' | 'ANNUAL';
+  amount: number;
+  currency: string;
+  status: SubscriptionStatus;
+  paymentMethod?: PaymentMethodCode | null;
+  paymentReference?: string | null;
+  senderPhone?: string | null;
+  notes?: string | null;
+  startDate: string;
+  renewalDate: string;
+  confirmedAt?: string | null;
+  confirmedBy?: string | null;
+  thankYouShown: boolean;
+  createdAt: string;
+  updatedAt: string;
+  plan?: SaaSPlan;
+  tenant?: Tenant;
+}
+
+export interface TenantDomain {
+  id: number;
+  tenantId: number;
+  domain: string;
+  domainType: 'PRIMARY' | 'SUBDOMAIN' | 'CUSTOM';
+  status: 'ACTIVE' | 'PENDING_DNS' | 'SUSPENDED';
+  sslStatus?: 'PENDING' | 'PROVISIONED' | 'FAILED' | null;
+  verificationToken?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UsageEvent {
+  id: number;
+  tenantId: number;
+  userId?: string | null;
+  eventType: 'AI_DRAWING_ANALYSIS' | 'AI_QUANTITY_TAKEOFF' | 'BOQ_GENERATION' | 'DOCUMENT_EXPORT' | 'FILE_STORAGE' | 'API_REQUEST';
+  quantity: number;
+  unit: string;
+  estimatedCost: number;
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface PlatformAuditLog {
+  id: number;
+  tenantId?: number | null;
+  userId?: string | null;
+  userEmail?: string | null;
+  action: string;
+  resourceType: string;
+  resourceId?: string | null;
+  ipAddress?: string | null;
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface FeatureFlag {
+  id: number;
+  tenantId?: number | null;
+  key: string;
+  enabled: boolean;
+  description?: string | null;
+  rules?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DirectPaymentConfig {
+  momoNumbers: string[];
+  orangeMoneyNumbers: string[];
+  bankAccount: {
+    accountName: string;
+    bankName: string;
+    accountNumber: string;
+    ibanOrSwift?: string;
+  };
+  contactWhatsApp: string;
+  contactEmail: string;
+}
+
+

@@ -333,16 +333,21 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     results: Array<{
       platform: string;
       destinationName: string;
-      status: 'SUCCESS' | 'FAILED' | 'PUBLISHED' | 'SKIPPED';
+      status: 'SUCCESS' | 'FAILED' | 'PUBLISHED' | 'SKIPPED' | 'MESSAGE_ACCEPTED' | 'PENDING_PROCESSING' | 'NOT_CONNECTED' | 'REQUIRES_REVIEW' | string;
       jobId?: string;
       externalPostId?: string | null;
       externalUrl?: string | null;
+      remotePostId?: string | null;
+      remoteMediaId?: string | null;
+      permalink?: string | null;
+      verified?: boolean;
+      verificationMethod?: string;
       httpStatus?: number;
       latencyMs?: number;
       durationMs?: number;
       errorCode?: string | null;
       errorMessage?: string | null;
-      reason?: string;
+      reason?: string | null;
       actionRequired?: string | null;
       retryable?: boolean;
     }>;

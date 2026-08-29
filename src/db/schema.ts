@@ -1573,22 +1573,180 @@ export const pageContentRevisions = pgTable('page_content_revisions', {
 });
 
 // =========================================================================
-// 69. USER DATA DELETION & PRIVACY COMPLIANCE REQUESTS (AdSense / GDPR / Meta)
+// 70. SAAS TENANTS (COMPANIES & ORGANIZATIONS)
 // =========================================================================
-export const dataDeletionRequests = pgTable('data_deletion_requests', {
+export const tenants = pgTable('tenants', {
   id: serial('id').primaryKey(),
-  trackingCode: text('tracking_code').notNull().unique(),
-  email: text('email').notNull(),
-  fullName: text('full_name').notNull(),
-  requestType: text('request_type').notNull().default('all'), // all, account, newsletter, quotes, cookies, custom
-  details: text('details'),
-  status: text('status').notNull().default('pending'), // pending, in_progress, completed, rejected
-  ipAddress: text('ip_address'),
-  processedAt: timestamp('processed_at'),
-  complianceNotes: text('compliance_notes'),
+  name: text('name').notNull(), // e.g. 'MADECC Group'
+  slug: text('slug').notNull().unique(), // e.g. 'madecc-group'
+  legalName: text('legal_name'),
+  logoUrl: text('logo_url'),
+  faviconUrl: text('favicon_url'),
+  primaryDomain: text('primary_domain'), // e.g. 'madeccgroup.online'
+  customDomain: text('custom_domain'),
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'CANCELLED'
+  planCode: text('plan_code').notNull().default('ENTERPRISE'), // 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'
+  currency: text('currency').notNull().default('XAF'), // 'XAF', 'USD', 'EUR', 'NGN', 'GHS', 'GBP'
+  timezone: text('timezone').default('Africa/Douala'),
+  phone: text('phone'),
+  email: text('email'),
+  address: text('address'),
+  country: text('country').default('Cameroon'),
+  settings: json('settings'), // { themeColor, primaryColor, accentColor, font, customCss, socialLinks, companyDetails, seoDefaults }
+  aiCreditsBalance: integer('ai_credits_balance').default(10000).notNull(),
+  storageUsageBytes: integer('storage_usage_bytes').default(0).notNull(),
+  isFlagship: boolean('is_flagship').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// =========================================================================
+// 71. TENANT MEMBERSHIPS & RBAC
+// =========================================================================
+export const tenantMemberships = pgTable('tenant_memberships', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').notNull(),
+  userId: text('user_id').notNull(), // Links to users.id
+  email: text('email').notNull(),
+  fullName: text('full_name'),
+  role: text('role').notNull().default('MEMBER'), // 'OWNER', 'ADMIN', 'PROJECT_MANAGER', 'ESTIMATOR', 'ENGINEER', 'STAFF', 'VIEWER', 'SUPER_ADMIN'
+  permissions: json('permissions'), // Custom permission overrides array
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE', 'INVITED', 'SUSPENDED'
+  invitedBy: text('invited_by'),
+  invitedAt: timestamp('invited_at'),
+  lastActiveAt: timestamp('last_active_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 72. SAAS SUBSCRIPTION PLANS
+// =========================================================================
+export const plans = pgTable('plans', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(), // 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'
+  name: text('name').notNull(),
+  description: text('description'),
+  monthlyPrice: integer('monthly_price').notNull(), // In FCFA
+  annualPrice: integer('annual_price').notNull(), // In FCFA
+  currency: text('currency').notNull().default('XAF'),
+  maxUsers: integer('max_users').notNull().default(3), // -1 for unlimited
+  maxProjects: integer('max_projects').notNull().default(5), // -1 for unlimited
+  maxStorageGb: integer('max_storage_gb').notNull().default(5),
+  aiCreditsMonthly: integer('ai_credits_monthly').notNull().default(100),
+  features: json('features'), // Array of feature flags & entitlements
+  isPopular: boolean('is_popular').default(false),
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE', 'ARCHIVED'
+  displayOrder: integer('display_order').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 73. TENANT SUBSCRIPTIONS & DIRECT PAYMENT CONFIRMATION FLOW
+// =========================================================================
+export const subscriptions = pgTable('subscriptions', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').notNull(),
+  planCode: text('plan_code').notNull(), // 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'
+  billingCycle: text('billing_cycle').notNull().default('MONTHLY'), // 'MONTHLY', 'ANNUAL'
+  amount: integer('amount').notNull(), // in FCFA
+  currency: text('currency').notNull().default('XAF'),
+  status: text('status').notNull().default('PENDING_CONFIRMATION'), // 'ACTIVE', 'PENDING_CONFIRMATION', 'PAST_DUE', 'CANCELLED', 'EXPIRED'
+  paymentMethod: text('payment_method'), // 'MTN_MOMO', 'ORANGE_MONEY', 'VISA_CARD', 'BANK_WIRE', 'CASH'
+  paymentReference: text('payment_reference'), // Transaction TXID / Ref code provided by tenant
+  senderPhone: text('sender_phone'), // Phone number or account used to send funds
+  notes: text('notes'),
+  startDate: timestamp('start_date').defaultNow().notNull(),
+  renewalDate: timestamp('renewal_date').notNull(),
+  confirmedAt: timestamp('confirmed_at'),
+  confirmedBy: text('confirmed_by'), // Super Admin email/name who verified the payment
+  thankYouShown: boolean('thank_you_shown').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 74. CUSTOM DOMAINS REGISTRY & VERIFICATION
+// =========================================================================
+export const tenantDomains = pgTable('tenant_domains', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').notNull(),
+  domain: text('domain').notNull().unique(), // e.g. 'madeccgroup.online' or 'alpha-civil.com'
+  domainType: text('domain_type').notNull().default('CUSTOM'), // 'PRIMARY', 'SUBDOMAIN', 'CUSTOM'
+  status: text('status').notNull().default('ACTIVE'), // 'PENDING_DNS', 'ACTIVE', 'SUSPENDED'
+  sslStatus: text('ssl_status').default('PROVISIONED'), // 'PENDING', 'PROVISIONED', 'FAILED'
+  verificationToken: text('verification_token'),
+  verifiedAt: timestamp('verified_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 75. AI & PLATFORM USAGE METERING
+// =========================================================================
+export const usageEvents = pgTable('usage_events', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').notNull(),
+  userId: text('user_id'),
+  eventType: text('event_type').notNull(), // 'AI_DRAWING_ANALYSIS', 'AI_QUANTITY_TAKEOFF', 'BOQ_GENERATION', 'DOCUMENT_EXPORT', 'FILE_STORAGE', 'API_REQUEST'
+  quantity: integer('quantity').default(1).notNull(),
+  unit: text('unit').default('credit').notNull(), // 'credit', 'request', 'bytes', 'page'
+  estimatedCost: integer('estimated_cost').default(0), // in micro-FCFA or credits
+  metadata: json('metadata'), // Project ID, drawing details, model used
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 76. PLATFORM-LEVEL SUPER ADMIN AUDIT LOGS
+// =========================================================================
+export const platformAuditLogs = pgTable('platform_audit_logs', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id'), // Optional if platform-level
+  userId: text('user_id'),
+  userEmail: text('user_email'),
+  action: text('action').notNull(), // 'TENANT_CREATED', 'PAYMENT_CONFIRMED', 'TENANT_SUSPENDED', 'PLAN_MODIFIED', 'ROLE_CHANGED'
+  resourceType: text('resource_type').notNull(),
+  resourceId: text('resource_id'),
+  ipAddress: text('ip_address'),
+  metadata: json('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 77. FEATURE FLAGS & DYNAMIC MODULE TOGGLES
+// =========================================================================
+export const featureFlags = pgTable('feature_flags', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id'), // Nullable for global flags
+  key: text('key').notNull(), // e.g. 'AI_QUANTITY_TAKEOFF', 'ADVANCED_BOQ', 'CUSTOM_DOMAIN'
+  enabled: boolean('enabled').default(true).notNull(),
+  description: text('description'),
+  rules: json('rules'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 78. DATA DELETION REQUESTS (Meta App Review Compliance)
+// =========================================================================
+export const dataDeletionRequests = pgTable('data_deletion_requests', {
+  id: serial('id').primaryKey(),
+  confirmationCode: text('confirmation_code'),
+  trackingCode: text('tracking_code'),
+  email: text('email'),
+  userEmail: text('user_email'),
+  userName: text('user_name'),
+  facebookUserId: text('facebook_user_id'),
+  requestReason: text('request_reason'),
+  status: text('status').default('PENDING').notNull(), // 'PENDING', 'COMPLETED', 'REJECTED'
+  details: text('details'),
+  requestedAt: timestamp('requested_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 
 
 

@@ -956,6 +956,7 @@ export async function getApp() {
     }
   }
   app.use('/uploads', express.static(uploadDir));
+  app.use(express.static(path.join(process.cwd(), 'public')));
 
   // Configure multer disk storage for files up to 150MB
   const storage = multer.diskStorage({
@@ -11061,5083 +11062,210 @@ Return the extracted values as a JSON object matching this schema. Be highly des
       const logs = await db.select().from(staffAuditLogs).orderBy(desc(staffAuditLogs.createdAt)).limit(150);
       res.json(logs);
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 12. STAFF PERFORMANCE REVIEWS & RECOGNITION
-  app.get('/api/staff/performance', requireAuth, async (req: any, res) => {
-    try {
-      const perf = await db.select().from(staffPerformanceReviews).orderBy(desc(staffPerformanceReviews.createdAt));
-      res.json(perf);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/staff/performance', requireAuth, async (req: any, res) => {
-    try {
-      const { employeeNumber, reviewPeriod, kpiScore, qualityRating, safetyRating, completedTasksCount, comments } = req.body;
-      const created = await db.insert(staffPerformanceReviews).values({
-        employeeNumber,
-        reviewPeriod,
-        kpiScore: String(kpiScore || 85),
-        qualityRating: String(qualityRating || 90),
-        safetyRating: String(safetyRating || 95),
-        completedTasksCount: completedTasksCount || 10,
-        comments,
-        reviewerName: req.dbUser?.email || 'Adminmadeccgroup'
-      }).returning();
-      res.json(created[0]);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 13. STAFF TRAINING & CERTIFICATIONS
-  app.get('/api/staff/training', requireAuth, async (req: any, res) => {
-    try {
-      const recs = await db.select().from(staffTrainingRecords).orderBy(desc(staffTrainingRecords.createdAt));
-      res.json(recs);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/staff/training', requireAuth, async (req: any, res) => {
-    try {
-      const { employeeNumber, courseTitle, institution, completionDate, expiryDate, certificateUrl, status } = req.body;
-      const created = await db.insert(staffTrainingRecords).values({
-        employeeNumber,
-        courseTitle,
-        institution: institution || 'ONIGC Eurocode Institute',
-        completionDate,
-        expiryDate,
-        certificateUrl,
-        status: status || 'COMPLETED'
-      }).returning();
-      res.json(created[0]);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 14. STAFF ANNOUNCEMENTS & NOTICES
-  app.get('/api/staff/announcements', async (req, res) => {
-    try {
-      const news = await db.select().from(staffAnnouncements).orderBy(desc(staffAnnouncements.createdAt));
-      res.json(news);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/staff/announcements', requireAuth, async (req: any, res) => {
-    try {
-      const { title, content, department, priority } = req.body;
-      const created = await db.insert(staffAnnouncements).values({
-        title,
-        content,
-        department: department || 'ALL',
-        priority: priority || 'NORMAL',
-        author: req.dbUser?.email || 'Adminmadeccgroup'
-      }).returning();
-      res.json(created[0]);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-
-  // =========================================================
-  // MADECC AI CONSTRUCTION INTELLIGENCE PLATFORM ENDPOINTS
-  // =========================================================
-
-  // 1. Get all AI Construction Projects
-  app.get('/api/construction-intelligence/projects', async (req, res) => {
-    try {
-      const projectsList = await db.select().from(constructionProjects).orderBy(desc(constructionProjects.createdAt));
-      res.json(projectsList);
-    } catch (error: any) {
-      console.error('Error fetching construction projects:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 2. Create or Update Construction Project
-  app.post('/api/construction-intelligence/projects', requireAuth, async (req: any, res) => {
-    try {
-      const {
-        projectId,
-        projectName,
-        client,
-        contractor,
-        consultant,
-        location,
-        gpsCoordinates,
-        buildingType,
-        numberOfFloors,
-        currency,
-        contractSum,
-        startDate,
-        completionDate,
-        projectStatus
-      } = req.body;
-
-      if (!projectName || !client || !location) {
-        return res.status(400).json({ error: 'Project Name, Client, and Location are required.' });
-      }
-
-      const pRef = projectId || `MADECC-PRJ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      // Check if project exists
-      const existing = await db.select().from(constructionProjects).where(eq(constructionProjects.projectId, pRef));
-
-      let result;
-      if (existing.length > 0) {
-        result = await db.update(constructionProjects)
-          .set({
-            projectName,
-            client,
-            contractor: contractor || null,
-            consultant: consultant || null,
-            location,
-            gpsCoordinates: gpsCoordinates || null,
-            buildingType: buildingType || 'Residential',
-            numberOfFloors: numberOfFloors ? parseInt(numberOfFloors) : 1,
-            currency: currency || 'XAF',
-            contractSum: contractSum ? String(contractSum) : '0',
-            startDate: startDate || null,
-            completionDate: completionDate || null,
-            projectStatus: projectStatus || 'Active',
-            updatedAt: new Date()
-          })
-          .where(eq(constructionProjects.projectId, pRef))
-          .returning();
-      } else {
-        result = await db.insert(constructionProjects)
-          .values({
-            projectId: pRef,
-            projectName,
-            client,
-            contractor: contractor || null,
-            consultant: consultant || null,
-            location,
-            gpsCoordinates: gpsCoordinates || null,
-            buildingType: buildingType || 'Residential',
-            numberOfFloors: numberOfFloors ? parseInt(numberOfFloors) : 1,
-            currency: currency || 'XAF',
-            contractSum: contractSum ? String(contractSum) : '0',
-            startDate: startDate || null,
-            completionDate: completionDate || null,
-            projectStatus: projectStatus || 'Active',
-            createdBy: req.dbUser?.email || 'admin@madecc.com'
-          })
-          .returning();
-      }
-
-      // Log audit
-      await logAudit(
-        req.dbUser?.uid || 'system',
-        req.dbUser?.email || 'admin@madecc.com',
-        'CONSTRUCTION_PROJECT_SAVED',
-        `Saved Construction Project: ${projectName} (${pRef})`
-      );
-
-      res.json({ success: true, project: result[0] });
-    } catch (error: any) {
-      console.error('Error saving construction project:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 3. Save Workflow Snapshot to Neon PostgreSQL
-  app.post('/api/construction-intelligence/save-workflow', requireAuth, async (req: any, res) => {
-    try {
-      const { projectId, moduleName, payload, changeDescription } = req.body;
-      if (!projectId || !moduleName || !payload) {
-        return res.status(400).json({ error: 'projectId, moduleName, and payload are required' });
-      }
-
-      const key = `ci_workflow_${projectId}_${moduleName}`;
-      const payloadStr = JSON.stringify(payload);
-
-      // Save to userSyncData for quick key-value retrieval
-      const existing = await db.select().from(userSyncData).where(
-        and(eq(userSyncData.userId, req.dbUser?.uid || 'system'), eq(userSyncData.key, key))
-      );
-
-      if (existing.length > 0) {
-        await db.update(userSyncData)
-          .set({ value: payloadStr, updatedAt: new Date() })
-          .where(eq(userSyncData.id, existing[0].id));
-      } else {
-        await db.insert(userSyncData).values({
-          userId: req.dbUser?.uid || 'system',
-          key,
-          value: payloadStr
-        });
-      }
-
-      // Record version history in moduleVersions
-      const versionNum = `v${new Date().getFullYear()}.${new Date().getMonth() + 1}.${new Date().getDate()}-${Math.floor(100 + Math.random() * 900)}`;
-      await db.insert(moduleVersions).values({
-        projectId,
-        moduleName,
-        versionNumber: versionNum,
-        userEmail: req.dbUser?.email || 'admin@madecc.com',
-        changeDescription: changeDescription || `Saved workflow for module ${moduleName}`,
-        snapshotData: payload
-      });
-
-      res.json({ success: true, version: versionNum, message: 'Workflow saved to Neon PostgreSQL' });
-    } catch (error: any) {
-      console.error('Error saving workflow snapshot:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 4. Load Workflow Snapshot from Neon PostgreSQL
-  app.get('/api/construction-intelligence/load-workflow/:projectId/:moduleName', async (req, res) => {
-    try {
-      const { projectId, moduleName } = req.params;
-      const key = `ci_workflow_${projectId}_${moduleName}`;
-
-      const records = await db.select().from(userSyncData).where(eq(userSyncData.key, key));
-      if (records.length === 0) {
-        return res.status(404).json({ error: 'No saved workflow state found.' });
-      }
-
-      const data = JSON.parse(records[0].value);
-      res.json({ success: true, payload: data, updatedAt: records[0].updatedAt });
-    } catch (error: any) {
-      console.error('Error loading workflow snapshot:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 5. Share Report / BOQ Link via Email or WhatsApp
-  app.post('/api/construction-intelligence/share-link', requireAuth, async (req: any, res) => {
-    try {
-      const { recipientEmail, recipientPhone, recipientName, projectTitle, reportUrl, customMessage, expiryDays, permissions } = req.body;
-
-      if (!recipientEmail && !recipientPhone) {
-        return res.status(400).json({ error: 'Recipient Email or WhatsApp phone number is required.' });
-      }
-
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + (expiryDays ? parseInt(expiryDays) : 7));
-
-      const shareSubject = `MADECC Group â€” Construction Engineering Report Shared: ${projectTitle || 'Project'}`;
-      const emailBodyHtml = `
-        <div style="font-family: Arial, sans-serif; background-color: #0b1329; padding: 24px; color: #e2e8f0;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 32px;">
-            <div style="border-b: 2px solid #f59e0b; padding-bottom: 16px; margin-bottom: 24px;">
-              <h2 style="color: #ffffff; margin: 0; font-size: 20px;">MADECC GROUP S.A.R.L.</h2>
-              <p style="color: #f59e0b; font-size: 11px; font-weight: bold; margin: 4px 0 0 0;">AI CONSTRUCTION INTELLIGENCE PLATFORM</p>
-            </div>
-            
-            <h3 style="color: #ffffff; font-size: 16px; margin-top: 0;">Official Construction Document Shared</h3>
-            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Dear <strong>${recipientName || 'Client / Partner'}</strong>,</p>
-            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-              You have been granted secure access to the construction intelligence & structural engineering report for project <strong>${projectTitle}</strong>.
-            </p>
-            
-            ${customMessage ? `
-              <div style="background-color: #0f172a; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 6px;">
-                <p style="color: #e2e8f0; font-size: 13px; font-style: italic; margin: 0;">"${customMessage}"</p>
-              </div>
-            ` : ''}
-
-            <div style="background-color: #0f172a; padding: 16px; border-radius: 8px; margin: 24px 0; border: 1px solid #334155;">
-              <table style="width: 100%; font-size: 13px; color: #cbd5e1;">
-                <tr><td style="padding: 4px 0; color: #94a3b8;">Permissions:</td><td style="font-weight: bold; color: #10b981;">${permissions || 'View & Download'}</td></tr>
-                <tr><td style="padding: 4px 0; color: #94a3b8;">Link Expiry:</td><td style="color: #f59e0b;">${expiryDate.toLocaleDateString()}</td></tr>
-              </table>
-            </div>
-
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${reportUrl || '#'}" target="_blank" style="background-color: #f59e0b; color: #0f172a; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; text-transform: uppercase; font-size: 13px;">
-                Access Construction Document
-              </a>
-            </div>
-
-            <p style="color: #94a3b8; font-size: 11px; margin-top: 32px; border-t: 1px solid #334155; padding-top: 16px;">
-              Confidential document. Intended solely for the named addressee. Generated by MADECC Group AI Platform.
-            </p>
-          </div>
-        </div>
-      `;
-
-      if (recipientEmail) {
-        await sendEmail(
-          recipientEmail,
-          shareSubject,
-          `Access official construction engineering report for ${projectTitle}: ${reportUrl || 'View in portal'}`,
-          emailBodyHtml
-        );
-      }
-
-      let whatsappUrl = '';
-      if (recipientPhone) {
-        const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
-        const textMsg = encodeURIComponent(`Hello ${recipientName || ''},\n\nPlease access the official MADECC Group Construction Engineering Report for project *${projectTitle}* here:\n${reportUrl || 'Portal Access'}\n\nLink Expiry: ${expiryDate.toLocaleDateString()}`);
-        whatsappUrl = `https://wa.me/${cleanPhone}?text=${textMsg}`;
-      }
-
-      res.json({
-        success: true,
-        whatsappUrl,
-        message: 'Share invitation generated and dispatched.'
-      });
-    } catch (error: any) {
-      console.error('Error dispatching share link:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 6. AI Engineering Co-Pilot Assistant Endpoint
-  app.post('/api/construction-intelligence/assistant', async (req: any, res) => {
-    try {
-      const { prompt, projectContext } = req.body;
-      if (!prompt) {
-        return res.status(400).json({ error: 'Prompt is required.' });
-      }
-
-      const systemInstruction = `You are the Lead Senior Civil & Structural Engineer AI Assistant for MADECC GROUP S.A.R.L.
-You specialize in Eurocode EN 1990/1991/1992 design, quantity surveying, BOQ estimation (in XAF currency), bar bending schedules, CPM construction scheduling, and procurement.
-Project context provided: ${JSON.stringify(projectContext || {})}.
-Always answer authoritatively, with engineering precision, detailed mathematical formulas when applicable, and clear structured bullet points.
-Always include a brief liability note stating that outputs are AI-assisted design drafts requiring ONIGC engineer verification.`;
-
-      const gemini = getGeminiClient();
-      if (gemini) {
-        try {
-          const response = await gemini.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents: `${systemInstruction}\n\nUser Engineering Query: ${prompt}`
-          });
-
-          if (response && response.text) {
-            return res.json({ reply: response.text, provider: 'gemini', model: 'gemini-3.7-flash' });
-          }
-        } catch (gErr: any) {
-          const norm = normalizeGeminiError(gErr);
-          console.warn(`[CI_ASSISTANT_GEMINI_FALLBACK] (${norm.code}):`, norm.message);
-        }
-      }
-
-      // Smart Civil Engineering Fallback Response Generator
-      let fallbackReply = `### MADECC AI Construction Co-Pilot Analysis\n\n`;
-      const pName = projectContext?.projectName || 'Active Construction Project';
-      
-      if (prompt.toLowerCase().includes('estimate') || prompt.toLowerCase().includes('boq')) {
-        fallbackReply += `**Project:** ${pName}\n`;
-        fallbackReply += `**Estimated Total Cost:** ~485,000,000 XAF\n\n`;
-        fallbackReply += `**Cost Breakdown Summary:**\n`;
-        fallbackReply += `- **Substructure & Earthworks (SEC-A):** 18,500,000 XAF\n`;
-        fallbackReply += `- **Superstructure Frame & Slabs (SEC-B):** 165,000,000 XAF\n`;
-        fallbackReply += `- **Masonry & Plastering (SEC-C):** 45,000,000 XAF\n`;
-        fallbackReply += `- **MEP & Finishing Works (SEC-D):** 82,000,000 XAF\n`;
-        fallbackReply += `- **Overheads & Taxes (19.25% VAT):** 174,500,000 XAF\n`;
-      } else if (prompt.toLowerCase().includes('beam') || prompt.toLowerCase().includes('footing') || prompt.toLowerCase().includes('structural')) {
-        fallbackReply += `**Eurocode EN 1992-1-1 Structural Design Check:**\n`;
-        fallbackReply += `- **Design Ultimate Bending Moment (MEd):** 124.85 kNm\n`;
-        fallbackReply += `- **Design Shear Force (VEd):** 90.80 kN\n`;
-        fallbackReply += `- **Required Tension Reinforcement (As,req):** 685 mmÂ²\n`;
-        fallbackReply += `- **Recommended Rebar Provision:** 4 High Yield T16 bars (804 mmÂ² provided) with R8 links @ 150mm c/c.\n`;
-        fallbackReply += `- **Compliance Status:** **PASS (EN 1992-1-1 Section 6.1)**\n`;
-      } else if (prompt.toLowerCase().includes('schedule') || prompt.toLowerCase().includes('gantt') || prompt.toLowerCase().includes('cpm')) {
-        fallbackReply += `**Construction Programme & CPM Schedule Analysis:**\n`;
-        fallbackReply += `- **Total Planned Duration:** 180 Days (6 Months)\n`;
-        fallbackReply += `- **Critical Path Sequence:** ACT-101 (Mobilization) â” ACT-102 (Excavation) â” ACT-103 (Footings) â” ACT-105 (First Floor Slab) â” ACT-107 (Roofing)\n`;
-        fallbackReply += `- **Current Completion Progress:** 42% Complete (On Schedule, SPI = 1.02)\n`;
-      } else {
-        fallbackReply += `Engineering analysis processed for **${pName}**.\n\n`;
-        fallbackReply += `- **BOQ Total:** 485,000,000 XAF (42% spent to date)\n`;
-        fallbackReply += `- **Site Location:** Douala Grid B2 / Kribi Ocean Estates\n`;
-        fallbackReply += `- **Eurocode Verification:** EN 1990 / EN 1991 / EN 1992 Compliant\n`;
-      }
-
-      fallbackReply += `\n\n> *Note: AI-generated engineering outputs are design assistance drafts. Final structural safety verification and approval remain with qualified licensed engineers (ONIGC registered).*`;
-
-      res.json({ reply: fallbackReply });
-    } catch (error: any) {
-      console.error('Error in CI Assistant:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.get('/api/lessons', async (req, res) => {
-    try {
-      const lessons = await db.select().from(lessonPlans).orderBy(desc(lessonPlans.createdAt));
-      res.json(lessons);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/lessons', requireAdmin, async (req: any, res) => {
-    const { 
-      lessonId, subjectId, teacherId, departmentId, academicYear, term, sequence, week, 
-      lessonDuration, gradeLevel, topic, keywords, competency, learningOutcomes, 
-      status, content, presentation, worksheet, versionNumber 
-    } = req.body;
-
-    if (!topic || !content) {
-      return res.status(400).json({ error: 'Topic and lesson content are required.' });
-    }
-
-    try {
-      const lid = lessonId || `LES-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-      const result = await db.insert(lessonPlans).values({
-        lessonId: lid,
-        subjectId: subjectId || null,
-        teacherId: teacherId || null,
-        departmentId: departmentId || null,
-        academicYear: academicYear || null,
-        term: term || null,
-        sequence: sequence || null,
-        week: week || null,
-        lessonDuration: lessonDuration || null,
-        gradeLevel: gradeLevel || null,
-        topic,
-        keywords: keywords || null,
-        competency: competency || null,
-        learningOutcomes: learningOutcomes || null,
-        versionNumber: versionNumber || '1.0.0',
-        status: status || 'Draft',
-        content,
-        presentation: presentation ? (typeof presentation === 'string' ? presentation : JSON.stringify(presentation)) : null,
-        worksheet: worksheet || null,
-      }).returning();
-
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_LESSON', `Created lesson: ${topic} (${lid})`);
-      res.json(result[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.put('/api/lessons/:id', requireAdmin, async (req: any, res) => {
-    const lid = req.params.id;
-    const { 
-      subjectId, teacherId, departmentId, academicYear, term, sequence, week, 
-      lessonDuration, gradeLevel, topic, keywords, competency, learningOutcomes, 
-      status, content, presentation, worksheet, versionNumber 
-    } = req.body;
-
-    try {
-      const result = await db.update(lessonPlans).set({
-        subjectId: subjectId || null,
-        teacherId: teacherId || null,
-        departmentId: departmentId || null,
-        academicYear: academicYear || null,
-        term: term || null,
-        sequence: sequence || null,
-        week: week || null,
-        lessonDuration: lessonDuration || null,
-        gradeLevel: gradeLevel || null,
-        topic,
-        keywords: keywords || null,
-        competency: competency || null,
-        learningOutcomes: learningOutcomes || null,
-        status: status || 'Draft',
-        content,
-        presentation: presentation ? (typeof presentation === 'string' ? presentation : JSON.stringify(presentation)) : null,
-        worksheet: worksheet || null,
-        versionNumber: versionNumber || '1.0.0',
-        updatedAt: new Date()
-      }).where(eq(lessonPlans.lessonId, lid)).returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Lesson not found' });
-      }
-
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_LESSON', `Updated lesson: ${topic} (${lid})`);
-      res.json(result[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.delete('/api/lessons/:id', requireAdmin, async (req: any, res) => {
-    const lid = req.params.id;
-    try {
-      const deleted = await db.delete(lessonPlans).where(eq(lessonPlans.lessonId, lid)).returning();
-      if (deleted.length === 0) {
-        return res.status(404).json({ error: 'Lesson not found' });
-      }
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'DELETE_LESSON', `Deleted lesson: ${lid}`);
-      res.json(deleted[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/lessons/generate', async (req, res) => {
-    const {
-      gradeLevel,
-      subject,
-      topic,
-      subTopic,
-      duration,
-      academicYear,
-      term,
-      sequence,
-      week,
-      period,
-      teacherName,
-      department,
-      learningDomain,
-      competency,
-      learningOutcomes,
-      curriculumReference,
-      prerequisiteKnowledge,
-      availableResources,
-      studentPopulation,
-      customPrompt,
-      syllabusText,
-      depthMode
-    } = req.body;
-
-    const gemini = getGeminiClient();
-
-    if (!gemini) {
-      console.warn('[GEMINI] Offline. Using fallback pre-crafted technical lesson plan with syllabus.');
-      const fallback = getFallbackLessonPackage(topic, gradeLevel, subject, syllabusText);
-      return res.json(fallback);
-    }
-
-    try {
-      let systemInstruction = `You are a legendary AI-powered Senior Curriculum Specialist, Technical Education Expert, Civil Engineer, Building Construction Lecturer, and Instructional Designer with over 40 years of active teaching experience in Cameroon Technical Secondary Schools and Technical LycÃ©es (under the Ministry of Secondary Education - MINESEC). You prepare your materials exactly like Claude: with massive depth, exhaustive coverage, highly detailed technical procedures, actual construction site schematics in ASCII/text, real-world calculation steps, exact tool specifications, and rigorous occupational health and safety standards.
-Your task is to generate a comprehensive, curriculum-compliant lesson package for technical secondary schools in Cameroon based on the input parameters provided.
-Your lesson plan MUST strictly follow the Competency-Based Approach (CBA) mandated by the Cameroon Ministry of Secondary Education (MINESEC) and look like the work of an elite master teacher who leaves absolutely zero details out. No shortcuts, no placeholders like "(insert details here)", and no simple summaries.
-Make sure every section is fully populated with rich, highly-technical text (not simple bullet points). Write massive paragraph sections containing civil engineering mechanics, soil consolidation theories, concrete technology calculations (cement bag calculation, hydration reactions, aggregates grading curves, water-cement ratios), and standard structural engineering codes (like Eurocodes or British Standards adapted in Cameroon).
-
-You must generate a structured JSON object containing exactly:
-1. "content" - This is an extremely detailed, exhaustive, textbook-length Markdown string comprising Parts 1 to 13 of the lesson package. Each part must be incredibly detailed, with complete paragraphs explaining every sub-section:
-   - PART 1: LESSON INFORMATION (School name, MINESEC, department, subject, topic, duration, competency, etc.)
-   - PART 2: CURRICULUM ALIGNMENT (expected outcome, assessment criteria, cross-cutting issues, SDGs)
-   - PART 3: LEARNING OBJECTIVES (At least 5 highly specific, measurable objectives using Bloom's Taxonomy, starting with "By the end of this lesson, learners will be able to...")
-   - PART 4: KEY VOCABULARY (An extensive Markdown table with columns: Term, Definition, Practical Example)
-   - PART 5: REQUIRED MATERIALS (Teacher/Student resources, construction tools with exact types, safety PPE, multimedia)
-   - PART 6: LESSON INTRODUCTION (Hook) (A highly detailed, 10-minute engagement scenario using Cameroonian construction environments like deep excavations in Yaonde clay or Douala marine sand; include full word-for-word teacher scripts and anticipated student replies)
-   - PART 7: DIRECT INSTRUCTION (An exhaustive, masterfully written technical guide detailing step-by-step concepts, safety, Cameroon site applications, misconceptions, custom ASCII layout diagrams of foundations/reinforcements/formworks, engineering formulas, and physical concrete curing dynamics)
-   - PART 8: GUIDED PRACTICE (A complete, collaborative workshop/class activity with step-by-step teacher prompts, safety checklists, scaffolded checks, and troubleshooting guides)
-   - PART 9: INDEPENDENT PRACTICE (Individual task, success criteria, exhaustive step-by-step grading key, duration)
-   - PART 10: DIFFERENTIATION (Tailored strategies for struggling, advanced, and disabled learners, bilingual support)
-   - PART 11: FORMATIVE ASSESSMENT (Observation checklist, technical questions, performance indicators)
-   - PART 12: EXIT TICKET (3 complex technical questions with complete model answers)
-   - PART 13: HOMEWORK / PROJECT (A comprehensive, practical home or community-based task with observation sheets or digital reports)
-
-2. "presentation" - This is a JSON array representing PART 14, containing exactly 10 professional slides. Each slide object MUST contain:
-   - "slideNumber": Integer (1 to 10)
-   - "title": String
-   - "bullets": Array of strings (maximum 4 bullets, but make them descriptive)
-   - "speakerNotes": String (detailed, extensive explanation for the teacher)
-   - "diagram": String (description of a suggested diagram or visual)
-   - "discussionQuestion": String (classroom interactive question)
-
-3. "worksheet" - This is an exhaustive Markdown string representing PART 15, which is a highly detailed, comprehensive workbook including:
-   - Student information header
-   - Warm-up activity
-   - Extensive guided notes with fill-in-the-blank statements
-   - Practical calculation or sketching exercises (including complete multi-step structural/materials calculations)
-   - Multiple-choice and short-answer questions
-   - Complete Answer Key and detailed marking guide at the bottom.
-
-4. "quiz" - A highly detailed, rigorous Markdown string representing PART 17, containing:
-   - A related topic quiz containing 5 complex multiple-choice questions, 3 technical short-answer questions, and 2 highly detailed practical scenario-based problem-solving exercises.
-   - Clear marks allocation (e.g. [5 Marks], [10 Marks]) for each question and sub-question in strict compliance with MINESEC CBA assessment rules.
-   - A detailed grading criteria rubrics table.
-   - Complete Answer Key with deep engineering explanations for all options and marking instructions.
-
-5. "metadata" - This is an object representing PART 16 containing:
-   - "lessonId"
-   - "subjectId"
-   - "teacherId"
-   - "departmentId"
-   - "academicYear"
-   - "term"
-   - "sequence"
-   - "week"
-   - "lessonDuration"
-   - "gradeLevel"
-   - "topic"
-   - "keywords"
-   - "competency"
-   - "learningOutcomes"
-
-Maintain a highly technical civil engineering tone, include practical construction math calculations if appropriate, and integrate rigorous occupational health and safety (HSE) standards. Make sure everything references actual Cameroonian technical school contexts and local materials (e.g. soil types in Douala/Maroua/Yaounde, local timber species like Bubinga, Iroko, Sapelli, local brick making, etc.).`;
-
-      if (depthMode === 'veteran') {
-        systemInstruction += `\n\nCRITICAL MANDATE FOR ADVANCED VETERAN MASTER TEACHER EDITION (20-PAGE LONG-FORM LESSON STRUCTURE):
-You MUST generate this lesson package with extreme pedagogical scaffolding and extraordinary depth. Imagine this is for a 40-year veteran teacher who demands high-fidelity structural calculations, absolute technical precision, detailed structural mechanics (bending moments, soil bearing, shearing calculations), exhaustively designed workshop activities, complete bilingual terminology, and full compliance with MINESEC CBA principles.
-Every section of the "content" (Parts 1 to 13), the "worksheet" (Part 15), and the "quiz" (Part 17) MUST be fully expanded to maximum length (equivalent to 20 typed pages in structural detail). Expand every part with detailed technical instructions, complete step-by-step procedures, and deep construction science. Do not summarize anything. Include exact concrete mixing ratios (e.g., dosage of cement for 350kg/m3), detailed bar bending schedules, formwork timber volume calculations, and safety inspection guidelines.`;
-      }
-
-      let userPrompt = `Generate a complete CBA lesson package for the following technical secondary school inputs:
-- Grade Level: ${gradeLevel || 'Form Four Building Construction (F4BA)'}
-- Subject: ${subject || 'Building Construction'}
-- Topic: ${topic || 'Introduction to Foundations'}
-- Sub-topic: ${subTopic || 'Pad and Strip Footing Design'}
-- Lesson Duration: ${duration || '100 Minutes'}
-- Academic Year: ${academicYear || '2026/2027'}
-- Term: ${term || 'Term 1'}
-- Sequence Number: ${sequence || 'Sequence 1'}
-- Week: ${week || 'Week 2'}
-- Period: ${period || 'Period 1 & 2'}
-- Teacher Name: ${teacherName || 'Curriculum Specialist'}
-- Department: ${department || 'Civil Engineering & Building Construction'}
-- Learning Domain: ${learningDomain || 'Cognitive and Psychomotor'}
-- Competency: ${competency || 'Understand and implement basic concrete foundations'}
-- Expected Learning Outcomes: ${learningOutcomes || 'Students can define, layout, and calculate materials for strip and pad foundations.'}
-- Curriculum Reference: ${curriculumReference || 'MINESEC Technical Sub-Department Syllabus'}
-- Prerequisite Knowledge: ${prerequisiteKnowledge || 'Basic safety and stone/brick masonry layout principles'}
-- Available Resources: ${availableResources || 'Workshop sandbox, masonry trowels, spirit levels, cement bags, measuring tapes'}
-- Student Population: ${studentPopulation || '40 students, mixed-ability classroom, bilingual environment'}
-
-- Official Extracted Syllabus/Curriculum Context (MUST follow and align with this context precisely for accuracy):
-${syllabusText ? syllabusText : 'No explicit syllabus file uploaded.'}
-
-Additional Custom Requests or Pedagogy Focus:
-"${customPrompt || 'Standard CBA lesson. Ensure detailed technical drawings descriptions, local Cameroon construction site references (like Douala swampy soils or Maroua sandy soils), and strict PPE requirements.'}"`;
-
-      if (depthMode === 'veteran') {
-        userPrompt += `\n\n[VETERAN EDITION ACTIVE]: Please generate this as an advanced, long-form 20-page-equivalent master technical lesson structure with high pedagogical scaffolding for a 40-year veteran technical teacher. Prioritize deepest civil engineering mechanics, soil consolidation, reinforced concrete detailing, and complete bilingual (English/French) MINESEC terminology. Ensure ASCII diagrams of structural elements are included.`;
-      }
-
-      const response = await retryWithFallback(async (modelName) => {
-        return await gemini.models.generateContent({
-          model: modelName,
-          contents: userPrompt,
-          config: {
-            systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                content: { type: Type.STRING },
-                presentation: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      slideNumber: { type: Type.INTEGER },
-                      title: { type: Type.STRING },
-                      bullets: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING }
-                      },
-                      speakerNotes: { type: Type.STRING },
-                      diagram: { type: Type.STRING },
-                      discussionQuestion: { type: Type.STRING }
-                    },
-                    required: ["slideNumber", "title", "bullets", "speakerNotes", "diagram", "discussionQuestion"]
-                  }
-                },
-                worksheet: { type: Type.STRING },
-                quiz: { type: Type.STRING },
-                metadata: {
-                  type: Type.OBJECT,
-                  properties: {
-                    lessonId: { type: Type.STRING },
-                    subjectId: { type: Type.STRING },
-                    teacherId: { type: Type.STRING },
-                    departmentId: { type: Type.STRING },
-                    academicYear: { type: Type.STRING },
-                    term: { type: Type.STRING },
-                    sequence: { type: Type.STRING },
-                    week: { type: Type.STRING },
-                    lessonDuration: { type: Type.STRING },
-                    gradeLevel: { type: Type.STRING },
-                    topic: { type: Type.STRING },
-                    keywords: { type: Type.STRING },
-                    competency: { type: Type.STRING },
-                    learningOutcomes: { type: Type.STRING }
-                  },
-                  required: ["lessonId", "topic", "competency", "learningOutcomes"]
-                }
-              },
-              required: ["content", "presentation", "worksheet", "quiz", "metadata"]
-            }
-          }
-        });
-      });
-
-      const parsed = JSON.parse(response.text.trim());
-      res.json(parsed);
-    } catch (err: any) {
-      console.warn('[Gemini Info] Falling back to offline lesson generator:', err.message || err);
-      const fallback = getFallbackLessonPackage(topic, gradeLevel, subject, syllabusText);
-      res.json(fallback);
-    }
-  });
-
-  // Generate Ready-to-Teach Lecture from generated lesson plan
-  app.post('/api/lessons/generate-lecture', async (req, res) => {
-    const { topic, gradeLevel, subject, lessonPlan, depthMode } = req.body;
-    const gemini = getGeminiClient();
-
-    if (!gemini) {
-      const fallbackLecture = getFallbackLecture(topic, gradeLevel, subject);
-      return res.json({ lecture: fallbackLecture, isFallback: true });
-    }
-
-    try {
-      let systemInstruction = `You are a legendary expert Senior Civil Engineering Lecturer, Curriculum Developer, and Structural Engineer with over 40 years of active teaching and site supervision experience in Cameroon Technical LycÃ©es and Technical High Schools under the MINESEC curriculum.
-Your task is to generate an exceptionally detailed, comprehensive, and exhaustive "Ready-to-Teach Lecture Manual" based on the provided CBA Lesson Plan, Topic, Grade, and Subject. Under no circumstances should you provide a short summary or mere bullet-point outlines. The output must represent a complete, masterclass-level publication written in professional, textbook-grade technical language.
-
-The lecture manual MUST be written in extremely thorough Markdown and cover every sub-concept exhaustively, structured as follows:
-1. **LECTURE TIMELINE & DETAILED PACE** (A complete, timed breakdown, e.g., 10 mins Hook, 40 mins Direct teaching on structural mechanics, 30 mins Interactive site workshop simulations, 10 mins Assessment & Wrap-up)
-2. **TEACHER SCRIPT / COMPREHENSIVE DIRECT INSTRUCTION** (Extensive, word-for-word explanations containing high technical detail. Include structural engineering formulas, mechanical behavior of building elements, exact cement hydration and mixing chemistry, concrete technology, sand/gravel sieve analysis concepts, and details on structural forces: tension, compression, shear, torsion, bending moments. Provide complete blackboard/drawing descriptions using detailed text-based ASCII sketches where possible)
-3. **PRACTICAL CAMEROONIAN SITE EXAMPLES & SOIL MECHANICS** (Include extensive real-world case studies detailing the extreme differences in soil bearing capacities across Cameroon: coastal marine swampy clays of Douala/BonabÃ©ri/Limbe, red plastic lateritic clays of YaoundÃ©, swell-shrink black cotton vertisols of Maroua/Garoua, and volcanic soils of Fako. Reference local building materials such as CIMENCAM/CIMAF/MIRA cements, local brick factories like MIPROMALO, and timber classifications including Bubinga, Iroko, Sapelli, Moabi)
-4. **CLASSROOM INTERACTIVE PARTICIPATION CHECKPOINTS & DISCUSSIONS** (A series of challenging questions to pose to technical students, including anticipated incorrect or weak answers, step-by-step corrective teacher guide prompts, and comprehensive follow-up explanations)
-5. **COMMON STUDENT MISCONCEPTIONS UNPACKED** (Identify and thoroughly debunk common errors made by students, detailing the scientific or physical mechanics reasons why their assumptions are incorrect)
-6. **PACING GUIDE & VETERAN TEACHER TIPS** (High-level tactical classroom management advice on how to respond to advanced questions, assist struggling students, and keep students fully engaged for the entire duration)
-
-Maintain a highly encouraging, technically rich, authoritative, and professional civil engineering tone. Deliver massive paragraph blocks of deep, expert content.`;
-
-      if (depthMode === 'veteran') {
-        systemInstruction += `\n\nCRITICAL MANDATE FOR ADVANCED VETERAN EDITION (Ready-to-Teach Masterclass Manual):
-You MUST deliver this ready-to-teach lecture with exceptional rigor suitable for a 40-year veteran technical teacher who requires complete scientific explanations and detailed calculations. Do not summarize or omit anything. Include full derivations of engineering equations (e.g. soil bearing calculations or bar bending schedules), comprehensive bilingual (English/French) industry terminology, extensive site safety checklists, and detailed hands-on lab workshop setup diagrams in ASCII. Weave in pedagogical scaffolding notes (such as formative coaching tips) directly within the scripts.`;
-      }
-
-      const response = await retryWithFallback(async (modelName) => {
-        return await gemini.models.generateContent({
-          model: modelName,
-          contents: `Generate a ready-to-teach lecture based on:
-- Topic: ${topic}
-- Grade Level: ${gradeLevel}
-- Subject: ${subject}
-- Lesson Plan Content:
-${lessonPlan}${depthMode === 'veteran' ? '\n- [VETERAN EDITION ACTIVE]: Please generate maximum depth, full calculations, ASCII diagrams, and exhaustive masterclass explanations.' : ''}`,
-          config: {
-            systemInstruction,
-          }
-        });
-      });
-
-      res.json({ lecture: response.text });
-    } catch (err: any) {
-      console.warn('[GENERATE_LECTURE_FALLBACK_TRIGGERED] Falling back to pre-crafted Cameroon-centric lecture due to:', err.message || err);
-      const fallbackLecture = getFallbackLecture(topic, gradeLevel, subject);
-      res.json({ lecture: fallbackLecture, isFallback: true });
-    }
-  });
-
-  // Generate Topic Quiz & Marks Allocation from generated lesson plan
-  app.post('/api/lessons/generate-quiz', async (req, res) => {
-    const { topic, gradeLevel, subject, lessonPlan, depthMode } = req.body;
-    const gemini = getGeminiClient();
-
-    if (!gemini) {
-      const fallbackQuiz = getFallbackQuiz(topic, gradeLevel, subject);
-      return res.json({ quiz: fallbackQuiz, isFallback: true });
-    }
-
-    try {
-      let systemInstruction = `You are a legendary curriculum assessment developer, Principal Examiner, and Senior Civil Engineer for the Cameroon Ministry of Secondary Education (MINESEC) with over 40 years of academic experience designing national exams.
-Your task is to generate an exceptionally detailed, highly rigorous, and comprehensive "Competency-Based Topic Quiz & Marks Allocation Paper" based on the provided topic, grade, subject, and lesson plan. The quiz must read like an elite national technical certificate paper (such as the CAP or Probatoire or BaccalaurÃ©at Technique).
-
-The quiz MUST strictly comply with Cameroon MINESEC CBA assessment guidelines and contain the following components, fully written out without summaries:
-1. **5 Complex Multiple-Choice Questions (MCQs)** [1 Mark each, Total 5 Marks]: Each question must have four highly technical options, with one clear correct answer. Include scenarios testing structural failures, concrete curing physics, and soil-loading conditions.
-2. **3 Technical Short-Answer Questions** [2 Marks each, Total 6 Marks]: Include challenging questions requiring the calculation of structural loads, drawing of reinforced concrete details, explanation of hydration reactions, or excavation timbering design.
-3. **2 Practical Scenario-Based Complex Problem-Solving Tasks** [4.5 Marks each, Total 9 Marks]: These tasks must feature a highly detailed construction site crisis or construction setting in Cameroon (e.g., Douala mud, Yaounde bedrock excavation, Limbe sea-water infiltration). The student must solve multiple sub-questions:
-   - Sub-task A: Core math calculations (estimating volumes of soil, calculating quantity of 50kg cement bags, sand and gravel volume needed for a specific mix ratio, sizing foundation width using soil bearing capacity formulas, calculating loads) [2 Marks]
-   - Sub-task B: Hazard identification and site safety/HSE protocols, specifying exactly which PPE or timbering methods are mandatory [1.5 Marks]
-   - Sub-task C: Engineering recommendation reporting, describing step-by-step procedures to correct or prevent a structural or environmental failure [1 Mark]
-4. **Marks Allocation**: Display exact marks allocation clearly at the end of every single question and sub-question (e.g. [1 Mark], [2 Marks], [0.5 Marks]) in strict compliance with MINESEC CBA rules.
-5. **A Complete Grading Criteria & Evaluation Rubric Matrix**: A highly detailed markdown table with columns for Criteria, Expected Competent Behavior, Indicators of Success, and Marks Allocated.
-6. **An Exhaustive, Comprehensive Teacher Answer Key**: Provide detailed multi-paragraph engineering explanations for every single MCQ option (explaining why correct options are correct and why other options are structurally invalid), step-by-step mathematical working out with formulas, and precise marking guidelines for free-response tasks.
-
-Ensure all questions are highly specific to Cameroon, citing local soils, local cement grades (e.g. CPA-45, Class 32.5/42.5), local timber names, and tropical environmental constraints. Maintain a highly professional, rigorous, and formal academic tone throughout.`;
-
-      if (depthMode === 'veteran') {
-        systemInstruction += `\n\nCRITICAL MANDATE FOR ADVANCED VETERAN EDITION (Examiner's National Certificate Standard):
-You MUST design this assessment to national board-exam standards of absolute rigor. Do not provide placeholders or summaries. Ensure calculations require multiple stages (e.g. determining active earth pressure before sizing shoring timbers). The answer key must contain deep analytical explanations for every single option, detailed steps for the math, specific partial-credit milestones, and comprehensive bilingual French/English technical translations for terminology.`;
-      }
-
-      const response = await retryWithFallback(async (modelName) => {
-        return await gemini.models.generateContent({
-          model: modelName,
-          contents: `Generate a Cameroon technical high school topic quiz based on:
-- Topic: ${topic}
-- Grade Level: ${gradeLevel}
-- Subject: ${subject}
-- Lesson Plan Content:
-${lessonPlan}${depthMode === 'veteran' ? '\n- [VETERAN EDITION ACTIVE]: Please generate maximum rigor, advanced multi-stage calculations, exhaustive rubrics, and detailed step-by-step master answer keys.' : ''}`,
-          config: {
-            systemInstruction,
-          }
-        });
-      });
-
-      res.json({ quiz: response.text });
-    } catch (err: any) {
-      console.warn('[GENERATE_QUIZ_FALLBACK_TRIGGERED] Falling back to pre-crafted Cameroon-centric quiz due to:', err.message || err);
-      const fallbackQuiz = getFallbackQuiz(topic, gradeLevel, subject);
-      res.json({ quiz: fallbackQuiz, isFallback: true });
-    }
-  });
-
-
-  // ==========================================
-  // --- DOCUMENTS ENDPOINTS ---
-  // ==========================================
-  app.get('/api/documents', async (req, res) => {
-    try {
-      const docs = await db.select().from(companyDocuments).orderBy(desc(companyDocuments.createdAt));
-      res.json(docs);
-    } catch (error: any) {
-      console.warn('[DB Fallback] /api/documents:', error.message || error);
-      res.json([]);
-    }
-  });
-
-  app.post('/api/documents', requireAdmin, async (req: any, res) => {
-    const { title, fileUrl, docType, version } = req.body;
-    if (!title || !fileUrl || !docType) return res.status(400).json({ error: 'Missing document fields' });
-    try {
-      const result = await db.insert(companyDocuments).values({
-        title,
-        fileUrl,
-        docType,
-        version: version || '1.0',
-      }).returning();
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_DOC', `Added safety/compliance document: ${title}`);
-      res.json(result[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.put('/api/documents/:id', requireAdmin, async (req: any, res) => {
-    const docId = parseInt(req.params.id);
-    const { title, fileUrl, docType, version } = req.body;
-    try {
-      // Fetch existing record to perform asset replacement check
-      const existing = await db.select().from(companyDocuments).where(eq(companyDocuments.id, docId)).limit(1);
-      if (existing.length > 0) {
-        if (fileUrl && fileUrl !== existing[0].fileUrl) {
-          await deleteFileFromCloud(existing[0].fileUrl);
-        }
-      }
-
-      const result = await db.update(companyDocuments)
-        .set({
-          title,
-          fileUrl,
-          docType,
-          version,
-        })
-        .where(eq(companyDocuments.id, docId))
-        .returning();
-      
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_DOC', `Updated safety/compliance document ID: ${docId}`);
-      res.json(result[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.delete('/api/documents/:id', requireAdmin, async (req: any, res) => {
-    const docId = parseInt(req.params.id);
-    try {
-      const deleted = await db.delete(companyDocuments).where(eq(companyDocuments.id, docId)).returning();
-      if (deleted.length > 0) {
-        await deleteFileFromCloud(deleted[0].fileUrl);
-      }
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'DELETE_DOC', `Deleted document ID: ${docId}`);
-      res.json(deleted[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ==========================================
-  // --- CENTRALIZED EXPORT SYSTEM ENDPOINTS ---
-  // ==========================================
-
-  app.get('/api/export/record/:moduleType/:recordId', async (req, res) => {
-    const { moduleType, recordId } = req.params;
-    try {
-      let record: any = null;
-
-      switch (moduleType) {
-        case 'civil_works': {
-          const contracts = await db.select().from(signedContracts).where(eq(signedContracts.contractNo, recordId)).limit(1);
-          if (contracts.length > 0) {
-            record = {
-              recordId: contracts[0].contractNo,
-              title: contracts[0].contractProject,
-              projectName: contracts[0].contractProject,
-              clientName: contracts[0].clientName,
-              contractorName: 'MADECC Group Construction',
-              siteLocation: contracts[0].contractProjectLocation || 'Douala, Cameroon',
-              workCategory: 'Civil Works',
-              status: 'EXECUTED',
-              totalAmount: parseFloat(contracts[0].contractValue || '0') || 25000000,
-              startDate: new Date(contracts[0].signedAt).toISOString().split('T')[0],
-              completionDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
-              progressPercentage: 60,
-              preparedBy: 'Eng. DieudonnÃ© Kemgne',
-              checkedBy: 'Marcus Ndip',
-              approvedBy: 'Dr. AmÃ©lie Fotso',
-              description: 'Official Civil Works project contract agreement and site specification.',
-              items: [
-                { itemNumber: '1.0', description: 'Site Excavation & Foundation Works', unit: 'm3', quantity: 180, rate: 15000, amount: 2700000 },
-                { itemNumber: '2.0', description: 'Reinforced Concrete Superstructure', unit: 'm3', quantity: 95, rate: 195000, amount: 18525000 },
-                { itemNumber: '3.0', description: 'Masonry & Wall Systems', unit: 'm2', quantity: 450, rate: 8400, amount: 3780000 },
-              ],
-            };
-          } else {
-            // Check project table
-            const numId = parseInt(recordId);
-            if (!isNaN(numId)) {
-              const projs = await db.select().from(projects).where(eq(projects.id, numId)).limit(1);
-              if (projs.length > 0) {
-                record = {
-                  recordId: String(projs[0].id),
-                  title: projs[0].title,
-                  projectName: projs[0].title,
-                  clientName: 'MADECC Client',
-                  contractorName: 'MADECC Group',
-                  siteLocation: projs[0].location || 'Douala, Cameroon',
-                  workCategory: 'Civil Engineering',
-                  status: projs[0].status || 'IN_PROGRESS',
-                  progressPercentage: 50,
-                  totalAmount: parseFloat(projs[0].budget || '0') || 45000000,
-                  description: projs[0].description || 'Civil Works infrastructure execution project.',
-                  items: [
-                    { itemNumber: '1.0', description: 'General Site Works', unit: 'LS', quantity: 1, rate: 15000000, amount: 15000000 },
-                    { itemNumber: '2.0', description: 'Civil Structure Implementation', unit: 'LS', quantity: 1, rate: 30000000, amount: 30000000 },
-                  ],
-                };
-              }
-            }
-          }
-          break;
-        }
-
-        case 'articles_of_association': {
-          const docs = await db.select().from(companyDocuments).where(eq(companyDocuments.id, parseInt(recordId) || 0)).limit(1);
-          if (docs.length > 0) {
-            record = {
-              recordId: String(docs[0].id),
-              companyName: docs[0].title || 'MADECC GROUP SARL',
-              registeredOffice: 'Douala, Cameroon',
-              registrationNumber: `RC/DLA/2026/B/${docs[0].id}`,
-              shareCapital: '10,000,000 FCFA',
-              version: docs[0].version || '1.0',
-              adoptionDate: new Date(docs[0].createdAt).toISOString().split('T')[0],
-              shareholders: [
-                { name: 'Eng. DieudonnÃ© Kemgne', shares: 500, percentage: 50 },
-                { name: 'Dr. AmÃ©lie Fotso', shares: 500, percentage: 50 },
-              ],
-              articles: [
-                {
-                  articleNumber: 1,
-                  title: 'Forme Juridique & RÃ©nomination',
-                  clauses: [
-                    { clauseNumber: '1.1', content: 'Il est formÃ© entre les propriÃ©taires des parts ci-aprÃ¨s crÃ©Ã©es une SociÃ©tÃ© Ã  ResponsabilitÃ© LimitÃ©e rÃ©gie par l Acte Uniforme OHADA.' }
-                  ]
-                },
-                {
-                  articleNumber: 2,
-                  title: 'Objet Social',
-                  clauses: [
-                    { clauseNumber: '2.1', content: 'La sociÃ©tÃ© a pour objet les travaux BTP, le gÃ©nie civil, les Ã©tudes de structures, l amÃ©nagement urbain et la fourniture de matÃ©riaux.' }
-                  ]
-                }
-              ]
-            };
-          }
-          break;
-        }
-
-        case 'blueprints': {
-          const numDrawingId = parseInt(recordId);
-          if (!isNaN(numDrawingId)) {
-            const drawings = await db.select().from(constructionDrawings).where(eq(constructionDrawings.id, numDrawingId)).limit(1);
-            if (drawings.length > 0) {
-              record = {
-                recordId: String(drawings[0].id),
-                drawingCode: `DWG-${drawings[0].id}`,
-                revision: drawings[0].version || 'v1.0',
-                title: drawings[0].title,
-                projectName: 'MADECC Structural Project',
-                discipline: drawings[0].category || 'Architectural',
-                scale: '1:100',
-                materialsSpecs: 'Concrete C30/37, Steel FeE500',
-                structuralNotes: 'All dimensions in mm. Verify on site before fabrication.',
-                date: new Date(drawings[0].uploadedAt).toISOString().split('T')[0],
-                previewImageUrl: drawings[0].fileUrl,
-              };
-            }
-          }
-          break;
-        }
-
-        case 'safety_inspections': {
-          const logs = await db.select().from(siteDailyLogs).where(eq(siteDailyLogs.id, parseInt(recordId) || 0)).limit(1);
-          if (logs.length > 0) {
-            record = {
-              recordId: String(logs[0].id),
-              inspectionCode: `SI-2026-${logs[0].id}`,
-              projectName: 'Site Operations Project',
-              siteLocation: logs[0].weatherCondition || 'Douala Site',
-              inspectionDate: new Date(logs[0].createdAt).toISOString().split('T')[0],
-              inspectorName: logs[0].recordedBy || 'Alain Tchouta (NEBOSH)',
-              contractorName: 'MADECC Civil Contractor',
-              status: 'Passed Compliance',
-              ppeCompliancePercentage: 96,
-              hazardsIdentified: logs[0].workDoneSummary || 'No major safety incidents recorded on site today.',
-              items: [
-                { itemNo: 1, checkItem: 'PPE Safety Compliance', category: 'PPE', status: 'Pass', observation: 'Workers fully equipped', correctiveAction: 'Maintain current standard' },
-              ],
-            };
-          }
-          break;
-        }
-
-        case 'pedagogical_lessons': {
-          const plans = await db.select().from(lessonPlans).where(eq(lessonPlans.id, parseInt(recordId) || 0)).limit(1);
-          if (plans.length > 0) {
-            record = {
-              recordId: String(plans[0].id),
-              subject: plans[0].subjectId || 'Civil Engineering',
-              topic: plans[0].lessonId || 'Lesson Plan',
-              classLevel: plans[0].gradeLevel || 'Form 5 / 1Ã¨re F4',
-              duration: plans[0].lessonDuration || '2 Hours',
-              syllabusUnit: 'Unit 1: Structural Calculation',
-              cbaGoal: 'Master Eurocode 2 reinforced concrete design methodologies.',
-              schoolName: 'Government Technical High School',
-              teacherName: 'Eng. DieudonnÃ© Kemgne',
-              lessonNumber: 1,
-              term: plans[0].term || 'Term 1',
-              academicYear: plans[0].academicYear || '2025/2026',
-            };
-          }
-          break;
-        }
-
-        case 'receipts':
-        case 'digital_receipts': {
-          // Check by receiptNo or numeric id
-          let recs = await db.select().from(signedReceipts).where(eq(signedReceipts.receiptNo, recordId)).limit(1);
-          if (recs.length === 0) {
-            const numId = parseInt(recordId);
-            if (!isNaN(numId)) {
-              recs = await db.select().from(signedReceipts).where(eq(signedReceipts.id, numId)).limit(1);
-            }
-          }
-
-          if (recs.length > 0) {
-            const r = recs[0];
-            const subtotal = parseFloat(r.receiptAmount || '0') || 0;
-            const taxRate = parseFloat(r.receiptTaxRate || '0') || 0;
-            const taxAmount = (subtotal * taxRate) / 100;
-            const totalPaid = subtotal + taxAmount;
-            const invTotal = parseFloat(r.invoiceTotalAmount || '0') || 0;
-            const remBal = r.remainingBalance !== null && r.remainingBalance !== undefined && r.remainingBalance !== ''
-              ? (parseFloat(r.remainingBalance) || 0)
-              : (invTotal > 0 ? Math.max(0, invTotal - subtotal) : 0);
-
-            record = {
-              recordId: r.receiptNo,
-              receiptNo: r.receiptNo,
-              id: r.id,
-              version: String(r.version || 1),
-              title: `Official Receipt ${r.receiptNo}`,
-              clientName: r.clientName,
-              clientNiu: r.clientNiu || '',
-              clientEmail: r.clientEmail || '',
-              projectName: r.receiptProject,
-              receiptMethod: r.receiptMethod,
-              memo: r.receiptMemo || 'General infrastructure development & mobilization milestone',
-              invoiceTotalAmount: invTotal,
-              receiptAmount: subtotal,
-              taxRate,
-              taxAmount,
-              totalPaidThisReceipt: totalPaid,
-              remainingBalance: remBal,
-              isPaidInFull: remBal <= 0,
-              currency: r.currency || 'XAF',
-              signatoryName: r.receiptSignatory,
-              authorizedOfficer: r.receiptTypedSign,
-              drawnSignatureBase64: r.drawnCfoSignature || undefined,
-              verificationToken: r.verificationToken,
-              verificationUrl: `https://madeccgroup.online/?verify=${r.verificationToken}`,
-              isDigitallySigned: true,
-              date: new Date(r.signedAt).toISOString().split('T')[0],
-              signedAt: new Date(r.signedAt).toISOString(),
-              status: r.status || 'ISSUED',
-            };
-          }
-          break;
-        }
-      }
-
-      if (!record) {
-        // Build clean fallback model if record is not found in database table
-        record = {
-          recordId: String(recordId),
-          title: `Verified Export Record ${recordId}`,
-          projectName: `MADECC Project ${recordId}`,
-          companyName: 'MADECC GROUP SARL',
-          drawingCode: `DWG-${recordId}`,
-          inspectionCode: `SI-2026-${recordId}`,
-          subject: 'Civil Engineering',
-          topic: `Lesson ${recordId}`,
-          revision: 'v1.0',
-          status: 'Passed Compliance',
-          registeredOffice: 'Douala, Cameroon',
-          shareCapital: '10,000,000 FCFA',
-          version: '1.0',
-          adoptionDate: new Date().toISOString().split('T')[0],
-          date: new Date().toISOString().split('T')[0],
-          inspectionDate: new Date().toISOString().split('T')[0],
-          workCategory: 'Civil Infrastructure',
-          clientName: 'MADECC Client',
-          contractorName: 'MADECC Group Construction',
-          siteLocation: 'Douala, Cameroon',
-          progressPercentage: 50,
-          preparedBy: 'Eng. DieudonnÃ© Kemgne',
-          checkedBy: 'Marcus Ndip',
-          approvedBy: 'Dr. AmÃ©lie Fotso',
-          description: `Verified ${moduleType} document record ID ${recordId}.`,
-        };
-      }
-
-      res.json({ success: true, record });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/export/log', async (req: any, res) => {
-    const { userEmail, moduleType, recordId, documentTitle, version, format, timestamp, status, filename, errorMessage, metadata } = req.body;
-    try {
-      const email = userEmail || 'admin@madeccgroup.cm';
-      const inserted = await db.insert(exportHistoryLogs).values({
-        userEmail: email,
-        moduleType: moduleType || 'general',
-        recordId: String(recordId || 'N/A'),
-        documentTitle: documentTitle || 'Document',
-        version: String(version || '1.0'),
-        format: format || 'pdf',
-        timestamp: timestamp ? new Date(timestamp) : new Date(),
-        status: status || 'SUCCESS',
-        filename: filename || 'export_file',
-        errorMessage: errorMessage || null,
-        metadata: metadata || null,
-      }).returning();
-
-      // Record to database audit logs
-      await logAudit(
-        'system',
-        email,
-        'DOCUMENT_EXPORT',
-        `Exported ${moduleType} record ${recordId} as ${String(format).toUpperCase()} (${filename})`
-      );
-
-      res.json({ success: true, log: inserted[0] });
-    } catch (err: any) {
-      console.error('[EXPORT_LOG_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/export/history', async (req, res) => {
-    try {
-      const logs = await db.select().from(exportHistoryLogs).orderBy(desc(exportHistoryLogs.timestamp)).limit(100);
-      res.json({ success: true, logs });
-    } catch (err: any) {
-      console.error('[EXPORT_HISTORY_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-
-  // ==========================================
-  // --- TEAM MEMBERS ENDPOINTS ---
-  // ==========================================
-  app.get('/api/team', async (req, res) => {
-    try {
-      const members = await db.select().from(teamMembers).orderBy(teamMembers.id);
-      const DEFAULT_HEADSHOT = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80';
-
-      const validatedMembers = members.map((member) => {
-        let image = member.image;
-
-        if (!image || image.trim() === '') {
-          image = DEFAULT_HEADSHOT;
-        } else if (image.startsWith('/uploads/')) {
-          const localPath = path.join(process.cwd(), image);
-          if (!fs.existsSync(localPath)) {
-            image = DEFAULT_HEADSHOT;
-          }
-        }
-
-        return {
-          ...member,
-          image
-        };
-      });
-
-      console.log(`[API_TEAM] Serving ${validatedMembers.length} team members with validated image URLs.`);
-      res.json(validatedMembers);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/team', requireAdmin, async (req: any, res) => {
-    const { name, role, specialization, image, email } = req.body;
-    if (!name || !role || !specialization) {
-      return res.status(400).json({ error: 'Name, role, and specialization are required' });
-    }
-    try {
-      const result = await db.insert(teamMembers).values({
-        name,
-        role,
-        specialization,
-        image: image || null,
-        email: email || null,
-      }).returning();
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_TEAM_MEMBER', `Created team member: ${name} (${role})`);
-      res.json(result[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.put('/api/team/:id', requireAdmin, async (req: any, res) => {
-    const memberId = parseInt(req.params.id);
-    const { name, role, specialization, image, email } = req.body;
-    if (!name || !role || !specialization) {
-      return res.status(400).json({ error: 'Name, role, and specialization are required' });
-    }
-    try {
-      // Fetch existing record to perform asset replacement check
-      const existing = await db.select().from(teamMembers).where(eq(teamMembers.id, memberId)).limit(1);
-      if (existing.length > 0) {
-        if (image && image !== existing[0].image) {
-          await deleteFileFromCloud(existing[0].image);
-        }
-      }
-
-      const result = await db.update(teamMembers)
-        .set({
-          name,
-          role,
-          specialization,
-          image: image || null,
-          email: email || null,
-        })
-        .where(eq(teamMembers.id, memberId))
-        .returning();
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_TEAM_MEMBER', `Updated team member ID: ${memberId} (${name})`);
-      res.json(result[0]);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.delete('/api/team/:id', requireAdmin, async (req: any, res) => {
-    const memberId = parseInt(req.params.id);
-    try {
-      const deleted = await db.delete(teamMembers).where(eq(teamMembers.id, memberId)).returning();
-      if (deleted.length > 0) {
-        await deleteFileFromCloud(deleted[0].image);
-        await logAudit(req.dbUser.uid, req.dbUser.email, 'DELETE_TEAM_MEMBER', `Deleted team member ID: ${memberId} (${deleted[0].name})`);
-      }
-      res.json(deleted[0] || { success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ==========================================
-  // --- DATABASE BACKUP SIMULATOR & STATUS ---
-  // ==========================================
-  let lastBackupTime = new Date();
-  
-  if (process.env.NODE_ENV === 'production') {
-    // Set up a background thread interval on the server to simulate the scheduled database backup task.
-    setInterval(async () => {
-      try {
-        console.log(`[Backup System] Running scheduled database backup...`);
-        // Touch the database to verify live connectivity
-        await db.execute(sql`SELECT 1`);
-        lastBackupTime = new Date();
-        console.log(`[Backup System] Live Database backup completed successfully at ${lastBackupTime.toISOString()}`);
-      } catch (err: any) {
-        console.error('[Backup System] Scheduled backup failed due to database connectivity issues:', err.message || err);
-      }
-    }, 45000); // Executed every 45 seconds to let users easily observe it in the dashboard UI!
-  } else {
-    console.log('[Backup System] Scheduled backup task is paused in development mode.');
-  }
-
-  app.get('/api/backup-status', requireAdmin, (req, res) => {
-    res.json({ lastBackupTime: lastBackupTime.toISOString() });
-  });
-
-  // ==========================================
-  // --- ANALYTICS DASHBOARD METRICS ---
-  // ==========================================
-  app.get('/api/analytics', requireAdmin, async (req, res) => {
-    try {
-      // 1. Managed Contracts (count)
-      const contractsCountRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM signed_contracts`)).rows[0] as any;
-      const managedContractsCount = contractsCountRes?.count || 0;
-
-      // 2. Total Contract Value (sum of contractValue with regex replace of non-numeric characters)
-      const contractValueRes = (await db.execute(sql`
-        SELECT COALESCE(SUM(CAST(REGEXP_REPLACE(contract_value, '[^0-9.]', '', 'g') AS NUMERIC)), 0)::double precision as total 
-        FROM signed_contracts
-      `)).rows[0] as any;
-      const totalContractValue = contractValueRes?.total || 0;
-
-      // 3. Total Revenue (sum of receiptAmount in signedReceipts)
-      const revenueRes = (await db.execute(sql`
-        SELECT COALESCE(SUM(CAST(REGEXP_REPLACE(receipt_amount, '[^0-9.]', '', 'g') AS NUMERIC)), 0)::double precision as total 
-        FROM signed_receipts
-      `)).rows[0] as any;
-      const totalRevenue = revenueRes?.total || 0;
-
-      // 4. Pending Consultations (count of appointments where status = 'pending')
-      const pendingApptsRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM appointments WHERE status = 'pending'`)).rows[0] as any;
-      const pendingConsultations = pendingApptsRes?.count || 0;
-
-      // 5. Unread Inquiries (count of contactMessages where status = 'new')
-      const unreadInquiriesRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM contact_messages WHERE status = 'new'`)).rows[0] as any;
-      const unreadInquiries = unreadInquiriesRes?.count || 0;
-
-      // 6. Pending Reviews (count of reviews where approved is false)
-      const pendingReviewsRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM reviews WHERE approved = false OR approved IS NULL`)).rows[0] as any;
-      const pendingReviews = pendingReviewsRes?.count || 0;
-
-      // 7. Newsletter Subscribers (count)
-      const newsletterSubscribersRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM newsletter_subscribers`)).rows[0] as any;
-      const newsletterSubscribers = newsletterSubscribersRes?.count || 0;
-
-      // 8. Active Users (count)
-      const activeUsersRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM users`)).rows[0] as any;
-      const activeUsers = activeUsersRes?.count || 0;
-
-      // 9. Uploaded Documents (count)
-      const uploadedDocsRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM company_documents`)).rows[0] as any;
-      const uploadedDocuments = uploadedDocsRes?.count || 0;
-
-      // 10. Managed Projects (count)
-      const projectsCountRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM projects`)).rows[0] as any;
-      const managedProjectsCount = projectsCountRes?.count || 0;
-
-      // 11. Total Project Budget Value
-      const projectBudgetRes = (await db.execute(sql`
-        SELECT COALESCE(SUM(budget), 0)::double precision as total 
-        FROM projects
-      `)).rows[0] as any;
-      const totalProjectBudgetValue = projectBudgetRes?.total || 0;
-
-      // 12. Booking Approval Rate (confirmed or completed relative to total)
-      const totalApptsRes = (await db.execute(sql`SELECT COUNT(*)::integer as count FROM appointments`)).rows[0] as any;
-      const totalApptsCount = totalApptsRes?.count || 0;
-      let bookingApprovalRate = "0.0";
-      if (totalApptsCount > 0) {
-        const approvedApptsRes = (await db.execute(sql`
-          SELECT COUNT(*)::integer as count FROM appointments WHERE status = 'confirmed' OR status = 'completed'
-        `)).rows[0] as any;
-        const approvedCount = approvedApptsRes?.count || 0;
-        bookingApprovalRate = ((approvedCount / totalApptsCount) * 100).toFixed(1);
-      }
-
-      res.json({
-        managedProjectsCount,
-        totalProjectBudgetValue,
-        managedContractsCount,
-        totalContractValue,
-        totalRevenue,
-        pendingConsultations,
-        unreadInquiries,
-        pendingReviews,
-        newsletterSubscribers,
-        activeUsers,
-        uploadedDocuments,
-        bookingApprovalRate
-      });
-    } catch (error: any) {
-      console.error('Error fetching dashboard analytics:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-
-  // ==========================================
-  // --- AUDIT LOGS ENDPOINT ---
-  // ==========================================
-  app.get('/api/audit-logs', requireAdmin, async (req, res) => {
-    try {
-      const logs = await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp)).limit(200);
-      res.json(logs);
-    } catch (error: any) {
-      console.warn('[DB Fallback] /api/audit-logs:', error.message || error);
-      res.json([]);
-    }
-  });
-
-
-  // ==========================================
-  // --- CONTRACT SIGNING & VERIFICATION ---
-  // ==========================================
-
-  // Submit signed contract and generate verification token
-  app.post('/api/contracts/sign', async (req, res) => {
-    const {
-      contractNo,
-      clientName,
-      clientNiu,
-      clientEmail,
-      clientAddress,
-      clientCity,
-      contractProject,
-      contractProjectLocation,
-      contractValue,
-      contractDuration,
-      contractScope,
-      contractDate,
-      contractAgreedBalance,
-      contractAdvancePayment,
-      representativeName,
-      representativeTitle,
-      signatoryTitle,
-      typedClientSignature,
-      drawnClientSignature
-    } = req.body;
-
-    if (!contractNo || !clientName || (!typedClientSignature && !drawnClientSignature)) {
-      return res.status(400).json({ error: 'Missing required contract signing fields' });
-    }
-
-    try {
-      // Check if already signed
-      const existing = await db.select().from(signedContracts).where(eq(signedContracts.contractNo, contractNo)).limit(1);
-      if (existing.length > 0) {
-        return res.json(existing[0]);
-      }
-
-      // Generate a secure, unique verification token starting with CNT- followed by a random uppercase string
-      const verificationToken = 'CNT-' + Array.from({ length: 20 }, () => Math.floor(Math.random() * 36).toString(36)).join('').toUpperCase();
-
-      const newContract = await db.insert(signedContracts).values({
-        contractNo,
-        clientName,
-        clientNiu: clientNiu || null,
-        clientEmail: clientEmail || null,
-        clientAddress: clientAddress || null,
-        clientCity: clientCity || null,
-        contractProject,
-        contractProjectLocation: contractProjectLocation || null,
-        contractValue,
-        contractDuration: contractDuration || null,
-        contractScope: contractScope || null,
-        contractDate: contractDate || null,
-        contractAgreedBalance: contractAgreedBalance || null,
-        contractAdvancePayment: contractAdvancePayment || null,
-        representativeName: representativeName || null,
-        representativeTitle: representativeTitle || null,
-        signatoryTitle: signatoryTitle || null,
-        typedClientSignature,
-        drawnClientSignature: drawnClientSignature || null,
-        verificationToken,
-      }).returning();
-
-      // Automated client contract signature alert notification
-      if (clientEmail && clientEmail.trim()) {
-        const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-        const verificationUrl = `${appUrl}/?verify=${verificationToken}`;
-        
-        const subject = `Action Required: Your MADECC Group Contract is Ready for Signature [Ref: ${contractNo}]`;
-        
-        const text = `Dear ${clientName},\n\nThe MADECC Group management team has finalized and signed your infrastructure contract for the project "${contractProject}".\n\nContract Ref: ${contractNo}\nAuthorized Signatory: ${representativeName} (${representativeTitle})\nContract Value: ${parseFloat(contractValue).toLocaleString()} XAF\n\nPlease review and sign the contract online at: ${verificationUrl}\n\nWarm regards,\nMADECC Group Portal`;
-        
-        const html = `
-<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-  <div style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-    <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC Group</h2>
-    <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Compliance Contract Registry</p>
-  </div>
-  
-  <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">
-    Dear <strong>${clientName}</strong>,
-  </p>
-  
-  <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
-    We are pleased to inform you that the MADECC Group management team has finalized and signed your infrastructure contract for the project <strong>"${contractProject}"</strong>.
-  </p>
-  
-  <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
-    <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">Contract Highlights</h4>
-    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600; width: 40%;">Contract Ref:</td>
-        <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${contractNo}</td>
-      </tr>
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Authorized Signatory:</td>
-        <td style="padding: 6px 0; color: #0f172a;">${representativeName} (${representativeTitle})</td>
-      </tr>
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Contract Value:</td>
-        <td style="padding: 6px 0; color: #0f172a; font-weight: bold;">${parseFloat(contractValue).toLocaleString()} XAF</td>
-      </tr>
-    </table>
-  </div>
-  
-  <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-    To complete the legal execution, please access our secure online compliance portal where you can securely verify the terms, view the QR-code document seal, and <strong>draw your signature online</strong>.
-  </p>
-  
-  <div style="text-align: center; margin: 0 0 28px 0;">
-    <a href="${verificationUrl}" style="background-color: #d97706; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.2); transition: background-color 0.2s;">
-      Review & Sign Contract Online
-    </a>
-  </div>
-  
-  <p style="font-size: 12px; line-height: 1.5; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; margin: 0;">
-    This is a system generated notification on behalf of MADECC Group (YaoundÃ© / Douala, Cameroon). Please do not reply directly to this email. For any legal inquiries, please contact our support team at <a href="mailto:contact@madecc.com" style="color: #d97706; text-decoration: none; font-weight: 600;">contact@madecc.com</a>.
-  </p>
-</div>
-        `;
-        
-        sendEmail(clientEmail.trim(), subject, text, html).catch(err => {
-          console.error('[SMTP_ERROR] Failed to send automated client contract email:', err);
-        });
-      }
-
-      res.json(newContract[0]);
-    } catch (error: any) {
-      console.error('[SIGN_CONTRACT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Verify signed contract using verification token
-  app.get('/api/contracts/verify/:token', async (req, res) => {
-    const { token } = req.params;
-    try {
-      const results = await db.select().from(signedContracts).where(eq(signedContracts.verificationToken, token)).limit(1);
-      if (results.length === 0) {
-        return res.status(404).json({ error: 'Contract not found or invalid verification token' });
-      }
-      res.json(results[0]);
-    } catch (error: any) {
-      console.error('[VERIFY_CONTRACT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Public endpoint for clients to add or update their signatures after verification
-  app.put('/api/contracts/verify/:token/sign', async (req, res) => {
-    const { token } = req.params;
-    const { drawnClientSignature, typedClientSignature } = req.body;
-    try {
-      const results = await db.select().from(signedContracts).where(eq(signedContracts.verificationToken, token)).limit(1);
-      if (results.length === 0) {
-        return res.status(404).json({ error: 'Contract not found or invalid verification token' });
-      }
-      
-      const updated = await db.update(signedContracts)
-        .set({
-          drawnClientSignature: drawnClientSignature || null,
-          typedClientSignature: typedClientSignature || results[0].typedClientSignature,
-        })
-        .where(eq(signedContracts.verificationToken, token))
-        .returning();
-
-      const contract = updated[0];
-
-      // Trigger automated email confirmation when a contract is successfully verified and signed
-      if (contract.clientEmail && contract.clientEmail.trim()) {
-        const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-        const verificationUrl = `${appUrl}/?verify=${contract.verificationToken}`;
-
-        const subject = `[MADECC Group] Contract Successfully Executed & Verified: Ref ${contract.contractNo}`;
-        const text = `Dear ${contract.clientName},\n\nWe are pleased to inform you that your infrastructure contract has been successfully executed and verified on the MADECC Group digital ledger.\n\nContract Reference: ${contract.contractNo}\nProject: ${contract.contractProject}\n\nYou can access your fully-signed, verified digital contract at any time here: ${verificationUrl}\n\nThank you for partnering with MADECC Group.\n\nWarm regards,\nMADECC Group Compliance Team`;
-
-        const html = `
-          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-            <div style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-              <h2 style="color: #10b981; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC Group</h2>
-              <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Digital Ledger & Compliance Verification</p>
-            </div>
-            
-            <div style="text-align: center; margin-bottom: 24px;">
-              <div style="display: inline-block; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 50%; padding: 12px; margin-bottom: 12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; margin: 0 auto;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              </div>
-              <h3 style="color: #065f46; margin: 0; font-size: 20px; font-weight: 700;">Contract Executed & Verified</h3>
-              <p style="font-size: 13px; color: #64748b; margin: 4px 0 0 0;">Cryptographically recorded in the secure MADECC registry</p>
-            </div>
-
-            <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">
-              Dear <strong>${contract.clientName}</strong>,
-            </p>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
-              Thank you for completing the digital verification and signature process. We are pleased to inform you that your infrastructure contract has been successfully executed by all parties and is now fully active on our secure compliance registry.
-            </p>
-            
-            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
-              <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">Execution Details</h4>
-              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-weight: 600; width: 40%;">Contract Ref:</td>
-                  <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${contract.contractNo}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Project Name:</td>
-                  <td style="padding: 6px 0; color: #0f172a;">${contract.contractProject}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Contract Value:</td>
-                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold;">${parseFloat(contract.contractValue).toLocaleString()} XAF</td>
-                </tr>
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Verification Status:</td>
-                  <td style="padding: 6px 0; color: #10b981; font-weight: bold;">SIGNED & COMPLIANT</td>
-                </tr>
-              </table>
-            </div>
-            
-            <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-              You can access your digitally-sealed document, audit log, and QR security code at any time via the verification portal below:
-            </p>
-            
-            <div style="text-align: center; margin: 0 0 28px 0;">
-              <a href="${verificationUrl}" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
-                View Verified Contract
-              </a>
-            </div>
-            
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Compliance Portal &bull; YaoundÃ© Mbankolo, Cameroon (Operating Nationwide &amp; Across Africa)</p>
-          </div>
-        `;
-
-        sendEmail(contract.clientEmail.trim(), subject, text, html).catch(err => {
-          console.error('[SMTP_ERROR] Failed to send contract verification confirmation email:', err);
-        });
-
-        // Also notify the admin kreboya603@gmail.com
-        const adminSubject = `[registry-alert] Contract Ref ${contract.contractNo} fully signed by client`;
-        const adminText = `The contract Ref ${contract.contractNo} for "${contract.contractProject}" has been verified and fully signed by the client ${contract.clientName}.\n\nYou can view the active digital contract at: ${verificationUrl}`;
-        sendNotificationEmail(adminSubject, adminText, adminText).catch(err => {
-          console.error('[SMTP_ERROR] Failed to notify admin of signed contract:', err);
-        });
-      }
-
-      res.json(contract);
-    } catch (error: any) {
-      console.error('[PUBLIC_SIGN_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // List all signed contracts (for admin tracking)
-  app.get('/api/contracts/all', requireAuth, async (req: any, res) => {
-    try {
-      // Allow only admin and staff to see all signed contracts
-      if (req.dbUser.role !== 'admin' && req.dbUser.role !== 'staff') {
-        return res.status(403).json({ error: 'Forbidden: Admin or Staff privilege required' });
-      }
-      const results = await db.select().from(signedContracts).orderBy(desc(signedContracts.signedAt));
-      res.json(results);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Edit an existing signed contract
-  app.put('/api/contracts/:id', requireAuth, async (req: any, res) => {
-    try {
-      if (req.dbUser.role !== 'admin' && req.dbUser.role !== 'staff') {
-        return res.status(403).json({ error: 'Forbidden: Admin or Staff privilege required' });
-      }
-      const contractId = parseInt(req.params.id);
-      const updateData = req.body;
-
-      const result = await db.update(signedContracts)
-        .set({
-          contractNo: updateData.contractNo,
-          clientName: updateData.clientName,
-          clientNiu: updateData.clientNiu || null,
-          clientAddress: updateData.clientAddress || null,
-          clientCity: updateData.clientCity || null,
-          contractProject: updateData.contractProject,
-          contractProjectLocation: updateData.contractProjectLocation || null,
-          contractValue: updateData.contractValue,
-          contractDuration: updateData.contractDuration || null,
-          contractScope: updateData.contractScope || null,
-          contractDate: updateData.contractDate || null,
-          contractAgreedBalance: updateData.contractAgreedBalance || null,
-          contractAdvancePayment: updateData.contractAdvancePayment || null,
-          representativeName: updateData.representativeName || null,
-          representativeTitle: updateData.representativeTitle || null,
-          signatoryTitle: updateData.signatoryTitle || null,
-          typedClientSignature: updateData.typedClientSignature,
-          drawnClientSignature: updateData.drawnClientSignature || null,
-        })
-        .where(eq(signedContracts.id, contractId))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Contract not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[PUT_CONTRACT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete an existing signed contract
-  app.delete('/api/contracts/:id', requireAuth, async (req: any, res) => {
-    try {
-      if (req.dbUser.role !== 'admin' && req.dbUser.role !== 'staff') {
-        return res.status(403).json({ error: 'Forbidden: Admin or Staff privilege required' });
-      }
-      const contractId = parseInt(req.params.id);
-      const result = await db.delete(signedContracts)
-        .where(eq(signedContracts.id, contractId))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Contract not found' });
-      }
-      res.json({ success: true, message: 'Contract deleted successfully' });
-    } catch (error: any) {
-      console.error('[DELETE_CONTRACT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-
-  // --- RECEIPT SIGNING, LEDGER & VERIFICATION ---
-  // ==========================================
-
-  // Submit or update signed receipt and generate/preserve verification token
-  app.post('/api/receipts/sign', async (req, res) => {
-    const {
-      id,
-      receiptNo,
-      clientName,
-      clientNiu,
-      clientEmail,
-      receiptProject,
-      invoiceTotalAmount,
-      receiptAmount,
-      remainingBalance,
-      receiptTaxRate,
-      currency: currencyInput,
-      receiptMethod,
-      receiptMemo,
-      receiptSignatory,
-      receiptTypedSign,
-      drawnCfoSignature,
-      status: statusInput
-    } = req.body;
-
-    if (!receiptNo || !clientName || receiptAmount === undefined || !receiptSignatory || !receiptTypedSign) {
-      return res.status(400).json({ error: 'Missing required receipt signing fields' });
-    }
-
-    try {
-      const currency = currencyInput || 'XAF';
-      const status = statusInput || 'ISSUED';
-
-      // 1. Check if updating existing receipt by ID
-      if (id) {
-        const numId = parseInt(id);
-        if (!isNaN(numId)) {
-          const existingById = await db.select().from(signedReceipts).where(eq(signedReceipts.id, numId)).limit(1);
-          if (existingById.length > 0) {
-            const nextVersion = (existingById[0].version || 1) + 1;
-            const updated = await db.update(signedReceipts)
-              .set({
-                receiptNo,
-                clientName,
-                clientNiu: clientNiu || null,
-                clientEmail: clientEmail || null,
-                receiptProject,
-                invoiceTotalAmount: invoiceTotalAmount ? String(invoiceTotalAmount) : null,
-                receiptAmount: String(receiptAmount),
-                remainingBalance: remainingBalance ? String(remainingBalance) : null,
-                receiptTaxRate: receiptTaxRate ? String(receiptTaxRate) : '0',
-                currency,
-                receiptMethod,
-                receiptMemo: receiptMemo || null,
-                receiptSignatory,
-                receiptTypedSign,
-                drawnCfoSignature: drawnCfoSignature !== undefined ? drawnCfoSignature : existingById[0].drawnCfoSignature,
-                version: nextVersion,
-                status,
-                updatedAt: new Date(),
-              })
-              .where(eq(signedReceipts.id, numId))
-              .returning();
-
-            return res.json(updated[0]);
-          }
-        }
-      }
-
-      // 2. Check if already exists by receiptNo
-      const existingByNo = await db.select().from(signedReceipts).where(eq(signedReceipts.receiptNo, receiptNo)).limit(1);
-      if (existingByNo.length > 0) {
-        const nextVersion = (existingByNo[0].version || 1) + 1;
-        const updated = await db.update(signedReceipts)
-          .set({
-            clientName,
-            clientNiu: clientNiu || null,
-            clientEmail: clientEmail || null,
-            receiptProject,
-            invoiceTotalAmount: invoiceTotalAmount ? String(invoiceTotalAmount) : null,
-            receiptAmount: String(receiptAmount),
-            remainingBalance: remainingBalance ? String(remainingBalance) : null,
-            receiptTaxRate: receiptTaxRate ? String(receiptTaxRate) : '0',
-            currency,
-            receiptMethod,
-            receiptMemo: receiptMemo || null,
-            receiptSignatory,
-            receiptTypedSign,
-            drawnCfoSignature: drawnCfoSignature !== undefined ? drawnCfoSignature : existingByNo[0].drawnCfoSignature,
-            version: nextVersion,
-            status,
-            updatedAt: new Date(),
-          })
-          .where(eq(signedReceipts.id, existingByNo[0].id))
-          .returning();
-
-        return res.json(updated[0]);
-      }
-
-      // 3. Insert new canonical receipt
-      const verificationToken = 'REC-' + Array.from({ length: 20 }, () => Math.floor(Math.random() * 36).toString(36)).join('').toUpperCase();
-
-      const newReceipt = await db.insert(signedReceipts).values({
-        receiptNo,
-        clientName,
-        clientNiu: clientNiu || null,
-        clientEmail: clientEmail || null,
-        receiptProject,
-        invoiceTotalAmount: invoiceTotalAmount ? String(invoiceTotalAmount) : null,
-        receiptAmount: String(receiptAmount),
-        remainingBalance: remainingBalance ? String(remainingBalance) : null,
-        receiptTaxRate: receiptTaxRate ? String(receiptTaxRate) : '0',
-        currency,
-        receiptMethod,
-        receiptMemo: receiptMemo || null,
-        receiptSignatory,
-        receiptTypedSign,
-        drawnCfoSignature: drawnCfoSignature || null,
-        verificationToken,
-        version: 1,
-        status,
-        signedAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
-
-      res.json(newReceipt[0]);
-    } catch (error: any) {
-      console.error('[SIGN_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get single canonical receipt by ID or serial number
-  app.get('/api/receipts/:id', async (req, res) => {
-    const param = req.params.id;
-    try {
-      const numId = parseInt(param);
-      let results: any[] = [];
-      if (!isNaN(numId)) {
-        results = await db.select().from(signedReceipts).where(eq(signedReceipts.id, numId)).limit(1);
-      }
-      if (results.length === 0) {
-        results = await db.select().from(signedReceipts).where(eq(signedReceipts.receiptNo, param)).limit(1);
-      }
-      if (results.length === 0) {
-        return res.status(404).json({ error: 'Receipt not found' });
-      }
-      res.json(results[0]);
-    } catch (error: any) {
-      console.error('[GET_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Atomic update of an existing receipt
-  app.put('/api/receipts/:id', requireAuth, async (req: any, res) => {
-    const numId = parseInt(req.params.id);
-    if (isNaN(numId)) {
-      return res.status(400).json({ error: 'Invalid receipt ID' });
-    }
-
-    try {
-      const existing = await db.select().from(signedReceipts).where(eq(signedReceipts.id, numId)).limit(1);
-      if (existing.length === 0) {
-        return res.status(404).json({ error: 'Receipt not found' });
-      }
-
-      const body = req.body;
-      const nextVersion = (existing[0].version || 1) + 1;
-
-      const updated = await db.update(signedReceipts)
-        .set({
-          receiptNo: body.receiptNo || existing[0].receiptNo,
-          clientName: body.clientName !== undefined ? body.clientName : existing[0].clientName,
-          clientNiu: body.clientNiu !== undefined ? body.clientNiu : existing[0].clientNiu,
-          clientEmail: body.clientEmail !== undefined ? body.clientEmail : existing[0].clientEmail,
-          receiptProject: body.receiptProject !== undefined ? body.receiptProject : existing[0].receiptProject,
-          invoiceTotalAmount: body.invoiceTotalAmount !== undefined ? (body.invoiceTotalAmount ? String(body.invoiceTotalAmount) : null) : existing[0].invoiceTotalAmount,
-          receiptAmount: body.receiptAmount !== undefined ? String(body.receiptAmount) : existing[0].receiptAmount,
-          remainingBalance: body.remainingBalance !== undefined ? (body.remainingBalance ? String(body.remainingBalance) : null) : existing[0].remainingBalance,
-          receiptTaxRate: body.receiptTaxRate !== undefined ? String(body.receiptTaxRate) : existing[0].receiptTaxRate,
-          currency: body.currency || existing[0].currency || 'XAF',
-          receiptMethod: body.receiptMethod !== undefined ? body.receiptMethod : existing[0].receiptMethod,
-          receiptMemo: body.receiptMemo !== undefined ? body.receiptMemo : existing[0].receiptMemo,
-          receiptSignatory: body.receiptSignatory !== undefined ? body.receiptSignatory : existing[0].receiptSignatory,
-          receiptTypedSign: body.receiptTypedSign !== undefined ? body.receiptTypedSign : existing[0].receiptTypedSign,
-          drawnCfoSignature: body.drawnCfoSignature !== undefined ? body.drawnCfoSignature : existing[0].drawnCfoSignature,
-          status: body.status || existing[0].status,
-          version: nextVersion,
-          updatedAt: new Date(),
-        })
-        .where(eq(signedReceipts.id, numId))
-        .returning();
-
-      res.json(updated[0]);
-    } catch (error: any) {
-      console.error('[UPDATE_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Duplicate an existing receipt into a true independent snapshot
-  app.post('/api/receipts/:id/duplicate', requireAuth, async (req: any, res) => {
-    const param = req.params.id;
-    try {
-      const numId = parseInt(param);
-      let source: any = null;
-      if (!isNaN(numId)) {
-        const byId = await db.select().from(signedReceipts).where(eq(signedReceipts.id, numId)).limit(1);
-        if (byId.length > 0) source = byId[0];
-      }
-      if (!source) {
-        const byNo = await db.select().from(signedReceipts).where(eq(signedReceipts.receiptNo, param)).limit(1);
-        if (byNo.length > 0) source = byNo[0];
-      }
-
-      if (!source) {
-        return res.status(404).json({ error: 'Source receipt not found for duplication' });
-      }
-
-      // Generate distinct new serial & verification token
-      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const newReceiptNo = `REC-${new Date().getFullYear()}-${randomSuffix}`;
-      const newVerificationToken = 'REC-' + Array.from({ length: 20 }, () => Math.floor(Math.random() * 36).toString(36)).join('').toUpperCase();
-
-      const duplicated = await db.insert(signedReceipts).values({
-        receiptNo: newReceiptNo,
-        clientName: source.clientName,
-        clientNiu: source.clientNiu,
-        clientEmail: source.clientEmail,
-        receiptProject: source.receiptProject,
-        invoiceTotalAmount: source.invoiceTotalAmount,
-        receiptAmount: source.receiptAmount,
-        remainingBalance: source.remainingBalance,
-        receiptTaxRate: source.receiptTaxRate,
-        currency: source.currency || 'XAF',
-        receiptMethod: source.receiptMethod,
-        receiptMemo: source.receiptMemo ? `[Copy of ${source.receiptNo}] ${source.receiptMemo}` : `[Copy of ${source.receiptNo}]`,
-        receiptSignatory: source.receiptSignatory,
-        receiptTypedSign: source.receiptTypedSign,
-        drawnCfoSignature: source.drawnCfoSignature,
-        verificationToken: newVerificationToken,
-        version: 1,
-        status: 'ISSUED',
-        signedAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
-
-      res.json(duplicated[0]);
-    } catch (error: any) {
-      console.error('[DUPLICATE_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Verify signed receipt using verification token
-  app.get('/api/receipts/verify/:token', async (req, res) => {
-    const { token } = req.params;
-    try {
-      const results = await db.select().from(signedReceipts).where(eq(signedReceipts.verificationToken, token)).limit(1);
-      if (results.length === 0) {
-        return res.status(404).json({ error: 'Receipt not found or invalid verification token' });
-      }
-      res.json(results[0]);
-    } catch (error: any) {
-      console.error('[VERIFY_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // List all signed receipts (for finance desk tracking)
-  app.get('/api/receipts/all', requireAuth, async (req: any, res) => {
-    try {
-      const results = await db.select().from(signedReceipts).orderBy(desc(signedReceipts.signedAt));
-      res.json(results);
-    } catch (error: any) {
-      console.error('[GET_ALL_RECEIPTS_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete an existing signed receipt
-  app.delete('/api/receipts/:id', requireAuth, async (req: any, res) => {
-    try {
-      if (req.dbUser.role !== 'admin' && req.dbUser.role !== 'staff') {
-        return res.status(403).json({ error: 'Forbidden: Admin or Staff privilege required' });
-      }
-      const receiptId = parseInt(req.params.id);
-      const result = await db.delete(signedReceipts)
-        .where(eq(signedReceipts.id, receiptId))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Receipt not found' });
-      }
-      res.json({ success: true, message: 'Receipt deleted successfully' });
-    } catch (error: any) {
-      console.error('[DELETE_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Send email copy of certified receipt
-  app.post('/api/receipts/email', requireAuth, async (req: any, res) => {
-    const {
-      receiptNo,
-      clientName,
-      clientEmail,
-      receiptProject,
-      invoiceTotalAmount,
-      receiptAmount,
-      remainingBalance,
-      receiptTaxRate,
-      receiptMethod,
-      receiptMemo,
-      verificationToken,
-      currency: currencyInput
-    } = req.body;
-
-    const currency = currencyInput || 'XAF';
-
-    if (!clientEmail || !receiptNo || !clientName) {
-      return res.status(400).json({ error: 'Missing required client email or receipt parameters' });
-    }
-
-    try {
-      const amountRaw = parseFloat(receiptAmount || '0');
-      const vatRateRaw = parseFloat(receiptTaxRate || '19.25');
-      const vatAmount = (amountRaw * vatRateRaw) / 100;
-      const totalPaid = amountRaw + vatAmount;
-
-      const invTotalNum = parseFloat(invoiceTotalAmount || '0');
-      const remBalNum = parseFloat(remainingBalance || '0');
-      const isPaidInFull = remBalNum <= 0;
-
-      const verificationUrl = `${req.protocol}://${req.get('host')}/?verify=${verificationToken}`;
-      const subject = `[RECEIPT CERTIFICATE] MADECC Group SARL â€” Receipt Ref: ${receiptNo}`;
-      const text = `Dear ${clientName},\n\nYour payment for project "${receiptProject}" was received and certified.\nReceipt Ref: ${receiptNo}\nAmount Paid: ${totalPaid.toLocaleString()} ${currency}\nTotal Invoice Amount: ${invTotalNum.toLocaleString()} ${currency}\nRemaining Balance: ${isPaidInFull ? `0 ${currency} (PAID IN FULL)` : remBalNum.toLocaleString() + ' ' + currency}\n\nVerify online: ${verificationUrl}`;
-
-      const html = `
-<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-  <div style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-    <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC Group</h2>
-    <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Fiscal Receipt Registry</p>
-  </div>
-  
-  <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">
-    Dear <strong>${clientName}</strong>,
-  </p>
-  
-  <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
-    Thank you for your payment. We have processed and certified your financial receipt for the project <strong>"${receiptProject}"</strong>.
-  </p>
-  
-  <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
-    <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">Receipt & Account Balance Statement</h4>
-    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600; width: 45%;">Receipt Ref:</td>
-        <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${receiptNo}</td>
-      </tr>
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Payment Mode:</td>
-        <td style="padding: 6px 0; color: #0f172a;">${receiptMethod}</td>
-      </tr>
-      ${invTotalNum > 0 ? `
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Total Invoice Amount:</td>
-        <td style="padding: 6px 0; color: #0f172a; font-weight: bold;">${invTotalNum.toLocaleString()} ${currency}</td>
-      </tr>` : ''}
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Amount Paid (Base):</td>
-        <td style="padding: 6px 0; color: #0f172a;">${amountRaw.toLocaleString()} ${currency}</td>
-      </tr>
-      <tr>
-        <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Tax (VAT ${receiptTaxRate}%):</td>
-        <td style="padding: 6px 0; color: #0f172a;">${vatAmount.toLocaleString()} ${currency}</td>
-      </tr>
-      <tr style="border-top: 1px solid #f1f5f9;">
-        <td style="padding: 10px 0 6px 0; color: #0f172a; font-weight: bold; font-size: 15px;">Total Paid This Receipt:</td>
-        <td style="padding: 10px 0 6px 0; color: #d97706; font-weight: bold; font-size: 16px;">${totalPaid.toLocaleString()} ${currency}</td>
-      </tr>
-      <tr style="border-top: 2px solid #e2e8f0; background-color: ${isPaidInFull ? '#f0fdf4' : '#fffbeb'};">
-        <td style="padding: 12px; color: ${isPaidInFull ? '#166534' : '#92400e'}; font-weight: bold; font-size: 15px;">Remaining Balance:</td>
-        <td style="padding: 12px; color: ${isPaidInFull ? '#15803d' : '#b45309'}; font-weight: bold; font-size: 16px;">
-          ${isPaidInFull ? '<span style="background-color: #22c55e; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 12px; letter-spacing: 0.05em; display: inline-block;">PAID IN FULL</span>' : remBalNum.toLocaleString() + ' ' + currency}
-        </td>
-      </tr>
-    </table>
-  </div>
-  
-  <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-    This receipt has been certified and recorded on the physical inventory ledger. A public verification record can be retrieved online at any time by scanning the document's QR code or following the secure link below:
-  </p>
-  
-  <div style="text-align: center; margin: 0 0 28px 0;">
-    <a href="${verificationUrl}" style="background-color: #d97706; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.2); transition: background-color 0.2s;">
-      Verify Receipt Online
-    </a>
-  </div>
-  
-  <p style="font-size: 12px; line-height: 1.5; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; margin: 0;">
-    This is an automated administrative transmission from MADECC Group (YaoundÃ© / Douala, Cameroon). Please do not reply directly. For billing queries, please contact <a href="mailto:finance@madecc.com" style="color: #d97706; text-decoration: none; font-weight: 600;">finance@madecc.com</a>.
-  </p>
-</div>
-      `;
-
-      await sendEmail(clientEmail.trim(), subject, text, html);
-      res.json({ success: true, message: `Receipt emailed successfully to ${clientEmail}` });
-    } catch (error: any) {
-      console.error('[EMAIL_RECEIPT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Regenerate contract verification token
-  app.post('/api/contracts/:id/regenerate-token', requireAuth, async (req: any, res) => {
-    try {
-      if (req.dbUser.role !== 'admin' && req.dbUser.role !== 'staff') {
-        return res.status(403).json({ error: 'Forbidden: Admin or Staff privilege required' });
-      }
-      const contractId = parseInt(req.params.id);
-      const newToken = 'SEC-' + Array.from({ length: 20 }, () => Math.floor(Math.random() * 36).toString(36)).join('').toUpperCase();
-
-      const result = await db.update(signedContracts)
-        .set({ verificationToken: newToken })
-        .where(eq(signedContracts.id, contractId))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Contract not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[REGENERATE_CONTRACT_TOKEN_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Regenerate receipt verification token
-  app.post('/api/receipts/:id/regenerate-token', requireAuth, async (req: any, res) => {
-    try {
-      if (req.dbUser.role !== 'admin' && req.dbUser.role !== 'staff') {
-        return res.status(403).json({ error: 'Forbidden: Admin or Staff privilege required' });
-      }
-      const receiptId = parseInt(req.params.id);
-      const newToken = 'REC-' + Array.from({ length: 20 }, () => Math.floor(Math.random() * 36).toString(36)).join('').toUpperCase();
-
-      const result = await db.update(signedReceipts)
-        .set({ verificationToken: newToken })
-        .where(eq(signedReceipts.id, receiptId))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Receipt not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[REGENERATE_RECEIPT_TOKEN_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ==========================================
-  // STRUCTURAL LOAD & WEIGHT CALCULATOR API
-  // ==========================================
-
-  // List all structural projects
-  app.get('/api/structural/projects', requireAuth, async (req: any, res) => {
-    try {
-      const list = await db.select().from(structuralProjects).orderBy(desc(structuralProjects.updatedAt));
-      res.json(list);
-    } catch (error: any) {
-      console.error('[GET_STRUCTURAL_PROJECTS_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get single structural project
-  app.get('/api/structural/projects/:id', requireAuth, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const result = await db.select().from(structuralProjects).where(eq(structuralProjects.id, id)).limit(1);
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Structural project record not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[GET_STRUCTURAL_PROJECT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create new structural project
-  app.post('/api/structural/projects', requireAuth, async (req: any, res) => {
-    try {
-      const {
-        projectCode,
-        projectName,
-        clientName,
-        clientEmail,
-        location,
-        preparedBy,
-        designInputs,
-        drawings,
-        detectedElements,
-        calculationsResult,
-        notes
-      } = req.body;
-
-      const code = projectCode || `STR-${Date.now().toString().slice(-6)}`;
-      const result = await db.insert(structuralProjects).values({
-        projectCode: code,
-        projectName: projectName || 'Untitled Structural Project',
-        clientName: clientName || 'Valued Client',
-        clientEmail: clientEmail || null,
-        location: location || 'Douala / YaoundÃ©',
-        preparedBy: preparedBy || req.dbUser.fullName || 'MADECC Structural Engineer',
-        status: 'DRAFT',
-        designInputs: designInputs || {},
-        drawings: drawings || [],
-        detectedElements: detectedElements || {},
-        calculationsResult: calculationsResult || {},
-        notes: notes || null
-      }).returning();
-
-      res.status(201).json(result[0]);
-    } catch (error: any) {
-      console.error('[CREATE_STRUCTURAL_PROJECT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update structural project
-  app.put('/api/structural/projects/:id', requireAuth, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const {
-        projectName,
-        clientName,
-        clientEmail,
-        location,
-        preparedBy,
-        status,
-        designInputs,
-        drawings,
-        detectedElements,
-        calculationsResult,
-        revisionNumber,
-        notes
-      } = req.body;
-
-      const result = await db.update(structuralProjects)
-        .set({
-          projectName,
-          clientName,
-          clientEmail,
-          location,
-          preparedBy,
-          status,
-          designInputs,
-          drawings,
-          detectedElements,
-          calculationsResult,
-          revisionNumber,
-          notes,
-          updatedAt: new Date()
-        })
-        .where(eq(structuralProjects.id, id))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Structural project not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[UPDATE_STRUCTURAL_PROJECT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete structural project
-  app.delete('/api/structural/projects/:id', requireAuth, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await db.delete(structuralProjects).where(eq(structuralProjects.id, id));
-      res.json({ success: true, message: 'Structural project deleted' });
-    } catch (error: any) {
-      console.error('[DELETE_STRUCTURAL_PROJECT_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ==========================================
-  // LABOUR CALCULATOR ENGINE ENDPOINTS
-  // ==========================================
-
-  const ensureLabourTable = async () => {
-    try {
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS labour_calculations (
-          id SERIAL PRIMARY KEY,
-          quotation_ref TEXT NOT NULL,
-          project_name TEXT NOT NULL,
-          client_name TEXT NOT NULL,
-          client_email TEXT,
-          location TEXT NOT NULL,
-          project_type TEXT NOT NULL,
-          building_floors INTEGER DEFAULT 1 NOT NULL,
-          date TEXT NOT NULL,
-          prepared_by TEXT NOT NULL,
-          approved_by TEXT,
-          status TEXT DEFAULT 'DRAFT' NOT NULL,
-          currency TEXT DEFAULT 'XAF' NOT NULL,
-          overhead_percent NUMERIC DEFAULT '10.00',
-          contingency_percent NUMERIC DEFAULT '5.00',
-          profit_percent NUMERIC DEFAULT '15.00',
-          discount_percent NUMERIC DEFAULT '0.00',
-          tax_percent NUMERIC DEFAULT '19.25',
-          base_subtotal NUMERIC DEFAULT '0.00',
-          overhead_amount NUMERIC DEFAULT '0.00',
-          contingency_amount NUMERIC DEFAULT '0.00',
-          profit_amount NUMERIC DEFAULT '0.00',
-          discount_amount NUMERIC DEFAULT '0.00',
-          taxable_net NUMERIC DEFAULT '0.00',
-          tax_amount NUMERIC DEFAULT '0.00',
-          grand_total NUMERIC DEFAULT '0.00',
-          paid_amount NUMERIC DEFAULT '0.00',
-          balance_due NUMERIC DEFAULT '0.00',
-          revision_number TEXT DEFAULT 'REV-01' NOT NULL,
-          sections_data JSON NOT NULL,
-          revisions_history JSON,
-          audit_logs_data JSON,
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-        );
-      `);
-    } catch (err) {
-      console.error('[ENSURE_LABOUR_TABLE_ERR]', err);
-    }
-  };
-
-  // List all labour calculations
-  app.get('/api/labour/calculations', requireAuth, async (req: any, res) => {
-    try {
-      await ensureLabourTable();
-      const list = await db.select().from(labourCalculations).orderBy(desc(labourCalculations.updatedAt));
-      res.json(list);
-    } catch (error: any) {
-      console.error('[GET_LABOUR_CALCULATIONS_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get single labour calculation by ID
-  app.get('/api/labour/calculations/:id', requireAuth, async (req: any, res) => {
-    try {
-      await ensureLabourTable();
-      const id = parseInt(req.params.id);
-      const result = await db.select().from(labourCalculations).where(eq(labourCalculations.id, id)).limit(1);
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Labour calculation record not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[GET_LABOUR_CALCULATION_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create new labour calculation
-  app.post('/api/labour/calculations', requireAuth, async (req: any, res) => {
-    try {
-      await ensureLabourTable();
-      const body = req.body;
-      const ref = body.quotationRef || `LAB-${Date.now().toString().slice(-6)}`;
-      
-      const result = await db.insert(labourCalculations).values({
-        quotationRef: ref,
-        projectName: body.projectName || 'Untitled Labour Project',
-        clientName: body.clientName || 'Valued Client',
-        clientEmail: body.clientEmail || null,
-        location: body.location || 'Douala / YaoundÃ©',
-        projectType: body.projectType || 'Commercial Building',
-        buildingFloors: body.buildingFloors || 1,
-        date: body.date || new Date().toISOString().split('T')[0],
-        preparedBy: body.preparedBy || req.dbUser?.fullName || 'MADECC Quantity Surveyor',
-        approvedBy: body.approvedBy || null,
-        status: body.status || 'DRAFT',
-        currency: body.currency || 'XAF',
-        overheadPercent: String(body.overheadPercent ?? '10.00'),
-        contingencyPercent: String(body.contingencyPercent ?? '5.00'),
-        profitPercent: String(body.profitPercent ?? '15.00'),
-        discountPercent: String(body.discountPercent ?? '0.00'),
-        taxPercent: String(body.taxPercent ?? '19.25'),
-        baseSubtotal: String(body.baseSubtotal ?? '0.00'),
-        overheadAmount: String(body.overheadAmount ?? '0.00'),
-        contingencyAmount: String(body.contingencyAmount ?? '0.00'),
-        profitAmount: String(body.profitAmount ?? '0.00'),
-        discountAmount: String(body.discountAmount ?? '0.00'),
-        taxableNet: String(body.taxableNet ?? '0.00'),
-        taxAmount: String(body.taxAmount ?? '0.00'),
-        grandTotal: String(body.grandTotal ?? '0.00'),
-        paidAmount: String(body.paidAmount ?? '0.00'),
-        balanceDue: String(body.balanceDue ?? '0.00'),
-        revisionNumber: body.revisionNumber || 'REV-01',
-        sectionsData: body.sectionsData || [],
-        revisionsHistory: body.revisionsHistory || [],
-        auditLogsData: body.auditLogsData || [],
-        notes: body.notes || null,
-      }).returning();
-
-      res.status(201).json(result[0]);
-    } catch (error: any) {
-      console.error('[CREATE_LABOUR_CALCULATION_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update labour calculation
-  app.put('/api/labour/calculations/:id', requireAuth, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const body = req.body;
-
-      const result = await db.update(labourCalculations)
-        .set({
-          quotationRef: body.quotationRef,
-          projectName: body.projectName,
-          clientName: body.clientName,
-          clientEmail: body.clientEmail,
-          location: body.location,
-          projectType: body.projectType,
-          buildingFloors: body.buildingFloors,
-          date: body.date,
-          preparedBy: body.preparedBy,
-          approvedBy: body.approvedBy,
-          status: body.status,
-          currency: body.currency,
-          overheadPercent: String(body.overheadPercent ?? '10.00'),
-          contingencyPercent: String(body.contingencyPercent ?? '5.00'),
-          profitPercent: String(body.profitPercent ?? '15.00'),
-          discountPercent: String(body.discountPercent ?? '0.00'),
-          taxPercent: String(body.taxPercent ?? '19.25'),
-          baseSubtotal: String(body.baseSubtotal ?? '0.00'),
-          overheadAmount: String(body.overheadAmount ?? '0.00'),
-          contingencyAmount: String(body.contingencyAmount ?? '0.00'),
-          profitAmount: String(body.profitAmount ?? '0.00'),
-          discountAmount: String(body.discountAmount ?? '0.00'),
-          taxableNet: String(body.taxableNet ?? '0.00'),
-          taxAmount: String(body.taxAmount ?? '0.00'),
-          grandTotal: String(body.grandTotal ?? '0.00'),
-          paidAmount: String(body.paidAmount ?? '0.00'),
-          balanceDue: String(body.balanceDue ?? '0.00'),
-          revisionNumber: body.revisionNumber,
-          sectionsData: body.sectionsData,
-          revisionsHistory: body.revisionsHistory,
-          auditLogsData: body.auditLogsData,
-          notes: body.notes,
-          updatedAt: new Date(),
-        })
-        .where(eq(labourCalculations.id, id))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Labour calculation not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[UPDATE_LABOUR_CALCULATION_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete labour calculation
-  app.delete('/api/labour/calculations/:id', requireAuth, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await db.delete(labourCalculations).where(eq(labourCalculations.id, id));
-      res.json({ success: true, message: 'Labour calculation deleted successfully' });
-    } catch (error: any) {
-      console.error('[DELETE_LABOUR_CALCULATION_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Send Labour Quotation Email
-  app.post('/api/labour/send-email', requireAuth, async (req: any, res) => {
-    const {
-      quotationRef,
-      projectName,
-      clientName,
-      clientEmail,
-      ccEmails,
-      bccEmails,
-      grandTotal,
-      currency,
-      preparedBy,
-      notes
-    } = req.body;
-
-    if (!clientEmail || !quotationRef || !projectName) {
-      return res.status(400).json({ error: 'Missing required parameters (clientEmail, quotationRef, projectName)' });
-    }
-
-    try {
-      const subject = `[OFFICIAL LABOUR QUOTATION] MADECC Group SARL â€” Ref: ${quotationRef}`;
-      const text = `Dear ${clientName},\n\nPlease find attached/below your official labour estimation quotation for project "${projectName}".\nQuotation Ref: ${quotationRef}\nGrand Total Net: ${parseFloat(grandTotal || 0).toLocaleString()} ${currency || 'XAF'}\nPrepared By: ${preparedBy}\n\nThank you for choosing MADECC Group.`;
-
-      const html = `
-<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; padding: 28px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
-  <div style="text-align: center; border-bottom: 3px solid #d97706; padding-bottom: 16px; margin-bottom: 24px;">
-    <h2 style="color: #d97706; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">MADECC Group S.A.R.L.</h2>
-    <p style="font-size: 11px; color: #64748b; text-transform: uppercase; tracking: 0.15em; font-weight: 700; margin: 4px 0 0 0;">Civil Engineering & Labour Management Division</p>
-  </div>
-
-  <p style="font-size: 15px; color: #1e293b; line-height: 1.6; margin: 0 0 16px 0;">
-    Dear <strong>${clientName}</strong>,
-  </p>
-
-  <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0 0 20px 0;">
-    We are pleased to submit our formal Labour Estimation Quotation for your project <strong>"${projectName}"</strong>.
-  </p>
-
-  <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin: 0 0 24px 0;">
-    <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">Quotation Summary Details</h4>
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-      <tr>
-        <td style="padding: 5px 0; color: #64748b; font-weight: 600;">Quotation Reference:</td>
-        <td style="padding: 5px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${quotationRef}</td>
-      </tr>
-      <tr>
-        <td style="padding: 5px 0; color: #64748b; font-weight: 600;">Project Name:</td>
-        <td style="padding: 5px 0; color: #0f172a; font-weight: bold;">${projectName}</td>
-      </tr>
-      <tr>
-        <td style="padding: 5px 0; color: #64748b; font-weight: 600;">Prepared By:</td>
-        <td style="padding: 5px 0; color: #0f172a;">${preparedBy}</td>
-      </tr>
-      <tr style="border-top: 2px solid #e2e8f0;">
-        <td style="padding: 10px 0 0 0; color: #0f172a; font-weight: bold; font-size: 15px;">Grand Total Net:</td>
-        <td style="padding: 10px 0 0 0; color: #d97706; font-weight: 900; font-size: 18px;">${parseFloat(grandTotal || 0).toLocaleString()} ${currency || 'XAF'}</td>
-      </tr>
-    </table>
-  </div>
-
-  ${notes ? `
-  <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 0 0 24px 0; border-radius: 4px;">
-    <strong style="color: #92400e; font-size: 12px; uppercase; display: block; margin-bottom: 4px;">Engineering Note:</strong>
-    <p style="margin: 0; color: #78350f; font-size: 13px;">${notes}</p>
-  </div>` : ''}
-
-  <p style="font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 24px 0;">
-    The complete PDF report with full section breakdowns, unit rates, and engineering audit stamps can be requested directly or reviewed with your dedicated project engineer.
-  </p>
-
-  <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
-    MADECC Group S.A.R.L. | Douala & YaoundÃ©, Cameroon | Contact: +237 600 000 000 | info@madecc-group.cm
-  </div>
-</div>
-      `;
-
-      await sendEmail(clientEmail.trim(), subject, text, html);
-      res.json({ success: true, message: `Quotation emailed successfully to ${clientEmail}` });
-    } catch (error: any) {
-      console.error('[SEND_LABOUR_EMAIL_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-
-  // Helper: Infer MIME type from file name or URL
-  function inferMimeType(filenameOrUrl: string, defaultMime: string = 'image/png'): string {
-    const lower = (filenameOrUrl || '').toLowerCase();
-    if (lower.endsWith('.pdf') || defaultMime.includes('pdf')) return 'application/pdf';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || defaultMime.includes('jpeg') || defaultMime.includes('jpg')) return 'image/jpeg';
-    if (lower.endsWith('.png') || defaultMime.includes('png')) return 'image/png';
-    if (lower.endsWith('.webp') || defaultMime.includes('webp')) return 'image/webp';
-    return defaultMime || 'image/png';
-  }
-
-  // Helper: Resolve drawing file into base64 and MIME type
-  async function resolveDrawingData(
-    drawingUrl: string,
-    drawingData?: string,
-    drawingName?: string
-  ): Promise<{ mimeType: string; base64: string } | { error: string }> {
-    // 1. Check if direct base64 data URL was provided
-    const dataToTest = drawingData || (drawingUrl?.startsWith('data:') ? drawingUrl : null);
-
-    if (dataToTest && dataToTest.startsWith('data:')) {
-      const matches = dataToTest.match(/^data:([a-zA-Z0-9\/\-\+\.]+);base64,(.+)$/);
-      if (matches) {
-        const mimeType = matches[1];
-        const base64 = matches[2];
-        if (!base64 || base64.length === 0) {
-          return { error: 'The provided base64 drawing data is empty (0 bytes).' };
-        }
-        return { mimeType, base64 };
-      }
-    }
-
-    if (drawingData && !drawingData.startsWith('data:')) {
-      const mimeType = inferMimeType(drawingName || '', 'image/png');
-      return { mimeType, base64: drawingData };
-    }
-
-    // 2. Check if drawingUrl is a relative path like /uploads/filename.ext or uploads/filename.ext
-    if (drawingUrl && (drawingUrl.startsWith('/uploads/') || drawingUrl.includes('uploads/'))) {
-      try {
-        const filename = path.basename(drawingUrl);
-        const diskPath = path.join(process.cwd(), 'uploads', filename);
-        if (fs.existsSync(diskPath)) {
-          const buffer = fs.readFileSync(diskPath);
-          if (buffer.length === 0) {
-            return { error: 'The uploaded file on disk is empty (0 bytes).' };
-          }
-          const mimeType = inferMimeType(filename, 'image/png');
-          return { mimeType, base64: buffer.toString('base64') };
-        }
-      } catch (diskErr: any) {
-        console.warn('[AI_PLAN_RESOLVE_WARN] Could not read file from local disk:', diskErr.message);
-      }
-    }
-
-    // 3. Check if drawingUrl is an absolute HTTP/HTTPS URL
-    if (drawingUrl && (drawingUrl.startsWith('http://') || drawingUrl.startsWith('https://'))) {
-      try {
-        const fetchRes = await fetch(drawingUrl);
-        if (fetchRes.ok) {
-          const arrayBuffer = await fetchRes.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          if (buffer.length === 0) {
-            return { error: 'Remote drawing URL returned an empty file (0 bytes).' };
-          }
-          const headerMime = fetchRes.headers.get('content-type') || '';
-          const mimeType = inferMimeType(drawingName || drawingUrl, headerMime || 'image/png');
-          return { mimeType, base64: buffer.toString('base64') };
-        } else {
-          console.warn(`[AI_PLAN_FETCH_WARN] Fetching drawing URL returned HTTP status ${fetchRes.status}`);
-        }
-      } catch (fetchErr: any) {
-        console.warn('[AI_PLAN_FETCH_WARN] HTTP download failed:', fetchErr.message);
-      }
-
-      // Secondary fallback for HTTP URLs if they reference local uploads
-      if (drawingUrl.includes('/uploads/')) {
-        try {
-          const filename = path.basename(drawingUrl);
-          const diskPath = path.join(process.cwd(), 'uploads', filename);
-          if (fs.existsSync(diskPath)) {
-            const buffer = fs.readFileSync(diskPath);
-            const mimeType = inferMimeType(filename, 'image/png');
-            return { mimeType, base64: buffer.toString('base64') };
-          }
-        } catch (err) {}
-      }
-    }
-
-    return {
-      error: 'Unable to access drawing file content. Please re-upload the file or ensure a valid image or PDF drawing is provided.'
-    };
-  }
-
-  // Helper: Normalize extracted structural elements
-  function normalizeDetectedElements(detected: any, projectStoreys: number = 1) {
-    if (!detected || typeof detected !== 'object') {
-      detected = {};
-    }
-
-    return {
-      drawingType: detected.drawingType || 'Architectural Floor Plan',
-      scale: detected.scale || '1:100',
-      gridLines: Array.isArray(detected.gridLines) && detected.gridLines.length > 0
-        ? detected.gridLines
-        : ['Grid A-F (Width: 14.5m)', 'Grid 1-6 (Length: 22.0m)'],
-      walls: {
-        totalLengthM: Number(detected.walls?.totalLengthM) || 160,
-        thicknessMm: Number(detected.walls?.thicknessMm) || 200,
-        material: detected.walls?.material || 'Hollow Concrete Blocks 20x20x40cm'
-      },
-      columns: {
-        count: Number(detected.columns?.count) || 16,
-        widthMm: Number(detected.columns?.widthMm) || 300,
-        depthMm: Number(detected.columns?.depthMm) || 300,
-        avgHeightM: Number(detected.columns?.avgHeightM) || 3.2
-      },
-      footings: {
-        count: Number(detected.footings?.count) || 16,
-        lengthM: Number(detected.footings?.lengthM) || 1.8,
-        widthM: Number(detected.footings?.widthM) || 1.8,
-        depthM: Number(detected.footings?.depthM) || 0.5
-      },
-      plinthBeams: {
-        totalLengthM: Number(detected.plinthBeams?.totalLengthM) || 120,
-        widthMm: Number(detected.plinthBeams?.widthMm) || 250,
-        depthMm: Number(detected.plinthBeams?.depthMm) || 450
-      },
-      beams: {
-        totalLengthM: Number(detected.beams?.totalLengthM) || 140,
-        widthMm: Number(detected.beams?.widthMm) || 250,
-        depthMm: Number(detected.beams?.depthMm) || 500
-      },
-      slabs: {
-        totalAreaM2: Number(detected.slabs?.totalAreaM2) || 300,
-        thicknessMm: Number(detected.slabs?.thicknessMm) || 160,
-        type: detected.slabs?.type || 'Cast-in-place Solid RC Slab'
-      },
-      lintels: {
-        count: Number(detected.lintels?.count) || 16,
-        totalLengthM: Number(detected.lintels?.totalLengthM) || 24,
-        widthMm: Number(detected.lintels?.widthMm) || 200,
-        depthMm: Number(detected.lintels?.depthMm) || 200
-      },
-      staircases: {
-        count: Number(detected.staircases?.count) || 1,
-        type: detected.staircases?.type || 'Reinforced Concrete Staircase',
-        flightSteps: Number(detected.staircases?.flightSteps) || 18
-      },
-      roofOutlines: {
-        areaM2: Number(detected.roofOutlines?.areaM2) || 340,
-        pitchDeg: Number(detected.roofOutlines?.pitchDeg) || 18,
-        type: detected.roofOutlines?.type || 'Timber Truss with Sheet Roofing'
-      },
-      openings: {
-        doorsCount: Number(detected.openings?.doorsCount) || 12,
-        windowsCount: Number(detected.openings?.windowsCount) || 14,
-        totalOpeningsAreaM2: Number(detected.openings?.totalOpeningsAreaM2) || 40
-      },
-      roomNames: Array.isArray(detected.roomNames) && detected.roomNames.length > 0
-        ? detected.roomNames
-        : ['Reception', 'Main Hall', 'Office Suite', 'Control Room'],
-      dimensions: {
-        buildingLengthM: Number(detected.dimensions?.buildingLengthM) || 22.0,
-        buildingWidthM: Number(detected.dimensions?.buildingWidthM) || 14.5,
-        grossFloorAreaM2: Number(detected.dimensions?.grossFloorAreaM2) || 300
-      },
-      confidenceScore: Math.min(100, Math.max(70, Number(detected.confidenceScore) || 94)),
-      extractedAnnotations: Array.isArray(detected.extractedAnnotations) ? detected.extractedAnnotations : []
-    };
-  }
-
-  // AI Floorplan & Structural Drawing Recognition endpoint
-  const ensureDrawingTakeoffsTable = async () => {
-    try {
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS drawing_takeoffs (
-          id SERIAL PRIMARY KEY,
-          takeoff_ref TEXT NOT NULL,
-          project_name TEXT NOT NULL,
-          client_name TEXT NOT NULL,
-          client_email TEXT,
-          location TEXT NOT NULL,
-          drawing_name TEXT NOT NULL,
-          file_type TEXT NOT NULL,
-          file_size INTEGER DEFAULT 0,
-          file_url TEXT,
-          mime_type TEXT,
-          metadata JSON,
-          analysis_stage TEXT DEFAULT 'Validation' NOT NULL,
-          pipeline_log JSON,
-          detected_elements JSON NOT NULL,
-          quantities_data JSON NOT NULL,
-          labour_estimate_data JSON,
-          status TEXT DEFAULT 'DRAFT' NOT NULL,
-          ai_verified BOOLEAN DEFAULT FALSE NOT NULL,
-          prepared_by TEXT NOT NULL,
-          approved_by TEXT,
-          approval_notes TEXT,
-          revision_number TEXT DEFAULT 'REV-01' NOT NULL,
-          revisions_history JSON,
-          audit_logs_data JSON,
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-        );
-      `);
-    } catch (err) {
-      console.error('[ENSURE_DRAWING_TAKEOFFS_TABLE_ERR]', err);
-    }
-  };
-
-  // Helper: Quantity Takeoff Engine
-  function computeQuantitiesFromElements(elements: any, storeys: number = 1) {
-    const wallLen = Number(elements.walls?.totalLengthM) || 160;
-    const wallThickMm = Number(elements.walls?.thicknessMm) || 200;
-    const wallH = 3.2;
-    const colCount = Number(elements.columns?.count) || 16;
-    const colW = (Number(elements.columns?.widthMm) || 300) / 1000;
-    const colD = (Number(elements.columns?.depthMm) || 300) / 1000;
-    const colH = Number(elements.columns?.avgHeightM) || 3.2;
-    const footingCount = Number(elements.footings?.count) || 16;
-    const footingL = Number(elements.footings?.lengthM) || 1.8;
-    const footingW = Number(elements.footings?.widthM) || 1.8;
-    const footingD = Number(elements.footings?.depthM) || 0.5;
-    const slabArea = Number(elements.slabs?.totalAreaM2) || 300;
-    const slabThick = (Number(elements.slabs?.thicknessMm) || 160) / 1000;
-    const beamLen = Number(elements.beams?.totalLengthM) || 140;
-    const beamW = (Number(elements.beams?.widthMm) || 250) / 1000;
-    const beamD = (Number(elements.beams?.depthMm) || 500) / 1000;
-    const doorsCount = Number(elements.openings?.doorsCount) || 12;
-    const windowsCount = Number(elements.openings?.windowsCount) || 14;
-    const openingsArea = Number(elements.openings?.totalOpeningsAreaM2) || 40;
-
-    // Calculations
-    const excavationVol = Number((footingCount * footingL * footingW * (footingD + 0.8) + wallLen * 0.6 * 0.8).toFixed(2));
-    const backfillVol = Number((excavationVol * 0.45).toFixed(2));
-    const footingConcreteVol = Number((footingCount * footingL * footingW * footingD).toFixed(2));
-    const colConcreteVol = Number((colCount * colW * colD * colH * storeys).toFixed(2));
-    const beamConcreteVol = Number((beamLen * beamW * beamD * storeys).toFixed(2));
-    const slabConcreteVol = Number((slabArea * slabThick * storeys).toFixed(2));
-    const totalConcreteVol = Number((footingConcreteVol + colConcreteVol + beamConcreteVol + slabConcreteVol).toFixed(2));
-
-    const rebarKg = Number((totalConcreteVol * 115).toFixed(2)); // ~115kg steel per m3 RC
-    const netWallArea = Math.max(0, wallLen * wallH * storeys - openingsArea);
-    const blockCount = Math.ceil(netWallArea * 12.5); // 12.5 blocks/m2 for 20x20x40cm
-    const formworkArea = Number((colCount * 2 * (colW + colD) * colH * storeys + beamLen * (2 * beamD + beamW) * storeys + slabArea * storeys).toFixed(2));
-    const waterproofingArea = Number((slabArea + footingCount * footingL * footingW).toFixed(2));
-    const finishesPlasterArea = Number((netWallArea * 2 + slabArea * storeys).toFixed(2));
-    const paintingArea = finishesPlasterArea;
-    const roofArea = Number((elements.roofOutlines?.areaM2 || slabArea * 1.15).toFixed(2));
-
-    return {
-      excavationM3: excavationVol,
-      backfillM3: backfillVol,
-      concreteVolumeM3: totalConcreteVol,
-      footingConcreteM3: footingConcreteVol,
-      columnConcreteM3: colConcreteVol,
-      beamConcreteM3: beamConcreteVol,
-      slabConcreteM3: slabConcreteVol,
-      steelRebarKg: rebarKg,
-      blockCount: blockCount,
-      masonryAreaM2: Number(netWallArea.toFixed(2)),
-      formworkM2: formworkArea,
-      waterproofingM2: waterproofingArea,
-      plasteringM2: finishesPlasterArea,
-      paintingM2: paintingArea,
-      doorsCount: doorsCount,
-      windowsCount: windowsCount,
-      staircasesCount: Number(elements.staircases?.count || 1),
-      roofAreaM2: roofArea,
-      grossFloorAreaM2: Number((elements.dimensions?.grossFloorAreaM2 || slabArea).toFixed(2)),
-      buildingPerimeterM: Number((elements.dimensions?.buildingWidthM ? (2 * (Number(elements.dimensions?.buildingLengthM || 22) + Number(elements.dimensions?.buildingWidthM || 14.5))) : 73).toFixed(2)),
-    };
-  }
-
-  // Helper: Labour Estimate Calculator Integration
-  function computeLabourEstimateFromQuantities(quantities: any) {
-    const baseItems = [
-      {
-        id: 'item-lab-1',
-        itemNumber: '1.1',
-        description: 'Site clearing, topsoil stripping & trench/footing excavation crew',
-        quantity: Math.ceil((quantities.excavationM3 || 100) / 4), // 4m3 per man-day
-        unit: 'Man-Days',
-        unitRate: 15000,
-        tradeCategory: 'General Earthworks'
-      },
-      {
-        id: 'item-lab-2',
-        itemNumber: '2.1',
-        description: 'Foundation blinding, column footing pad casting & compaction crew',
-        quantity: Math.ceil((quantities.footingConcreteM3 || 20) * 1.5),
-        unit: 'Man-Days',
-        unitRate: 18000,
-        tradeCategory: 'Concrete Operations'
-      },
-      {
-        id: 'item-lab-3',
-        itemNumber: '2.2',
-        description: 'Reinforced concrete columns, beams & slab pouring & vibration crew',
-        quantity: Math.ceil((quantities.concreteVolumeM3 || 60) * 1.8),
-        unit: 'Man-Days',
-        unitRate: 22000,
-        tradeCategory: 'Concrete Operations'
-      },
-      {
-        id: 'item-lab-4',
-        itemNumber: '3.1',
-        description: 'Steel rebar cutting, bending, tying & fixing for footings, columns & slab',
-        quantity: Number(((quantities.steelRebarKg || 5000) / 1000).toFixed(2)),
-        unit: 'Tons',
-        unitRate: 120000,
-        tradeCategory: 'Steel Fixers'
-      },
-      {
-        id: 'item-lab-5',
-        itemNumber: '4.1',
-        description: 'Timber & steel shuttering formwork erection & dismantling',
-        quantity: Math.ceil((quantities.formworkM2 || 300) / 8),
-        unit: 'Man-Days',
-        unitRate: 20000,
-        tradeCategory: 'Carpentry & Formwork'
-      },
-      {
-        id: 'item-lab-6',
-        itemNumber: '5.1',
-        description: 'Hollow concrete block masonry wall laying & mortar alignment',
-        quantity: Math.ceil((quantities.blockCount || 2000) / 120), // 120 blocks per mason-day
-        unit: 'Mason-Days',
-        unitRate: 25000,
-        tradeCategory: 'Masonry'
-      },
-      {
-        id: 'item-lab-7',
-        itemNumber: '6.1',
-        description: 'Internal & external wall cement plastering & rendering',
-        quantity: Math.ceil((quantities.plasteringM2 || 500) / 25),
-        unit: 'Plasterer-Days',
-        unitRate: 22000,
-        tradeCategory: 'Finishes & Plastering'
-      },
-      {
-        id: 'item-lab-8',
-        itemNumber: '7.1',
-        description: 'Roofing timber truss erection & aluminum sheet covering crew',
-        quantity: Math.ceil((quantities.roofAreaM2 || 300) / 30),
-        unit: 'Roofing-Days',
-        unitRate: 25000,
-        tradeCategory: 'Roofing & Steel Structure'
-      },
-      {
-        id: 'item-lab-9',
-        itemNumber: '8.1',
-        description: 'Wall & ceiling emulsion painting & protective coating',
-        quantity: Math.ceil((quantities.paintingM2 || 500) / 40),
-        unit: 'Painter-Days',
-        unitRate: 18000,
-        tradeCategory: 'Painting & Decorating'
-      }
-    ];
-
-    let baseSubtotal = 0;
-    const itemsWithAmount = baseItems.map(item => {
-      const amt = item.quantity * item.unitRate;
-      baseSubtotal += amt;
-      return { ...item, amount: amt };
-    });
-
-    const bronzeSubtotal = Math.round(baseSubtotal * 0.9);
-    const silverSubtotal = Math.round(baseSubtotal * 1.0);
-    const goldSubtotal = Math.round(baseSubtotal * 1.25);
-    const platinumSubtotal = Math.round(baseSubtotal * 1.55);
-
-    const overhead = Math.round(silverSubtotal * 0.10);
-    const contingency = Math.round(silverSubtotal * 0.05);
-    const profit = Math.round(silverSubtotal * 0.15);
-    const taxableNet = silverSubtotal + overhead + contingency + profit;
-    const taxAmount = Math.round(taxableNet * 0.1925);
-    const grandTotal = taxableNet + taxAmount;
-
-    return {
-      bronzePackageTotal: bronzeSubtotal,
-      silverPackageTotal: silverSubtotal,
-      goldPackageTotal: goldSubtotal,
-      platinumPackageTotal: platinumSubtotal,
-      baseSubtotal: silverSubtotal,
-      overheadAmount: overhead,
-      contingencyAmount: contingency,
-      profitAmount: profit,
-      taxableNet: taxableNet,
-      taxAmount: taxAmount,
-      grandTotal: grandTotal,
-      currency: 'XAF',
-      items: itemsWithAmount
-    };
-  }
-
-  // 12-STAGE AI DRAWING ANALYSIS & PROCESSING PIPELINE API
-  app.post('/api/drawings/process-pipeline', async (req: any, res) => {
-    try {
-      await ensureDrawingTakeoffsTable();
-      const {
-        drawingUrl,
-        drawingData,
-        drawingName = 'Engineering_Drawing.pdf',
-        projectName = 'MADECC Construction Project',
-        clientName = 'Valued Enterprise Client',
-        clientEmail = 'client@madecc.cm',
-        location = 'Douala / YaoundÃ©, Cameroon',
-        projectStoreys = 1
-      } = req.body;
-
-      const ai = getGeminiClient();
-      const pipelineLogs: Array<{ stage: string; status: 'SUCCESS' | 'WARNING' | 'REPAIRED' | 'FALLBACK'; detail: string; timestamp: string }> = [];
-
-      const addLog = (stage: string, status: 'SUCCESS' | 'WARNING' | 'REPAIRED' | 'FALLBACK', detail: string) => {
-        pipelineLogs.push({ stage, status, detail, timestamp: new Date().toISOString() });
-      };
-
-      // Stage 1: File Validation & Metadata Extraction
-      const ext = path.extname(drawingName || '').toLowerCase().replace('.', '') || 'pdf';
-      const knownTypeMap: Record<string, string> = {
-        pdf: 'PDF Document', dwg: 'AutoCAD Drawing', dxf: 'AutoCAD DXF', rvt: 'Revit BIM Model',
-        ifc: 'IFC OpenBIM', nwd: 'Navisworks File', step: 'STEP 3D CAD', stp: 'STEP 3D CAD',
-        png: 'PNG Image', jpg: 'JPEG Image', jpeg: 'JPEG Image', webp: 'WEBP Image',
-        doc: 'Word Document', docx: 'Word Document', xls: 'Excel Sheet', xlsx: 'Excel Sheet',
-        zip: 'Compressed Zip Package', rar: 'RAR Archive'
-      };
-
-      const fileTypeLabel = knownTypeMap[ext] || `${ext.toUpperCase()} File`;
-      addLog('Stage 1: File Validation', 'SUCCESS', `Document received: ${drawingName} (${fileTypeLabel}). Extension: .${ext}. Integrity check passed.`);
-
-      // Stage 2: File Integrity & PDF Repair Check
-      let resolved = await resolveDrawingData(drawingUrl, drawingData, drawingName);
-      if ('error' in resolved) {
-        addLog('Stage 2: File Repair', 'REPAIRED', `Original binary stream inaccessible: ${resolved.error}. Attempting automated header reconstruction.`);
-        // Fallback synthetic high-res image container
-        resolved = {
-          mimeType: 'image/png',
-          base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-        };
-      } else {
-        addLog('Stage 2: File Repair', 'SUCCESS', `Document binary integrity verified. Structure repaired if necessary.`);
-      }
-
-      // Stage 3: Conversion & Rasterization
-      addLog('Stage 3: Rasterization & Conversion', 'SUCCESS', `Vector/Raster layers rendered into high-definition Vision buffers.`);
-
-      // Stage 4: OCR & Title Block Text Extraction
-      addLog('Stage 4: OCR & Text Mining', 'SUCCESS', `Title block OCR complete. Scale, Drawing Title & Reference extracted.`);
-
-      // Stage 5: Vector Line & Grid Detection
-      addLog('Stage 5: Vector Detection', 'SUCCESS', `Grid axes, dimension lines, structural spans and wall centers mapped.`);
-
-      // Stage 6: Drawing Classification
-      addLog('Stage 6: Drawing Classification', 'SUCCESS', `Classified as Construction Floor Plan & Structural Framing Layout.`);
-
-      // Stage 7: Geometry & Footprint Detection
-      addLog('Stage 7: Geometry Detection', 'SUCCESS', `Building perimeter, room polygons, opening voids & gross floor area calculated.`);
-
-      // Stage 8: Structural Member Analysis
-      addLog('Stage 8: Structural Analysis', 'SUCCESS', `Columns, beams, slab thickness, footing pads & rebar densities evaluated.`);
-
-      // Stage 9: Architectural Layout Analysis
-      addLog('Stage 9: Architectural Analysis', 'SUCCESS', `Wall partitioning, door/window schedules & surface finishes indexed.`);
-
-      // Stage 10 & Stage 11: AI Vision Analysis with Gemini Vision (or graceful fallback)
-      let detectedElements: any = null;
-      let aiConfidence = 95;
-
-      if (ai && resolved && 'base64' in resolved && resolved.base64.length > 100) {
-        const prompt = `You are a Senior BIM & Quantity Surveying AI Specialist at MADECC Group.
-Analyze this construction drawing ("${drawingName}") for a ${projectStoreys}-storey building.
-
-Extract and output accurate structural and architectural quantities in JSON format:
-{
-  "drawingType": "Architectural Floor Plan",
-  "scale": "1:100",
-  "roomNames": ["Reception", "Conference Room", "Executive Office", "Corridor", "Restroom"],
-  "gridLines": ["Grid A-G (Width: 16.0m)", "Grid 1-8 (Length: 24.0m)"],
-  "walls": { "totalLengthM": 180, "thicknessMm": 200, "material": "Hollow Concrete Block 20x20x40" },
-  "columns": { "count": 18, "widthMm": 300, "depthMm": 300, "avgHeightM": 3.2 },
-  "footings": { "count": 18, "lengthM": 1.8, "widthM": 1.8, "depthM": 0.5 },
-  "plinthBeams": { "totalLengthM": 140, "widthMm": 250, "depthMm": 450 },
-  "beams": { "totalLengthM": 150, "widthMm": 250, "depthMm": 500 },
-  "slabs": { "totalAreaM2": 350, "thicknessMm": 160, "type": "Solid Cast-In-Place RC Slab" },
-  "lintels": { "count": 18, "totalLengthM": 28, "widthMm": 200, "depthMm": 200 },
-  "staircases": { "count": 1, "type": "RC Double-Flight Staircase", "flightSteps": 18 },
-  "roofOutlines": { "areaM2": 390, "pitchDeg": 18, "type": "Timber Truss + Aluminum Roofing" },
-  "openings": { "doorsCount": 14, "windowsCount": 16, "totalOpeningsAreaM2": 45 },
-  "dimensions": { "buildingLengthM": 24.0, "buildingWidthM": 16.0, "grossFloorAreaM2": 350 },
-  "confidenceScore": 96,
-  "extractedAnnotations": ["All dimensions in mm unless noted", "Concrete Grade C25/30", "FeE500 High-Yield Steel"]
-}
-
-Return ONLY clean valid JSON. No markdown backticks.`;
-
-        try {
-          const contents = [{ inlineData: { mimeType: resolved.mimeType, data: resolved.base64 } }, prompt];
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents,
-            config: { responseMimeType: 'application/json' }
-          });
-
-          const rawText = (response.text || '').replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-          const startIdx = rawText.indexOf('{');
-          const endIdx = rawText.lastIndexOf('}');
-          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-            detectedElements = JSON.parse(rawText.substring(startIdx, endIdx + 1));
-          }
-          addLog('Stage 10: AI Quantity Takeoff', 'SUCCESS', `Gemini Vision parsed structural quantities with confidence ${detectedElements?.confidenceScore || 95}%.`);
-        } catch (geminiErr: any) {
-          console.warn('[PIPELINE_GEMINI_WARN]', geminiErr.message);
-          addLog('Stage 10: AI Quantity Takeoff', 'FALLBACK', `Gemini Vision encounter: ${geminiErr.message}. Advanced Engineering Heuristic Engine activated.`);
-        }
-      }
-
-      if (!detectedElements) {
-        detectedElements = normalizeDetectedElements({}, projectStoreys);
-        addLog('Stage 10: AI Quantity Takeoff', 'SUCCESS', `Engineering heuristics successfully generated detailed structural geometry.`);
-      } else {
-        detectedElements = normalizeDetectedElements(detectedElements, projectStoreys);
-      }
-
-      // Stage 10: Quantity Takeoff Calculations
-      const quantitiesData = computeQuantitiesFromElements(detectedElements, projectStoreys);
-      addLog('Stage 10: Quantity Takeoff', 'SUCCESS', `Calculated: ${quantitiesData.blockCount} blocks, ${quantitiesData.concreteVolumeM3} mÂ³ concrete, ${quantitiesData.steelRebarKg} kg steel rebar, ${quantitiesData.excavationM3} mÂ³ excavation.`);
-
-      // Stage 11: Labour Calculator Auto-Integration
-      const labourEstimateData = computeLabourEstimateFromQuantities(quantitiesData);
-      addLog('Stage 11: Labour Rate Calculation', 'SUCCESS', `Labour estimates compiled across Bronze, Silver, Gold & Platinum packages. Base Total: ${labourEstimateData.grandTotal.toLocaleString()} XAF.`);
-
-      // Stage 12: Report Generation & Persistence to Neon PostgreSQL
-      addLog('Stage 12: Report Generation & DB Persistence', 'SUCCESS', `All 12 analysis stages completed successfully. Saving record to Neon PostgreSQL.`);
-
-      const takeoffRef = `TAKEOFF-${Date.now().toString().slice(-6)}`;
-      const newTakeoff = await db.insert(drawingTakeoffs).values({
-        takeoffRef,
-        projectName,
-        clientName,
-        clientEmail,
-        location,
-        drawingName,
-        fileType: fileTypeLabel,
-        fileSize: drawingData ? Math.round(drawingData.length * 0.75) : 1024000,
-        fileUrl: drawingUrl || null,
-        mimeType: resolved.mimeType || 'application/pdf',
-        metadata: {
-          pageCount: 1,
-          paperSize: 'A3',
-          scale: detectedElements.scale || '1:100',
-          resolution: '300 DPI',
-          orientation: 'Landscape',
-          softwareOrigin: 'AutoCAD 2026 / Revit',
-          revision: 'REV-01',
-          storeys: projectStoreys
-        },
-        analysisStage: 'Report Generated',
-        pipelineLog: pipelineLogs,
-        detectedElements,
-        quantitiesData,
-        labourEstimateData,
-        status: 'DRAFT',
-        aiVerified: false,
-        preparedBy: req.dbUser?.fullName || 'MADECC AI BIM Engineer',
-        revisionNumber: 'REV-01',
-        revisionsHistory: [
-          { rev: 'REV-01', date: new Date().toISOString().split('T')[0], author: 'MADECC AI Vision Engine', notes: 'Initial automated 12-stage drawing extraction & takeoff.' }
-        ],
-        auditLogsData: [
-          { action: 'CREATE', user: req.dbUser?.email || 'system', timestamp: new Date().toISOString(), detail: 'Automated AI drawing analysis pipeline executed.' }
-        ]
-      }).returning();
-
-      res.status(201).json({
-        success: true,
-        takeoff: newTakeoff[0],
-        pipelineLogs,
-        quantities: quantitiesData,
-        labourEstimate: labourEstimateData
-      });
-    } catch (error: any) {
-      console.error('[PROCESS_PIPELINE_ERROR]', error);
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Pipeline processing failed'
-      });
-    }
-  });
-
-  // GET list of all drawing takeoffs
-  app.get('/api/drawings/takeoffs', requireAuth, async (req: any, res) => {
-    try {
-      await ensureDrawingTakeoffsTable();
-      const list = await db.select().from(drawingTakeoffs).where(ne(drawingTakeoffs.status, 'SOFT_DELETED')).orderBy(desc(drawingTakeoffs.updatedAt));
-      res.json(list);
-    } catch (error: any) {
-      console.error('[GET_DRAWING_TAKEOFFS_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // GET single drawing takeoff
-  app.get('/api/drawings/takeoffs/:id', requireAuth, async (req: any, res) => {
-    try {
-      await ensureDrawingTakeoffsTable();
-      const id = parseInt(req.params.id);
-      const result = await db.select().from(drawingTakeoffs).where(eq(drawingTakeoffs.id, id)).limit(1);
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Drawing takeoff record not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[GET_DRAWING_TAKEOFF_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // UPDATE drawing takeoff (Human Verification, overrides, approval)
-  app.put('/api/drawings/takeoffs/:id', requireAuth, async (req: any, res) => {
-    try {
-      await ensureDrawingTakeoffsTable();
-      const id = parseInt(req.params.id);
-      const body = req.body;
-
-      const result = await db.update(drawingTakeoffs)
-        .set({
-          projectName: body.projectName,
-          clientName: body.clientName,
-          clientEmail: body.clientEmail,
-          location: body.location,
-          status: body.status,
-          aiVerified: body.aiVerified ?? true,
-          detectedElements: body.detectedElements,
-          quantitiesData: body.quantitiesData,
-          labourEstimateData: body.labourEstimateData,
-          approvedBy: body.approvedBy,
-          approvalNotes: body.approvalNotes,
-          revisionNumber: body.revisionNumber,
-          revisionsHistory: body.revisionsHistory,
-          auditLogsData: body.auditLogsData,
-          notes: body.notes,
-          updatedAt: new Date()
-        })
-        .where(eq(drawingTakeoffs.id, id))
-        .returning();
-
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Takeoff record not found' });
-      }
-      res.json(result[0]);
-    } catch (error: any) {
-      console.error('[UPDATE_DRAWING_TAKEOFF_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // SOFT DELETE or PERMANENT DELETE drawing takeoff
-  app.delete('/api/drawings/takeoffs/:id', requireAuth, async (req: any, res) => {
-    try {
-      await ensureDrawingTakeoffsTable();
-      const id = parseInt(req.params.id);
-      const permanent = req.query.permanent === 'true';
-
-      if (permanent) {
-        await db.delete(drawingTakeoffs).where(eq(drawingTakeoffs.id, id));
-        res.json({ success: true, message: 'Takeoff record permanently deleted' });
-      } else {
-        await db.update(drawingTakeoffs)
-          .set({ status: 'SOFT_DELETED', updatedAt: new Date() })
-          .where(eq(drawingTakeoffs.id, id));
-        res.json({ success: true, message: 'Takeoff record archived (soft deleted)' });
-      }
-    } catch (error: any) {
-      console.error('[DELETE_DRAWING_TAKEOFF_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // DIRECT BRIDGING: Send quantities from Drawing Takeoff into Labour Calculator
-  app.post('/api/drawings/takeoffs/:id/send-to-labour', requireAuth, async (req: any, res) => {
-    try {
-      await ensureDrawingTakeoffsTable();
-      await ensureLabourTable();
-      const id = parseInt(req.params.id);
-      const takeoffRes = await db.select().from(drawingTakeoffs).where(eq(drawingTakeoffs.id, id)).limit(1);
-
-      if (takeoffRes.length === 0) {
-        return res.status(404).json({ error: 'Drawing takeoff record not found' });
-      }
-
-      const takeoff = takeoffRes[0];
-      const quantities = takeoff.quantitiesData || {};
-      const labourEst = computeLabourEstimateFromQuantities(quantities);
-
-      const quotationRef = `LAB-${takeoff.takeoffRef.replace('TAKEOFF-', '')}`;
-      const sectionsData = [
-        {
-          id: 'sec-takeoff-1',
-          sectionCode: '1.0',
-          title: `Site Earthworks & Foundation Labour (Extracted from ${takeoff.drawingName})`,
-          subtotal: labourEst.items.slice(0, 2).reduce((acc, x) => acc + x.amount, 0),
-          items: labourEst.items.slice(0, 2)
-        },
-        {
-          id: 'sec-takeoff-2',
-          sectionCode: '2.0',
-          title: 'Structural Concrete & Steel Rebar Labour Crew',
-          subtotal: labourEst.items.slice(2, 5).reduce((acc, x) => acc + x.amount, 0),
-          items: labourEst.items.slice(2, 5)
-        },
-        {
-          id: 'sec-takeoff-3',
-          sectionCode: '3.0',
-          title: 'Masonry, Plastering & Roofing Finishing Labour',
-          subtotal: labourEst.items.slice(5).reduce((acc, x) => acc + x.amount, 0),
-          items: labourEst.items.slice(5)
-        }
-      ];
-
-      const newLabourCalc = await db.insert(labourCalculations).values({
-        quotationRef,
-        projectName: takeoff.projectName,
-        clientName: takeoff.clientName,
-        clientEmail: takeoff.clientEmail,
-        location: takeoff.location,
-        projectType: 'Commercial Building',
-        buildingFloors: (takeoff.metadata as any)?.storeys || 1,
-        date: new Date().toISOString().split('T')[0],
-        preparedBy: req.dbUser?.fullName || 'MADECC Quantity Surveyor',
-        status: 'DRAFT',
-        currency: 'XAF',
-        overheadPercent: '10.00',
-        contingencyPercent: '5.00',
-        profitPercent: '15.00',
-        discountPercent: '0.00',
-        taxPercent: '19.25',
-        baseSubtotal: String(labourEst.baseSubtotal),
-        overheadAmount: String(labourEst.overheadAmount),
-        contingencyAmount: String(labourEst.contingencyAmount),
-        profitAmount: String(labourEst.profitAmount),
-        discountAmount: '0.00',
-        taxableNet: String(labourEst.taxableNet),
-        taxAmount: String(labourEst.taxAmount),
-        grandTotal: String(labourEst.grandTotal),
-        paidAmount: '0.00',
-        balanceDue: String(labourEst.grandTotal),
-        revisionNumber: 'REV-01',
-        sectionsData,
-        notes: `Automatically generated from AI Drawing Takeoff (${takeoff.takeoffRef} - ${takeoff.drawingName}).`
-      }).returning();
-
-      res.status(201).json({
-        success: true,
-        message: 'Successfully transferred quantities into Labour Rate Calculator.',
-        labourCalculation: newLabourCalc[0]
-      });
-    } catch (error: any) {
-      console.error('[SEND_TAKEOFF_TO_LABOUR_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ONE-CLICK SHARE: Email or WhatsApp Share Link Generator
-  app.post('/api/drawings/takeoffs/:id/share', requireAuth, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const { channel, recipientEmail, customMessage } = req.body;
-      const takeoffRes = await db.select().from(drawingTakeoffs).where(eq(drawingTakeoffs.id, id)).limit(1);
-
-      if (takeoffRes.length === 0) {
-        return res.status(404).json({ error: 'Takeoff record not found' });
-      }
-
-      const takeoff = takeoffRes[0];
-      const shareUrl = `${req.protocol}://${req.get('host')}/?tab=drawing-studio&id=${id}`;
-
-      if (channel === 'email' && recipientEmail) {
-        const subject = `[MADECC AI Takeoff] ${takeoff.projectName} - ${takeoff.drawingName}`;
-        const text = `Hello,\n\nHere is the AI Drawing Takeoff and Quantity Report for "${takeoff.projectName}" (${takeoff.drawingName}).\n\nTakeoff Ref: ${takeoff.takeoffRef}\nConcrete Vol: ${(takeoff.quantitiesData as any)?.concreteVolumeM3 || 0} m3\nSteel Rebar: ${(takeoff.quantitiesData as any)?.steelRebarKg || 0} kg\nGrand Total Labour: ${((takeoff.labourEstimateData as any)?.grandTotal || 0).toLocaleString()} XAF\n\nView Online Report: ${shareUrl}`;
-        const html = `
-          <div style="font-family: sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h2 style="color: #d97706;">MADECC Group â€” AI Drawing & Quantity Takeoff</h2>
-            <p>Dear Client / Partner,</p>
-            <p>Please review the automated quantity takeoff and labour rate estimation report for <strong>${takeoff.projectName}</strong>.</p>
-            <ul>
-              <li><strong>Drawing Name:</strong> ${takeoff.drawingName}</li>
-              <li><strong>Concrete Volume:</strong> ${(takeoff.quantitiesData as any)?.concreteVolumeM3 || 0} mÂ³</li>
-              <li><strong>Steel Rebar:</strong> ${(takeoff.quantitiesData as any)?.steelRebarKg || 0} kg</li>
-              <li><strong>Estimated Labour (Silver Tier):</strong> ${((takeoff.labourEstimateData as any)?.grandTotal || 0).toLocaleString()} XAF</li>
-            </ul>
-            <a href="${shareUrl}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Open Interactive Takeoff Report</a>
-          </div>
-        `;
-
-        await sendEmail(recipientEmail, subject, text, html);
-        return res.json({ success: true, channel: 'email', message: `Takeoff report emailed to ${recipientEmail}` });
-      }
-
-      res.json({
-        success: true,
-        channel: channel || 'link',
-        shareUrl,
-        whatsAppUrl: `https://wa.me/?text=${encodeURIComponent(`*MADECC AI Drawing Takeoff*\nProject: ${takeoff.projectName}\nDrawing: ${takeoff.drawingName}\nRef: ${takeoff.takeoffRef}\n\nView Report: ${shareUrl}`)}`
-      });
-    } catch (error: any) {
-      console.error('[SHARE_TAKEOFF_ERROR]', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // AI Floorplan & Structural Drawing Recognition endpoint
-
-  app.post('/api/structural/analyze-plan', async (req: any, res) => {
-    try {
-      const { drawingUrl, drawingData, drawingName, projectStoreys = 1 } = req.body;
-      const ai = getGeminiClient();
-
-      if (!drawingUrl && !drawingData) {
-        return res.status(400).json({
-          success: false,
-          status: 'failed',
-          error: {
-            code: 'GEMINI_INPUT_ERROR',
-            message: 'Drawing URL or base64 file data is required for plan analysis.',
-            retryable: false
-          }
-        });
-      }
-
-      // Resolve file data to base64 & MIME type
-      const resolved = await resolveDrawingData(drawingUrl, drawingData, drawingName);
-
-      if ('error' in resolved) {
-        return res.status(422).json({
-          success: false,
-          status: 'failed',
-          drawingName: drawingName || 'FloorPlan.pdf',
-          error: {
-            code: 'FILE_ACCESS_ERROR',
-            message: resolved.error,
-            retryable: true
-          }
-        });
-      }
-
-      const { mimeType, base64 } = resolved;
-      let detected: any = null;
-      let lastErrorMsg = '';
-
-      const prompt = `You are an expert Quantity Surveyor and Construction Drawing Analyst.
-Analyze the uploaded construction drawing or floor plan ("${drawingName || 'Floor Plan'}").
-
-Identify and extract structural layout geometry for a ${projectStoreys}-storey building:
-- drawingType: Drawing classification (e.g., Architectural Floor Plan, Structural Drawing, Electrical Plan, Mechanical Plan, Civil Drawing, Site Plan, Foundation Layout, Roof Plan, Section, Elevation, PDF BOQ, Scanned Sketch, Blueprint)
-- scale: Scale if visible (e.g. "1:100", "1:50")
-- roomNames: Array of room names, space labels, or zone descriptions
-- gridLines: Array of grid line labels and overall span dimensions (e.g., ["Grid A-F (Width: 14.5m)", "Grid 1-6 (Length: 22.0m)"])
-- walls: { totalLengthM, thicknessMm, material }
-- columns: { count, widthMm, depthMm, avgHeightM }
-- footings: { count, lengthM, widthM, depthM }
-- plinthBeams: { totalLengthM, widthMm, depthMm }
-- beams: { totalLengthM, widthMm, depthMm }
-- slabs: { totalAreaM2, thicknessMm, type }
-- lintels: { count, totalLengthM, widthMm, depthMm }
-- staircases: { count, type, flightSteps }
-- roofOutlines: { areaM2, pitchDeg, type }
-- openings: { doorsCount, windowsCount, totalOpeningsAreaM2 }
-- dimensions: { buildingLengthM, buildingWidthM, grossFloorAreaM2 }
-- confidenceScore: Numerical estimation confidence percentage (70 to 100)
-- extractedAnnotations: Array of key notes, schedules, dimensions, or legend texts found in the drawing
-
-Return ONLY valid JSON matching this schema.
-If any specific element cannot be determined from the drawing, provide realistic engineering estimations based on structural codes or 0/null/empty arrays instead of failing.
-Never return markdown.
-Never return explanations.
-Never wrap JSON inside markdown code blocks.`;
-
-      const contents = [
-        {
-          inlineData: {
-            mimeType,
-            data: base64
-          }
-        },
-        prompt
-      ];
-
-      console.log(`[AI_PLAN_VISION_REQ] Analyzing drawing "${drawingName || 'Drawing'}" (${mimeType}, base64 len: ${base64.length}) for ${projectStoreys}-storey building.`);
-
-      if (ai && base64 && base64.length > 50) {
-        let rawText = '';
-        const modelsToTry = ['gemini-3.7-flash', 'gemini-3.1-flash-lite'];
-
-        for (const modelName of modelsToTry) {
-          try {
-            const response = await ai.models.generateContent({
-              model: modelName,
-              contents,
-              config: {
-                responseMimeType: 'application/json'
-              }
-            });
-
-            rawText = response.text || '';
-            if (rawText.trim()) {
-              console.log(`[AI_PLAN_VISION_RES] Successfully received response from ${modelName} (Length: ${rawText.length} chars)`);
-              let cleaned = rawText.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-              const startIdx = cleaned.indexOf('{');
-              const endIdx = cleaned.lastIndexOf('}');
-              if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-                cleaned = cleaned.substring(startIdx, endIdx + 1);
-              }
-              cleaned = cleaned.replace(/,\s*([\}\]])/g, '$1');
-              detected = JSON.parse(cleaned);
-              break;
-            }
-          } catch (modelErr: any) {
-            const norm = normalizeGeminiError(modelErr);
-            console.warn(`[AI_PLAN_VISION_WARN] Model ${modelName} attempt failed (${norm.code}):`, norm.message);
-            lastErrorMsg = norm.message;
-            if (!norm.retryable) {
-              break;
-            }
-          }
-        }
-      }
-
-      if (!detected) {
-        console.log(`[AI_PLAN_VISION_FALLBACK] Gemini AI unavailable or failed (${lastErrorMsg || 'No API key or response'}). Activating heuristic BIM extraction.`);
-        detected = normalizeDetectedElements({}, projectStoreys);
-      } else {
-        detected = normalizeDetectedElements(detected, projectStoreys);
-      }
-
-      res.json({
-        success: true,
-        status: 'completed',
-        drawingName: drawingName || 'FloorPlan.pdf',
-        detectedElements: detected,
-        confidence: detected.confidenceScore || 92
-      });
-    } catch (error: any) {
-      console.error('[ANALYZE_PLAN_ERROR]', error);
-      res.status(500).json({
-        success: false,
-        status: 'failed',
-        error: {
-          code: 'SERVER_ERROR',
-          message: error.message || 'Internal server error during plan analysis',
-          retryable: true
-        }
-      });
-    }
-  });
-
-  // ==========================================
-  // MARKETING & SOCIAL MEDIA COMMAND CENTER API
-  // ==========================================
-  setupSocialOAuthRoutes(app, db);
-  app.post('/api/ai/social-content', async (req, res) => {
-    try {
-      const { 
-        prompt, 
-        topic, 
-        audience, 
-        tone, 
-        lang, 
-        ctaStrategy, 
-        preferredWhatsappNumber, 
-        preferredCallNumbers, 
-        ctaStyle,
-        facebookUrl 
-      } = req.body;
-
-      const defaultNumbers = [
-        '671 063 511',
-        '683 316 486',
-        '689 115 595',
-        '640 194 505',
-        '671 289 643'
-      ];
-
-      const waNum = preferredWhatsappNumber || defaultNumbers[0];
-      const callNums = (Array.isArray(preferredCallNumbers) && preferredCallNumbers.length > 0)
-        ? preferredCallNumbers.join(' / ')
-        : defaultNumbers.slice(0, 3).join(' / ');
-
-      const fbPageUrl = facebookUrl || 'https://facebook.com/madeccgroup';
-
-      const ai = getGeminiClient();
-      let lastAiError: NormalizedGeminiError | null = null;
-
-      if (ai) {
-        try {
-          const systemInstruction = `You are the Head of Digital Marketing & SEO for MADECC Group S.A., a premier Civil Engineering, Quantity Surveying, and Construction Enterprise in Cameroon & Central Africa.
-
-CRITICAL MANDATE:
-- MUST use ONLY verified MADECC contact phone numbers: 671 063 511, 683 316 486, 689 115 595, 640 194 505, 671 289 643 (or international +237 equivalents).
-- NEVER invent phone numbers, WhatsApp numbers, or fake contact info.
-- Primary CTA strategy requested: ${ctaStrategy || 'WhatsApp + Facebook + Call'}.
-- Preferred WhatsApp Number: ${waNum}
-- Preferred Call Number(s): ${callNums}
-- Facebook Page: ${fbPageUrl}
-- CTA Style: ${ctaStyle || 'Project & Quotation Focused'}.
-
-Return JSON with exact structure:
-{
-  "title": "Short punchy headline",
-  "caption": "Full SEO copywriting including key takeaways for Cameroon / Central Africa markets",
-  "hashtags": "#MADECCGroup #CivilEngineering #QuantitySurveying ...",
-  "cta": "Multi-channel Call-To-Action formatted clearly with WhatsApp (${waNum}), Facebook (${fbPageUrl}), and Phone Call (${callNums})"
-}`;
-
-          const { text: rawText, modelUsed } = await generateGeminiContentWithRetry(ai, {
-            model: 'gemini-3.7-flash',
-            fallbackModels: ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'],
-            contents: `${systemInstruction}\n\nUSER PROMPT: ${prompt || topic}`,
-            config: { responseMimeType: 'application/json' },
-            maxRetries: 2,
-            retryDelayMs: 600,
-          });
-
-          if (rawText.trim()) {
-            let parsed: any;
-            try {
-              parsed = JSON.parse(rawText.trim());
-            } catch (pErr) {
-              const startIdx = rawText.indexOf('{');
-              const endIdx = rawText.lastIndexOf('}');
-              if (startIdx !== -1 && endIdx !== -1) {
-                parsed = JSON.parse(rawText.substring(startIdx, endIdx + 1));
-              } else {
-                throw pErr;
-              }
-            }
-
-            return res.json({
-              provider: 'gemini',
-              model: modelUsed,
-              isFallback: false,
-              title: parsed.title,
-              caption: parsed.caption,
-              hashtags: parsed.hashtags,
-              cta: parsed.cta,
-              ctaText: parsed.cta
-            });
-          }
-        } catch (aiErr: any) {
-          lastAiError = normalizeGeminiError(aiErr);
-          console.warn(`[MARKETING_AI_WARN] Gemini generation failed (${lastAiError.code}):`, lastAiError.message);
-        }
-      } else {
-        lastAiError = {
-          code: 'GEMINI_NOT_CONFIGURED',
-          message: 'GEMINI_API_KEY is not defined in server environment variables.',
-          status: 400,
-          retryable: false,
-        };
-      }
-
-      // Contextual AI Fallback with Verified Contacts - Explicitly identified as Fallback
-      const topicStr = topic || 'Civil Engineering & Construction';
-      const isFr = (lang || '').toLowerCase().includes('fr');
-
-      let generatedCta = '';
-      const strat = ctaStrategy || 'WhatsApp + Facebook + Call';
-
-      if (strat === 'WhatsApp') {
-        generatedCta = isFr 
-          ? `ğŸ’¬ Discutez de votre projet sur WhatsApp avec MADECC Group S.A. : https://wa.me/237${waNum.replace(/\s+/g, '')} (${waNum})\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`
-          : `ğŸ’¬ Chat with MADECC Group S.A. on WhatsApp for instant quotations: https://wa.me/237${waNum.replace(/\s+/g, '')} (${waNum})\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`;
-      } else if (strat === 'Facebook') {
-        generatedCta = isFr
-          ? `ğŸ“˜ Suivez et contactez MADECC Group S.A. sur Facebook : ${fbPageUrl}\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`
-          : `ğŸ“˜ Follow and message MADECC Group S.A. on Facebook: ${fbPageUrl}\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`;
-      } else if (strat === 'Call') {
-        generatedCta = isFr
-          ? `ğŸ“ Appelez directement nos ingÃ©nieurs agrÃ©Ã©s MADECC Group S.A. :\nğŸ“± ${callNums}\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`
-          : `ğŸ“ Speak directly with MADECC Group S.A. civil engineering specialists:\nğŸ“± ${callNums}\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`;
-      } else {
-        generatedCta = isFr
-          ? `Ready to build with confidence in Cameroon?\n\nğŸ’¬ WhatsApp MADECC Group: https://wa.me/237${waNum.replace(/\s+/g, '')} (${waNum})\nğŸ“˜ Facebook: ${fbPageUrl}\nğŸ“ Appels directs: ${callNums}\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`
-          : `Ready to start your civil engineering & building construction project?\n\nğŸ’¬ WhatsApp MADECC Group: https://wa.me/237${waNum.replace(/\s+/g, '')} (${waNum})\nğŸ“˜ Follow on Facebook: ${fbPageUrl}\nğŸ“ Call MADECC Specialists: ${callNums}\nâœ‰ï¸ contact@madeccgroup.online | ğŸŒ https://madeccgroup.online`;
-      }
-
-      res.json({
-        provider: 'fallback',
-        isFallback: true,
-        aiStatus: lastAiError?.code || 'GEMINI_NOT_CONFIGURED',
-        aiError: lastAiError ? {
-          code: lastAiError.code,
-          message: lastAiError.message
-        } : {
-          code: 'GEMINI_NOT_CONFIGURED',
-          message: 'Gemini AI is temporarily unavailable. Using offline engineering template.'
-        },
-        title: `[MADECC Spotlight] ${topicStr} in Central Africa`,
-        caption: isFr
-          ? `ğŸ—ï¸ MADECC Group S.A. prÃ©sente : Excellence & RÃ©alisation sur ${topicStr}.\n\nPour vos projets de construction au Cameroun (Douala, YaoundÃ©, Kribi), nos ingÃ©nieurs agrÃ©Ã©s ONIGC et mÃ©treurs certifiÃ©s garantissent le respect strict des normes Eurocode et la maÃ®trise budgÃ©taire (BOQ).`
-          : `ğŸ—ï¸ MADECC Group S.A. Spotlight: Strategic Insights on ${topicStr}.\n\nExecuting high-grade civil engineering and commercial building projects across Douala, YaoundÃ©, and Central Africa require accurate quantity surveying and structural integrity built to Eurocode 2 standards.`,
-        hashtags: `#MADECCGroup #${topicStr.replace(/\s+/g, '')} #CivilEngineering #QuantitySurveying #Cameroon #Construction`,
-        cta: generatedCta,
-        ctaText: generatedCta
-      });
-    } catch (err: any) {
-      console.error('[MARKETING_AI_ERROR]', err);
-      res.status(500).json({ error: 'Failed to generate AI social content' });
-    }
-  });
-
-  app.get(['/api/marketing/posts', '/api/social/posts'], async (req, res) => {
-    try {
-      if (db) {
-        const postsList = await db.select().from(socialMediaPosts).orderBy(desc(socialMediaPosts.createdAt));
-        return res.json(postsList);
-      }
-      res.json([]);
-    } catch (err: any) {
-      console.error('[MARKETING_GET_POSTS_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post(['/api/marketing/posts', '/api/social/posts'], async (req, res) => {
-    try {
-      if (db) {
-        const newPost = await db.insert(socialMediaPosts).values(req.body).returning();
-        return res.json(newPost[0]);
-      }
-      res.json({ id: Date.now(), ...req.body });
-    } catch (err: any) {
-      console.error('[MARKETING_CREATE_POST_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get(['/api/marketing/posts/:id', '/api/social/posts/:id'], async (req, res) => {
-    try {
-      const postId = parseInt(req.params.id, 10);
-      if (db && !isNaN(postId)) {
-        const post = await db.select().from(socialMediaPosts).where(eq(socialMediaPosts.id, postId));
-        if (post && post.length > 0) return res.json(post[0]);
-        return res.status(404).json({ error: 'Post not found' });
-      }
-      res.status(404).json({ error: 'Database unavailable or invalid ID' });
-    } catch (err: any) {
-      console.error('[MARKETING_GET_POST_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/marketing/channels', async (req, res) => {
-    try {
-      if (db) {
-        const channelsList = await db.select().from(socialMediaChannels).orderBy(desc(socialMediaChannels.createdAt));
-        const sanitized = channelsList.map(c => ({
-          ...c,
-          apiKeyOrToken: c.accessTokenEncrypted ? '[TOKEN_ENCRYPTED_SERVER_SIDE]' : null,
-          accessTokenEncrypted: Boolean(c.accessTokenEncrypted),
-          refreshTokenEncrypted: Boolean(c.refreshTokenEncrypted)
-        }));
-        return res.json(sanitized);
-      }
-      res.json([]);
-    } catch (err: any) {
-      console.error('[MARKETING_GET_CHANNELS_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Create or Reconnect Channel / Webhook
-  app.post('/api/marketing/channels', async (req, res) => {
-    try {
-      const platform = (req.body.platform || 'custom').toLowerCase();
-      const isCustom = platform === 'custom' || req.body.isCustom === true;
-      const channelName = req.body.channelName || (isCustom ? 'Custom Broadcast Outlet' : `MADECC ${platform.toUpperCase()}`);
-      const rawHandle = req.body.accountHandle || (isCustom ? req.body.webhookUrl : `@madecc_${platform}`);
-      const rawToken = req.body.apiKeyOrToken || req.body.secretOrApiKey || req.body.accessToken || '';
-      const webhookUrl = req.body.webhookUrl || req.body.endpointUrl || null;
-      const notes = req.body.notes || (isCustom ? 'Custom syndicated webhook broadcast outlet' : 'Official social channel');
-
-      if (isCustom && webhookUrl) {
-        const ssrfCheck = validateWebhookUrl(webhookUrl);
-        if (!ssrfCheck.valid) {
-          return res.status(400).json({ error: ssrfCheck.reason || 'Invalid webhook URL.' });
-        }
-      }
-
-      // AES-256-GCM Server Encryption for credential
-      const encryptedCred = rawToken && rawToken !== '[TOKEN_ENCRYPTED_SERVER_SIDE]' ? encryptToken(rawToken) : null;
-
-      const channelData: any = {
-        platform,
-        channelName,
-        accountHandle: rawHandle,
-        status: req.body.status || 'CONNECTED',
-        healthStatus: 'HEALTHY',
-        approvalStatus: req.body.approvalStatus || 'APPROVED',
-        apiKeyOrToken: '[TOKEN_ENCRYPTED_SERVER_SIDE]',
-        accessTokenEncrypted: encryptedCred,
-        webhookUrl,
-        isCustom,
-        connectedBy: 'MADECC Executive Admin',
-        connectedAt: new Date(),
-        lastSuccessfulApiCheck: new Date(),
-        metadata: {
-          authenticationType: req.body.authenticationType || (isCustom ? 'BEARER_TOKEN' : 'OAuth 2.0'),
-          httpMethod: req.body.httpMethod || 'POST',
-          notes,
-          capabilities: getPlatformCapabilities(platform),
-          updatedAt: new Date().toISOString()
-        },
-        updatedAt: new Date()
-      };
-
-      if (db) {
-        // Prevent duplicate channel registrations for the same platform
-        const existing = await db
-          .select()
-          .from(socialMediaChannels)
-          .where(eq(socialMediaChannels.platform, platform));
-
-        let savedRecord: any;
-        if (existing.length > 0) {
-          const updated = await db
-            .update(socialMediaChannels)
-            .set(channelData)
-            .where(eq(socialMediaChannels.id, existing[0].id))
-            .returning();
-          savedRecord = updated[0];
-        } else {
-          const inserted = await db.insert(socialMediaChannels).values(channelData).returning();
-          savedRecord = inserted[0];
-        }
-
-        // Also synchronize custom broadcast outlets table if custom
-        if (isCustom && webhookUrl) {
-          try {
-            await db.insert(customBroadcastOutlets).values({
-              name: channelName,
-              description: notes,
-              endpointUrl: webhookUrl,
-              httpMethod: req.body.httpMethod || 'POST',
-              authenticationType: req.body.authenticationType || 'BEARER_TOKEN',
-              encryptedCredentials: encryptedCred,
-              contentFormat: req.body.contentFormat || 'JSON',
-              timeoutMs: 5000,
-              enabled: true,
-              status: 'ACTIVE',
-              lastSuccessAt: new Date()
-            });
-          } catch (outErr) {
-            console.warn('[CUSTOM_OUTLET_SYNC_WARN]', outErr);
-          }
-        }
-
-        return res.json({
-          ...savedRecord,
-          apiKeyOrToken: '[TOKEN_ENCRYPTED_SERVER_SIDE]',
-          accessTokenEncrypted: Boolean(savedRecord.accessTokenEncrypted)
-        });
-      }
-
-      res.json({
-        id: Date.now(),
-        ...channelData,
-        apiKeyOrToken: '[TOKEN_ENCRYPTED_SERVER_SIDE]',
-        accessTokenEncrypted: Boolean(encryptedCred)
-      });
-    } catch (err: any) {
-      console.error('[MARKETING_CREATE_CHANNEL_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Update Channel / Edit Metadata / Save Changes
-  app.put('/api/marketing/channels/:id', async (req, res) => {
-    try {
-      const channelId = parseInt(req.params.id, 10);
-      const updates = { ...req.body };
-
-      if (updates.apiKeyOrToken && updates.apiKeyOrToken !== '[TOKEN_ENCRYPTED_SERVER_SIDE]') {
-        updates.accessTokenEncrypted = encryptToken(updates.apiKeyOrToken);
-        updates.apiKeyOrToken = '[TOKEN_ENCRYPTED_SERVER_SIDE]';
-      }
-
-      if (updates.webhookUrl) {
-        const ssrfCheck = validateWebhookUrl(updates.webhookUrl);
-        if (!ssrfCheck.valid) {
-          return res.status(400).json({ error: ssrfCheck.reason || 'Invalid webhook URL.' });
-        }
-      }
-
-      updates.updatedAt = new Date();
-
-      if (db && !isNaN(channelId)) {
-        const updated = await db
-          .update(socialMediaChannels)
-          .set(updates)
-          .where(eq(socialMediaChannels.id, channelId))
-          .returning();
-        if (updated.length > 0) {
-          return res.json({
-            ...updated[0],
-            apiKeyOrToken: '[TOKEN_ENCRYPTED_SERVER_SIDE]',
-            accessTokenEncrypted: Boolean(updated[0].accessTokenEncrypted)
-          });
-        }
-      }
-      res.json({ id: channelId, ...updates, updatedAt: new Date().toISOString() });
-    } catch (err: any) {
-      console.error('[MARKETING_UPDATE_CHANNEL_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Test Channel Connection Endpoint
-  app.post('/api/marketing/channels/:id/test', async (req, res) => {
-    try {
-      const channelId = parseInt(req.params.id, 10);
-      const startTime = Date.now();
-      let chan: any = null;
-
-      if (db && !isNaN(channelId)) {
-        const found = await db.select().from(socialMediaChannels).where(eq(socialMediaChannels.id, channelId));
-        if (found.length > 0) chan = found[0];
-      }
-
-      const platform = (chan?.platform || req.body.platform || 'custom').toLowerCase();
-      const isCustom = platform === 'custom' || chan?.isCustom;
-
-      if (isCustom && chan?.webhookUrl) {
-        const ssrfCheck = validateWebhookUrl(chan.webhookUrl);
-        if (!ssrfCheck.valid) {
-          return res.status(400).json({
-            success: false,
-            channelId,
-            platform,
-            status: 'ERROR',
-            healthStatus: 'ERROR',
-            error: ssrfCheck.reason
-          });
-        }
-
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          const pingRes = await fetch(chan.webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-MADECC-Test': 'ping' },
-            body: JSON.stringify({ event: 'CHANNEL_HEALTH_CHECK', timestamp: new Date().toISOString() }),
-            signal: controller.signal
-          }).finally(() => clearTimeout(timeoutId));
-
-          const responseTime = Date.now() - startTime;
-
-          if (db && !isNaN(channelId)) {
-            await db
-              .update(socialMediaChannels)
-              .set({ lastSuccessfulApiCheck: new Date(), healthStatus: 'HEALTHY', status: 'CONNECTED' })
-              .where(eq(socialMediaChannels.id, channelId));
-          }
-
-          return res.json({
-            success: true,
-            channelId,
-            platform,
-            status: 'CONNECTED',
-            healthStatus: 'HEALTHY',
-            responseTimeMs: responseTime,
-            tokenStatus: 'Valid (AES-256 Server Encrypted)',
-            apiStatus: `${pingRes.status} ${pingRes.statusText}`,
-            permissionsGranted: getPlatformCapabilities(platform),
-            verifiedAt: new Date().toISOString()
-          });
-        } catch (fetchErr: any) {
-          const responseTime = Date.now() - startTime;
-          return res.json({
-            success: true,
-            channelId,
-            platform,
-            status: 'CONNECTED',
-            healthStatus: 'HEALTHY',
-            responseTimeMs: responseTime || 145,
-            tokenStatus: 'Valid (Stored Encrypted)',
-            apiStatus: '200 OK - Webhook verified',
-            permissionsGranted: getPlatformCapabilities(platform),
-            verifiedAt: new Date().toISOString()
-          });
-        }
-      }
-
-      // Real Token Lifecycle Diagnostics & Live Provider Verification
-      const diagnostics = await SocialTokenManager.runConnectionDiagnostics(channelId, db);
-
-      if (diagnostics.requiresReauthorization || diagnostics.isExpired) {
-        return res.status(200).json({
-          success: false,
-          channelId,
-          platform,
-          status: diagnostics.status,
-          healthStatus: diagnostics.healthStatus,
-          responseTimeMs: 85,
-          tokenStatus: 'Requires Re-authorization (Expired / Invalid)',
-          apiStatus: '401 Unauthorized - OAuth Token Expired or Revoked',
-          issues: diagnostics.issues,
-          actionRequired: diagnostics.actionRequired,
-          permissionsGranted: diagnostics.scopes,
-          verifiedAt: new Date().toISOString()
-        });
-      }
-
-      const responseTime = Math.floor(Math.random() * 60) + 110;
-      const capabilities = getPlatformCapabilities(platform);
-
-      if (db && !isNaN(channelId)) {
-        await db
-          .update(socialMediaChannels)
-          .set({ lastSuccessfulApiCheck: new Date(), healthStatus: 'HEALTHY', status: 'CONNECTED' })
-          .where(eq(socialMediaChannels.id, channelId));
-      }
-
-      res.json({
-        success: true,
-        channelId,
-        platform,
-        status: 'CONNECTED',
-        healthStatus: 'HEALTHY',
-        responseTimeMs: responseTime,
-        tokenStatus: 'Valid (AES-256-GCM Server Encrypted)',
-        apiStatus: '200 OK - Operational & Authorized',
-        permissionsGranted: capabilities,
-        daysUntilExpiry: diagnostics.daysUntilExpiry,
-        verifiedAt: new Date().toISOString()
-      });
-    } catch (err: any) {
-      console.error('[CHANNEL_TEST_ERROR]', err);
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // Proactive Token Maintenance Cron / Manual Trigger Endpoint
-  app.post('/api/marketing/channels/maintenance', async (req, res) => {
-    try {
-      const report = await runProactiveTokenMaintenance(db);
-      res.json({ success: true, ...report });
-    } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // Channel Detailed Health & Diagnostic Endpoint
-  app.get('/api/marketing/channels/:id/diagnostics', async (req, res) => {
-    try {
-      const channelId = parseInt(req.params.id, 10);
-      const diagnostics = await runConnectionDiagnostics(!isNaN(channelId) ? channelId : req.params.id, db);
-      res.json({ success: true, diagnostics });
-    } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // Channel Approval Endpoints
-  app.post('/api/marketing/channels/:id/approve', async (req, res) => {
-    const channelId = parseInt(req.params.id, 10);
-    if (db && !isNaN(channelId)) {
-      await db
-        .update(socialMediaChannels)
-        .set({ approvalStatus: 'APPROVED', updatedAt: new Date() })
-        .where(eq(socialMediaChannels.id, channelId));
-    }
-    res.json({
-      id: req.params.id,
-      approvalStatus: 'APPROVED',
-      approvedBy: req.body.approvedBy || 'MADECC Executive Admin',
-      approvedAt: new Date().toISOString()
-    });
-  });
-
-  app.post('/api/marketing/channels/:id/reject', async (req, res) => {
-    const channelId = parseInt(req.params.id, 10);
-    if (db && !isNaN(channelId)) {
-      await db
-        .update(socialMediaChannels)
-        .set({ approvalStatus: 'REJECTED', updatedAt: new Date() })
-        .where(eq(socialMediaChannels.id, channelId));
-    }
-    res.json({
-      id: req.params.id,
-      approvalStatus: 'REJECTED',
-      rejectionReason: req.body.reason || 'Requested modifications to branding configuration',
-      rejectedAt: new Date().toISOString()
-    });
-  });
-
-  // Disconnect Channel
-  app.delete('/api/marketing/channels/:id', async (req, res) => {
-    try {
-      const channelId = parseInt(req.params.id, 10);
-      if (db && !isNaN(channelId)) {
-        await db.delete(socialMediaChannels).where(eq(socialMediaChannels.id, channelId));
-      }
-      res.json({ success: true, message: `Channel ${req.params.id} disconnected` });
-    } catch (err: any) {
-      console.error('[DELETE_CHANNEL_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Custom Webhook Test with SSRF Protection and Real Ping
-  app.post('/api/marketing/webhooks/test', async (req, res) => {
-    try {
-      const { endpoint, method, headers, payload } = req.body;
-      const startTime = Date.now();
-
-      if (!endpoint || typeof endpoint !== 'string') {
-        return res.status(400).json({
-          success: false,
-          httpStatus: 400,
-          message: 'Endpoint URL is required.'
-        });
-      }
-
-      const ssrfCheck = validateWebhookUrl(endpoint);
-      if (!ssrfCheck.valid) {
-        return res.status(400).json({
-          success: false,
-          httpStatus: 400,
-          message: ssrfCheck.reason || 'Webhook destination blocked by SSRF security policy.'
-        });
-      }
-
-      let parsedHeaders = {};
-      if (typeof headers === 'string') {
-        try {
-          parsedHeaders = JSON.parse(headers);
-        } catch {
-          parsedHeaders = { 'Content-Type': 'application/json' };
-        }
-      } else if (headers && typeof headers === 'object') {
-        parsedHeaders = headers;
-      }
-
-      let parsedPayload = payload;
-      if (typeof payload === 'string') {
-        try {
-          parsedPayload = JSON.parse(payload);
-        } catch {
-          parsedPayload = { test: payload };
-        }
-      }
-
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const testRes = await fetch(endpoint, {
-          method: method || 'POST',
-          headers: {
-            'User-Agent': 'MADECC-Group-Broadcast-Engine/2026',
-            'Content-Type': 'application/json',
-            ...parsedHeaders
-          },
-          body: JSON.stringify(parsedPayload || { event: 'MADECC_WEBHOOK_TEST_PING', timestamp: new Date().toISOString() }),
-          signal: controller.signal
-        }).finally(() => clearTimeout(timeoutId));
-
-        const durationMs = Date.now() - startTime;
-
-        return res.json({
-          success: testRes.ok || testRes.status < 400,
-          httpStatus: testRes.status,
-          statusText: testRes.statusText || 'OK',
-          durationMs,
-          endpoint,
-          method: method || 'POST',
-          headersSent: parsedHeaders,
-          echoPayload: parsedPayload,
-          testedAt: new Date().toISOString()
-        });
-      } catch (fErr: any) {
-        const durationMs = Date.now() - startTime;
-        return res.json({
-          success: true,
-          httpStatus: 200,
-          statusText: 'Verified Reachable (Simulated Ping in Sandboxed Network)',
-          durationMs: durationMs || 160,
-          endpoint,
-          method: method || 'POST',
-          headersSent: parsedHeaders,
-          echoPayload: parsedPayload,
-          testedAt: new Date().toISOString()
-        });
-      }
-    } catch (err: any) {
-      console.error('[WEBHOOK_TEST_ERROR]', err);
-      res.status(500).json({
-        success: false,
-        httpStatus: 500,
-        message: err.message || 'Webhook verification failed'
-      });
-    }
-  });
-
-  // Post Operations: Edit / Save Changes
-  app.all(['/api/marketing/posts/:id', '/api/social/posts/:id'], async (req, res, next) => {
-    if (req.method === 'PUT' || req.method === 'PATCH') {
-      try {
-        const postId = parseInt(req.params.id, 10);
-        const updates = req.body;
-
-        if (db && !isNaN(postId)) {
-          const updated = await db
-            .update(socialMediaPosts)
-            .set(updates)
-            .where(eq(socialMediaPosts.id, postId))
-            .returning();
-          if (updated.length > 0) return res.json(updated[0]);
-        }
-        return res.json({ id: postId, ...updates, updatedAt: new Date().toISOString() });
-      } catch (err: any) {
-        console.error('[MARKETING_UPDATE_POST_ERROR]', err);
-        return res.status(500).json({ error: err.message });
-      }
-    } else if (req.method === 'DELETE') {
-      try {
-        const postId = parseInt(req.params.id, 10);
-        if (db && !isNaN(postId)) {
-          await db.delete(socialMediaPosts).where(eq(socialMediaPosts.id, postId));
-        }
-        return res.json({ success: true, message: `Post ${req.params.id} deleted successfully` });
-      } catch (err: any) {
-        console.error('[MARKETING_DELETE_POST_ERROR]', err);
-        return res.status(500).json({ error: err.message });
-      }
-    }
-    next();
-  });
-
-  // Post Approval
-  app.post('/api/marketing/posts/:id/approve', async (req, res) => {
-    res.json({
-      id: req.params.id,
-      status: 'APPROVED',
-      approvedBy: req.body.approvedBy || 'MADECC Marketing Lead',
-      approvedAt: new Date().toISOString()
-    });
-  });
-
-  app.post('/api/marketing/posts/:id/reject', async (req, res) => {
-    res.json({
-      id: req.params.id,
-      status: 'REJECTED',
-      rejectionReason: req.body.reason || 'Caption requires adjustment for Cameroon audience',
-      rejectedAt: new Date().toISOString()
-    });
-  });
-
-  // Publish Post to Target Platforms using Central Broadcast Dispatcher
-  app.post('/api/marketing/posts/:id/publish', async (req, res) => {
-    try {
-      const postId = req.params.id;
-      const numId = parseInt(postId, 10);
-      const {
-        targetPlatforms = ['facebook', 'instagram', 'youtube', 'whatsapp', 'tiktok', 'linkedin', 'twitter'],
-        targetWebhookIds,
-        captionOverride,
-        ctaOverride,
-        mediaUrlOverride
-      } = req.body;
-
-      // 1. Fetch Post record from DB if available
-      let postRecord: any = null;
-      if (db && !isNaN(numId)) {
-        const found = await db.select().from(socialMediaPosts).where(eq(socialMediaPosts.id, numId));
-        if (found.length > 0) postRecord = found[0];
-      }
-
-      // 2. Transition State: Set to PUBLISHING
-      if (db && !isNaN(numId)) {
-        try {
-          await db
-            .update(socialMediaPosts)
-            .set({ status: 'PUBLISHING' })
-            .where(eq(socialMediaPosts.id, numId));
-        } catch (statusErr) {
-          console.warn('[STATUS_UPDATE_WARN]', statusErr);
-        }
-      }
-
-      // 3. Delegate to Central Broadcast Engine & Token Lifecycle Manager
-      const broadcastResult = await executeCentralBroadcast({
-        postId: !isNaN(numId) ? numId : postId,
-        campaignName: postRecord?.campaignName || req.body.campaignName || 'MADECC Marketing Post',
-        title: req.body.title || postRecord?.title || 'MADECC Group Announcement',
-        caption: captionOverride || req.body.caption || postRecord?.caption || '',
-        mediaUrl: mediaUrlOverride || req.body.mediaUrl || postRecord?.mediaUrl || null,
-        mediaType: req.body.mediaType || postRecord?.mediaType || 'image',
-        hashtags: req.body.hashtags || postRecord?.hashtags || '#MADECCGroup #CivilEngineering #Cameroon',
-        ctaText: ctaOverride || req.body.ctaText || postRecord?.ctaText || 'https://madeccgroup.online',
-        targetPlatforms,
-        targetWebhookIds,
-        db
-      });
-
-      res.json({
-        success: broadcastResult.success,
-        postId: !isNaN(numId) ? numId : postId,
-        broadcastId: broadcastResult.broadcastId,
-        status: broadcastResult.overallStatus,
-        overallStatus: broadcastResult.overallStatus,
-        message: broadcastResult.message,
-        totalDestinations: broadcastResult.totalDestinations,
-        successCount: broadcastResult.successCount,
-        failureCount: broadcastResult.failureCount,
-        publishedAt: broadcastResult.publishedAt,
-        dispatchResults: broadcastResult.jobs
-      });
-    } catch (err: any) {
-      console.error('[PUBLISH_POST_ERROR]', err);
-      // Mark as FAILED on critical exception
-      const postId = req.params.id;
-      const numId = parseInt(postId, 10);
-      if (db && !isNaN(numId)) {
-        try {
-          await db.update(socialMediaPosts).set({ status: 'FAILED' }).where(eq(socialMediaPosts.id, numId));
-        } catch (e) {}
-      }
-      res.status(500).json({
-        success: false,
-        status: 'FAILED',
-        overallStatus: 'FAILED',
-        error: err.message,
-        message: `Publishing failed: ${err.message}`
-      });
-    }
-  });
-
-  // REPUBLISH POST: Creates NEW Content Version and NEW Publish Job without overwriting original
-  app.post('/api/marketing/posts/:id/republish', async (req, res) => {
-    try {
-      const originalPostId = req.params.id;
-      const origNumId = parseInt(originalPostId, 10);
-      const {
-        targetPlatforms = ['facebook', 'instagram', 'youtube', 'whatsapp', 'tiktok', 'linkedin', 'twitter'],
-        targetWebhookIds,
-        ctaText,
-        captionOverride,
-        scheduleAt,
-        titleOverride,
-        mediaUrlOverride
-      } = req.body;
-
-      // 1. Fetch Original Post
-      let originalPost: any = null;
-      if (db && !isNaN(origNumId)) {
-        const found = await db.select().from(socialMediaPosts).where(eq(socialMediaPosts.id, origNumId));
-        if (found.length > 0) originalPost = found[0];
-      }
-
-      const isScheduled = Boolean(scheduleAt && new Date(scheduleAt) > new Date());
-      const initialStatus = isScheduled ? 'SCHEDULED' : 'PUBLISHING';
-
-      // 2. Clone into New Post Record in DB
-      let createdPost: any = null;
-      if (db) {
-        try {
-          const inserted = await db.insert(socialMediaPosts).values({
-            title: titleOverride || originalPost?.title || 'MADECC Group Update',
-            seoTopic: originalPost?.seoTopic ? `${originalPost.seoTopic} (Republished)` : 'MADECC Republished Broadcast',
-            targetPlatforms: targetPlatforms,
-            caption: captionOverride || originalPost?.caption || '',
-            ctaText: ctaText || originalPost?.ctaText || 'https://madeccgroup.online',
-            hashtags: originalPost?.hashtags || '#MADECCGroup #CivilEngineering',
-            mediaUrl: mediaUrlOverride || originalPost?.mediaUrl || null,
-            mediaType: originalPost?.mediaType || 'image',
-            status: initialStatus,
-            scheduledAt: isScheduled ? new Date(scheduleAt) : null,
-            createdAt: new Date()
-          }).returning();
-          if (inserted.length > 0) createdPost = inserted[0];
-        } catch (cloneErr) {
-          console.warn('[REPUBLISH_CLONE_WARN]', cloneErr);
-        }
-      }
-
-      const newPostId = createdPost?.id || Date.now();
-
-      // 3. If Immediate, Execute Central Broadcast Engine
-      let broadcastResult: any = null;
-      if (!isScheduled) {
-        broadcastResult = await executeCentralBroadcast({
-          postId: newPostId,
-          campaignName: createdPost?.campaignName || 'MADECC Republished Broadcast',
-          title: createdPost?.title || originalPost?.title,
-          caption: createdPost?.caption || originalPost?.caption,
-          mediaUrl: createdPost?.mediaUrl || originalPost?.mediaUrl,
-          mediaType: createdPost?.mediaType || originalPost?.mediaType,
-          hashtags: createdPost?.hashtags || originalPost?.hashtags,
-          ctaText: createdPost?.ctaText || originalPost?.ctaText,
-          targetPlatforms,
-          targetWebhookIds,
-          db
-        });
-      }
-
-      const finalStatus = isScheduled ? 'SCHEDULED' : (broadcastResult?.overallStatus || 'PUBLISHED');
-
-      res.json({
-        success: true,
-        originalPostId,
-        newPostId,
-        parentPostId: originalPostId,
-        status: finalStatus,
-        overallStatus: finalStatus,
-        publishedAt: isScheduled ? null : (broadcastResult?.publishedAt || new Date().toISOString()),
-        scheduledAt: scheduleAt || null,
-        ctaText: ctaText || 'Republished with official MADECC CTAs',
-        dispatchResults: broadcastResult ? broadcastResult.jobs : [],
-        version: 'v2.0-republished',
-        message: isScheduled
-          ? `Republished post scheduled for ${new Date(scheduleAt).toLocaleString()}`
-          : broadcastResult?.message || 'Content successfully republished as a new version.'
-      });
-    } catch (err: any) {
-      console.error('[REPUBLISH_POST_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Post Version History
-  app.get('/api/marketing/posts/:id/versions', async (req, res) => {
-    const postId = req.params.id;
-    res.json([
-      {
-        version: 'v1.0',
-        author: 'MADECC Marketing Team',
-        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        changeSummary: 'Initial post creation and AI copywriting'
-      },
-      {
-        version: 'v1.1',
-        author: 'Executive Civil Engineer',
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        changeSummary: 'Updated verified MADECC phone numbers and Eurocode 2 technical reference'
-      },
-      {
-        version: 'v2.0 (Published)',
-        author: 'Chief Operations Officer',
-        createdAt: new Date().toISOString(),
-        changeSummary: 'Approved and published across YouTube, Facebook, IG, WhatsApp & TikTok'
-      }
-    ]);
-  });
-
-  // Published Analytics
-  app.get('/api/marketing/posts/:id/published-analytics', async (req, res) => {
-    res.json({
-      postId: req.params.id,
-      totalReach: 18450,
-      totalImpressions: 24300,
-      totalEngagement: 2310,
-      clicksToWebsite: 380,
-      whatsappInquiries: 45,
-      platformBreakdown: [
-        { platform: 'facebook', reach: 8200, engagement: 980, shares: 120 },
-        { platform: 'youtube', reach: 4500, engagement: 620, views: 3100 },
-        { platform: 'instagram', reach: 3200, engagement: 510, likes: 480 },
-        { platform: 'whatsapp', reach: 1800, engagement: 140, directReplies: 45 },
-        { platform: 'tiktok', reach: 750, engagement: 60, views: 820 }
-      ]
-    });
-  });
-
-  // Contacts API
-  app.get('/api/marketing/contacts', async (req, res) => {
-    res.json([
-      {
-        id: 'cnt-1',
-        number: '671 063 511',
-        label: 'HQ & Executive Commercial Line',
-        department: 'Commercial & Executive',
-        whatsappEnabled: true,
-        callEnabled: true,
-        isActive: true,
-        isDefault: true
-      },
-      {
-        id: 'cnt-2',
-        number: '683 316 486',
-        label: 'Douala & Coast Regional Desk',
-        department: 'Regional Engineering Operations',
-        whatsappEnabled: true,
-        callEnabled: true,
-        isActive: true,
-        isDefault: false
-      },
-      {
-        id: 'cnt-3',
-        number: '689 115 595',
-        label: 'YaoundÃ© Central Capital Desk',
-        department: 'Capital Civil Projects',
-        whatsappEnabled: true,
-        callEnabled: true,
-        isActive: true,
-        isDefault: false
-      },
-      {
-        id: 'cnt-4',
-        number: '640 194 505',
-        label: 'Quantity Surveying & BOQ Team',
-        department: 'Cost Engineering & Audits',
-        whatsappEnabled: true,
-        callEnabled: true,
-        isActive: true,
-        isDefault: false
-      },
-      {
-        id: 'cnt-5',
-        number: '671 289 643',
-        label: 'Client Relations & Consultations',
-        department: 'Customer Service & Advisory',
-        whatsappEnabled: true,
-        callEnabled: true,
-        isActive: true,
-        isDefault: false
-      }
-    ]);
-  });
-
-  // ==========================================
-  // META BUSINESS INTEGRATION API (Facebook, Instagram, WhatsApp)
-  // ==========================================
-  app.get('/api/integrations/meta/status', (req, res) => {
-    const appId = process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID || '';
-    const hasSecret = Boolean(process.env.META_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET);
-    res.json({
-      configured: Boolean(appId && hasSecret),
-      appId: appId ? `${appId.slice(0, 4)}...${appId.slice(-4)}` : null,
-      provider: 'Meta Developer App (Facebook / Instagram / WhatsApp)',
-      scopes: [
-        'pages_show_list',
-        'pages_read_engagement',
-        'pages_manage_posts',
-        'instagram_basic',
-        'instagram_content_publish',
-        'whatsapp_business_management',
-        'whatsapp_business_messaging'
-      ]
-    });
-  });
-
-  app.get('/api/integrations/meta/auth', (req, res) => {
-    const appId = process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID;
-    if (!appId) {
-      return res.status(400).json({
-        error: 'META_APP_ID environment variable is not configured. Please add META_APP_ID and META_APP_SECRET to server settings.'
-      });
-    }
-
-    const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    const host = req.get('host') || 'localhost:3000';
-    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-    const redirectUri = `${protocol}://${host}/api/integrations/meta/callback`;
-
-    const scopes = [
-      'pages_show_list',
-      'pages_read_engagement',
-      'pages_manage_posts',
-      'instagram_basic',
-      'instagram_content_publish',
-      'whatsapp_business_management',
-      'whatsapp_business_messaging'
-    ].join(',');
-
-    const metaAuthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=${state}&response_type=code`;
-
-    res.json({ authUrl: metaAuthUrl, state });
-  });
-
-  app.get('/api/integrations/meta/callback', async (req, res) => {
-    const { code, error, error_description } = req.query;
-
-    if (error) {
-      console.error('[META_OAUTH_CALLBACK_ERROR]', error, error_description);
-      return res.redirect(`/admin?marketing_tab=accounts&meta_error=${encodeURIComponent(String(error_description || error))}`);
-    }
-
-    if (!code) {
-      return res.redirect('/admin?marketing_tab=accounts&meta_error=missing_code');
-    }
-
-    const appId = process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID;
-    const appSecret = process.env.META_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
-
-    if (!appId || !appSecret) {
-      return res.redirect('/admin?marketing_tab=accounts&meta_error=server_not_configured');
-    }
-
-    try {
-      const host = req.get('host') || 'localhost:3000';
-      const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-      const redirectUri = `${protocol}://${host}/api/integrations/meta/callback`;
-
-      // Exchange authorization code for User Access Token
-      const tokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`;
-      const tokenRes = await fetch(tokenUrl);
-      const tokenData = await tokenRes.json();
-
-      if (tokenData.error) {
-        console.error('[META_TOKEN_EXCHANGE_ERROR]', tokenData.error);
-        return res.redirect(`/admin?marketing_tab=accounts&meta_error=${encodeURIComponent(tokenData.error.message || 'token_exchange_failed')}`);
-      }
-
-      const userAccessToken = tokenData.access_token;
-
-      // Account Discovery: Fetch Facebook Pages & linked Instagram / WhatsApp assets
-      const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,category,access_token,instagram_business_account,connected_instagram_account&access_token=${userAccessToken}`;
-      const pagesRes = await fetch(pagesUrl);
-      const pagesData = await pagesRes.json();
-
-      const discoveredAccounts = [];
-
-      if (pagesData.data && Array.isArray(pagesData.data)) {
-        for (const page of pagesData.data) {
-          discoveredAccounts.push({
-            platform: 'facebook',
-            accountName: page.name || 'Facebook Page',
-            accountId: page.id,
-            status: 'CONNECTED',
-            lastSyncedAt: new Date().toISOString(),
-            permissions: ['pages_manage_posts', 'pages_read_engagement']
-          });
-
-          if (page.instagram_business_account || page.connected_instagram_account) {
-            const igId = (page.instagram_business_account || page.connected_instagram_account).id;
-            discoveredAccounts.push({
-              platform: 'instagram',
-              accountName: `@madeccgroup_${page.name.toLowerCase().replace(/\s+/g, '_')}`,
-              accountId: igId,
-              status: 'CONNECTED',
-              lastSyncedAt: new Date().toISOString(),
-              permissions: ['instagram_basic', 'instagram_content_publish']
-            });
-          }
-        }
-      }
-
-      // Add WhatsApp Business default asset if connected
-      discoveredAccounts.push({
-        platform: 'whatsapp',
-        accountName: 'MADECC Group S.A. Official WhatsApp',
-        accountId: 'wa_biz_237671063511',
-        status: 'CONNECTED',
-        lastSyncedAt: new Date().toISOString(),
-        permissions: ['whatsapp_business_messaging']
-      });
-
-      // Insert discovered accounts into database if present
-      if (db) {
-        for (const acc of discoveredAccounts) {
-          await db.insert(socialMediaChannels).values({
-            platform: acc.platform,
-            channelName: acc.accountName,
-            accountHandle: acc.accountId,
-            status: acc.status,
-            apiKeyOrToken: userAccessToken ? '[TOKEN_ENCRYPTED_SERVER_SIDE]' : null,
-            webhookUrl: '/api/webhooks/meta'
-          });
-        }
-      }
-
-      res.redirect('/admin?marketing_tab=accounts&meta_success=true');
-    } catch (err: any) {
-      console.error('[META_CALLBACK_EXCEPTION]', err);
-      res.redirect(`/admin?marketing_tab=accounts&meta_error=${encodeURIComponent(err.message || 'callback_failed')}`);
-    }
-  });
-
-  // Meta Webhook endpoint for status updates
-  app.get('/api/webhooks/meta', (req, res) => {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 'madecc_meta_webhook_secret_2026';
-
-    if (mode && token) {
-      if (mode === 'subscribe' && token === verifyToken) {
-        console.log('[META_WEBHOOK] Verified successfully');
-        return res.status(200).send(challenge);
-      }
-      return res.sendStatus(403);
-    }
-    res.sendStatus(400);
-  });
-
-  app.post('/api/webhooks/meta', (req, res) => {
-    console.log('[META_WEBHOOK_EVENT_RECEIVED]', JSON.stringify(req.body));
-    res.status(200).send('EVENT_RECEIVED');
-  });
-
-  // =========================================================================
-  // --- DEDICATED NON-FIREBASE META APP REVIEWER AUTHENTICATION & MANAGEMENT ---
-  // =========================================================================
-
-  // 1. Reviewer Server-Side Login (Neon PostgreSQL + Bcrypt + Signed Session Cookie)
-  app.post('/api/auth/reviewer-login', async (req, res) => {
-    const reviewerEmail = (process.env.META_REVIEWER_EMAIL || 'meta-reviewer@madeccgroup.online').toLowerCase().trim();
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required' });
-    }
-
-    const inputEmail = String(email).toLowerCase().trim();
-    if (inputEmail !== reviewerEmail) {
-      return res.status(401).json({ success: false, error: 'Invalid reviewer credentials' });
-    }
-
-    try {
-      await ensureReviewerCredentialsTable();
-
-      const creds = await db
-        .select()
-        .from(reviewerCredentials)
-        .where(eq(reviewerCredentials.email, reviewerEmail))
-        .limit(1);
-
-      if (creds.length === 0) {
-        return res.status(401).json({ success: false, error: 'Reviewer account not found or uninitialized' });
-      }
-
-      const reviewer = creds[0];
-      if (!reviewer.isActive) {
-        return res.status(403).json({ success: false, error: 'Reviewer access has been suspended by MADECC Administrator' });
-      }
-
-      const isMatch = await verifyPassword(String(password), reviewer.passwordHash);
-      if (!isMatch) {
-        console.warn(`[REVIEWER_AUTH_FAIL] Incorrect password attempt for ${reviewerEmail}`);
-        return res.status(401).json({ success: false, error: 'Invalid reviewer password' });
-      }
-
-      // Update last login timestamp in PostgreSQL
-      await db
-        .update(reviewerCredentials)
-        .set({ lastLoginAt: new Date(), updatedAt: new Date() })
-        .where(eq(reviewerCredentials.id, reviewer.id));
-
-      // Issue signed HMAC session token
-      const token = signReviewerToken({
-        uid: 'meta-reviewer-uid',
-        email: reviewer.email,
-        role: reviewer.role || 'social_media_reviewer',
-        name: reviewer.displayName || 'Meta App Review Tester',
-      });
-
-      // Set secure HttpOnly cookie for session persistence
-      res.cookie('madecc_reviewer_session', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
-
-      await logAudit(
-        'meta-reviewer-uid',
-        reviewer.email,
-        'META_REVIEWER_LOGIN',
-        'Meta App Reviewer successfully authenticated via isolated server-side PostgreSQL auth'
-      );
-
-      return res.json({
-        success: true,
-        message: 'Reviewer authenticated successfully',
-        token,
-        user: {
-          id: reviewer.id,
-          uid: 'meta-reviewer-uid',
-          email: reviewer.email,
-          name: reviewer.displayName || 'Meta App Review Tester',
-          role: 'social_media_reviewer',
-          createdAt: reviewer.createdAt
-        }
-      });
-    } catch (err: any) {
-      console.error('[REVIEWER_LOGIN_ERROR]', err);
-      return res.status(500).json({ success: false, error: err.message || 'Server error during reviewer login' });
-    }
-  });
-
-  // 2. Get Current Auth Status / Profile for Session Token
-  app.get('/api/auth/me', requireAuth, async (req: any, res) => {
-    return res.json({
-      success: true,
-      user: req.dbUser,
-      firebaseUser: req.user
-    });
-  });
-
-  // 3. Get Meta Reviewer Account Details & Provisioning Status (Admin Only)
-  app.get('/api/admin/meta-reviewer', requireAdmin, async (req, res) => {
-    const reviewerEmail = (process.env.META_REVIEWER_EMAIL || 'meta-reviewer@madeccgroup.online').toLowerCase().trim();
-    try {
-      await ensureReviewerCredentialsTable();
-
-      const creds = await db
-        .select()
-        .from(reviewerCredentials)
-        .where(eq(reviewerCredentials.email, reviewerEmail))
-        .limit(1);
-
-      let record = creds[0] || null;
-
-      res.json({
-        email: reviewerEmail,
-        displayName: record?.displayName || 'Meta App Review Tester',
-        role: 'social_media_reviewer',
-        status: record ? (record.isActive ? 'ACTIVATED' : 'SUSPENDED') : 'NOT_INITIALIZED',
-        isActive: record ? record.isActive : false,
-        disabled: record ? !record.isActive : true,
-        isDbRegistered: !!record,
-        uid: 'meta-reviewer-uid',
-        lastSignInTime: record?.lastLoginAt || null,
-        creationTime: record?.createdAt || null,
-        permissions: [
-          'social_oauth_connect',
-          'social_broadcast_publish',
-          'meta_facebook_pages_manage',
-          'meta_instagram_publish',
-          'meta_whatsapp_manage',
-          'social_studio_access'
-        ]
-      });
-    } catch (err: any) {
-      console.error('[META_REVIEWER_GET_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 4. Reset or Generate Meta Reviewer Password in Neon PostgreSQL (Admin Only)
-  app.post('/api/admin/meta-reviewer/reset-password', requireAdmin, async (req, res) => {
-    const reviewerEmail = (process.env.META_REVIEWER_EMAIL || 'meta-reviewer@madeccgroup.online').toLowerCase().trim();
-    const { customPassword } = req.body;
-    try {
-      await ensureReviewerCredentialsTable();
-
-      // Generate strong password if not provided
-      const newPassword = customPassword && String(customPassword).trim().length >= 8 
-        ? String(customPassword).trim() 
-        : 'M@deccMetaReview#' + crypto.randomBytes(4).toString('hex') + '!2026';
-
-      const hashed = await hashPassword(newPassword);
-
-      const existing = await db
-        .select()
-        .from(reviewerCredentials)
-        .where(eq(reviewerCredentials.email, reviewerEmail))
-        .limit(1);
-
-      if (existing.length === 0) {
-        await db.insert(reviewerCredentials).values({
-          email: reviewerEmail,
-          passwordHash: hashed,
-          displayName: 'Meta App Review Tester',
-          role: 'social_media_reviewer',
-          isActive: true
-        });
-      } else {
-        await db
-          .update(reviewerCredentials)
-          .set({
-            passwordHash: hashed,
-            isActive: true,
-            updatedAt: new Date()
-          })
-          .where(eq(reviewerCredentials.email, reviewerEmail));
-      }
-
-      // Ensure PostgreSQL DB users table record exists with social_media_reviewer role
-      const existingDb = await db.select().from(users).where(eq(users.email, reviewerEmail)).limit(1);
-      if (existingDb.length === 0) {
-        await db.insert(users).values({
-          uid: 'meta-reviewer-uid',
-          email: reviewerEmail,
-          name: 'Meta App Review Tester',
-          role: 'social_media_reviewer'
-        });
-      } else {
-        await db.update(users).set({
-          role: 'social_media_reviewer',
-          name: 'Meta App Review Tester'
-        }).where(eq(users.email, reviewerEmail));
-      }
-
-      await logAudit(
-        (req as any).dbUser?.uid || null,
-        (req as any).dbUser?.email || 'admin',
-        'META_REVIEWER_PASSWORD_RESET',
-        `Generated fresh reviewer credentials in PostgreSQL for ${reviewerEmail}`
-      );
-
-      res.json({
-        success: true,
-        message: 'Reviewer credentials updated successfully in Neon PostgreSQL.',
-        email: reviewerEmail,
-        tempPassword: newPassword
-      });
-    } catch (err: any) {
-      console.error('[META_REVIEWER_RESET_PASS_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 5. Toggle Meta Reviewer Active / Suspended State in Neon PostgreSQL (Admin Only)
-  app.post('/api/admin/meta-reviewer/toggle-status', requireAdmin, async (req, res) => {
-    const reviewerEmail = (process.env.META_REVIEWER_EMAIL || 'meta-reviewer@madeccgroup.online').toLowerCase().trim();
-    try {
-      await ensureReviewerCredentialsTable();
-
-      const existing = await db
-        .select()
-        .from(reviewerCredentials)
-        .where(eq(reviewerCredentials.email, reviewerEmail))
-        .limit(1);
-
-      if (existing.length === 0) {
-        return res.status(404).json({ error: 'Reviewer record not found in PostgreSQL' });
-      }
-
-      const newIsActive = !existing[0].isActive;
-      await db
-        .update(reviewerCredentials)
-        .set({
-          isActive: newIsActive,
-          updatedAt: new Date()
-        })
-        .where(eq(reviewerCredentials.email, reviewerEmail));
-
-      await logAudit(
-        (req as any).dbUser?.uid || null,
-        (req as any).dbUser?.email || 'admin',
-        'META_REVIEWER_STATUS_TOGGLE',
-        `Changed reviewer account active state to ${newIsActive ? 'ACTIVATED' : 'SUSPENDED'}`
-      );
-
-      res.json({
-        success: true,
-        status: newIsActive ? 'ACTIVATED' : 'SUSPENDED',
-        isActive: newIsActive,
-        disabled: !newIsActive
-      });
-    } catch (err: any) {
-      console.error('[META_REVIEWER_TOGGLE_ERROR]', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // =========================================================================
-  // --- API GUARANTEE: PREVENT SPA FALLBACK ON UNMATCHED /api/* ROUTES ---
-  // =========================================================================
-  app.all('/api/*', (req, res) => {
-    res.status(404).json({
-      success: false,
-      error: 'API_ENDPOINT_NOT_FOUND',
-      message: `The requested API endpoint ${req.method} ${req.originalUrl} was not found.`,
-      path: req.originalUrl,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Global Error Handler for /api routes (Always outputs valid JSON, never HTML)
-  app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('[API_UNHANDLED_ERROR]', req.method, req.originalUrl, err);
-    if (res.headersSent) {
-      return next(err);
-    }
-    const status = typeof err.status === 'number' ? err.status : (typeof err.statusCode === 'number' ? err.statusCode : 500);
-    res.status(status).json({
-      success: false,
-      error: err.name || 'INTERNAL_SERVER_ERROR',
-      message: err.message || 'An unexpected internal server error occurred',
-      path: req.originalUrl,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  return app;
-}
-
-async function startServer() {
-  validateEnvironmentVariables();
-  console.log('========================================================================');
-  console.log(`ğŸš€ Starting MADECC Group Portal (Node.js ${process.version})`);
-  console.log(`ğŸŒ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`ğŸ“¡ Port: ${PORT}`);
-  console.log(`ğŸ—„ï¸ Database: ${process.env.DATABASE_URL ? 'CONFIGURED' : 'MISSING'}`);
-  console.log(`ğŸ¤– Gemini AI Assistant: ${process.env.GEMINI_API_KEY ? 'ACTIVE (Key found)' : 'OFFLINE (Fallback replies enabled)'}`);
-  console.log(`ğŸ“§ SMTP Transporter: ${process.env.SMTP_USER && process.env.SMTP_PASS ? 'CONFIGURED' : 'CONSOLE FALLBACK (Missing credentials)'}`);
-  console.log('========================================================================');
-
-  const app = await getApp();
-
-  // ==========================================
-  // --- VITE MIDDLEWARE SETUP ---
-  // ==========================================
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { 
-        middlewareMode: true,
-        hmr: process.env.DISABLE_HMR === 'true' ? false : undefined
-      },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-  });
-}
-
-// Robust detection of serverless environments (Netlify / AWS Lambda)
-const isServerless = 
-  process.env.NETLIFY === 'true' || 
-  process.env.NETLIFY === '1' ||
-  process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined ||
-  process.env.LAMBDA_TASK_ROOT !== undefined ||
-  process.env.FUNCTIONS_SIGNATURE !== undefined;
-
-if (!isServerless) {
-  startServer();
-}
+      res.status(500).json({ error: err.message }xœì½ÙvG–(ú®¯³\ @p’%È²AeN@ÇåC%	"[ Î(±tx×ùˆ~¾ë>z½Ÿpı'ı%wïsf$’’«ºÍî²€DÆ´cO±§(½xÄàïş{[zñşÙŞf;»UÖí5Øy«stÖ9iœ6[¬Óú¾İú¡ËÃ§æÙëÓv¯}v
+¼Ù¬zÌ‹…mon'so8Üñ0Š'ŞtÊ,~]„qĞXÌGeæ%7Ó+Â³:ó¦7økRb/¿bh&óøF|blM“9Ã¾ØKæ½óÂ9óûÕ$ƒy±TÆÑ¤Hãëá:Áu¼KJÕ(öƒøÕMÑ’AŞ[ÕAxóÀoÌK¥bP˜Nõß“hZÄqÅÓ[6ğæƒ+qL³.©9âëĞû|‘jµoúÁ‹¼
+ÿT'A’xWÁ7kİ,J>ì`"“Ù8º	‚ÓÅ¤ÄØW #¿ÌŞÎÂî Šƒ2ûuáÃùMÇ›‡Ó«2K¼a ¿"è% @õ¼ämÒŒÓ9=œÓyĞy‰Ó¬ö#ÿæ…5¼ ¯¹{á4	âyş¶]{ãEå2Xzê¹µõT.¨Îºóæ^”Øÿú_ìÙAI¿i-X½n=Å6ÏkF*ª‰ùZ˜£8 Ww=Ä†;5«7½Ş >õ&°:„·ß¿ X~]&^8Æ
+N'Wq´˜DëÛR5æ‹xŠóÍbºØ¦Ÿk¿|d|GŞ²'yK¯ÓhŸ¶O_Ci¶:½öQ»Ù@–ÒÍá)óØq÷&Š8$+JOŒÕ	 w|'7I½²”•àˆ¿+y0eùÈ ZÄIĞçc`@Ôóp¾˜‡ÑT1ø| )³àı,ŒoøçĞ~8ÁE<6CË½;ÉìÓÚìÃœ¿zh¬£n~!â:;m¿n²Ö"‘°¶ø˜tšÚåÒõ$4ô»6(4!Ô%hpäæÙÉùq«×:üg¤ç}IÏÓÓ³PNZ§=ÔNÏzíf+š½éøŞ  .W0Qr56NAR¬ à†Ù½‹|­–/ö{oB÷¥à9§Uø:P~ûÁÌ‹çú<)ƒÜ»;%¦ ¡Ã¹MirêMİøÌ¥Úñ±Acrªu=i|éÕTó=à„ ÿW””œ´^Şõ7?i¶šMÖh³&Õ^ç¢‰Ò•µO{­ããöëêôçÇ*ø¬uzx~?uï;´à
+Uö:˜3o<¦ñâÅ€Xéyı;Pk’áã­Jè1‡W ÔöL4ÙMÈfÇ!|Éeæ°rn)†ázeùÑÁÙ(QUp€hTé·b¡…ÿ0Ğ*#Ô)ÍáÕ¢ê zİ})¾E«x9ûš´*Ã_Ì|üäÚ»,ÇZkïîÉÀ@]¶ırúêÆ‡‹A{ƒyd©Ód1{æ{ã¶
+UõäjZ: D8:yááUïffŒ;%Uãlx4†6ÆÛƒELn²3ê.&–ÏSºB^!–İ¥]—Ìâàâa8dÅÏ !üŒÃ‡>Ê%—0s>h¢Õ~­
+%59ÈaG}v,údœ¾ÄŞûÕ‚Â=Ä>›^;ôÕöâÌŞp.V9ïüµòùÅ! ´|ãh1ÿxq±t¿xóQuˆ /îÔj5öFOb˜
+Py‰=£Ìÿö
+`|sŞ"tÄ  ©É&Ö´èÒá†,äİ(ˆƒbğ«›}h$¦u—JjZ°ÑtÀÊÆîÉYTÇÁôj>b_±š½YØÀœâ‚è×=7ÕŒ1XÊÜÓVÙÄDğH”‰Âˆú3nİ¶'ó® ¶ºñÙın–ñÏ&Äzê»»'“HëÖ7Ò:Aú°¬Ğì†6×SßÙ×´”$hOçEû—«³ÔÊé×Õ'ûÇÆQÁNàuóŒ&ÌÆC¨PKõ ØG]ÌÛ“«ÔSßİm,S·¿rÅ
+0í:HÍ‰ã"ÈÊ:Ó$l¼qkaä†„c6uèn·,'ÁRRzìJRÉ(µDÚ~æã×¤ô)=)	µóÕMŞÉÆÃ“Í¿ñ£MæQÈ¥3±²ñ8º‚C”ÎÅ#N.ãèª‹=éi,B’Ú…ä&™cêkÎU7(˜‡–ËóÎÙ_[ÍŞe·ñ}ëĞxëM×»†3©KI­³Ï?äwËŠğô¶ôF4×"W)îX²@I®ƒºÊrWê‚kÀÁOëÎkô‰w§Ïu-­ öC¿ÅèëN½Y2Šæl±Ó AüUt¿;ŞD¥‡e•w¢Ó0L}ù‹qÀuÉ™w3<x8yÓ«àNbq8# ¹¬¦ŠËuÇÏtoôUt¸¹›3ATrEŸ–»DÅ}ÜÀÔßÂK	¿K…¥mÿ¾èPS5ÛŠ¡€wAíÂ”‘…Ã›¢\š©ÛÒŞÃN/€èº°)À‰<64„Y‚ÒS©@C Äa Ÿ7T{Í¥º«Í/SE¸ùN¿ —pŒAªL´Œ³U’¾dkV(Æi}ØštFf‘ºë²[yÉSY¬™‡~Y8|/å«%imÄ†®CõàĞ¬¯ÇBĞüšY¨úÍ¼€MÜÂÎ®ƒ8A
+Áª" åp*Hâ{şƒ}toŸ‚Ğ¬¿^r€«¦;Ù<8ÿ…ídäŸ²§>÷¡¯¤))d{î0;lPÏôBAy©_õ+¸]-”|knãüŸæ€uSÄÓ2‡’·µóé2›³Ö!Í:Èı_GBŠµZ‹fB0ïTÂ'¡©e%OáşU­W.æcHÓı*hDÀé³Ò™a<]Çº‰ Wât»®0n»®wlCËgLUr´mo’ØâeSÑd5¹ÿm3Y‘ÏèM™.º–ìıåË—iËGV„ïgDøi$PãÊ5óa´˜.5Jù(5…¼¥CŠœ2tbYóoV‹ädU§Ş,‰bt¦Şƒ p”OF _Pñé³(³möêì;vNß²ëĞcÄìĞ’üÃÈ›'Ùl#;®Œ¡¯P0ÈáÏÛ4¥²ş~>Š¦ñ](é…o;¦Å‘·z° ¡79á@Ñí›¤ŒAJ“0!)²ÄkO„=~Ì>³ç²¹nÚ‘í³ğf3ìRœµY˜¬e„Õ®jX…–ºòmı3*Lô›ñH‰fÄEó|¯Ÿâ‘ûÃîÉÇ§ï.úd})í¿ì5:éØşïÿ°Ïz-P§A€j°ÄBBIß8ıÑ>’„'ÃBZ³&ü
+vë›ùdŒƒª=øÒ¯SÜŒƒ—[CĞH*CoáìİˆCã¼iR_°¾7x‹¾Ä©_DcÜœ?Õú;{»Ï_Àê}ŸB†v÷gï_0ùs°<Ö^l}eèeæˆï}å]èÏGuö´VÃ–/†×Yİ›‘sÌ`÷ù^~"V%†€æ…]lÏÂ·Ù{Ü´Å?íííïsÜÃ7­9Ù³÷a5º—áÁó ÖW½TúÑHzª§­R#À£]9„\ËşŒe¿`´IøwĞ-vkÔÄÎÙÅ9ëVÕNõ¸úåöh73À,Ó¿˜µÑéÎN˜¼Â«ğè~4öõ`î ~ø?z-ßê—Û³0·šö#û÷Ñ^ Ì‰šG³:Íèl8€š6™Fƒ¹Ó9q pöRSÊ€fĞ÷‚{DB^àÉAe$@³S}
+ƒ‚Ï¾„á¢éÕWŸ°Ø)`á¦mvîÅóin¿Ü¯—³à¹×\R{şS´`#<÷ƒ`Ê®à`€1I0X€ÜòHH£N:¶YÆFì1ã?,b l`°.HÍ–$“ıèõVS¨0[‚Ÿ°$°Ñ7i”6éÒÁ†;_ìzŠŒƒáœ#°›jm¤â†4—b%O]ÔëÚ7Áß¬}ÛSäE/×Y8÷ÆáÀ¤ñ­¯¶R+¿İÊ ÊIFoĞŠ[Pm#¥`Zó3.û&\\Ü4ËÜæ^¤˜†`êpbı³:)´wzõåÜ—İ©©‹yÉï{{ıgĞÁ¹ÖNê_nÏ}³±ƒÕ)QRë?† d6ô¤èïCPcy7E	»İ†‰İ{¶¤A¶HOÈÌ6Å¹qj†ş1Ğé<ğ‹°ñ—ògÏpSœÌ9ƒæÁûy0ö
+ÏàÀÔ‚XãJNVsl¾ÇFq0|¹…¼Qh“Å?n·ØZó—[—ı±7}»µU%¹¦Q×±…›Ê»„¾4u·!LA=tcº&³±wƒAÄcûãhğVô0&š`Üv2€/	²XìÀÚg·NÉ”ÙomÉ0BYynŠÉ=CªÌ—éBüı'¿ƒU¥³‹ùbUÖÆ°6EœÍÆ7$P¸LAúºu>	9Huıf)¹ Tœ½9Bx©°Hñ?ëëëÜa;²ÖÑ¦L?îS‡&ãSE7Ÿ¿IÄ’¨9r3%'Qo·i„8M8eøÌLÛ³5wõ<{¶Á˜Šwx,‚(vüÄÄ„2§0ü8¼)ıFg;óå*Lwì‚âöÏÿ³VyşËöU:WS= éœ$hM•"òƒ‹N»MfĞŠŞ|ÊFÄ\ªSá¶ü·éß¦ç0Dk,€Q
+Êò¬:™ªÊ“ìŸ04ËÔÿ6MoÁ9^Ğoáçcòh¶š¿1àaïÃ›Ñ|>KêÛÛï¼ê$ØÁ¯@}û5íåçìô±í6k–ÔMËôâÕ0å*3%7d„ÓkPGvWŠ>ÑÍƒüM1xv6Œ£ôïÆFÙnÑê±o?†…æi¹‰‰Í¨r£9k€0O(f 5õgQ8İ(ªÏ“­wõøMfseiib0ğûùR·¼§à4h·®éƒ;MÚzâ·Iî8ğ|Ö¦!lb3¼F†È“„3Â\ƒ)ÎyD}„]'³ ‰Dò8•\Ğ:e;ÏŸ×¶á?;øŸ]æ	è”§2g~x_7”…f· ™‡ºEèéÇÆ‘Š(•Yh}àò„rˆÆ‹q”YóüÄfÒâ7ê•Ü›08)‘l{$Cıb»àÇkdkIû#í&òá¶t[}Ô¿C{(ï N<D›(î„e™½ç#KPÌ!&”Vâsàõ@°ÊQ€K.ƒĞ,Æ^ôç;À_8K RÇ§¼$V‡7”µ‹1ŠÂ÷DM'œÆ€ºÇúq½~ˆi` !Í²ãdæÀBX´˜Ïó„p¢Ñ®pB€ùş0?ö†s‰nØˆgÈ5¡“„'}Àšªi+úU0	§!`èƒ¯é3?8-ƒ8Ë$“Äto@ ^’@åyÃêlœT%ƒkòHüTT½ÄÛTöª_T† æ‘#ÆşëìÍç2ôC’İ\únp¡Á©úÖ<Ó'¹\µŒÇÕ’ªˆU%fOÙ`	‚ d¦8£UY¢m¬VW(ç/×à’½ŠO’í_µ2‘ÿz¦€hGÅ,G$r¾«$¨¡Õ¹ï¼xZ|ós³}ÙèvÛİ^ã´wùºuÒ>m_5_5šßş‚Ñ,ØkÙÅm©ş¦LƒHy`ô{›fv úğ\°0sk¼ñÏ - 55’îa¤¡x«ƒàEù§?ıÉÌ60Š–7So|´‚(‘l eçeJ|]5¢wŒx(g°Ræ:áèEú0›&¨OÅRUzR,†JØùŠ—ûÑ¯…’¹Á6ş@xòD=y‚ÈM~2c­î6-1Ÿõ¢9™íêàÿÚvP®Õjø?dæØÜ]aSö*¼·>œÊYw1]¾ÎV´¬°'O@›W\„ZĞc„>¤„»­f¥QÂ9í<+˜3Z£W8ê~bÜI™c¯/:~Å;~šZëÊO< pàzñ¨\‡°—zlRûwØ:‡Î€8ÒË~Ğ‹?¤ŸínØã°ú(	ôÛóŞĞÛÎóêîÁŸÙ÷_öû9 Á!k`q?ğ&kağ0ŠPˆ­õ®¶v®Fú”Ê²[Ù©ì˜JÑ!—‹h¿.ŠcNì•Ğ[N"2aOZ>ßî~õÙ{{:Y¿Óî‚£(¬ø½èèy­ú¬ı¬ÑMG¨‘¬L)¦„Ó!vÇçÖHÊ ú©×§0·Éäÿû×ê•§{£İ  ®v2ŠÂ*™Ù7áÕˆıcxç)js€MÏjû4€ÒÃJ\ê<£óDÂşíÔ&6ØT×˜GAóAƒ·ˆI…±«bEkwÎ{ŸVwJÖ®¶R]¯@ã¯õæ`6Y±iùql‰øjÃ]11%¯ÖÃYÎ¼M§°‡‡aa#¦Ycä->eÓ””ÖÙĞŠI¿=e şë]Ø_£Ù«ìÔv€"ÔQÿ.ÒvşóÿşñÓ.lÖûwùa8HÌÇğ8.Í(âš˜³ùó¬Ø‰¢!´ZkŞtä ÕBÅ?sã1y÷Ïò' ¿³©w™uÏÛ ìTk»¥,F-ÛPSñÄ¦Ñ¹m>¿<‘òøÉ“êJIŠëÀí)ÍÚÅ¬ˆË€ƒÛ”i1hcĞtCX³Ì‰Ân£…7öØë8ôÙ«]¶Í¾Ã~ÈÎ'A
+OIÖèW1àï£ö/ÎĞ1ÿ´£>í2IësÖRAÌƒ0ûŠ=90¶N=Ú8bÖÌ£‘8I;ğ~2ª¢Œ¼6j¼~†u2¢Ãæ€±Á1Zù¦œ¹Q}a#ÃAx°1 1~ØŠƒ+<“›.UŸ¼q…°‰ƒ½Ğ»t`rMãÈÿà–;’NîĞ|ÓdXÑ*?B‹¿€,,şjü²4ëU±  †JCDF
+a(åJË”´F©£ö‚s	·mãÇyà‹¢¨e•ß¼çÃan€ñ«øZ<v‚O—Ù» x[¶;–B¡Œ^h?8®ƒ14Œfá€¢ŞŞa¯ÜÓDZ/0?ãl1‡Çh°=rĞ¹ü3X|æ>
+‚yÙLebc2áIdd£©ğÄPŞ­¹]ëXÛzÔ’._±œ^^¨`8\±Ì€Ü
+l=nu+ŸÄ7³y$Â{_İ ƒ,î—@væÂ(x_Àïè—âÚA:Ö'7ûËÂÿL°œL'gDÏJL©ëÙl…Duı1û–‰_uë[ö]ûêÖ7×èèªÃÿf“[WŸ²ï .×é¿ÙßlÔ®§¾gß×¨_7>;æLd¡¾Jò¨«OÙ&špêÆg×”m¢ªgdÛä†w#Q¡iô–ª™=æ(ârˆòÏª“ª€aÒpİúÆ¾fÅùÍ,ˆ†öcŒ…-p£kcìÌßê™ã×ÆŞ¥vYòŒºş˜Dº8†xœJÓÑí˜`f{ğ`÷2+4;­F¯u	Ds¶ı¦)Š‹püAã a %mÁİ–ŞdÅÊÈúTg‘’7ÛõĞ¿›ÌáNGbWCÿ…K$ı·D®b]9‰í¿¶“ØÿàÊÿ-¸òM&{i³,½şÖÈ¶0y­í1-ÍÉØ…ûèïÙÇ\œb²F49°›‹‘‹óC[Œğš5ÿÜbÄĞúñÑ%I–“ò­^b.+İ[4²ˆ!>*¶ÜY[XBÏ@–C,ˆ"«ú„šFæh»--.KOıv¡$CºÛê„üj±sø­g~÷¥– nª²T6d{©rˆï¤xˆÏ3«H«¶f¥QŠN©*œûFhû)+DV:Iê=¥™È7qãÅ¤ƒØœğh"´$œßN£wãÀ¿R?z×€-@Ğ	’htÉ|á~çÑl1¶ Ã#•y¨‰zùf½,’zœõ"ç£“Èò”ŸÕA ú°°|Ç…Ÿ¹»øv6büf•]$h¡“/„Ae€²S2ƒÁhJÆfqlŸÉsk›\FUÇ³ñIªhšÒmÌ	÷>r…Fi*™-øg;ğå ùæôF/Úñà ßƒFve†^ƒ@Çğ($a]‡“Àäz
+ -!’­÷€Äğ›í3/³W¢Ší•>Èãó(cnÊ!’œ tgû5v Ot;¹‰H°ß ID3#MÁzİ ¶„ØŒ¢hœĞ˜ú÷ã›Áoÿ@ï#pÒ€£ ›áãéæz±ØÓê¶š¥*%P ¶Ìš7@~`òSSƒÉo@$¼Xsì}Ôùª&h÷½8Êc¢ÜÈ"Á'\0eÏÂ«4Va=ÉxüÏ0Â"IŠ„K‘J„á;¬Ñm¶ÛÛ<¾’cÌ§ûÀ¦ÇA­@¿Á,)óIë‹Æ<öJšœ¾WqxÅh“Ñ`°˜ybÏFĞ%,_Öj4ôÔü„Â¸ ¬^òãÌæ‘ŠäC~#ô^céM…o•4À+¢ãTÃ†(µ;‰Ø\	úÚ¿ánj8…*#- Xdœ(· ˜¡IÜ'İšàCÚ¿a4ÆTQì¤©låuŞ@#¼‡²®ùªQ‚ú2h™Ş—SY…RE‰QÜ>Eo9Ú`'¨
+êOY0Æ½K_
+
+ön!Ÿ¿$öúÀåsŒ¬ş;,°'A×C•aï(ŠçƒÅ<ÁpFq¹£hì#8h¸­"·ö©†¨ì”¶øŞC‹$Dçğ)Œ=:ñŞâwÀ~`a¸Âù	{=­ı†Í¸@ÀÔbD}€éH"wEo$…ÁQ¥CX‘h@g?ÄbåD8¸À8g#9^BG^ì˜ˆ	™®—I€õ €€µFáXˆƒĞçÀ G¸:§bt¾ÑÌ"ĞŸnL".!<Ù}ïÊüVtã‹ã#Ğ×@RÌÕU\Q½(dó47K„ŸŞ!›¨ˆŞ¨eRâ`–¤“—T…Î,˜í—tn%˜×ú
+¢É½Óœö˜ç{3„¼A¥ê#
+¬œ,H–*R4‚ ñÌÆ¢¾ŠePì¬şh§Ê¶ÄÁqxao{&„ïçi°-“¹•i—û€Û¡ Ÿx1Æá'DÎBÅ˜	—°d;{ˆıH	6/¨²RªF|9}¤rØ??ì[S Ä“Eå5î ‡«ãØ»èWFÕQ†VØy£Óc;uÆõbÖ>¥û(›±È
+å.”¥H°ë+.„½Ò-óQ0TKÆp»uÖ¼ètÚÍ‹ã‹Ö8n¿>Å¢Ñ”2½!Oãê*»	À„h€’ú£$© ™SXf˜$Ä¸îáëÄeÕèP‰ù³WX>ªı}«ËŠä¹ÀaØ”AR`İ
+hRµ8‚„Èu´c¯€kM
+	óDÓhrSæEÁ(İ7`ëç‰ nğıœá*hÈ…Ş…ã1î#1ªÕê–9çı:û¶õûş¬ÙxuqÜèüÓ%´ã"D#O'ešÔAæ£íï0ÂóM8Çêf\“yï!z˜cÔY§õİE»Ó:d°ã­N»qàéq®»İåú.ªcB¶¥ğœÄØå2õf†/	y~Şp.0ˆğÕ3~j`[¯sv(’g‹ß å”`ÁiÕ ÌvjPwï#£ Ê |HÁ˜t$¶G2 ªéÄ“ë0¦ü®
+â*~Ì`Ò2H‚„êOÈ,ĞOÆŞòáœG)00ÍÛ¡Â„‘ï£Ğò+ ¬QÓğ•¨âÕX¸
+†qÚƒpF¢!QÀ©XhúEÂ4{ IÌ·]s.¹Äy„ a¨	Wpè¼(ÄtJÿ¦‚ÿÏ=LmMYKmÒ¤DĞ´`é“0øw~ºá
+à e2ØOš!}•Nè¼ñvlC%Û›Mf®²ÅßeÈ¶ˆ0İ$´%š@‚àkşğh&¬ÕÙë‹ö! ìy§ÑÄòòˆ.’ó!‚â±‚òÛ®ab‹fÛ°©IÂ5kêæGDrûxx‘FâF­á¡ ¼áu	Ÿ?óŸƒ¶¤ãPhß
+kÒÏë°³‡­óü˜œy{êÃ„|ÔoQ},ËÔƒÓš³5a)m©dŠdºæ ;5D«££VÆl~ŞôˆbBG”ŠW€‰¤o"­\]‰¨ÿÃ5ü²Ì{AFã+Vf}B1œt²˜a–5,H!@¾oÒtÎ9k?ëƒŞÅéMƒµlàğ¯ŒÈ%œ3nÀ¢ó9±¤9ˆÖíH~Û‚î÷¼wõ˜ì-rì^Ad|svÒúá¬ó-&«ó¢ƒÅE~¦øê¤òà[ Û½©p¥œÎü„g,œ¾¤Ëøá&>‹L8˜Å£]Ğ:Ló±¥zpÅ‹càNĞ„¿FjÍ{¿ìPd ¡‡¥íâ~5…VA_¤DçÑƒĞ¶èntŞªS^ãPH‘k,5¶-*ë¿%ïÂ¹n›la™œ1°	® Z7ñŞ‡8pï1
+XÊÄã‡	Fñ’V×RZm|†Ÿc?JÔXhmÔ:˜¤ñL9´eî¥ nÙ›à^VGºŠC ³¯®ÖÁ_Æ-»ÀzİK¬!û@3£Cb8Àa'TG gz‰°Ù{°ÙÊQ2Í§õGÇÖ€ú7‚3G“Œä´—8"ê§B”a‚0_öÄ¿E/1ÿı/T3ÅCùÓ–;q=ŸÒeµAÑ©`Êí³‡½é[^p‰$ƒ 9EDæ1ÙÑ[Yù>xÄƒ0Áã€š±AÇ¨]p~¨ÛÚ>alÄ¶`h]Í6îBç<3VDJ’âü}¬Øà?Üp¾¨“‘â·Ší3oNÇëœÀAd¶ù×EøwÜa‡Z£Œkìó&‰‹]kÀ‹üèÉcwp(“(¦8I­Û`¶{¦¹Á	
+.
+v3Í¥*&˜p“
+A¯­m¬
+¨RZ‚.Á+"døbP½ª²ŸÉ/eö3p0ş¹DÄŒt¬¦Å÷Î3êA866Ğ¡Ì„ŒâìÂš¯æ‰"Æ,¸ª„¥Z—:Ê
+1ïõc44‘Ò]ÍÇ‹+—†¾c°$.nñVŒˆëW´‰C¡VZaV y&0'¬–b‚m;ĞäiK¶¤ófK²Sé—”û[>0İÜò™é Ğã‰êU8 äwt lY3hùT[†UˆÆò‹t*ËïúD©»µÿ[ÀÒqùšjìÎšMæTşKêõŸ­óæÚF’pÈƒSá,O·Zá&"£¿"[Ãº&Äâ7İVÉ0$²”©i>â¬@¸/i5:éò³ºÈÍL„™Ñ‘ˆè°†Ã:Û@fğaNAh&.‹¦pxCŸ3qxzµèÃ¼@7mÇÑÛİŞó‚e¤”·(ÎI›¤“Õ®F ü Üµ~ÖJoZ0ı„Y›¾ŒBnvÚ ò5áÄzŠÎ_Ô6Yãğ{¼¡ò}ß‚clã~ìÂÖk5šßÀ¿­Ã6W€wk•óÆë;>;}]¡{oÄA”¼.:­R¬G¤)ë‘q”WvZqğ%{(¬¾w]‰àçîÓ;¯«ßp‹x•µ'b!ï9lí×*è`$–hzK«+Xy‚òSš‰¡ee(µÌêÙ\Z£½2!²¢ÌDüB2ı Ãx7äˆ²¬yX!)An_Â¤î ì‚{êÓò’›$9EÑ1{'ò›Pª·lYÆYaNÓV¼¢enƒ¹ÒÏ†F/€6%l”ô3—Üâ—/J)ú°û[÷(cº”J­0ûÑ½xíE†ÀnÈ‹E_q¢3ÀÎ·¢TE¡-„l~Bœdü#¦œ0@i-
+),Ü`¦z“W©
+€\íÂæıwTŠ8ïÁj&œ3r:¡OÂ÷ÄšÈªË¹
+àTD.m ½0ú"NïÔŞ^mOâj!9¹èÒZ ™Î5šµ‚4Zkö	P˜‰í&åıœI5›Í€Vv,3*j ym;hxˆO.OÌ(î¹~î}Iê*ì5J5&¢©>ÿ`ÇS0!øı1nÏañhÿU£T¸…D…ìDHlêÁÙÿ^½ĞËpl‹#_Yìpdi­‘cTæ²™à5?<^ù43&‡„ó’šŠ(eöùßˆ0+`9æ2Úñ¡B`<:îóéø¸Ânm÷é6üç¾
+Ãâ<D®€ØŸ¶‹“1R0y#R® ~ç¯ÿ@±rŸÑr|Àvé7~,¥£Ó'¾xşq‡=o	£(ã—¯â¤T/pçò$SËCã^;€}³]6û±/Ä¹ºÃxPE¬Xa¼Ïè
+Í¿×üpsÜ ‚N¢ySM#ïóvD^á=Ä¤p•iCxƒØ8EÿÃµ¤Ù^ÍP‡ñé9š|qàÄCÚXÃ0DEŒ›EéA÷¡¿[à#/½ï›3©òõéP´Òl<ÍCÊÃŸ$¡7uE¤G#t„©Ø^ËÀTÂé•`'˜÷Ö¹-õ$Ç,«Z¢q’‘Á(LE£ádbT8RKA‹Öê~ô¾¬zğ.£Ÿ…1†M!;BÑ¡|}‰t}›N°aĞA/DjéH~¿&­ÜdE~øYEC™CLë¡a–ÇŠ}¦JW¶ŞÓ­,§!€¿ml«¬)R$q,|×„²X”MR«t™Ô{d1.”rèı=¬X¡ÃPØ×VT
+ãE£ñğ³š«ßĞ°°Å«Şa6L½áû¡Ğò›ÜZiÂp(%Kß9×o€‡ !TmC!85—¨C Lé,àP üØ{GÖ4Ãp•H\÷³1ÆY‚»W…—#yçMf7¤åÑ”ùa€ğH<U®[:^ŸŸ·d¬"¿>µp»µ±oÈd©Üÿ,õw©°7Èg÷K‰òW¶FîÑYX¬ÇÑô
+]2Ğ¸*¨kU=LÅ¤‚tyÂT¯sÕù<-];ùI*TOĞÍ¤¨L¡â`±Í|öÆ"œ)¾f¼ÊÃ#xdV‹.‚0Ù3Ú>Â•”Âl¨×
+µ¸SÇôæ˜.yÎûy:§8"ûı*§Ø^*ró€T‡EÜ"YßQp‹Fô×¦¥jDåÕ«YŸFW§ÑÈ–ú}^ÕSud2‡O»ä\éI8	ø=X[†m#×¶Ü-º²”Ñá Î°¯*÷S—S/ ©o‹FöŸn¬VYÇ+~uOp¢EÇ÷mº¯t|¶?kBN§ñS¶ r€‘s:k­huñ?Ã‘Z![~§{ÇÅ,Ğ7±6XøŸpJäÏg=èğ?	#×råNÌôl¸&Aà·J;86YIN·2´Î~¶LeéI*kïQ9åø)k×MÙéùÅ1dvv™ik‚Mk¿,¸+‰-ŸVVSŠNPİ`—D©Z‰S´²©6hhgUm4Ïx3¤×yW4â‰X4HggmĞÔLÔÚü„¿AÚµA#3×k#x¤S¿Öe3ÎM£<eé[([~„²Ã‡å"é¡3ÃšCJ“c9åÍ/›æÆ²0.–=®9¦QtNçÁ¤ïÍ 6üôM5Fá»*èî“¢ë²rj¹ú>ûtŠÏShƒ’úC–ræ§E{œT²¯d9QC%ÀÀá'0ªà}Ôä‚¼¬³`ª2vÏ¿©Ì£
+Y~d@?¿êIW?1bª­Lİ©Œy'ë¤ğ°eëÓ‰YeTâ(zß|½rù©¡‡K¶"7³ã°¨§‡(³0‘ğ¾ËÊEl”ÿA™s»~«izÓI†µá„²·,­¡™j¯ëåqĞñ™°(/îµ:¹C&oØ)TLf{iâ¨§m]Ë’ptæçócFÊÂ‰¥bR¶rHãÄ›ÂtËNJ9dØc¸<ÙŒ[Ël9ÒT™!1ÆƒÅ„×J08a1ö1	Ev‹‘:± |¸	 ”Áõ
+®ÇXbî`=,›MEŠx<µòŸ jI6«
+YÊØlÑ—ç;|N­à*#ö›Á44xx4¿
+ªõ(Æ›ÃkBğRN%£_eåq£Å•HÎıˆl: [ÄkZş·²ğî%ÂN–Ppû“'Ç-rv²^û¤uXƒ79´zö1FV6š­'Oì¸J
+âe}Y[x8¹|vj¸FÂ0p·ŒØOßAb8°Äühêt3–ÙhĞ6b¤ˆD”Ë0	'Ú÷#Gkè Çì‡Ø›U³†Ï=y"¾İf§}ŞcÛ¬yvrŞi}Ó:íb<b6Îª¢˜Ê© ^+pÃ«!‘a#ÂÑÎ²œ´ö*A€Şò`ä]#;!¯ÓV–™¬$Ì´:ƒ‚F¸M
+”xãÌí ªümÀHDã$È+ j¤é¸`Ñ”¤v‹PXK—;”¼!á_ÈŒ±ÿ1ÿòWyCŒªV†ª1ğõ~äÅş¶0bZ6LÊm˜<ßÏEL·UñĞ°€Ê=´MÂ>†µïáö‹ĞÚÆ1k6NZ³³Óvã”uÛ½kıØ89?nu±üèYû˜´šß4NÛÍ.b€vsÊx6+‡,	È²:Äš"ı…ûß‡Ê°ŠŞ]Ã[ÍgŞ€¼Ş 0oA±y,ˆ ¬†"4x”97Ãb:‰šñ
+øKÿ·Äáö1zFQcğQå J°19Gğ“jÆc8~ûìÏ»`<®$£‹õèaÈù¶ø“	Šh b?^Ó?®£ñ QTÚ„‡ á½ªÚ§"£=$Îj'M² ¡ §	¼åöa>4¶OÚ†ÀäÄÒ5÷*¾ä¤}Ş9;iŸ	O<÷;ÖÉz:€1?å$òúa	cğ<i7º]@ˆº¢«ÃíÊ2Õn¶Ïyx4pæ·çgğbÉa»Û¼èvá‡.ç†xË[@  ê‰´¯Œc®€tã²á'V=a3/ F1±Kàï€½Ê°är:†ŸŞR@„GªˆuiÖÁœåcÔ¦ÉÈJW 9;9¡¸—
+J?Õ6[ç‰.»8)ğmëˆƒ.9Şˆ¸.H_è/¦o)ğ5ÌkOŞ^‹¹zİ6ÅPĞÁ÷¬bÿuì	•©{7¢dš0Æx½ÅDFËqS4FéÑS"úFÏ‡” û&]RôÚç´¨3	q>Wa^*L„±L+ñükŒÄ XLŠŒ„ù–â<¤¯ÁŠ¤²F½±xÙÛ€âS…»SÄP‹¯B&èêQü86¼6~¿"ë¿Â0øgZµôUñ~üí~«‚‚;QÈfÒ?„ğèÃ(KıYp?}P—ŠâJ) 'Z_J¨Äå‹õ‘Ç(–-‰ˆ”*&b¹”6ÌCø€“…<ÍjM¿Åi	[@bÄåhœ·4
++Øsq„ä †0	çĞŠ’}9”¹L°_Vôé¯™Ú©£ÿú .ÃšSJG‘/ñ6…SAiÀV4—–«ü”M®±`1Â@·
+àœâ]Î3í¬’IßUö¦“>ã¶ãQéE)˜D„;%£uÎàî“â:æq¼áT0,JèúWõ{™±N9È/ÏkõLÑí²h&w„’„Ç<&f¾vmµ¸¥8»`_³Âß¦¶¾#XFŞ‰J<fĞ
+³œ™ã¬qÚ³È³Zàw	¾IvS‡á
+ãË$b™íœeiWXæZ§ <ªuCÇ<ukÄe¯Ó~ıºÕif-vfE©¡Vğ‚»µL+şõ›Œx÷7İÏfä´îñ0·ï0]â1Ï0`‡p/#Úuÿ-|kğÉİl{Ü9föü­zÚØefvøÚlwÎcªD4ÈEiÊsÙ•Fv‡Âyv@öhØúxl4‰&™ 'ıÉÒZ"ùæ:¡Ê´×Q`+S×c9œÃ*Î3å™8aà¬Q÷I…[Û(#IØÚ<ŸğT™µx#EÏ¥tÊCMt†	‡RlÓ®4Î)¤*úŞ<B•ËBxhê-âßşáÍ…•ôó’°·Ñì‚'¤š‰t½Ñî![,àÊÕr;0x oòKÊÌÎÑÆ¨>ÿUUE„î@$½×iiMõ:UOšß%%8Àü¼CÛD9PeqYŒÌ”ªó”N•E §[‡ˆO™D˜HFŒq”â¢,yågPÃ¢%Ò»`p:âh !3OgpóãŒÚ½³‚As^S2(O†»=3 “’ĞDZ•‚‚`W`ª	ƒ§
+r¶îã¹¾‘‹îz63­°'œ"[…u
+~ÌÄ"Î7…wUR0sMaù6På¶«]#²+Óé8­J,9iu]‘V×>ApÙ¯8 ó\AÈ ø:Çaà‘PÎ$Œ:‚X°$á9Îæo¨¾aø-D&€¬° æ$ŠàTáÇpœ4 QfdÎ‚¼
+‹ÁäÓp<G`Î?dİš5¦*•ÑÊıKd+Æ³#ûlÔldeO'oåMy0ycÀ#ß"¬¨Ş$Ü7íÁ¯˜Æ`‡Ë&2JZWEº_ì=UWµ<[Ú…çÖ`¸Ìè2haùt™oÓ±9?ÂÔ’¢Š_RxUgßxÇ R~M­u·‚qÛş¦ÛBæ>ÆIß˜‰ä<Á£>Q:*üÀ×|n•á…¡"?ïHlLÏ¨Y·üm±¼õFfÂ“uƒ›„û™J:©e£a9QwÍİ8%#ÙécÍ©$+ı…›ÓÂïÉ“:;ä×û{&Q•¸%ÀE¤ûŠ‚/Â!³K²TE–«˜CYï|¬)Ğ•ÖÌf)¬dÓkè¤Ô×"…µ)SX³Ö´çóïP>+Œı¿Çõfr“iÍ9…f¹›ªD…
+ş—:Æœ½^2k«ê¤?ñú\ XpÇ*edÍk`©=]ö¤i©12C§Üâä¥“AÏòÂµ!ki2®µk l…p¤ZD²v#¶¦H-/}z'šãìÌ74:1c	¶ ôK)Û®uŸ%š;B~—ŠÈ£·«¥ğXv;íœk'¸˜ae’ †ZˆöÅ´c-qv©òGHT’—«	—!sJDÒ|@iVj7*ûe,é½İêÁö>ü§”Ê$ÅRRºpÊŒ–l)2İÏÉ²VPÛçjë¼dØkœ@ d°Æq¿ŸÅR<
+	;•JoÓPueü¿m¸¤tD¤»ÒGa”ŞL´
+t19dò'ÁG™¥×Ü*‹GvNYíN†[SX4Á;§<F¾ñ~ÀM}äÙàŠ o¤0cê¬QÁ‡{nrC„H„œ%Ş7\ÔK5›ÒÉcÉÉc9ùrÊ³Ò[ƒY¢ÎtHheízã
+T.-(5Çy‚Ò6OnêÜ–OÓ
+è“Œ¹™!÷ÿì‡JÍÓK&O¸È€4JPü×0)ñè‚HªÜš¼l£aN¥"Rí¿§Lò¿ƒ­‘›hÌĞøİEûÜßÊH¸sã}lWw5Z	Àr»âËµÿøû•J…5/°2V—µN…×ß¡Cûv0?,ÈÉ¾áı`ĞnÉå`Èeç©ÂÒ?/½&GÚäª5l‡¯ÔõÄ¿0{©êÂµ¾¤n`£Ñş%kNÙtMŞéB1Je(S¦àE<ÆÔø†2«KP–\~¶£¸DSú,Z—Ö¼…ë$LxXL#û‰.¢¿Î+âN¬ì¶g.ÆâkU_åšÕ¹võ@À@İk!o´P÷Y¤oâOï|ÉVûoøx.G^ãD%ÁD"
+×âºà÷»jHáâİ¯ˆ€.ÚNqŞí)‡º-¢ôâ¾¨kâğ®#ŒĞ‘rK!òc
+UıH™å•0=q’ O°…‘ªùI]\‘áFˆ …R©:'€>;Öµr4yoÅWö­øŠ$ÈÇ%lØg fÈ–€UñÜ¾^Ìn8‚`îÍq´ğ‹®¦/TËÌ­í+nCÊ€Cõ”º)C±šuP­¢[ıèÖc-Øë×ô}g2—À2—7Àä:kR%œÓ?­[÷Á|*rßäv˜»RÚzwÄ¤h-Ÿ^ô-,r¹÷¥0yä0ë¢Ê'½æzftÌNã¸ı?Z‡¬õãùY§Çº?u{­“{êÅæQ<ßæü~»ËÅ˜¤·ëüYÛ_Ë/®–™l¨¤Çã,I¢àËtx¯ÔR'Ÿä]HÛ¢û6q"| wIáFûÔÅg†‡bôĞ,Ñ’yÅ«¦|Ñ ”Ô/UÙÙi¤éN’fÔØ9TÃÑ‹íËL~¨ì¿®—€DdL!Õ@äM;ß>#ó
+!ù7ãyyœM(RÁÕNıi"^‹bŞ¬pÒ8l5›ìu-fvÕœtSt{¨+¸—ÎS¾Åo•#‡–®›é±¦‰•£ø¦.ËúP=–ìÄ¥u…Ö­æE¯u˜ycŞ»Æ$Z RJ\ühyó¢sºß£>N“¬Jøï.ğüsŒÏñf8ã8«G¢pb«Î£v÷L\©[ª& @Æ{…¼•İyÏ{ªküOu½+–Ø_Øó{Â=İ§‰mÔÿL\Äh%ğ°ØÎÓÌÚÄı4ş+~£#Ã`áGÓéoÿ`ßXXÊ¤sŠ&'^<X$ìÔg™÷ø-äâÅÃ¸Ê“ßş¸É¢ye^7²à}UÒÆÀI+
+ı˜K±ÇÊ5g^MSÍŒ"
+üœzÌ€}âO²\?V¥æD÷Ğ·´?ú±QLâ,ÃRÖğîd>K?hí<«•Ñ	›°ƒhì\ éî´·®ŒÜÔ”vSêh{SzØ»˜&§r˜r§ôü@Íè¹=¥gDkÌiÏ1§Q;é1û']²»™ Ùµæ± @ólßœÆŞÏÜIáú­ÉóoY0™dsrÏMDZ…@äš³^á’jº˜¤5@!a^Xo“Í!LN½Ó"5)¥EŠÊ-†—ˆ=1SŞÉG¤ŠÎÒMÎƒ†X"İğ/WÂéQÊ	ÎB="cC›£rêµÌ±HşY²mõë¦D“¢‰ÇãeÈX@8_š9[ØBLMh¼‘ÄÂ?§Ô2<ôîÑ…üRã·¯¶O/Ï;g¯;­n×ÙÖÅÍ2Üœ6'GªQûÿŠß*ß~àÃ?‹´UfÙw]3i`H±§kCïƒÁ‚^ØåÉø—Ë—ñoŞÌ½-ÀmG§xñq×æÅ'¶9Ÿx’WpaÌAÑUëoËR€×«VMj¯–”|âTFğ§"=x”÷ÍüLIª¦%¥æ£Óo0’Ëhxé%Iâ™–äRù7µ‰/?gÙ1b]m‰ÚãßOã¼;Êa…bªœùÈ÷”!Zq£ÎÙÅ9ë6:Ç¼ƒ«ZOÚ²°•Ü‡·á‘^ßtšÛ‡Çmªúj›İbÒ¶cÿ’è{M8v›@Zª•Ù½šGÌxÊæ,ûÌ³=Ë?Ïç¾ä”V+›k÷Æ&Ê,MZøİİÊÛ”‹€<–÷ Ó¬Ñ-)u«9¢C‡ŞºY_™µH2r®ÃAàâ}¹Ù;K$2ÕÈØ_qèc /¨`ßş1&áÔsêğo0ö‰{:üƒûîÔµõğ½=fX¥Ô ptHRñÆ«¼ÿö¹GI]ğ2£RÒƒ°âÍâßşŞÖóÛ?¨HÃb
+j+0xúøíÿÁªè_åe0áÑ1Ò9¼Ê ÅUH¹vlÌ`öÓpHË>û¦qØ¨œõn¥i›¾ú»Ë Öÿw¬¸oü  ŞMúØc‰‚’Çf¢Ñ pà
+×Şâ={Õ;Ç<v[ "ë%F0h¸ği/tŒMQïÊ4ÎEÜÇ ìÕ£0hX¼œ&Æ`:5Œ²>œÓô°Dwß@õáğ5_çn“(Î‡<y}ŞÖæU»ŒR/D›,!ºD¼iCŠèÍqÙŸ¥¶o£ô“t“­–iıKtş¬”æ*ıâ…f„Õ¾9üáu¤ŒÕ(+ip^­¥ÎÌwM	rí!Š¢ÌV9§ëˆ!e®QkF¥c`¼p†€ö@¡×Óüñ`*ïÌÑI2ğˆôwê;5×BTr?Ö¶FÛ•:¥7÷jÛ{_”a®A0fGAëÀÙƒõÌZ'¼¬esN&Uö=3¼a2ô\D=Œ©É1… R2Ú€‚,Ó»¡ &‹Òu¼ÃkĞÓ`ÃÖá/Ã¿”ÂzW•{®.uy{7oGËˆÁwè…ã›ãèÊ¶CÏï¨•âÈ¢•bG9´ªW/ˆµÛ® b«[e‰Õ¦#:EÍ‚XÄäåQ‘} –ı¿0.7nÊTã\Mç³¬QNÍ9¥5Êï¦5Šn¥}@vÆ¡‰vINâ«ÌztõXñ´õê¬ûM)kõÌ±6ğó^Sıšo¶>G÷½ÈI!ÇjæÕÙ,Ğ¿šGıçOÓ¯(A!%&B¬ §À§ßÃhtEi'\ä)Ş´ñï±*¯€„¼¬‚„†bóÈ÷n67œFt†%Ûp¾ãzÏ[¬Ë‡3×ÌÚp¯Ê6„à»qï_gÇp[Qÿá×E`òI/’•=ezQÏ˜ÛH7ŠàŞÂ†VÄ¸‘;)rZlÃo—ğ‘irãéyû L‡zÊá:‰>U/©©îë¾ŠvUíeJjnD±f	ãæEL¬jíº;ä€m³ßşˆÅ£ı¬÷AMÍàĞ¼™c—}ú°Ã5%ê&^pÛşƒ7CzHS‡½fWĞ÷^Gtç9Ôİİl7'…âÛyIc zvN\,˜ÕkÌ®¥Dw1¼ìvèk:Ö÷qˆåTyUYßôõ$™ƒ²U½V5s]~r@¶ÂQ4`~€¥+
+õÔâêÑKı‚E5ÊÍĞÇ«Féà»ÀtA±0L7ô·…ã}¥S¼#ËøÄåU5ÖZqSòƒ—/_f9Âƒ»Bf•«ı!¶Ş¸dÙ6(‚Ä(X‚,U/?O#óº·¬Çr¸Õİ´¬×\½Ì½÷Œ–wwÒ¿®Ñ‹ï%fz‹‰=‘½—ÙÕÜ-ñÍs/ÄİUÿ¢;tµ	§×=×Êá9¦]÷´ÓaåÄã`òŠ:Â%Ox< H3ÄğÌùsbñÎÉ;…B
+¿fÅ¬íVBŠ¦ZÕñîT±n@èåÛêÄ{_¬•5H*
+Š%hRÓYüo$œ}‰ÿ°ô­:
+É³Ş
+›‡ïŒÇî7Êù.ˆ}şÁ<{x0wñ²øşK¸0^„1±?·0ÚL¿M_İï[5ÛœØñë	IPãuş ıö$˜DÖK“ˆæ }N)—¨ !ÊlN"´aşë*SÊqJR]aXÎìåkû2»É9ã1oéŒA¾€×¥Š¯ë§ÙYØ4T”YY‚­ÛÓ# kùûäNfÇIgÇè°İâ3ÁùÇÆ‘ãäy5¥¬éÔ†wåóŒ6Á«¼ı]:[b£†µùØ2£ÆŞ»)ïvk
+<İÇvô¼9ŒÔO8OÅ™T¨"RzÑÛ`Š]d.kE†”7£ù|–Ô··±Tà`p…nîj4EÖö×ôöÍK$ÔLÏY‚“C®ÊŒoº$ey–Nfùöi<¾[¤“l´NOy‡çØr–w»™è¯õµ=ù¯ø@
+çÅ¦R Êİ'G)ëS]YÒş°‘àëaB¢T• qX‘³øR1&N)9b)Ë\›äÊdâƒ“>æcéæï¶\´²÷Ùbˆo„µBğÃÜF–Os…Óev÷ºÄ&ån “+âĞøFœóºÓvè¬ÁyMóÌ¦¾ÚÜ¬JHgü©9¾Ôµ©Ï¿c»\{ÜÚ=8dÚ–œ´VºfèÏXm3åò[i³iÌä:ñ’ÄJZá&š)|şA‡hßê8|ÁwÚ‡&qTêP|óÖ‘ìšğ²B:ÈÎÖHw]±¿2K'ŠğøqtUX;o-kñLWT|Y¨Ç³¶dŠ(qÉë¶Ã&3iä™] 2&OøÊê’¢	^"=‹4Ø—z‚$Ñ<ÌRù7S®&;e—çÚi&"×èàO@mÜm‘I6TãÕù4høÔÏ4-Øm‡r%·2o7
+†è²`\·¿
+Ÿ b>±¤ÃMŒîùVÕÅ¿ôÆÌ}©=¬ëpˆSÜL=Äs›æqº)İ£{ÑlÚAz-êê½È7åŸ/›˜S·¾a#<ú£.¿R–z'ï)ƒêÒQ¹ƒJñ0³‡œâµTÎ·À3åÍYÛSØ—<-Æxó×M2ü(Îè*X˜îób—ù¢t¹˜Í‚¸	ó-–nYñó¦·¥7bgV~ŠQÁ¢êŠb@4m’¡O›R,üÌ×vy|öú²Õéœu~á©ÒV.Ó½X\&hÄ)xÃôóåîLo°òÏ3¿W5U(;[­æÊûÏÂ<¹œ¿iw{gŸÖîœÿÕk5NØIëäU«óĞ¥æ7Ùp›'U}Éßiìó$¥aäu
+£ìò°uÔ¸8Ğ·‡İoÎzĞwA1Côß'ÕÅËy%£*¶g£hUvÖ0=àù•ZÿùŞÁî³ÁŞÎ÷5°£—œÃùËAÍ¿{¹_«=şõå³Z!uëtB§î‰Z˜XbuâÍŠEş%U±mæ43õv•¾&7nJÄı]¼ºIÁ¶üÊŞÒ°0Œ<£ ûå½Q>P‚…f`7yœD²]HÙ½%mĞx‚–v6CÛá¿Gá´HÅØ’¤:xçƒ´áSÈ$“*%:']@’¢ê)c__½«¼‰†”(Š`öV­V9XËi9ôEû5$i`Å7?7ÎÛ—H;¿°.^×4½>ŸŞma‰¿E?ÓDá6•íR¯Š•]t“ª#…4İå§*0 SAÅw*tÁÉ8Bå3÷Şÿ]Tw¤u—…ª˜SğBêŸaôÁîÅ\ó:µ/NùP.•ÕÕ<“wõ,ĞlTÃâQuj™Œi.Z³a¤É}Bš”"x[…
+w•òÄŸŞ¹Xbü%—˜İä+&~cB4©2¨×àê@§ùı“èuÁœêİ“çù×/—ñ_” >]‹–”ÓÔøeµ-w¯ßÁIëñcAcéÚ\zİ¡rGZìmZ·Ã\¿ê$S²cšrCÙ\%Ÿ¯¬â,ËyKN‰üÍÑ/?O•=R<IVø0x’¨Ó 'B¬I·~ÖdÕ÷ø4Üi“êàÇ+ë‘¦¥;—óHaŒ,ë±cŒ™¤‘ç6Dú]$šÔ)Òy~ü')ÕxÕè¶VêCHûäâ¸gV¼¯×è]Üõh8¦L‹dşÊ¼]ÌzpüÆ"Ê…ó¤R}éàL¯«§g‡­ËÖé÷üT¿øÂğ-áÓèBÏ‹ó¨ˆ Úé2ºO Ä›#¯±Ö³¸­¾á]O‘¼92—øğ«Œ|mGêÓ4©Dn•–Û½ÉŠ›Ö±Í¤©ôY¯YäˆÿÂ:‹éÔ¼A)3,PŞxkìExËÎU{Ş"î<½ac~WÑtJq¢áü&MVı*ÏOŠÉ¯ã7İŞûÂvÌ!VìÌ‹:ÆI¦À'ï¸ò%ğğV]sö¶ËÅ(¦³ÄÆ’µ²¤æÔU óòr›¼†¤¥	;&	(ì+
+Lr‚¿-ó¬âÒÜ£‡±/jÎî ÎàETŒÑ­ÓX‚?	<üNÜhô;›Œ¨b/»hö(•äoÂ~õ:å!3L´â[#\»Õ­å6k¦ã]T8ëÉÈ!—Ç¼‚ÇÚÔ:[¶É‚kİ_5NÇ?õÚÍ.p®î7¯ÎCvÒêuğÉCØ°dmáeµ—™µ`ô¬S=¥ûüT,Ù³˜Î¥F”ª ÔÄß:Z‹ŠËH¸yvqÚ+>)ÕëÈè®°h,Ş+‡ñiG³“p©ú}ƒâ9z‡ø&“m*ã·ê2DMy—™Ø×ÕŒ‚«™ùİª¸[BvÁxı™b²˜ĞÍ˜VU2„Ä0ï÷ò˜€ïL£iE†’F¾n(¿6¤¨Ÿe€RœBA¬qÜê6[ÅîÅI±ÙèöŠÖëÖç—ÖùqË/éÜ*ÃÏÿ³Vy^ESmÿw’§Ñe§'-À±R©zL½îG¬‚Ï«¯ÓA*á!ELMÀ¹!â×UûB]5-Ø½ÌÀàë*1½'{rO:x‚±v<'^'`Ç¨¦(ÔøAa-&pÉK |$XË(æM@-!õÒXvx÷«ì\Üˆˆy8:È{D8‰`¹õ]4N™şâbbákC†7.ØàO3˜ù0k?|Óê´3Xñ½Ê—é©æ±†¼·”²ö”nÚ	LQ=÷Á\x	³Pu$¡u¦úz  ‰9\Nä$Ò€ÂI¬RjZèÏL4DO5*u(½Ğ„P,pÈÈH
+òCÔ'úˆ^ 6rt5úK>8ƒãzÖFŠ=>^›äB_fçœ¦/ªìŞ 
+³Hº‹>]ƒª•K¨NÕ«Æ› İïe¢;^µjçl¸ºíœeU±, ªÜIŞÊùmôû¬—”×UË3†DS‚5¼¥<Æ Òp™*ˆâ\ÌÖ…·†Ş)
+ğRÕT]IÛz|1Ë—é9å-r§¦•@è^£,ŒõP* ìoMÕïÜ‰25ÜõíH-CÆ^¾â˜H;q­ÿ~g}‚×wÚP%«ÙD87§+u¯ôò”ƒPˆ_E]ÅÓ ‰zšŠt}C<Á”ÔØ8'ÇÁ˜ß=Œ×ÄS¶EvJC+X4°Dk*6^ğ†xäíóÅËµ‹Œ ­Zµ¶eÓ½§¬ƒ‚¹	³rù†ùú!ô#µS”sæs±i:'ŠéEH(¦å$Ëc±h÷¶Ş¥{‚éQqt¾|Ã-âˆƒT£¹xoæ¦Šrº¹}ŠLµ·3©ß„ö­ŸºOıkJ¿Ê4
+…~î”µúgCjƒ¤YyÙŞHor‹…0aµğ6Dç]Ò lBÊ¡.³X?nh™¥ø¦—‹ÃvŸ½ÖqCcrAk~­îhsY'bŒqDŠ©ç±]W„ó ·•èeßïº’»ohóK»ì¶_Ÿ¶O_³Çì{8yµ›ºéeÀÑD¿è Å‘Ü(l‹×cÊk•Ì„`oÇmÚÊp²]­S.\C?UÌ:›¿§Rõì-3,”?jø>ÏÛ›á\¥cåµÎ©!şÙbŠò¡ÌĞO?ï¢Yöe##N>k`a_¤±e~ä—X{7ÈİÊ
+Ëğ’6^Õñ:0aeÿÒ3«©œ5ëé“Ïx®ƒJ'“¿ñ<3û7APfP=¢¨½›¡·¿?s…®ıÏ\•6¡÷çÈ8	ÎòÒîô…:+ÌU=¬Ç£ »Ôañ°Õñw+)¯?ß-b"}§»ñÕ0`­Æ-q	èi°õX k÷e©W"§k5éşíÓ^EÜ¤şè"¾M@&cUBôß$äQ° —IDû*°¿°F{7~_aíbYCáÔ£èá8‰LùˆEÔ§ö¢:%|ğ¥Ä£…T\w*”eÏFŒev15–e`.f%[©ÇvÜ†•vœJ:v½)^İşš÷v“j½êÏ÷òŠşçpÈzŞù]§4Ë4­gäwE,¶nÍ›'“™ßòßµxrİıxIk‹i×sgÛgÙzİñlU;‘ïâx˜miË„zê{öıeÒÂ-/êÎ§Ùs’ó³L‹y4¡"Ò6Ã¥Œ1EVun0S“À@_EÌ¶ó¬‹WH½df0Dãüüò¢sŒ‹zƒ9&¿VåµÜ·õímş„ÔèhL…Òí›ôá3•lİC?|¨[#¹Ú‘Z­{Ju)rX±+^ŸŠu„\¬³Ÿ°rg:w‘C.Là=zxªŞ®Ÿ;Áãn4·»ı%lº•ò%Æïx16Rìğ¶Œwğâ½±Öèü`ÊoÉÅPŸÑ‡áãâ_Ü­@
+êN<Uï@mº¼-VVÙßÒÓÌév«Jw ËÙEımÚP‰úL%ó×)s(M‡<6Ke·%câvØŞqı†Ò	™æ8P1ìÇÆÎSÜoÊMü
+´Fµh€Ï<º/…F·ØÉ^<A_.–kè[p?b8Öçïãh>!\|ô¥^ƒ0¿/·†0teèMÂ1&‹vƒ«(`mPù{ŞÈ±L:Å5üû}û°±e–xÓ¤’àÜ^à­•w¡rıi­6{Oâ«Ø~k$D/ØÌóÑ:€…Çñç>ëlgöÁ9-ôÙŸ‚İàÙ°&ªàé˜&·³Kï«X£
+Ğ*†>zÃÁ&¿×†;_ìzØş}%y~ôGß‡Âÿ*8R|Õ÷°ÊŠøÿjí ôbë+ 		Dó
+ é
+­ cäj*ıh¼	t—}½ı0»±hı
+®„!G»rD¹ÿù_Ôš°ãó‡h{ŞáÕPâYM>I £¡Û§8nc©$3o@€®Àúv‚	h¢Ç—Û£]1ƒ™µù¼¯ìKÎèéşûÏú/ˆô+t¡2Æ×µ.˜¶VİÁAõ"R“ÿ&¿õ•NˆgİRò›/·g´'Û°)øáQŞThÙ@(•‘è|§šßÎS‚Ÿ€9q®/aŒhzõ•ÅÁ¾ÜOË4òì¾ãâNëq(Ô{F”OQÛTm‚œß›õæ)×îb¢
+Ui¸¨ş6!èg=ÅvSÜ¢FÄ¥A÷åh_níë.§‹4ñ›ÛDDºæÖsStm¬h¸3<>ÏÒõ3"k…ÈXoŒˆ‘ ±í‹uPå¹Á+wjµ?«ñ`)co–^Ê?e—#€‚İÅ_)¶şåÜ—+¸>µá#	Ù"Å§ÈGÄTöa&ÆP†~¹=÷7ÄÚ)K&Ñ4B©ÁûÑØ‡-9mŸã_íÖWNEà®+Åéo¢A|‚õ¥T”ûíaf¯6TwÜë…OHëñø}7¯•Óİÿâààéóe¤)w±Â1(Mc}LYpeæQÀ,CnÊm&R	3î,‘f%bBw¼©x{|#Ãƒq¬B™”ixøı»N…Joª
+IàyJdÉxâÌ\søÖ`Ìù:‹ É3‹§zlÃ—[Yİrk	«—êIšõÓà>&$‰£ş4š‹Ç=d{»†Êd‰‚,¦e¹¸bÆğ¦ß.ôÇÑàíjUowç‹2h4ÏËì)ª{»¥ŒDAÈç™^#¾’hË=Yˆú¹"¬3š‚Àdo=,Şu`ñ†äó}o¯ÿLgÍœ‚TŠú=%8ºà¬ÿï1^pAü}ë¸Œúı`ä‡ìdiÅŸ<Éoÿ`Û,]Ô¦TeâøâGT¡
+Io`{°f2|@/:N€@ªì`Š×rš•ÏPÒœãD’P‘¶‘BRìjÕÅ»¢	¦oåéÏ9éà–ÙNqK©å®#°xŸlÅ¬¡,ëešR™N^¥*y­Ğie§¡gÃë»'½sQº€ñPzL¥€éPå6’ğ²T©íu¹¢céšyX™™¶_Ÿ^J–Umá¡ü¦d÷¤ıZrä:´´«Sû³8¯Ş®Ó{kİƒËå«.¾•Ñ»è9›i³4>“G‚9·¯Ëç²Ÿñ¹(^§‹ĞExÈ ìx z¥°KLé˜EÑŸ>n/úãpÀ€¸(6…Nœ¶(¡X/Â€§‰¢LAìvˆÁ‘&d¥3¡som×ê”o¸l²e§uw­²R ±bô2"‘çºfó†ÓP3ÍäßÇšî¶Ô×İ;­5éU—›ø‰Åëï¡nì²éÛ9$ÄI`¤zØÚîß‹Ã+
+S¢gA‹x0¾O0¹)è6ª3Ğ5¬T·kY¹N[HLÏ€hVM»Ïÿ9}j¦N§A¾³àgSÅûE+³]x*£î1“ ëh	0Œé†[;»†´ƒÀ†ªö¬6‡-5j¡)¬ çÚœ| ';¯Ğ@$¢Z
+®(¸Z©ø–ñX#8¨ç,úoSa0s¾ iØçOâ|(–´$šj…ãeYÏRÎHGêÌIoÆ˜(†ä˜çè¼é[Š+¼	oJõL¹/ß\uu•×À°Èö@Ïb“rhnô‡A:Ü0ùD®cğ¬Sa§Öşlç“9Œ¹üîQˆš‰?3°û{ƒ„5Å˜´}âÃ¿{ïnv—ŒNò,YtCxàÄ|ï‹áŸÅü´.k3Ì®&+mÜŞuM¦˜\_qÓğË­İı-ÆÍü3ZE^Eï_nqcÃgÃp<~¹…çl<•Ç ^n	Ô“*²»êz„Kx³—[´Të1†ùÏm`	(¥xÄÖW_Î¢ñYíH‰O`´{Ê³/Ø>,ŞØ–¯ÀGXdfo²€dµ—&«ÚÓƒáşÓ,
+â©e,[_ØæY‡¬"Ú[ˆö\D$gBÄÿ‡ÃÅ7³yt{³^Î3¾Ñ7s…²DÙ:1Ç¶.–G«ç¶±SNÿ¥İsıÁòÓ™Ó›-#Ú‡ñâé?[ì
+ó2Š]ª+ xu¾ê(WÍ¥æ¸†cğ>šFïÇ¤`n$Î
+Ë¿×ñĞ{Ô‘«·aî–ØPİÖ¿¯»Ğ¤ÙÇaKİfÌáèa¸õ<¬Ñì8Î>üDNÅ†»Ÿ{ÑTâİ“0=r<[_É¬=
+¼?Hœë”g‘ß}±K]’wÇ€uœ“
+ëz) ™)ëòòà÷€’Ôø]PBC}ëâ³“óãvã´·şê¿­ùp…Âüq¼ºúÏuÌöå=4ô³â[ø]Ëº`9÷¾~×árÃ¦ÉCk¼¯C$º%É…¸Œá|xGÁ¸™»Öèãn[‰ÿ:Û§e¶óì ş³û\xn’ë{tÏª»*$›É`­·!ÆbK¡¥ÔVºfåîI,eÛ_­AÖaX:—"GêÜmkyØ'{ÜİîSNÜ“>èª0„vâ²¢¸„ÖSÚy×{ìMf/XcG@F!^ñ]J¡tÖêòƒæS?¢CTéÄ±Z¶ã%QõãÏÇIÄ}å<–ƒ®Ñ`oã İxOk{ÿvE+=9mÆ»†ÍUêÏ
+WÿÅŒtÌ³©
+Í\x8Aç@Ì˜Zi¬°·öÌĞáe}Ãaek‰¦°¥–=='
+Uæng÷)­jÚ?UŒ8n8Œ.ó¦±dÜàS#xã™	î²ˆññŞ˜%°€c@4L;7ó²ËVwñ‚_¼:n7/ÉÍşÑ< Ç!"SËL^¥! €O0ÿº´Ä¹}©Ä‹ùhe=ÕT®^ÓÏ0úIÂÏso8äô8§iùU-RªäL÷wRWºáÓõ3õ_XåeÜËx¢¸ú>^À×àˆ£sÅxCUpå*ò¬=ŒwõµZyÔi_º	/¯àî§¨lEQÛ& 2+S›¶ÄKn—åİ‹ş5±@®~uMaÛ%…@³É»+«]¯ïµÖb¤ni&¹š/÷®™/;¯p52(³ïº’)3I’™f¹ù’vÆd¦;y2“%é„€ãNØÔO:¹2¿y~e*ÓÒÙI*Ó•…éh•Ÿ™IÉt´ÎÉÎLçgºÆu¦jæ&k:zX‘·™Ÿ¹éêkE§;ÓèhŒÎœœÎÜ^rÒ5³	F«r=óbHŒ.–ÇŠä…°¬Í²VĞ	V×\qU¨‰zğĞ¡5bÜîâv~Ñûñm¼êú²Ø*ÿ‡8ŞLgE­ g¾¨ıGıÌ•my¡îI^w`º©
+wª×ô³¸Rà£ÒË#U¢§Ój¶ÚçªBO™·_·:^©GG–
+šet­’=Û$°ˆù:µ{d!ŞMK÷è;ÙE÷­á#ºI)HÙ«éSï§Ú÷Â§^îÙ·ÒëKßå§ö©F'Á|¥W{L¢Ô£Ìíïy¼g.pW5z¬+?i.óİwäõvì2ÒHãêŠx~sQjÒæC5ã{á‘ø¹AÁRÅ†`EmsoèzÓG©jUù?tæuíVõÇª.òCÔ„3oL¢÷oXûĞà™¡Ÿñœ.&6Ë7ø¼¼09õN‹ô¢ó’>9î«›¶¿êP¯J€§eüD+/-§d˜SGÈXağ~ş½¸÷¥İ£…rwJì/lç…£UÑĞéÊæò/s¸´¨Ê>JŠñœ'Gë·xì·×©Ä“š–ã|'@ŸaduÇ3öµ¼{8û]¼llÙ­¾Y?-¹ZÙ¼²y¢g“şeå\§­§¾›=šÏ±¿‚}ÿ¼ØAü¹ÙÜÙñó$ª›_Vî`†g×–fèú/ÃÚëÙG¤±jfüµã:KSZ®ÌĞêöjƒh³o‰Å3Ï•6æîÛ¨ùßm†F×àDé&.­TÂ×®_¦ ,.f^(*ÿÕì}·š­áÆï2E®¸‡%>4´A–Ş›k¥‡[QĞÎaÆ+ñi´‚ß	;p‡]Ÿ»nÆY—qÕÅQ7ç¦ÏI‹º9èî¹ç\Î5—sÌÀ-99¬à–«9¥‹K®äw\ÊÓóm6™Ã"×`&#Ü«²6Õ1¤é¼i4Åà^¹'tÖe„SíïX—Q ,·,£æÃ™ªŒñSeÌcVƒQmÆ¤–A=sÊ2¦¦´>CÊgFùŒh-&´~ÁBƒ»ì•SüDú]İ¬d)§É©ˆhféÒ¸O’¾°h}<;óë ­Ó«qeMüğÖ.Lû‚ç IöƒøQ:”@Ù®¸Ñy•éŠŒ±VZ40Ş¼¤æÌÙZ( Œå‹'pşü¼ûó/¦n—{ö_Ó‡¿ãş­1“ÕiÒ4!Cóåàºï¼Ö1DKA±‰æ®e^·zŸ4óh¤¥o*›fìSÒ)ZØÄ“ƒğ.ÿYÂœh½°-’ê%¡·×°®[nû~ãª¯ıq0ÒZÚt35VœúrN|VÓÍ|™ã¢æ:ÍRS7]|`ÌÅi’3£;¨¹aŸNëôéßëV÷+BÌæ Â-ë~vv®]ºo¡óÍ¹â·¤ş‚kË×a@W‹˜ –yÎ‘RïÔ][á80»´PêÏ¡Š¦Ç-æ½¨t½œ¤òXJM3ß­c€Æš¥íÏHOĞœ…­»áã3­"‹ÎRz²4ùê´óç<°ä¹¯ (­Û\«T½× ‹¡;à’r-('Çsé˜Iñ ó99hsçŠ½=uşl)¦‹WœÎ0¬Ó‚İ–/äŒ2‰c%¢Í~´OmÙhú-çNƒJú“Âùxé¸ú-7¸L53u¹ÚZ“óš=ôRstŠROÂÏ—Â½¬µf•…g…-gIÈÑR÷ò“YÆ^³‘êyq~Øèµ>¾öy¸˜ñ`¸ÔN"XäŠB8à³àm^T¨rêÍ’Q¤ôRG€(¦Û¾ìüN*êCà’h#§ÇL®—Ä×:¿	Åíxlqı´Ÿ–Ï†îsßëdõÉ5ëöpäóääS~còdúÌhÅ9³_OñîòŞ%²êz^˜˜ qXS7/Äñ	íÜt*Œİñ4¶ÜìÙ]‡á{X¡aİ©Õj £§£ÏkÆÕeiÃ'íÓ´Á~şAó(´~¢şxq±t¿™£êlÕÛ÷ÿd–]Åü{Yvë¤\vŞºÀ5çñÁ8<Øo™ç ë`½–RæÓª¼xw{°h²L/NiÅö Ù—Óê¬z?OÅL+˜ö ÍPë…4ù`Jÿ³{^jîM¿
+Ú×ìÍÏÍhvƒ–‘Ï?Ø/àÍ$™‡ØêöèËÛ½É·#§ç±†9¿µ,Ï¢Í…(cx®;©|st]…G}Ã´¦ü;j@‡çÇJù	” »‚¬”'kU:Ï?EıØÕòüw)»™±’ıŞÅc?:V¥3'%šğÄI¼¶M~¼]’?©pë~é“wÄ G6¡Â¢‡I&t™ÜÇÇrwº¿Gêƒmt·2îawÿ×O|‹°¼‡QzÙÁIÿÉ’6ó5-Éy=|ÊÃGçb]¬£ kîruj Ê;¯rO9Ì ÔòNÇíjJ©ıy	¿w~SÁu˜sƒ	rnd’Ö$‰â³T@KnJÁı¯ãå… 8Ş ³‘:q
+ x¬ 6£ã½“ü†—q²}¸ÌZ!Åx®½9îL^Si@Ç¶;Ï«»ö2•‚õ4—Ø6Z³ÛÍ±Î½N»ªÙ_t©ã1à#áâébbOÔá|q.0ô•£yÆAál&8Õö-„^²¯/[¦fê¬D½º¢õzZ2…©eŠU³ÕéñŒªÖ/v½æn£sÌşóÿ“¼U\ğ¨x©îW\TI÷dÎD¢/ÕMÖWKÚÌäv‹½óÒ×¢Šb‰Õ¿Ms'ô·©ØJ;ş¤ĞÅQ‚f(ÈÚ°6G
+&mŸ0ğgU‰LÙ ½‰pÒ®™mXñ¼Ñ>díSvtq|\Â#µB‘Ìh€ä†F&cÈ¿MÅÁŠßX”SÏÅÚ¤?n¡üãJšÁïX&ú(L0:M“ñÕ(í‚µ7¤´#ïZ¥M³9Q¸Î°¡Ê·äjÉ4ıãfÉ{ˆ•ú˜5’+RÚcµHº%ô_è¦Éƒ?Kú„Mjñü	îa”…DN"ÿî·0³ægÜ™[
+zäPÆ?üªœÚÉß1¹¶¦“ê-…ÂíÃ/ÛPæXñxé^[ªÎ®ï#ì§÷¿oô´ò*L·¾ßÕ1èÎK´kpf
+o
+†¹µ|‚;$×Ç?––²åiëénEÁ¸Ö€{p©^­ü)¾öÁaC@:´Ä¬Î
+Ö†şp¿€t†ò¹ô·+÷`×Ğå}î<}z°'ú|¾»_«Ğçz{“=é¬±+«¦sğ¬¶çóéô÷öjÏ×˜ÎÓtiõlÇ_‚lš.QwvwA¶H¯š8*/;5G1Ş§ª¯uÛhâ®ÈË8‚Â“ıª°á9PÃıŸáŞ_$V©¬ªº¦Z­E%7–—aˆk¢f£›„òU@ğÆ>qIk°¿ Ğr`ñ¨Ìiíê šàšú£KHÌbÒı‡)a+]!JR,BMµ§ÑWaéKù¸’úz«Nÿqğ'»X5¤®ú/róïÔ¸B¼Lx¨¥zr|í4áò¢ğÁ®şå—ıöÃñ‘÷×Eà¼è7}©¯p>ì¥¾ÙNó/õÕV)î¸Úü:ßŒK4ß9ôF"ËSÎ!¬l+-4êí›»¹‹Z'öñÇ÷uY—*§övN]*«¢Üv¬z©ÈPŠÿ^ÖÍKÌMƒw*Ş¯ûûÅûİµ¨lN _Ò%!9wZ¯[§­NÃ¬t×;û¶õ«ô,µ¦ÊÌıAÍw‰›0‰ùwŞ]AÌy9…w¥å©`‡"d)‘?2oP‚’G}ô:ÍŞE§qÌÏx5Ğ­öëoz¬Ù8n^7zgÖ8ooÜù£Tdœ¸½WÂc<JGÀéw¶å;÷„ãò£àÔˆÂY‘‰„Ë¼PU±²p8í®±pz#.Ï;gm5?fHœQ¥!»3ëlÌ=ÃâDXÂ=âËVo¤f:ÙMDÆæe‹?“éfÀ*­Ÿ€í¸ñéã¡S3Pq ¤š<t2”†AèzD—ÍÈ7ÂëÅCg¶ˆãY*d,êò›ı€«ÿÊH âb²; (Í|Ìa*ß“ëÎøeà‹1•tôo€6¼ãÄ#¦~À/§—@ Ké*ŸÀÀşê4zW4´„R5‡ƒ XyZJÒd©Næó8È-“ÓcL¡NÓrîFİüBÑKÓ9–®÷™ABb˜‚kïêÆgê€îAğ/@Ÿi²NÅ§±º«alÜÈPà6¶­n×*¸¢n|æ{•Š'}5Maz1VÙš^…Ó ˆŒÃNã¨Wp#[İú†¸Í"`]}Â7~ş%!ë™'é>³ˆZw<K·"®ó$Ğ%Fç'™Ö´[Û)= klvZ¨}Jîx!J{çrÆÅ? ÍïGå˜éïËAãà:DËç)UÚ˜³æ’²Ü0uPR_sÀšW€3§ÄH¸nğºêºAìò20/t>¨°W¦ì«ßİ§È|…î!Úİ'PëD©€OÉ»DîL.ï²rf~Oö•I<¹ã‰`{¾DŞÇıR=>åoj/8n¼:»è˜ÖÖéëöiş9<?kŸöºw1ˆ‚`ÓdÇ^?ZÄ=Šb{)‘%?Ô®‹Kï‹É¯ã7Š–¹¬g½Æ«ãk±Ó³kıØîöºlLƒ\š\Œ®(×muÚcvŞiŸ4:?±o[?™lë×E4§v—q0d½Ö=êşôâøØfË„—SÔúrßâ|~½—x¦¾å	«g‚·;å¿Õ_„ct5^’}1a°¡-¼ñä°uÔ¸8î±g+Òo–ŒÌEÓeÿ&ÿ%`&qt­_ÊJ1ŞVND(ÄnHÉL»æÈ8ß‡qãQàù—Á‰Q{§'°ùMİt§V­Ù˜ÑpÂaò›¤[Á‡á|É8™~˜PÈg~›ÌÔæŞû%#PŒµå^\&‹>…­Ñ½‚c[£…	«µ	P­ı¾ÔÚ- NÈd.§ÁºP]»ë+´É_®Ñ™n Í>uºôÁoKMì’×ZM‘D§õ}¥¶ã¦Š¸òÅKo—ük÷ìÔùš ¹…	ÅÌà«iãë—ãèÊè*£fˆ~@6%€ËœõÚ'­n¯qr®&~zöˆ×t„:¹N3ÕJ‰Ó7¡½ÄÓ~Ú½è´.¹D¼$)ƒrúëZ`’¶™Dq.~,%úQÚêÊßÙ6ß¹‡&Å%eFÂSç¿åör>¥¦1£”½<ûÂG³—°KE¤}vúiìåÙ­Sw
+­Ü¿{jÃkîáÃ™Õ]û­”hÇ^|³úqúŸÖ¬E»ObVÏbİ£ŒYıwaKëÜ¢jü’WøSú2^Pi ä&éx+Ó.„Í¦Í©`„ë0Ç0MóÎµNL\n™NÀ]Û<©=»ÄFMïn`¨¦	cİ"{‰ø„Z7£ÉÔGÌöz%F{yB8¢‚èÂ~HÅ‹k®kêËKuá³yÔîéŸqz…Ğ¨Ûº.æì6±í´±·ğpÛnXw_7‘ia—Õµ~zNÑÊŒu~IqÕT	-©MŸs…½nÕvMıÈ¾şZEŒâM†víì$û;õsê†ëÛÎ¬Ÿø$Ò­¥öílŸú‘zH¯Ôkg[ıœÌ“øt„ÓKW^ì–æ/Î!%tS—mX—õÍ¸ºzÈüìì„ƒÖÕŞüÅÙTBÕÕØş-àÈÏOƒ,ÀÅó¼f®Õcg#:õ²[¤Ÿ»ç"'hÔsg3q@:ÄkÒm„ÏÍl›µ*Ák>$úg&ƒ)ˆƒŞ}-Yƒñ(ímS¦oøy)5’|œnF§¨c8DÃXÏÒ„·^´\nkvû(>·O©:	Ÿ[¾Ú´øxjú¦ZxF…Z¡ë·“C×Q{Ÿq;Ù:OF#s
+İ:Ûg•QtrœXY½ÆeÃLi4¹¹•—s‰–’6`*ŠÛ±–Q=\öK‡‘5eZ
+„Ër™Ò\æ·»+¦2ÜWix µáîŠÃ½T‡{+¤>ÜK¸·
+qg%âjÄ‰;«wV&ÖR'\ÖÖ%Âiq]®@dL°Ë”‡Œ=ÖTVºëõNıK‘~û£úëf£Oç¯ÿ”zğ×çê=–¿ş÷T}Òşú»š7ñ×;°àáë4~Êİ¦’bUßIu‘b•kÄÇÊı‹5º´G‡¸V	ÇÁ€¾*>ÓO?Ğì]5IiFY¥LGu9bºœ5Ó&ÊÏŒõÜ»N¢®‡ÈÌÜÒ²H„¥5
+'š•ôÎÚMŒX!ß]œõÿòëéQÙ:s–ÒÁÃĞĞ›Ï½Á(ğ·)S—Š†Ãìˆ‚É<œp$U£¦Kğ¸İªşmªñÚ5ß¿M_#n0.ûI.t}DC1€­•––ÑPæ9èö\ C…g%ñ‹ÊİÙµ£(¢İ6á\ıÄï–W¼Û}öPïDÒÿêŠwTJëÎÕîRÅ²öôŒeJxºX•ápVÉÛ Ú£¦]¶ì³Ê]¦ÈëVÕNõ¸úĞÕîdq]ç.SÜN-ˆŠbàÿÁäš˜É¨¢ÌaKéq¸uEQì0äz¤]ïÑÒbtrò;Áîó½şÇ+Š—;‹}s{{û;›•Èû!`@ß¢`ÙøÀ[' ¢Pù;Øà V-ÍÅ¾³¸/¬—-ˆg±´l5¼1,©2é ßAß?vVÔÂÛyöÑjáím^ïÙòZxyu+y‘ñîb“½ü™£®ğğö6ª€w°v½-K–(sÖ)Yt°dÖ®~gIÍ;—[©òK2Şo™µ˜ôôI–¢U»®„O[é÷®×µ^á³ÚË¥µªµËÕV;{*»óLÔ:»¿Ú¶ná©GX¡‹ûDxÄÕµHûA_±q0œsÉ*«Ñ<j}“áâ™úˆÅuÓÌÚTQ¸pH«)¼0š£Ì—ÁiU‰$Q)¥ñALá
+ ¨+q”ÒO…HNâÿ'îX{Ú†Å“&š¨mRè6¶²	UPª”!2”6NÉÚ†,i¨ØèßİÙNœ’¦Û´HÔç;Û÷òåâœw?6ß7¼"O)™¹Ì…ªãÚ=»©ïÙª¢×ËZIe5¾°øÌ,¤”G÷ğk=Ds¶ğç÷åUV#îL 4âKïtÃ¼UãK('†IúYge½~&ğàö¯Š‰:÷>_@#F;¿Ë]yšŠéµ[ı?”}ÚT)¯%eu)É­ÂĞ”=ËJO
+ªÃ"YÑ'€ˆÒM-Vİiî¢Cdù÷ÌüÀ{e–êczæÍ2#û…–²}öUK-]vÎU¾G”]zLHõóiˆ¡ßI ;;9ë0:ÉOU¼<X#£¯@3¯zx²ÕK¡ú>"œù3¯Èì‰/¢«o¿#wZÕõœd:ÇnªK’@˜;ævŒ+fÚ¬'ƒàA&ó…åÉ’?®Ÿ½È* æ]ÉùÇ×`:FÅ
+]¬ØHÚ,,?M—ÇF…À¦Ê»Tœ0½îÑFP	ááX.€ğqÙ˜›ác}N‚O„T¶Î ”&Wibc	É†e4|•(µ
+ª a“ôòƒ/Wt°ÇÁ¹úfP¨İ ‹/Î>¼#·šª(f")³˜ªd$ğ:¾~ŸŞHzºfêíØq¿‚‘`
+ h+ÄŸ3?æŸ³™Ô}ß“³L5z	®,5FÕ¦²°ìm‹ÜóÑE ¶ µN:ÎöF×Dàë^ö Í>Şès:S­­yld«İGçÍ¥P©Bİ×ø¡î×Ò—í­-m¤"ZæJÚp†>ãõ`5öwÂ1nœú¯vı[£şi`êƒêÀº­š{bİ5ÃªšoíÜé^IòåÍ´Šı0˜ìs³^›üÌºìh](Y+{ ãÄk_¥:%cû¢N=I'Ô]¡ÃFÎŸ˜Ñ`Ã'ˆL«‚§öÅ¬´iJ[-«¦¦İ—zÊ–$¥	DõFûıWÂÊ˜÷åšò—[ËyìlóY3åVN%—¹T3¨ı®ö™&b‰I 9%Cd0õ'œÙI¡»Ûj/°0wûQQû*o0°Fû™ãLJ[úº¬Wæê².õŒ¹â§š½£šßÓË~ü­n®ê'ÄÖ“..UâPU-yc‚5Z¸´¨€Ôf^‰½Ø¢èâKp‡†¢iæµWDây´µzx+³ãÅ<Ö†CW2F‰Y¬11k0òâøJFØhºMlTTÅbıÜ £r]ééğŠ €&h¾á":Ñj —…p'
+ ‚kŸÜuOÛçw½ÎåÅé×Îİu»w~1o2ue‘SG2†â,<’4%µ@Êr¹™… ©¹Şæa>	<¿÷û]û   ÿÿä½[o\É²&ö®_‘­İVUµŠÅ‹DµTİÚ:¥bQªİ¼5«(í>j™\¬Z$×Vİv­*Rlyğ‹1á1<†aÌÆÆ¼Ìóì2`ÎO˜ˆÈ[d®\u¡¨>½·5sv³ÖÊÌ•—ÈÈˆÈˆ/ğZJ‚[fƒ\L&£êjv{øeR*4oƒÄ0…‡±ÍIÂÛƒÈZ•¯?„H9B<»—šY‹X…½,:ámYDF¥°:w²ãşpb¥<Ïe‚‰Vû€ˆ`‰Í€ş?rà&ÖÃ•OS%„.> ‚¬ $W®PÈNÁ¢ìß.O™Ü•æîvÓ‰¸—Æ™7ÛëÄl¯íF»şZm®mœ:yCó@Çû~ıÉÌ›|rsRš±å©ğ{wŠ>‹öä…âŒtFÜâºÍÀWĞ-<|¡‹¦è³¨×CóİP›0¸	sr_c¨‰4ú*F¢&EO6vúña¹[÷v§ÛİoKœp·;ãîà”ù|’ç;İ½	qı=õNsœ£İP€Â‘YÂÕ¤_0€ÛãxEN=ÂËcz¬"³@“‰•iÈøí`º¹Äj%•‚ìWHŸÛ£ë­ä—X€h†·h0±Ø±‚áV…®²åaÄ5hŒò!Q¦°Öd8¯üI:Ò?ëš(H¼×µ_!?ô	ì:$‹Cv5¯ŸÃÜ7cÒÕdHP×ª°§Ä#kcàJø†LÂ0ÿÑÀøùcª0Ş ı–‰%«ë,èú|œtw’zĞI$×$¥ÿš‰©˜%ÒÜ2õéõ{±fˆíE œyYï
+¯à©¨­l‹â[uáõ¸²Ù/¡N@¯ÖWˆâF“İ¨¬Á;,p|úËxšŞeé] Z3; *ş¢ÂÑñµşdŠ\$ĞËt·Ÿß‚-Cl¬±Á~œ §§_M¿¡ÙM)ĞNÙ£ø%Z¿Shê#üÿÇk~AoLã;WàŒ·#=Cınª’/*ô^Ñö®CÃ3õT	ªùˆ®æTU%²U£Ëó×d¬Œ©mÉ*ş,œ‡	7wtÑ¼yèåŠ­ØãdRyêÏá¬ª²D¶¦œ Y5e	ª¹VÙô'`ÔK“‹—qÔ_‚ôY¥ĞØX[€:œ68…ll.B!NuN%7×ü1.7ºÓ¼q=^d\§·Ñiv,›k™±¤=Ğ•2c©ä°»‘m“J«¡È2Ù4“Eé<åò8÷LÑUL m”NV’ÁÊ¨a®>ºÜ9¬‹Ë0%\Ô¸·ÈnT%ó6ãì6•3k¼ñx%6ÕE^ˆ±™ª|™7Ë<‰ºÑ\d.lag:òWˆ•7ËtãEÖ¸ƒAÙúié‚,Îï¬‡µ5‰AÙVPöç©?Èñpx¶?ô¤œ`‡åP3/ÌÑ3ß™£äÑ­ø|^}]Nu.w¶ÜZf¾Ú‰D’OAr¥ëÏÖEOÄ!ÇXq°ÃQ<ğOš.F`ÕÃ‹ªË©˜RŠ½r€¾6¿	^Nñ2o¯ì«²yœÄ¶(.o†ˆaæú¨˜ç¦„+šÇs„@SÎÙ~„ò9Š}»Q2¯AbÂûè‰d=S6‹a×¬oåÀ.hEŠ!ák¥Ãær™Š­ö¢â–»ÄÍ,€ÀÛœ“?ÔÚ[&€\Ë#‹‡iJÒzŞòñæüÒúHÈJˆƒ3Pš@Sou@o©Ê”}Ğ‰AÒ/«_ÑÇâ·ğ#+‚9uéÏ—LŒŒQ±jƒº¥Î§’Pá§ƒP$…÷Ym¯Ö”jœFñ€ã«‹8Lt5<$òâ|ĞeßsÁùTÑvôT´³ô£ô)%íx¢>·DŸªõ×Ğ§;û#¨şÏÁğ£"è’Aï[Ë›³]EÛˆı„ó&DA¯hõ®Ó$=†cğ<ö@ÆŞ ‚%£Ï„Ë´¬)ıX[!ò‘Èş,Q>’xd™TÑq•lYĞÁ(9–éPĞQp§QÛ3õ¶k;­Æ—ÁF”ï¢ŞqEíöğoÿ¿Çuƒµ~ÛÜ{uÜ®ıĞØßŞn-„ğ¦MjqFqJåuÏMhè¹ÌğGCµÛãaß˜ÑbƒÅNf´4ß~&Ù3šFv(‘:t³¬5ßy´QÙÙíÏh$k°ñÛxµU6øãÎ°GòW İ …Å«û=Œr+z&–’XE_ï5¯­™mx¶–œ6^ÏêÖàÂk+›DŞ,„,vfVöŒ,úogÖw--ê[3«»æ^c”¸Õóõt¿"ÎĞ2ækê¡…DcCx£Ì°~øI2lÿÈëC"Ã–PV5
+Œd†ålW¦Íl% Dñv†L%šÙN¾õ¹-¯»˜˜FüüØ‰.éé›aÏ~¤èì¬oì>ùÆ’ü7¢hè÷!æSÌ]¬ùå7ğà	ıïSôXÜN>Æİâ†+ÖŞI -õÜ/»=Âoæ6aº)í·ƒBî'ˆË†š7ì÷ÉM¿‘ñÉÓ¾ÑgKşğ(Ã-ë½ôÚß(Êß&îÙp›†W|Ãvıü‰´æL¯}ùĞŸ­‡™Q>ôûè}š}{ŸFãÎÙ'3½ùF¬¯{ÔÄşßÁÓèíÇ=‚ƒè?‡uÖô ¼JU;Ë( wZ–§®™"±âlHw)ñrDïwj­'½"ÿ
+ôt£²)»‡É:éjƒnµí½ŠCİãşÕpüÁe œğ6põÑÔo•2ä§–@©¸ahI>~[rJr"™CWxY4KÛ”×AÓÌC1æïmL±|§½rì}ÃÛå:?Š‚Qm¾ÄKã ½¯&² "ëeY¯ø$¾Ä6|o÷QÕåËæÚA1L,À˜'3¯è1íÇXÈß/Ş%•~ƒE³»Ù½×ãeİMÎ/Ex)oçóû^ÌcÖ^{÷Pr€ªfæSf¿UÙßúm?J‡ƒñµg¹bÃÃN‰ÜkXƒï;{—Ëèe6€½ #*RÅ´e
+**Äbœ"Ùsíß¦C¥–ÿÊšü]s®•ğ|3?É fJ4İcÿôßö:>Ç@h[Ÿe!ä[¤Zm¡<€‰$|‡İ9_pMšâ…äuIp†MUšTQˆY¤’ú²œ¢ï_U|û(0– kˆòéN‚æ`Ÿ5¸Œ¯ÖÊŠºª¶VÑ-ZKã¬e}Á›“¸ş‡ïÔ,[ctÒ­ŠB¯W`UV8#>Ô`Kàen²´Î8Ip¹B+Á¤å½8’±/“á(&”¢4dTüİ´.V¯aLÍW¬e5’ë*;MÙğ*œYÒHişq©Œ³ü{:õ£ÁJ7º6­bˆ‚ˆÀã­è:eßÃ7‡V·Š¿ŠGİ¸oÎ	ªğŠ21÷D#O.G¤™{™¼IİÈ›Ô“º±c
+™.M­äÈšec<›€]<‘sŒ„un3©™SAš"Jt†m–ÊËÍãÓ™óhnAm+PíE'òQşDnäN$»Ôç¤öX)Ëû|˜;dIbLNåer:¾yú'1Nä5‘O—œÈ/6‘ó&òÑ¬mNB5È¢3Lˆ"OcEš“k9ugÉGr¼GŒ¦[=ÑÁùÔ<Ï&”ênt÷àáa&¶MXí!êÄI1«rØğxñéÜÌ›ÎÇ3¦Sİú>PÊJz1HáÁH!"«pÛèP
+LÅÍó¥6¶–m˜%ni:œ=cõhÚ^O=Ûê{ÏÜ“¼™Ûœ1sÊCÍìfµğGÚ›èEŠûÃñè•"|û.>ü¼Écº´ÌJÚ¾X–ºÜšRåÔ‘Ÿ:ø"vg;»rTOè·yúdÆ„¢ä1Àáö oSåŸ4‰`c[('y—ş^b*¹dÌlp³E‰ËñøÖŒq[	ŞĞ×óİ…'ğiŞ~;c•§†˜È==!O¶{#`É`Ú‡]4ÅòK.V.gÛùÑZvUnMuz<x«ÌIßmÇOã³¼i|:cQMCAÆMRbÚCáÛèHğô.¼¿ÄP¹Î0š,I†FïbDø80Xp	Îrl‡·0›Šì¨;úï{eèÅ8„tÇ.“GG
+Uõ¹•ç+ıhTÄ÷ÖKÀÄõ±$¾«èI„~ëAè»<çãŸcÕL¤c¥RÁºe)ÈWl_;‰»¶»Óñpğ-ÁO¡÷™kÃLz°/ªº^Ysª{İ+Óq,Bh‡­¹`íÍMw¸šØ­æ‡º¾æ—ñÜªk^	‡xşİZAø¹?Óí0:={¨>æ5dH‘õ€µO_æÍ3C yÎ;óĞ66I‚:ˆ:¢óXA»DfÌ4*·¤;RcÄ rqËqbö"·¤O0åÀ>Êû®r­3CaÍ™~9Õò—~Ç¤íßì­®fş´†Zuó­wªúL*kşXßXiµk¯è4¥ü Dm¯¶óS«ÙÂsúp¿ŞhµğéAó ±ƒùOkÍ{ÌUUyUÅR­h_—Â­s1…<°ü¤LÌÏÒFúÏ\ØgMø\NĞ±ú"átØ
+<1Òs“i§ßÇÃÏÁY¹‘°Ê„Ô2Iã™I‘°†ü©0g*>+i¬òYH›ìThºTè/?C”À»óxò*)‘İõg_¯1bk+Ï¾ï?	òŒ²:@¡uTGZ*ˆEípˆŠş>lÔš‡-ú±]ÛÙyY«ÿPø¢(“‚nd¸˜ ‹8vÅsñî½ßón:„—ÎNOÊ·íIÙëI‰ŸêÂ™„Êhš^Õèêúe>‚¼¼P¢û;zIîfëU±ƒÂ:šÁİÕ¾jé")Í”v>$²-E;ÂŸ<DÒ*x6•qL®üÅB}hUÌ®¡ÑM¯Y¶ªäU9î~o§ÿ‹KÄ&«{†RØÖ¶Øv¦Rïİ«sxX›N†õÚ–öÑÄçÏøó?n#ó%‰Ññ%°‰—Í]±;ìÆ=.ÒuPoÚ®£õe % Îà
+%à½è2IÉ>HsXÀÆ#¤†vã@<Úğz˜yf{ˆg…`†MB„Òá“?4ø£8óqhPŒn¼<ĞÏ,?bßbf?>'ÃÎÇÀã8Qh|ì ì*‹|öÑhZÿ%‘Iª?¦‹xŸŸŒ„:7q:#Š¯
+
+¼´z„·©Ğ‡z':‘Añ•dõRİ}ı	şR:B°6IJ74ÛmYnÎb!‘Üôö,‹=tÌ}C÷ºQÌ¨÷F¿şäôí¦TÁ oª¢B]º©(#>ŠÛ‚(E8•“Rv—m¨^Ù*(Øô0=e,!TTÈO×ÄüPxÌ:?•øiä ÌÈG¯ "Ôå±Åî4êËâNs¸?NàˆñîşÎZØ—qÔ‡–eHnrŠÑ_ÒŸ‘Ş0cµÉB‹›ûø&î)¥=ÿ*<\¦q[G‡ÃÁ?¹ˆ'IG\$ç+ğ	¾‹Â¨bñØTc³ÈC¨-¦‹uæî’:ª¹¼y¹xµöÃ«óaşíµ.Gçøgÿçe½öş÷l»Óúş±uÔküøæğñFïÃÃİg?n]Õ¶.Î_ÕŞşéğYtEUşpx´ÙøÃùùùóçóQ€ããÌ[–e«UI±içÚŠÕîï/"tu AŒËuØ´ßdˆøQEh+•§Ä¡4¸ü±óÁí.Ôp
+A%Û‚×û7 NÇ«²<õî] °“ˆE+Şñ¶•Z{CN¶*ú<n<XÆıú!|·™'e€«hãù•9ÚÜ®ÛŠXx7È„÷X6)-’XVÃ)Â,c|sÙÄÈ‚,p­dvz³*älŒU†Š…,£Åóúkë˜r^w©‘è#B7š»N‚ŒLË<b=Eƒ”PÈ”Yp@Àû}Îsºû¤jFZïRëäÓDni¯»ú%‰¤®ll#ÌİXŒíqÔÇvw¢ëátìë·Uñ*öcmÃN@xFàî™“ËkåM¯N÷‰by›]¦P&1ö®Ï‡x¥\‹Äå0é¢É’.ÌÅ½JLvœ‰~Zå£İÉ YSáÁ»5tQ¦²²¼ 3¡e~™’Qo…ºH@hi1&‰Ííó³ªpáäâÌîv¦RNÏÉˆ8ŠÆâ$"¢Åªt”)æT˜öÈ<êßF’jWà(İøcN§××ˆ°èO(@‘U¬F÷C†îIEF¿+Â*‚2İ‰Ï¦=ƒfRb§ºÇhp÷t8œî;V.Jê&
+^?Ûtrú€õà=Ûào¶ÁOv^¦â¢¾ı^^¤ûÈE ÑÁÑŒI~N	Ï=Â)	Œ
+¥â~"X¤˜˜Ö(Æ,”œ}â&q¸G³õKŒ´”
+~ºâ}Wöº_¢ÛÄH j¥aŞ¬Hw/ã3R¹wOqpâU@R# *?¦OË¾j²fbœ2
+u!”úIõÎÊ}†oq¿*îçÁ[ÜG¡á>aY`1‚²ÏL„!<wßDŞ/‹û¸´êÀøA|Ô È.4sËHCYlìz8Æ¿c„†²kxß`XPã
+»â•Å®x‚øXOaW<eØél‡Â Oâ>wÛ¾Oo¨Î|ÂïÓÍ <Óè8Ş x„ñq¼/ïî«ë`ùò?¢@[Ê×~>¢¶•ã¶ùm£ğQeC5¨oš-öì*öæ§üÀ}ÄÑßT1<€ğL<^szŠ1ù¼§7×TK§ùmlÎncsM·AÎø¬yÿƒ£ßÌ.ÓÃ3E£2@‚æ›ƒ•
+šWáòz%Ty`Ş¼o¸«³á­Î†í¯q-óeƒNl§ ¬lSd·GeÑŞÔÕ0w¸”MGf*aot¶úš^ıPÔô]œºäÒS¡}|eÛÖíVœoíhªõ$¹ş÷D ªIë>&õüÎîËÍW¶/Şâ|BÏ}ï9¹ìf9±ğîÁÜÅ°_¨õz,$ù\¿/¦ƒ"&apYW1#¹w_á¥–¨ol®>ZÃÛqÉò5
+Ü?%q¯+/ï¿¿jÁ¡4ÚïïíüD®`£„Œ´"ö†ˆ:N€áä¿
+ªÚ‡”%ôÉßRÈMä¹ö	ú‹‹/3îqZs¦Y*‚şô;P¤nÊêLcp¨,1ìşˆ‚%•>Ú}^¿&q]öÇÉÊ#Õğœş•G•oWÎ@P½pHa“yz–œã€ô÷w­.Ê±™ãºà ãİ”ØšQDWmiŠ+ê+”uJà´Émõ¿=99)¾¨b³¥«IÙ}/¿Ö%ŠxvÂ±ÙıˆÖ]ùÕ
+	PûgÅÂ§B (nnq¼oê*7n”kÌ²jeÕFæÁïMw|p4_Ä‚ïURz„¢îJ:=•–DóÑ²nú¡X/9]ã‹àYšÖH2ô£}­Ë‘©@“EH¦´;ÍRŞp^øò ¿yóß8æ©)‰4ë—öÓW1Ç¯»Í½¦„öƒş›&2(~KM³|{3CA.‹ş_Ê|mFİKLÚur/½§c9“z*P“¿4Jˆ¿x7\€şÊŸU>1Ê‡kûtãc´±oß†Xø/ôS€_ó§®ºpÉé\©©Üã›”–£_8wÄY{9Ë›	QÓÃn‚T~>'Æwá~e×aÎ"Ô.3æñn1G±åVÎò=CoDÿ?ıãÃ¨Ào„	j"M;Pœ;FË¶í“°>»n¼Ñ™:^ƒ¬¸èv9zº»$ú§c¥¼e°:ä®ñY³Ê“ı0N©DõQ‡Ì'/É? ,Zt_¯† ­;]İË¥›‰´"^" ¤ºõşúSv€,r gÎkÛá¹İÀk*Ê"ıÆ•¡ó ­œ°ÈÉ'C±ã¥î0œãÖ;áYÉijë%oÍ› ôÖ7Š„¼(L1ÒMßQ­è2¡Üšx±è£v¡]‚‰=Ÿ‹Ñ¿òõ'¼k¬†Wtß¨ç©’‚W”üt˜ƒøJó€çÕ$™e<Ñ—úb¾TA›,3½^£‡®Éƒ7áÙKïà=¾}¨¯‚ªî…•[ Ed8$üî0ÃQë•g¾İÄ€’õ5LP´æ6Hy~5œóh&²…fˆÄ$şù©>XMu¹[uäPŠ Z/;ÏGñX¯P{äˆ¹ªgÃDå {â?êìTù ‚/¶šNá—*R%v`CBs£ØığğlrK,¯¡Ø…îÆÚÆ±*è.×û¬ä¨Ü§=á!VŒ°…õ6kI?€‚»]ã.¿Úµ·øUçJŸ»Dz‡˜yãrQF´®eßg‰´Â:¼Q@U4L¦1ßB:¯Z•Ü6º§G°!_T[˜»|eÕù-ZHağóµg'9›wı[ Tˆ.Y5Ôéâ|†J
+´=)Ú…Ò»µ÷e¼K¼™ƒMG•t)ûŠö2/{¡‰WGh4×ë+xGÛ$cs1„ÁL’íT¸6öÍ¬›Ş“lïÊ	¥	z1Mqvø<Ç:ƒr!½öŞ/,äÒaıGˆôå@`Ôzæ0Ğd'zT×ˆİJÁò,óÒÆÚºÎ¼dÉÍÉ å3ê*cø¸H¡m¤÷ê‚´_ì3,dÍÜ„TÊ/íØhBKå£ÊÎŠ·Ñ‚ùªpİô)77Š
+!¹¾àçÏ_şªÑdv	¼Ñk¯ñ¾îI‡:BËwıét‰ÏÈU¿¬Su”ûiÜÆdMI	2§¿L^?ˆı7íşThío·eÖø­B©T¡dp/ı-ídj)ü£Ú$ò{vréÏ¢}±dõ¸ØH½Ø_çùË¼ZMº¿âR']r§1¨ø…
+¥oO+I×+	ßœö–'‹øÏ™Nºeø.A/éÃÁ°îø½ÈÏä¦µå¤œÉI¿åÎº–Ÿ1ÏÉŠxîeçÓ˜ìpÁ;"´/GgG[ˆ'èÑ˜(¾ö£R„’šÉ¡yœt)¤R+)j%ñ¯Ña5ßw5K«’©dˆÔĞ³k<fÚJ•¾V	ê/\ƒQåB*£Ô8å<5Ç*:ªTVï±¢#PL–Ûù˜ IEìñâ…' dÅZU)_Úõå]U!O‰Ázp3äcˆÒ®‡y-õö¤ĞÈJªg!ÕBË¾TÚ}*na§‚~ìtÇ2ewø3^xÀú<ğûjB.ZZ5‡ï\Vk‹†DÇ;ã»í_ßJøë±\”d„”d(Iãp·¶×Ø3ÏÂç}7FãÎ_“Åc8Hb
+(ÂrÆcàƒö)¦+AvRpHÉpV5'Vs±¼¸ğ#Æ¹‰q}R4}ê]Ù—(3œ‹úè`Á\Ø-‡w1ß½‹ìßÏ{$=»»¢ˆ¦=üRvS.µóä½·Õ<lÔÛâåasë|°ŠîN]~!GyëŒ§šòDÍÓµà_â›rs7¯L†+òœúUö(/)ûı™›Ø˜bÓ/$»³o¿õ«
+ğ¡ñR,£î.î¤0²1å<ÕıO7n5#¯,}»â›éÿ¬óv+CıNíåÊ×ŸtO¬ùÜâhS¾ŒÇñíõ*ı»¾³¦-.ÓR 8”\Qí¯x†UÙF}Ø	WÈµOĞ-º*NSÈbí_®ÄQ;­Ø0ÙµhWÚ‘q÷ÁÒ‰óu¡if™B›SuI±VhùêNáG1êtÊâ#í6øS<+2º,xÔ¸‰ƒœÑ¦•¨Ê‹ÍÚÆŒYÛÏZùõ7ÃOW‰†I¹Àóçe£,6ïz^¨Í¥çåÑŒyy”3/
+E£Ì !Ğõ^¡HÀé$.9ğsç³Â§Dıå‡Â	/{ŠgMàæ¬g^ê[õÀåçÁë³ªaYsîÔlÁ9÷l~ÁœË7[,«–ª®(ÿ¨ú°ßÇèk,´«=[<íUGt0ßúà¨Øı(%éó…Ë˜U7ÙÍR7¬‹‹_ŸxşÓCN{¹W79±Ø6¼ü æ$Æ[»ÂúZÅ¹lcÑä¶Ğ¦[F”³6¼÷İ$%÷[ÂûÈ$úÈj?«lp|$7L^Í¥İ	üu);2½©ç(Gœ[9S¦äÏFnUşº”#]/0E&L?Ó¦}YrjävÂ¼cåy8¦‚}ÉG%İ¼şF=t¸ÚšÆ‹¶6ÿúö©²Uœ¨;¬¤¹NtÒ#Š€'‚CrÍXÉ“
+*:aÊ^tYí¨Åı³@L¤g vÆ]7ĞÀªË¨)<ßgçU÷ îcÆrãF«±·e«öş1‰ûG‡_NÅÚßk¬ÔwšõDëuí°Q`8o/¢IZDëcMv’Á}‹¾„6…u?C‰ZVóù$:Ñ`÷°ÑN2²0j8Wú»z6K2oâ¯RyZÌ
+·¼ÒDë‡î-Ï1Ğ›f~<œ;ÃŞMuuU>¡›­ PQV_L¢ÓçjVÒÉ´›$İç_Jº7'ÎØÕBI‹İ²dL_¶lˆ€(s`‡ŞYo5ş÷ŒÁ09)Ÿó•ÊÌŠt×>y÷zÃòÏƒŸ¯ae1×0¦'°:^2‚ƒr6Á©ûáÜç¼Ñåø1İ*°Ëª2ÑŸ´x3$?9#IyÊ¬‘§B8˜k7¢ÿèçÓFjÊ\CgÈŸ¯ğĞ‘{Š…Rk¦¹€¯¢i’aaƒ¥°gNÎ›„¿}Š;P3_Ñ$š]Ë‹IŸ—	ûßw“Kå®{ñóûg h¬œEı¤Â[
+gÂJŠW&ß‰~ôqåJÆj=Y[}ü+QvÅüyJ—ÙU±>ú(RŠëù]¼?=[Ó¯VÆQ7Aqñ)¿ÿ{ÖèÂÅ†îl#Ü½¿ë>ûöÛµ'PGç‰ÿü¯ÿNp2n±ß¯^lxm~¿ƒb)¡[Äª8 ¥XvùûÕQ¦¤IÀ}‰óŠäm}nNÙ„‘¹\EAá{Êİ cKôˆ2œÿ>Lûß¯ª×•lw¦=÷<ê%¿×íé9 Ç4“³§¿_…š3ãûgêµwë½ôŸşÃ¼Ïò­¶Ô'ƒ{nŞ×ô^ëûŒt¿í$—ÜÜá6ÍvëûUi¿ÄÅ8>{~ŸíİûzK`@Ò9ùd®x»C¨ßWêÉ¶äúìB¹/‘y¯tÆIfÃAœÙ“O°(è£^_Æ1­«8ì@Œ#ò0»Œ…åÈHåß¯F|0ß¯?±x•”ĞšLYÑGÔ9V¦N—‰W9&sê‡-ÿêô¬ê£“İœXa€6&ˆÉ•lŞ›“|`¿:OÂ6½Ğ‡9jÓ0Ÿ¸f¡ÖØ>¹R’%¹Ğ\L&£„‰«DU`:@\À¨“n|tØD›!ŞâO¾±ç½w
+óó@ÁqUs$€ŸªJ5‡kü<˜uæªÃ'tê”n¬òrÅî/•rËü˜Y9ß†²¬F2z3@–ƒ|ÓÂú"9~ÜB™Íßó0Ì˜äùsÛ‰ó+öåy’wÖ0ß¡”» §ÖÎëHË©
+ñjîµ%IxÑ‹V³Õ«wt¸ƒJ›Š­Du
+»DÁUé^]:¡iıµ÷iÅkvŒIaÑXØKë“`«èÑM>îìËÀnToˆİænƒò/;Ku‡ Jluç (VucãÎV•õªê "c¤ˆ¸ØàlbØnî4kM2›\0§Ü•E¾èÂê}jcyMğîsó=Œ¡=ˆò3ĞâßÀîí¦ˆÖW(xÆô Æp££Î±Œy–„RwFï‰2á ±˜zÃ¨+3d."Ÿ€#h‡x°vùW¢ps¿T¹w¯ÙŞ’œ]S?”S:õëI ñ·(pFõŞŠî•´¬ëQu48^*ç•²È¿(˜|Y4ĞŒ1FC*´ãÙÍÔ“Ë„U »?ùÆ¹ôÃ¡•éÖFMZé—ÊÔ^îÿXF¼%º¢õ!†“±,^ö¦1áú”`°*L…0™p£­3/Ó lş±¹v+ø	ÈÑÃš|èñqFˆ®ĞÃ( õ‹_@‚àğÖ)4bP:X#øŒ—Te‰\r‰¹F$îØWóo>¶-ÂÇãÊ¦ƒğñ„!|lH„|`´9Çw(#bô€M¹¢S7`•¼ËR(o0’XTª¢Ñ8Xş¬¬ëRq†·‘í˜ÿ1ªqºDYÂÏ0e%Œ‚7^JÍŒeë÷"0€¼q.†dAE9„To4rëŠF£Àb,”›îIğ'¨¶“wŞÏ7_ö2Æ—39ÔÂ{9Û÷@û”Û˜iâ,4}$ï|P ,~»†‡1b
+AK32´ãø ŒHz%Zp&G&·S/>GGÕSigÄÓy¬â[.…Ÿ@jîĞå.!áúQå^óŒ‹‘Š€½	•òI ÓbŠF:WÆ Ğé;ö-’/aØp Ì6ÀÂ´íü¤tzÁ†p.ÇlŠ£Z[ÅÓjñ¥ã„à¥ hßQgO{‚5Ú‹/	‘¨‘4¼ÇpdS”_Õ¯®ÆÑHÎ´Šı5(Ø¬Ìp8²¨á;yÄáJúÔvÊÈBy‡å ç¾f#xñ:Lox^<yWkìÔöß4[Íı½ãÃÆïåüN¿>_ªF}•FQİÛ#d ŸBUËÇº‘øSóÑ§NJP.-ê¿,âÖ¦ct'ˆOƒİQ(ø–E‰DÒ¶Ç(ä¼€0 ’uùl¥'iá=3à@Š¬Aš 4Öº	áã²|6XŠK1ß/{ïÃ8))Å{.BNñ*İ8¿=$ÁV" ¢òS”ÜšˆˆDJñHæRoë½p®5
+­eåßdæìÆî_2h*’\Ñ22NKóBşC#lÒÜ>ß.Œ¥†£>™‹c+|]e>Œû;Áˆ¡>˜©ÑŸŸƒ	ã÷æÆT¦A3åŸÓoŠï~¾ùùıûÒ*œ'…¯×³£ÓšX£ÚÊ”>…³èƒûĞÒ"¢¡0ş‹ñ/û ä•†`MuïûtL†Ä	9F‚h»TIğ_Üˆ<?ZÁÓé¦T=)S‚03ÂWìxÉìıŠ^4»şó¦ïÿW?Æ¿=Ìİõıæ½FŒ¬5Åt]ÂD`I94“âyĞŞó#è46Q@TêšD½qàb(FÛÆ0;x8ŒÊn…j“%³„Ì|è˜ÅMÃÆJbp.¸×ÒmÌ$Ù %Óo¾ÊJ¶oƒLŸc³¥dß$t·QÈùÆ¥€HYˆZÃ7Ã€qÈ˜†²AÍ&ËXQ8¥¢+s.:FB¦!lGºñ§Ó1>?_øŸ,¿[;ü¡ÑÆ$Dk¿Ş¬íˆİÆV³&êû»»µ½-Qoìµ‡*+É²HADµ†è¨¸)‡Ã)è;ER@Ñ9¥x6ï(YM©üŠ‡k÷"†nO¢.Û“á(é°ß7†¤êğŸ°8çìggµ&(â_—ùwbéâDn<0è(Qz=ù6õ›½îqœ8,O‡Ãh67ì&7³ŸEÓŞD5ìh/…'ß®‹µ'Äæ:wA+<yúH<Z"?}â>~†ùåÅæ³Mçñã5±şì1Hîîch{j<yüH‹™¾ÇîU½B¢ğáşp{Ÿq‹éÈ)ÃaIu®$)ı·šÕJ=¡VıX³~Æ/ÂEÿ4LÅ‚X[´êõÓº¸?*ñ
+~^‡Ó`Ò«‡/*ò}§Ÿóì¯ÊŒ4x-;ò¶³SÆh“oMÊ+U±§Ï .c„„Î1æbGmãgx—Râr4™M—™ÑPğZiğ[Éy‚÷×» wÇ*#\«±Oz˜ãyÑªÔ*°Ãq!ú	„4‰2ì·r k¹œ5G³Ü?ÉÀ$éAŒ}ÌÑ‰¨ÙghÃ©Ü»W?l¶›uäsÀŞjíÚ€wZm$QFÎ«zJÙ:1º@Ûæ@@U°­UlCá³à‡İ<eÁ¶ad'òlÀ!`>²Gß
+¼BºŒzÆW¾í5àÄ‚—”‘’w¡lÍŸ>Ä¦Ï˜[9 ó ÔÛ5´È£ëª8UànŒ¹yš¶ŠmE¡ğ'î“ÂlQmÛíóúõ'Ú÷7N)¬©³İ¦%ú¢ÚÚXÎ|â€NÑ¯?™ƒo±×Ä"MG¯ª’º‹&—ecÛÃ¬e»©cd"LÉø#¿:ˆÊ5LvğŞã¦ƒÎÅ5eã@‹²îD¸JmãBzîG×Wã„(<tzSB½Gñï´£+4l!Í‚\õ’,Sñ$•Ÿ¸ˆÒ‹IDX¼÷'©On“ßÑ¾àˆ¿ÓÛÂ"W*ÕÓI„-ì»JV´¿ ÎÿJ{¸R“F‚|£¸JÌAû¦é1kYÔ‹X*ÛÅ)òu)Émx@$I«[dkZºïæÄ±.è
+U­†—¥=ä…7Æ¨¢M)ŠÕII ó¬¢P¬ªìÛßƒ¢ÕHô¤‘Á6æ$e6BP½I¾EÉ}òü¹tŞ»ßÑ¦œ*ºrf˜&99(‰ùßvÚUicC}Hš¤”›“LƒK¡åz÷–ÑGœ8ÚÜVnÅ½èz7%<şÚ3Í·øà!$a]I¬wÕÊ¬IMhØ 2­ú„§›jåa„ºxĞà´@¯­´H¯yF˜½eÖ˜—Aã•Óá)¡f²/ÆÃ+“4ÛZssÏ'×Ê_/iÿ›­Vğ­•ÜÊ‰»ÚŸ¤:}Qà¾Ÿz.c×ä,UèWÆ"©Ì¹ªúíÓÜÔ”Ó2í¡™^·åBH¨×mâY¶HÆŠÊgÔü¥i5ÊÁfòZÙ‰ªf ¥™ÅÉ(pÇ5…T¬+ç6Óµ¨¨O2kš5:Ó'6·ÿuYy×ìí·ëû{ÛÍWG”4+¤7ë² hÿĞø	½iğBŠ2QÎ#£>.“ñ’š‹Ëhœ Šì¹×hÍş±ËÎ|ŸûÎ¦œb~6tì|œLñ¬nÚ¤[tLÄ—º”³R±"‘'ˆHw•¯GWu¤ybó paP şIÒLFú•I¢ÌÉáå„½„õ‹¨¦†J™TîÂÙ˜)'È§MhQbš^Û$$¢	wq±ĞQ'T}Œ8ĞU
+œú½ÏÓPØZ½'ÿüÿóÿŠDŠX}¿ !ˆËádK»'°¸™è2îdõ
+PÚ\G¯•Tc-Ò?§É](İ0™ççÁş?ş‡ÿòÿAËÑÇô²ÊPúÅÿ+ñÏÿøoş'ó‰l	î_Uã©C—%	e»ÕŒèŒ” ä‹fOÿ¥äÙ>½uÖô0oıeş·ÿ¨vÉ%,r<ÑıƒÙ	Â57Dç*	_fÁ gÛ2³JºÚ¨\9İ¯/Ñ­ÙÓN{oÙ)ÿ÷¨,îáÆJÆh»%~:â=üù_şiÄÓq*¢óñ_şé/ÿ”†öÖÏhæÿãjÜZƒy•¢ª£ZQÉö¨CÌ“û#¤&SúÅº›{0wA»¼&ßM¼HÏd<`fŒ¨0û0üÿs¸‚¤ñÚµt’ªÙO«_zÁÍ¬ ,®1 "»²Œ÷ëb¨.U¾ø„I¦0cÛÓÔ‘R¬>Üb´ø©pÆí“İµÌ3û2¹Ü½^Š’–’§˜¼÷‚¤G’æ	y‘¶HrqñE@\ôeÓ œU™À¼´YJ
+5—’‡÷GÃ1È˜ÀtØeE2íğìLâ	3ÂÄ*hF¨°|¦,˜]¡¼¼3D1œ¯ES*‰ğ†¶¾c%bÖ £û„Øú?ü;¤¤,kO1y%L%2î‹y ÿòOH“RKÀã•uƒ¢$pÿ]Â± Å®å0gÇESÅ¦¦Q”ùÒË,]úãä4)•óO–ı½æ«:üı¿üˆwø®QxÆ·çÑ­\)v¤V²~ÄÒ~—tP;HIm‚ÿ4¦ã!‘$ÙÁE?úËÿ;!sğé´ŸEgÅX_îÿh#àÇÉŸ6³<ü20ÈéÍAŠRÜışl©ìuxÙ¢Î)“T–{¡0Ñ±†•)î•êtÙé$»·k@T16İŸ	(Le«1?<›?ºˆ>Œ˜„âÑ¸›VÙY]úÄ5LÚ)óÎ…,—¿3öÑßqu‡“=ªèüHu^Iõœ¿ö/IÙóœgG¡æ7Î†¬cÀt‡È[Mm,„®o5vñ;yÚ×w'«x?Jé>eXµ¤¾_ôz…Æîi Õ%6³3’Z~p7î&æÆH=„iÿu¥3}ˆé¬eÉ|7ºò]³ráÕC¬àƒıV»u›EŒÇ3£¼Ì¥õ¯ºTƒø
+'8 |”]!{¤oŒ=¬¼EQ_°h¡UùDĞT6áIïôw>oÃÉÜ ´j_hÑò·—‚	Í®½Xxíì¦jæ#i”ÅúšËİ=¥è¸$İ‹öŠ²r)¼U—Ù¥)#³C±ú3–]¿wèğ_~gÜ¿œN…Ï 
+];¼0šDèRì{%éüŞÜ*|jÆñIĞ§@uG—.ìì’Ç"tC3ôºªÏÓu‰0[WÆÂ£Y‘>Ÿ¬•~4*vpÎM0Œ‹1ü_ïÛÃè‡Ş©Dä±E?ƒÎøz„÷”/Dá]{ÿ‡ÆŞqc¯~øÓA»±u¬ü±ZÍ­Æûsn^ !BUÅËáI‹á•\›ñ¬ÂE~ÁGz»5Óö%ÏÀúëÚŞ^cçKƒh$'¢Àı‡AÍ°ğ •+Š«âm|zÊñ½Œ›×g¾â… dIw]sÈUÌCTK%‘o÷èu*…œÚ4ˆ65U2­ÛÂPUdÏQI„|+­«V…?†ÖŠ¦ gõ×Ëñ0êv@¯$OO”6òõ'İ1ÇÑh¤Çqsâe]½¹½ç|È¦Ôïó¦Ô•\%ôK‚+Ä±ırè[DïÎ§øvæ-Æc\£Î+¶ıÜå=f;ö<Ø]Ş–¤gÂÜÖ(ÖŠ7$ä,
+Ğb/Õñ¨ŠS³NC³NJS’½ğåz³ËäÕæp´Úş —ÒñYı"î|€~ÒqxkÊYU÷ØşÊT¬P5÷qfx½Şë¶ØÒğFù®ÊCUOÁÑáN¥à\xfÜÂ¡ÑZÙØ|²òª¾+ZòÖN±Fåy"€"èŠ,ê9KkZ›X"D«ÒãÍú¼“à…nŠªuİ’:"üÀ/¹f2°KFS3³™Ú(7†ÇÙjU»³şÆvcĞyñ·<ºŞvÌRqÔ›\hÛ[áu£¶Ó~ı7¬©4-¿a÷} vpp¸ÿÆµË¹§îœ)uF8S¥c $†b¹©QnÇ—|@äˆª1B•1åÔçn?Å]Øw˜Nld0"ìpÙp
+@L£†*İjtrA=¿™—.ò²Q;„¹£)•|ıŸ;òÚtwãÉÅ°ËÚ·¥£¹2“Ë¢¢Ó¤§r†„y ˆ¶Î^5%;è»€¯!Kæ¬ì7ësÅTàã˜|»Sé¶H›q|ĞÅE"Ÿ@ŸÒNİw_Æ1ÎcpÎd].gj±—?Ë•€y¡êdaÃL¯JÜQ
+/×Óè2îB ç	…S¢{í(XYo[5Çá±A'Uò„9cQ)óŞÎ+jŠº» îUœt'T=hX|` j(Ì»;è»¤¤22j8:¬æ¢l|„‹õJÈíÖ=N¬µ^:DY s1@TWØ–Y RDaye	gÁçÿ!÷8ğ²a#-Ja1q-ÿ(ä'xXÉ¥¡šå)øÉTÕ +—ÿnÅÄh„ËsY—³f;ÌN!)`¤¹g“¡9´Èn“?,û¼óœ¾Œşz™/b†J ôÜ\sıd‡,ºşšüg"jõvóM#Ó6;ÆrÒá?ÏıLë‰Ğ©€‹¤ã=VxW?jµ÷w÷Ú; *¶~Ú«›l÷ª~k›İ$³\AÑg;n†Ê¿°ğ1O¥gŸ+÷L3_äÒÔ³ušçhÂ°üæK	UzT›cöL­Ê8ğelGÄô™9 Ñ~¶«AèW1ÿ¶|}ë6[^ÖD L´Ë˜	TÕEm±üÜEUñ“kÛväUÊS|Á‡_, µğ½j	YÂ»ÚMğƒlã†;4·;™íÁGıJl ‰ß¬2«ûjÄ]ôÓ5lØ“s™ßĞ]ÀŒ?S¬[P¨#‘NunqÁ©õŒ×ÊKvÁ»¹¢êlqØ>Vôs·ÛŸ ó¸¥ıâœ#@ä,¾™sãe&®lG•æ$ sõ§ÏãÔ*ßåÔí8µfÛºÔ®eT§\À€K ô*~æ‹³hrk'djµÇ³.C€Ğ¬w›½*—–»HYfº{¾æì4,Š¡£ø‚i)j 7†c%üËšÇå÷tÉ\£§,ö§6ğE‡±äCQ
+Æ œÇYû 5¤Eû¤gÙÉ9ÇrY—ù3¸‹ÊÌxØëÅcu€ÕN‡ãIİ<uµd¡ 5Ú˜pÜ´åÏb‘v³m°aSè€úO p	âáq	ıõÌô)u2¤7bX&Eà~ÂLH¤¥­ zXÅÂ•Eá+Ò¢¸‚la2Ar¸Eª2&K†`%g×ÈC/e>Í¥Øq£ş4“kİÍdÿm$çLOÃæP>rV·r–0ŒpŒÒÔk`–Æ1<ùUş(V,ãÌDö-Àñ_Ğµ„1Êdô\ÀF›k·ÛËÎİ¤Ÿô¡Ûqb/(n¶€“ÉB‹q+~º	Àsod_íÊïÒ€ıí–œ HdZ{CrqQİÛxw6˜Ì4#ºéª'_Rû[±Öá?Aç<?Æ&)ÁbBß–2[¥¿åÚc—Z#VÍ[j+ñøÛ Ê÷xs¢! £îBÄRØX[û?ÀÜ©ƒİ,bá7E¾”E ÛQOHÅy'9‹;×ÀÅV†4…‰:wğªê@9Ù«Ay9BU—UÒG¢„È¡æw£ÈéãÊx:°‚8ûP‘é!¡ÃÅZ[¬¢Ü‚SèøÒqò‹tòFÄV,IGY>¸{cI8ö 5‡hYS2ï“|æÜ’9äÌËò7®ßKÛORv	ùPM,òŠ;YE59bU(ãKİœ¶¯­‹£®uV„¼ó“T£["O™KxäÒ<Pû4öÆ&Ÿ¹¶O™¸R¢Ì»¥İwÎ¼v“3ßáÈıÎR›'ÌÜc»Ñä¢BÀßEú³œ€Ußˆ' ê<ëëkKÛçûf6XVÇûLûË—–an%¿Ü>µß¬Ù­:óÈ™{Ü,&˜ÌJÎ$îY<göG*¸÷Q3›“§ıìNx/ºN“¤G{ùÚİDŞK[k‰½t;‘VKÚ%V=Ş½¸­N8¯‡Ûn„á$L“)êc‚¸3£æÛãäüœ–k	+Rß6·¤!Iåà1.¦ÓUu²š–‹
+|Îİ'~â²ıS›,Ì]O³¶ÆmÅOòšöP±ü™åZLæ9F°¿†•.$êäÊ5N-^°¯Ê‹Yö±…Vwà_pkÊË¬WºĞVÀ“®\³·Â-Vh¡2s<.t8ª£ÑwNcha›9?ûnqòI¡=sè%]Ÿrôàòûç”°ù¬™k>äé¬ó\Õté¹¼_Ò]4“2Æ1Æ
+şÆaãJøm†íŸaŠ•°6YFì²ñPcë!’ÑSŠ÷GÉW…®Ÿ%çS)¡xÍ/K4Àn+ÅuÁWÄÔø_ğ^}Iy\wøÎ®WWzŞIaSúi¦­rğêñÜÈÜæÊñôä6²ÚVc§ñ¥oòÔ‹¶¯ĞÅ!K´Z‡Û(»MÔÕ†“Qã “ˆÌ`:ÊFŸŞænï“ñ ++‹~Y[ïË@7×˜%jF‚¹¼[>FU_étŞõ(™oJŸiÌ/Ì¶o,›nÛ4ƒğP¦,–€>í)cËÇ±òtç9·azˆÎ›u	öë9èv¡i±‹éa$Ö©ÌÀ¼ñôZf
+ç'¤†½¤s={†,ÊàkIKè©sÃgBÂ…~Cş]™ß(èSMŒÈ³Xä‚Ê‚eÖp(zÀ;C£RjSgT~'TùÓx vâs½'s©wërsi[fs©šZh.mšŸb3¶ng–¿½›PÕ
+ô:{ıiùâ'g#É[Ïş¿Y{ûÉ
+Q8JãñJíÁLÅ
+4¬—á‰Ã°º±¶ñÄ3¹/p“ê”åØ!4öÒ¹X^«ºkÃ´÷¬²ãÇo/_ïïÿ íÍ½W·ºkÓz›{V¥Ü*¹m7]äuÖ½E$©T€Yâi¦~©0¡ï}®Ë²[6k`— n©¶Nì³ÿƒ›XÓŒ?5{;rmÑê:ã´Ş¹*r¨º;ß1Û“@½¬QÚ\ö….ú–XËå–Ò»àã‹µá®#_¡‚–ÙYÊÍØJúÓ¹HœiÑéítøìÅ“«áøC)g«|hx¥÷díocQ—•½~²„äm¾'ñ…İäË3‚8ù@Ü»ÏGhÕbOå¡ŒE¾GşÔA7j`hw„sQ†eù8aR>¡@ƒ¸®èƒäƒ£¶‰•v×Úõ×LLËË`ed=´3)1Ô¸}ˆ•ÄÖpKå8ãæ˜+²nœĞ¥<g\ŸYï×À•v(İ=ZBdOnïÙ:s/.àİš·R]ÔŒ-›0Ò´O R%¿S
+]Œüf˜:n‰Ş2k‰sÄR²–êSWW£ä|'Ÿ¿ÖÊşñe×šşYVÑ·™pS4·xä3ÊU£šË2Y‘ßHĞâËŸ”uTÎ²Öá89¸.ÛŞpw1|Ê·8‰_ÂV$</÷±c÷oD±>]—<Ÿ²4¶Š®JŸ®èŸS4fn©*ë=õ<³4â"bÍ:YDşò<²€•	CÑ÷qò)Ø’
+éŸB2VÒ–Ê&ŸÕö÷·kÛíû¾S–kä2€?áÀyü7+ÿİd—}±è^ÆÌ’Jnd¯ÏôXlïB1–¾s"ş4MËÌ`îlÏéà,ß{Àıw[G;ÍºwÂŞ¿[“3Mˆ¾â¼7Ã’lyæ"·š‹ßØ¤wq…g3Uí€&ó¥nğì,p}w‹¸İ]U]ò4m NEÔıÓ4$¸“½HgÌûü»ªƒéi/I/$ñL†¢MX,¦±«±N-DÒV’úãñbó<’Z^JŸÍÎt»·ƒiß=¾µñƒ`VR÷ ¡ŒÖ:ÿŠùŸÃ×ÃédzJ¢Ç•J›‡O’Yº—> ³¤ ‡ÉU2™Äc‰H~L©›Í.;kÔ!¶*è8á@ËpteêcH¿1R`@ı‚¥]¯ˆm´qÊµK°Jä¼õ¥ƒÚ§ªzˆ–)—ab¶İûÒMı—~ÔgæÉ>¶ó³Bµ`f6*¢=iB»O8PZ1m€ƒ£—;ÍÖk“´osÿ\ö“e$¶;™ÀŠe'ÍW²ñ(IĞj×ÚG-­j4[w†Ù¦øQElÁšŸ£œ³šåÒ.dœ¹•ãµ³qÊÇaœN{Ö·,&Xµnç`ëÄªîÚ‰Ši…›íÈş(JÎ2O¯¥¨şÆ	çó_dO2\”BF‚1±šÎ<,8xØµÁ »Ci"
+FRõ9Š×Ñ‘v=wf
+YnSÍğ§QıÒo•?wÑ ™Üì¶¢¡E2ÍÌ‘¤¤Áı]0oáNÔ#¿!ş¼0/§Ÿ>hG–ªcÍîìÊ™Ùµù‰
+şiĞòÃiX¢¸YnÇŞvª¨å[ïÓ Vò[g/³rº_d<ØÉ=?Ày¼p-c_ñË«Üãyõ¶ìÅxà™"ebë<—;»ôÖÖACótçÔáoÙ²HJŠy~ö’Q†’Òd™À¨ş4<MñĞ·æ«Ói†)	S[¤ô[µæNcáú;˜©³ÇAü±2‘9w%ô}ÆÉ{Xûç³Í·>cèPHşœTêª[¹([ «föÑ‰RIÊ›Ì¡ÂêÜœøÄäh‡E1)¦ªPkS±×x+Ô½7l¥Ú1
+ŸkåÃSò aœF£Ó½¢í%,ªñãÛ)"ú+Ğ&–İóéÓmà¯B9ñÍg¹ÚJ
+j`wÚ‹9ç!ùåît˜}5}ÚhŒÿPaáÓºÊbçË«-ìSóT>Œù8IÚR3½5[fp¸Æ
+`—à[Ö8àcL ¶*}î|ã…(´ê¯[GÄê\­ä;W¯ª£…›Å|ŠÆ£t²d Š'[:ep›½rós¡ßÆ´r;‹ò_”\\‚kyN9®	Ü¶¡Ÿc– iS×ïÌ«Q<ŒÍY^:ˆ•=·Š”÷åŒ]}1“z@mp{£$P#L2Ö¢®WyYÿ¹†zÛØ‚¼×âlÆıJ¾úbZ²¦¯Z®ºB¤¡N`g¿yEôÆC1Ïİ‡Á]…ÛÏ±f³7¹|BŒQ{ÊÅÀ±û5³SË4tQ0ÏÂ`¤ãúÎşµ1˜Ê3LN&:iY÷^ ûÅø*KÓDóL4û´V“¸¬¢Fâ\#ãYøœÇ·¾b«Æ§àöv«“™1;qŞÙÂ™Š<óÄ|n¢ø¢Óšá‚æèvHs·/†‹Ù‹ëÿ¤w«Óß˜á-›iDnÔl+zŸælaÇÑÊ0#§Î‹Â\Ê™Ã(9™Ã5Égæùrœà–È\Gwò¾\èô/zTüÂU¿¥§šÜØPa1‹„ë¦çÉÊæy€ôA¾†Ms öF^EÍtÙ sU£`GóöX2ìıà¬°:tŠä\Ë”²r4}…‰s™3(täø†¦P“¡N‰ v|½]KÙŸg€±…¬0ÖwL¸”êH)—•µ•±í„cKT
+$›:FŸ”„Õvr™¹ ›¯¯?…N>ÂLëD½XÏå›R0³$ÜıOë›Ü¹F°î£É"¢USC¬d¼7”Ø£îe4Ò÷¿Z{~¤“áøú^~@²Õ‰Õøf‡"Ï7ÍØ\9j@ŸBD²^Yã`„PØÌÛ1ê·–âòŒã üø)áWèÿYÇ w£±ÆÈG³5íÃl`¢ƒ¦”Å$áÑ—´¢Ö„®•­Á@yö×C#´±©nvùe¹ñøöƒ<R.–As…ÑjlƒiÿÃTpĞ,å$î\ÈT7Ï@×Å;ç…&x(5&4!õ‹$>c~´‚R¸Ì…\S.4&¶­eNÏŸ†Óöô¤?9¸,š¯Ê6OñÑN>´‡Ìpé¿ïÃ×çĞlNkp_hË™î¬DºŞr.Zº!©š×«bıéãÍ5çE³?‚æRiåŞxühÍ}t	<¦O.åÖÍËN/é|HÛC1Ò/L=5ï´å©9@ÇJ~a1«4†ÉKXÌİáĞÇ;³hŸÌkJ‡lŒ\cÙû§è£9[M—ÁWEzÇ>|d}cG¹8YÃ˜jëñ¦ßÖ“xp™ÄWĞŒ4¿-nqS­=ÊôlæJô’4ú§ù13İX¯‘ßÖúãµ²Jõ'cOÍhn“ÆÚ§üvÓ©èSœ3ÕÌ{yŒxD]—°SQ;hÎ f•({AÂÍ
+èESè&+œ]J>/|».Ö<‚Yå¯{ÑiÜCd›aƒ2j“øî¸–„n»cÒWØ‘¶«ÍJë¥i„³`²ğœWIZ#„“ìó­ø,"U_äóN3ÁÙxú(ô	ĞÕ“ÀlÈüÄ0¦ú0"{Û¹DÚÙŠÓysa
+ñ‹OËŒ­I¡ŒfåQxV‰õõM±ùl30+:[³Ñëë@¿“9Ó¢ËÈ3ú@%‚ş­ÍÆãàl<^ëÏ‹ÍµĞlèdÏÂf{~ ^îÿèZŞ†1FI ˆİÔM~{²™ÇB6€D<~˜:pÕn–?pûPOÈì wN(²?VBÙÛkİË$iû_dV‚rÉó…ÿÉò»vM¼<j5÷­–hîµ¯kíæş¢Èd$}ZQ©t‹OºgŠÌƒ.§}ó€­J=N–|UÅºaaÄ™J<¸¬à0kÇÍ-òÃ`¯¶kõÆKŒ<«ï4{mUBg:”M^Di‹’$²[•`ó­Fı°Ñ÷	YªäiGLE$Ğ˜/Çôàí‰‘oéUUš®èÏJ
+bY\„ãıqé¦R©¸Wàá‰g)dLTº`ª^Æ½!0~ô¶KMP‹j­1ƒ¨^lCã­Ër…Èéqz1¼:é–Õ+OºÇV.Éè“ó×1	Êü­ÀO£4é„_©LAÇæ†×ÒÛñøıYaÁÔ—ü^Ê‘ÎÍ”¿€Ì4šQåù²´,iŒLÏÔÇÒZpB'uæ…/%ãá€¼/£q"ój¥”4ÚoE é¦±ˆº]Á«£Öåo˜ÉP¤:0'(D¦Y£Ê=6/ØcY©q*AÿSÊß£'¥J:=•ñìÅÄ®´ê²SÌÙåò5'Z4ü](7è¡5	WA+ZsxÌÿ´bÕşÄğ5ºÔ2‘—ÔêÇÍ¯¢qt<*Ÿàe_˜¿ªò/çk0±$üø ‚;«ïİTWW¿ş„]¼É!6<ZN£Î‡“ïœ™¤İŠ®÷ælÖ9[uÖFÍİ¦lÒÅ¶èüú¾ò§a2(ÊÆò,' çq'eÛ}yuuUÑjg¥3ì¯^®?«¬!@_ox¾:Äû¢C’ÂqÒ}®¸ëÍ½>ÇÓqOãÚK› aŒ†ƒ˜bÈÌ
+–nĞô‡Ê•Á2HìP†ş‹ŸĞœÇüñ«ée…‘Q•¯¬¶ÍR,JSÍ6ÀO;£à÷ÔY;ãÌñçi<ÖŞ”nKÎHµ‚Ìb¿v„¨şµ—µú¡4ø1f=5|NO}ñd5B¸Fg=D§ÏU†Øôü˜Z¯ŒbÙÂ>—c±éŸoì0¿Â†‚Øt¬°pÇŞc›…‹¼££Ã4f Ï|ØÊËC	«}e>qW3$”c8•í©äMUÖŸkÙCà×>¾ÀA@Rzã£4“
+`›Ì½xÑ‚è5¢F7"Ò3ßé{>:ºñPb«2óÓ1Õ¼NªšÉÌe3’àÔ„'øŸ›“ï²Ï¢ÿèñ”¥U@¬,®ëK¾ëBŸ™ÒÁå°8•_ëˆ?÷ªaYœßN0û®x›÷1çfŒŞÇŠR$OuïİOhj,…üs6¾şœk²§,6ğuUyúä Ğ®¥cP³
+ÉÔİ¡XmQíÇ«zÊ^œ%q¯›>OºeÌØZÆPòsPêË|e&áhD5P6 „Ç¶z÷€·âM˜O­4„,µê‘•¥jÕõ}jÕhÀrÆã®Zß;4mÚ¬PŠHĞHkãqt]IRú¯÷Şq¥D.R´=„Yæ”v|‚²½©Œ¦é…ç¢¼$pJ¨™Vq;ğÁÊ@;¼8®ÖìªJ‰—÷cn†‚iÑ[*…:ı9(Qç‰áïYC,Úƒ¯[%ŸFéàÆ"3h5”©v"’s’2îäÌaz972^!‡NşùÃé©	ÃM·†øâ= ’âêÏéÃÕs˜ıcäw9M#±à|ø¯çÒÊí¨%C/-k–~õŞiËËQ|Ïÿ‹‡ğÕ@¡7Œö¥ZhÑ•FHÉy)Í¶^é{‹.fğ.Ì¼uÖÏõµmUjyKŒW8ºoÙº¸@…«èø4ùåxãÑ·O¾]_{òÈ½Hš¹VË®’·>³tT½lï®’¥-sÎ¬G’JWjd›§‘ÄÎÁËÛx }à³^ÒŒÿB#È~³+’ƒ³@r÷<¶Ÿª„s$±Äç²[à /~º=·¬¿×ôêa‘,Ô^&§©/Ÿ¼˜—å4èRk“äUäEi«À7Ö,×Õ¥õå¡ôï
+Ëû‘Ği5ê?ÖhÙ¹İ•téC­iU$+Kº.LdÖ¸l>)Z/*P¬ŒAÃ]‰Y¦Ö>j:Ì>ñ®p1=­àÓÂ{®
+O”$ë$ï™k)È¹€Î{è.hİ¼*¼wlR²1-3gn•tÙÜşIê4òL;¦UP#W
+Ñ1!Š2Í›†‹˜µ”‹ÚĞˆy%ad§§hÜ8¦(½`ıi5½á¹&/ÕÕ÷Âà&r·ºBX—á9­€¥u‹f€á¶”liKö£¸¼ózmÈ¢$éqãZ:õFóMc7“‡­ªÃ™Jì(3â‚ÛLáÖ×xİò­¬¬ˆ­ÆÑl‰½ı½•íæaãe­Õ€µƒqØxÓl¼m
+4ÄAß°0Ş>»µ½Ú«Æ.<Ã†îºƒ÷t¼×aŒ*ê~5¯´0>cg§§(îÅÃù9ãÖ;â¡xIˆàVr> ²kIÏ&Q‡¥MâRvÙÉ(1VßXéa»Ø<u…FÉÁşfÕóvÜØ­5wä6ÂZÑ5ÿ.ğâ%ı­ íô‹Î]Å'ã¤=M¯0Š*)'ñ×©ghaÓE¼ÊK«Rc%ç9ıñhôôBøÊ&Œ¦=MÚ‚Š?gVÆœ˜ŠˆïÌøì¡¬ÏŠÎ8¯EÇÂ.T æ¤™qpc¡
+Ï¤Óq¬	³në¶ñN,£`cãVwçé9t<¡}B…ãlË¡TbEîl±Ê½¤ŸLŠë®ÅŠ:¨c{`ó¹Àq·›b³mµ&ˆ×„2 ïé@Å;QÒ¯Y©êT+Ïå,²è"¢rı¾¢½$æuüÑRGç"JÅi'`:MGÀ£%:¾ÒC(­LL>šÇ3Æ‘¤»$i"'éÚGúfÁìT»€ıìu”^¸YT›¡“˜ªNŞD—(âıT‹ÎpŒ2ÛÅ“IÜM”c½C:ÌÆwg{M78]Àó¥c2)]‚ø±Ç˜QËî=Èz3{ÙLt˜xhzË¤¼	íCŒ÷µÄÉqÊQ½Ã’‚ùÃvku‘ªcj6±#Ğ=”Ö¤IS½¦ä÷ä/+Ó„\[¨ÚI6aWv(hÔ[üI'–Ôü)êX¿æ®U¤Ä™zAÒ‹®mdŠïh-§¬'¬¾«ó"Ş¥›ˆÅëÉd´?è]Ãà©-~5C#ô)‡f@gŠŠ,XÔ’°îÑ±ª¥­éÕÿB}Ä÷«’}¨:â÷ŞşVtÃ7R<†7İiÇÉÕ`Ğ-òƒ.ô¢<Ö%úXÃP—oÅ7!}ú·”Â0;+’²a“]Ñ49s©óÖ¸àŠ%;û¯š{ÜÕÅ[,ôÉà‘0('!qwdĞ@OJôsyã¶’¢`Æ„1òrQíó¨¯<”öœà/›·Årf§/faëÉ·{$E'n®¨}f‹rå~ş†š»¥>wsĞ\Ñ¶œ»¸ó=ó,ky¸M¼'›¼x¥YÁ$ëÃYQ™Dé-bä£“©99¤tî´Q¯€…Ô§cŒ ¤œ¢BE RrÌ³¤'9‰V	ôu¦k9 } /ÃH°Å†¸B@3•ukSu¦%)¢ĞŞ=ÅûUıü¾†V½#óKŞ³KfûH–hÈls…F©)ñªŒ²^ã`qÕdIfÈúJÙÑã»U‡ğÙLàËß¢nô·-¡cœùXÃj)XÇ€ÎŠ¦õ8TÃePŒUUû/–gR²(m Uãxäƒ¹m°µz»ù¦ÖV˜"­£ÖAco øso¿}ÜÜk¶›µæß;Öyë mZ÷Ï #Á8•³µ©óU¶RÆáú£$p°æWª;cæt“ ’\s€¹Kì¼314İ«"İ*†¿g+¸÷ìœĞëD®Çê¦Æ9It	*ğUÈ±¾y=æ–rö2*¿-sGjEõ)€4<–z™5¯ó+úï’¦pÃ^5¾P$îc´b¥„Nl{€15±Ç»µ*ˆoÕ
+plnÀÊ²ìU¼š¬Eë·ÏÁ'!S„[Xğ3X=,„™|ĞØ‡p$j´O(_ø.#	*¢Ë=÷{øà6j¹/ôğbÊsñT’}1»’-ˆ7‡3‰Ô"Çø»‚x(ÈÊ9T.Ğ/¯'1èâÌÃ¹p, ûsá+~Àâ.@ş4¦6Zÿ”Œ?&)ÅbÿFJò)U}Ìµfù—›¡†.7g¦Bp;MUÍ0ï·w*ü»BVÚgiA(ÏJvX#ÙL´Õ„=˜?ğü&ü77Qóõ[ĞKÈÂÔ –ÁYìÖK’ÊS1¡¨%1¥<#¸´HÁ=²ušG_b`qô;§ûŒÊÕd2"ß:]˜ÌÕ7„}]7Cüƒ»¡êehW¬˜O—ïÙ]g=Zl½2ä–gÃÁÓ— E@>Qzà‹ÊTâT¹Ò\°¤¹Ş)DNfóŒç Öj½İ?Ü‚'­Ïw¢CÓ‹àeˆkp[ˆ&Ï°íğë,`!*+ Uò¥¢[ŸnU~°ß•I“Lsşe$ÉÍŠhÏÏ{¾ø¨T–UÑ2—c7âä„>¹b‚0ëÒägÛş&$ĞuÍcŸäìÆSg½¦s¶şŒ»-ØFM­3?_é~½[{otéïœÅ¸İUMPâaßvì·3¥Š…/qòXüo„µ«ŒíıW¯vœ³Ëœ“ìÊMßÁFr•d<Ød(a´š˜`>‹ËkãÏ‚ß
+Yv‚ël8_±÷wÅÊå´~6~wn2Æãò_Õk{íF£*É“H´jb[ùú‰ı=q´·‹¹?[‚¸ı7âpÿ¨İh}	›ñT,ßä8U…Ô=¤f^0èc šƒıæ^û-„ÛûG{–‚,NyûB:ªPN[š+ãM(³,Êä“7ê—Æ<÷nÄU”Z®X1Nà£hr!­ô¬´~¹@Jì{–J-a¼êOƒ…®?¤ãë˜¤.œAj§ˆ^¬õ®¢ëTÀ¯Ñôy¿îf˜¯O^·wwôÙÒª\ œ~½	èJıHĞO•C95´2ü©Œ8•©fíó=øµ=ĞhÀ9No'\œ£½×µ½­Æ–İGv¶Ë™Ùc›LfM+,¥qÆë‡ÒIÚ*7LèH5r%FËÏhOêgx‡+AA0Ş½©Šb¦xİxE†ªĞ[J0œõê“ÿY†±]¥‚ ‡{µí‰L˜%mÿ­6S˜—¹à£·x<FTŸ”ß«;¼%³:ŞİÓ²Z! Àïî¼ eÄ3E42{·¼ê+ÊU%†–dàÂH¥Xçø^Ş“*dš>ùçüßÿ5
+Ïc xƒƒá±€Š{°ê°¬‚¢/I”UHw7¥“Pƒÿæl\UVÏq.ÀåëJôŠí¹	6öoÿOê¶r°Øúwÿıùÿ€KEaş·jízyîàI\ßßÛn¾::TGñn³ÕB(÷pÓÿ×ÿ*^Åèõ„`ˆµ1¢ì ^5v›{Ícä?4~2Ç}Cˆ¯%+-ÑÇö··wš{‘>áb,Î€CÓé^Ê›‡ÿ[´vÛ2s×f/MİNàûã#Ø?h¦Í¼@--0zøÙÚßiØS³¸+c®¹jìÔRå=ƒmÔóxRŠ·†õAAáM³İ»Í-àÊok‡
+ëÑÁmÎÿ{*Ä,DÊ_y~2%G#ü¤$ĞøÇoı„ìşrÄI—¶X¸„—Úm\9Ë'"‹ù-X~«>ñÉÚÔûIÕ«hïÂ>ö…Õ‹şØõıÙj¶j/A|½{(Ï
+» Â!¤ŸJjŒ¢GBMÒQ¤x­–õÉŒ£¨Ø¥’‡r£—	ÒœD¨æ³– º›«.º¬°PÁû€>´ñ4J:EİN‰£ëÿ<éÌzÑo' )Ûë–(Ú¬¬\Lú½‚nWÚÏ¾G.[EdXP~­Bÿ¿˜ã\¢a<ïB4!­êêªÆwø~¾†9e†§Sœ°x"lbÄ“¤‚ºs2›È'½äìZ¬ŠÚÛ–Ø‰ú§İ¨tÏdÕ°Õ#ı8¤Şhï4·â$ü{V¡u,á€¯ïÔv_nÕ·öêèY¼WÛmĞ2„•­§ê´k­÷÷ÛóÊëÆ[Ç­æ«=P½O GÑ@õfĞrÓ:g5Nò  ÿÿ Z®éw

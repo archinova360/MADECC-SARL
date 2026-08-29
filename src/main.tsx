@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { ToastProvider } from './components/Toast.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { initCsrfProtection } from './lib/csrf.ts';
 
 // Initialize global CSRF protection headers for all write requests
@@ -39,8 +40,10 @@ if (typeof window !== 'undefined') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

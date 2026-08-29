@@ -1010,7 +1010,8 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
       prerequisiteKnowledge: '',
       availableResources: '',
       studentPopulation: '',
-      customPrompt: ''
+      customPrompt: '',
+      depthMode: 'standard'
     });
 
     setActiveSlideIndex(0);

@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle, AlertCircle, X } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-export type ToastType = 'success' | 'error';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface Toast {
   id: string;
@@ -60,18 +60,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               className={`pointer-events-auto p-4 rounded-xl shadow-xl flex items-start gap-3 border ${
                 toast.type === 'success'
                   ? 'bg-slate-900 border-emerald-500/20 text-emerald-100'
-                  : 'bg-slate-900 border-red-500/20 text-red-100'
+                  : toast.type === 'error'
+                  ? 'bg-slate-900 border-red-500/20 text-red-100'
+                  : toast.type === 'warning'
+                  ? 'bg-slate-900 border-amber-500/20 text-amber-100'
+                  : 'bg-slate-900 border-blue-500/20 text-blue-100'
               }`}
             >
               {toast.type === 'success' ? (
                 <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              ) : (
+              ) : toast.type === 'error' ? (
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              ) : toast.type === 'warning' ? (
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              ) : (
+                <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
               )}
               
               <div className="flex-grow space-y-1">
                 <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {toast.type === 'success' ? 'Operation Success' : 'Operation Error'}
+                  {toast.type === 'success'
+                    ? 'Operation Success'
+                    : toast.type === 'error'
+                    ? 'Operation Error'
+                    : toast.type === 'warning'
+                    ? 'Attention'
+                    : 'Information'}
                 </span>
                 <p className="text-xs text-slate-300 font-sans leading-relaxed">{toast.message}</p>
               </div>

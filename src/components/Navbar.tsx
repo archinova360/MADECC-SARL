@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 // @ts-ignore
-import logoImg from '../assets/images/madecc_logo_1783370981722.jpg';
+import logoImg from '../assets/images/app_logo_1788030845756.jpg';
 import { 
   auth, 
   googleAuthProvider 
@@ -22,9 +22,14 @@ import {
   Moon,
   Mail,
   Lock,
-  Megaphone
+  Megaphone,
+  Building2,
+  Sparkles,
+  Shield
 } from 'lucide-react';
-import { User } from '../types.ts';
+import { User, Tenant } from '../types.ts';
+import { TenantSwitcher } from './TenantSwitcher.tsx';
+import { TenantService } from '../services/tenantService.ts';
 
 interface NavbarProps {
   currentTab: string;
@@ -32,6 +37,11 @@ interface NavbarProps {
   dbUser: User | null;
   setDbUser: (user: User | null) => void;
   loadingAuth: boolean;
+  currentTenant?: Tenant;
+  onTenantChange?: (tenant: Tenant) => void;
+  onOpenBilling?: () => void;
+  onOpenOnboarding?: () => void;
+  onOpenSuperAdmin?: () => void;
 }
 
 export default function Navbar({ 
@@ -39,7 +49,12 @@ export default function Navbar({
   setCurrentTab, 
   dbUser, 
   setDbUser, 
-  loadingAuth 
+  loadingAuth,
+  currentTenant = TenantService.getActiveTenant(),
+  onTenantChange = () => {},
+  onOpenBilling = () => {},
+  onOpenOnboarding = () => {},
+  onOpenSuperAdmin = () => {}
 }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
@@ -52,6 +67,7 @@ export default function Navbar({
   const [adminSecretKey, setAdminSecretKey] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
+
 
   const handleAdminSecretLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,44 +243,58 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo Branding */}
-          <div 
-            className="flex items-center gap-3 cursor-pointer" 
-            onClick={() => setCurrentTab('home')}
-            id="nav-logo"
-          >
-            <div className={`h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden border shadow-inner ${
-              theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800/80'
-            }`}>
-              <img 
-                src={logoImg} 
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== '/logo.png') {
-                    target.src = '/logo.png';
-                  }
-                }}
-                alt="MADECC Group Logo" 
-                className="h-full w-full object-contain"
-                referrerPolicy="no-referrer"
-              />
+          {/* Logo & Tenant Brand */}
+          <div className="flex items-center gap-4">
+            <div 
+              className="flex items-center gap-3 cursor-pointer" 
+              onClick={() => setCurrentTab('home')}
+              id="nav-logo"
+            >
+              <div className={`h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden border shadow-inner ${
+                theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800/80'
+              }`}>
+                <img 
+                  src={currentTenant.logoUrl || logoImg} 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/logo.png') {
+                      target.src = '/logo.png';
+                    }
+                  }}
+                  alt={`${currentTenant.name} Logo`} 
+                  className="h-full w-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div>
+                <span className={`font-sans font-extrabold text-xl tracking-tight block ${
+                  theme === 'light' ? 'text-slate-900' : 'text-white'
+                }`}>
+                  {currentTenant.name.toUpperCase()}
+                </span>
+                <span className={`text-[10px] font-mono tracking-widest block -mt-1 ${
+                  theme === 'light' ? 'text-slate-500' : 'text-slate-400'
+                }`}>
+                  {currentTenant.isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className={`font-sans font-extrabold text-xl tracking-tight block ${
-                theme === 'light' ? 'text-slate-900' : 'text-white'
-              }`}>
-                MADECC<span className="text-amber-500">GROUP</span>
-              </span>
-              <span className={`text-[10px] font-mono tracking-widest block -mt-1 ${
-                theme === 'light' ? 'text-slate-500' : 'text-slate-400'
-              }`}>
-                CONSTRUCTION & ENG
-              </span>
+
+            {/* Tenant Switcher Dropdown */}
+            <div className="hidden lg:block border-l border-slate-800 pl-3">
+              <TenantSwitcher 
+                currentTenant={currentTenant}
+                onTenantChange={onTenantChange}
+                onOpenBilling={onOpenBilling}
+                onOpenOnboarding={onOpenOnboarding}
+                onOpenSuperAdmin={onOpenSuperAdmin}
+                isSuperAdmin={true}
+              />
             </div>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4 lg:gap-6">
             <div className="flex items-center gap-1">
               {menuItems.map((item) => (
                 <button
@@ -273,7 +303,7 @@ export default function Navbar({
                     setCurrentTab(item.id);
                     setMenuOpen(false);
                   }}
-                  className={`px-4 py-2 rounded-md font-sans text-sm font-medium transition-colors ${
+                  className={`px-3 lg:px-4 py-2 rounded-md font-sans text-sm font-medium transition-colors ${
                     currentTab === item.id 
                       ? 'text-amber-400 bg-slate-800/60' 
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/40'
@@ -283,6 +313,20 @@ export default function Navbar({
                   {item.label}
                 </button>
               ))}
+
+              {/* Cloud SaaS Portal Showcase Button */}
+              <button
+                onClick={() => setCurrentTab('saas-cloud')}
+                className={`px-3 py-2 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border ${
+                  currentTab === 'saas-cloud'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'text-amber-400 hover:text-amber-300 border-amber-500/20 hover:bg-amber-500/10'
+                }`}
+                title="Explore MADECC Construction Cloud SaaS"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Cloud SaaS</span>
+              </button>
 
               {/* Admin or Reviewer Studio Button */}
               {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (

@@ -185,7 +185,7 @@ export default function SEOHandler({ currentTab, selectedProjectId }: SEOHandler
             '@id': `${origin}/#organization`,
             'name': 'MADECC Group',
             'url': origin,
-            'logo': `${origin}/images/logo.png`,
+            'logo': `${origin}/logo.png`,
             'description': 'Cameroon’s premier multi-disciplinary civil engineering and construction firm.',
             'sameAs': [
               'https://www.facebook.com/madeccgroup',

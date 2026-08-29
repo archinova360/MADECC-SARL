@@ -44,7 +44,7 @@ export interface LabourData {
   date: string;
   preparedBy: string;
   approvedBy?: string;
-  status: 'DRAFT' | 'PENDING' | 'FINAL' | 'APPROVED' | 'ARCHIVED';
+  status: 'DRAFT' | 'PENDING' | 'FINAL' | 'APPROVED' | 'ARCHIVED' | 'TRASH';
   currency: string;
   overheadPercent: number;
   contingencyPercent: number;

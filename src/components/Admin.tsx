@@ -1815,7 +1815,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   const getBadgeCount = (badgeKey?: string) => {
     if (!badgeKey) return 0;
     if (badgeKey === 'pendingAppointments') return appointments.filter(a => a.status === 'pending').length;
-    if (badgeKey === 'unreadInquiries') return contacts.filter(c => c.status === 'unread' || c.status === 'new').length;
+    if (badgeKey === 'unreadInquiries') return contacts.filter(c => c.status === 'new').length;
     if (badgeKey === 'pendingReviews') return reviews.filter(r => !r.approved).length;
     if (badgeKey === 'pendingQuotes') return dbAnalytics?.pendingConsultations || 0;
     return 0;
@@ -1882,9 +1882,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             title="Unread Messages & Inquiries"
           >
             <Bell className="w-4 h-4 text-slate-300" />
-            {contacts.filter(c => c.status === 'unread' || c.status === 'new').length > 0 && (
+            {contacts.filter(c => c.status === 'new').length > 0 && (
               <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                {contacts.filter(c => c.status === 'unread' || c.status === 'new').length}
+                {contacts.filter(c => c.status === 'new').length}
               </span>
             )}
           </button>
@@ -2153,7 +2153,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   { label: 'Consultations', value: appointments.filter(a => a.status === 'pending').length, icon: Calendar, color: 'text-emerald-400', tab: 'appointments' },
                   { label: 'Active Contracts', value: signedContracts.length, icon: Scale, color: 'text-purple-400', tab: 'legal-contracts' },
                   { label: 'Pending Reviews', value: reviews.filter(r => !r.approved).length, icon: Star, color: 'text-amber-400', tab: 'reviews' },
-                  { label: 'Client Inquiries', value: contacts.filter(c => c.status === 'unread' || c.status === 'new').length, icon: Mail, color: 'text-cyan-400', tab: 'contacts' },
+                  { label: 'Client Inquiries', value: contacts.filter(c => c.status === 'new').length, icon: Mail, color: 'text-cyan-400', tab: 'contacts' },
                   { label: 'Social Channels', value: 'OAuth Active', icon: Megaphone, color: 'text-emerald-400', tab: 'social-studio' },
                   { label: 'System Health', value: '98% Nominal', icon: ShieldCheck, color: 'text-emerald-400', tab: 'audit' }
                 ].map((m, idx) => {
@@ -2201,7 +2201,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                               <span className="text-[10px] bg-sky-500/10 text-sky-400 font-mono font-bold px-2 py-0.5 rounded border border-sky-500/20 uppercase">Consultation</span>
                               <span className="text-xs font-bold text-white">{appt.clientName}</span>
                             </div>
-                            <p className="text-xs text-slate-400">{appt.email} • {appt.date} ({appt.timeSlot})</p>
+                            <p className="text-xs text-slate-400">{appt.clientEmail} • {appt.appointmentDate}</p>
                           </div>
                           <div className="flex gap-2 shrink-0">
                             <button
@@ -2225,9 +2225,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] bg-amber-500/10 text-amber-400 font-mono font-bold px-2 py-0.5 rounded border border-amber-500/20 uppercase">Review</span>
-                              <span className="text-xs font-bold text-white">{rev.clientName} ({rev.rating}★)</span>
+                              <span className="text-xs font-bold text-white">{rev.authorName} ({rev.rating}★)</span>
                             </div>
-                            <p className="text-xs text-slate-400 italic">"{rev.comment}"</p>
+                            <p className="text-xs text-slate-400 italic">"{rev.text}"</p>
                           </div>
                           <button
                             onClick={() => setActiveAdminTab('reviews')}
@@ -2342,7 +2342,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                               {log.action}
                             </span>
                             <span className="text-[9px] text-slate-500 font-mono">
-                              {log.createdAt ? new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                              {log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
                             </span>
                           </div>
                           <p className="text-xs text-slate-300 font-sans line-clamp-2">{log.details}</p>
@@ -4917,7 +4917,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           ].sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime());
 
           const filteredHistoryItems = allHistoryItems.filter(item => {
-            const matchesType = docHistoryType === 'all' || item.type === docHistoryType;
+            const matchesType = docHistoryType === 'all' || 
+              (docHistoryType === 'contracts' && item.type === 'contract') || 
+              (docHistoryType === 'receipts' && item.type === 'receipt');
             const term = docHistorySearch.toLowerCase().trim();
             const matchesSearch = !term || 
               item.refNo.toLowerCase().includes(term) ||

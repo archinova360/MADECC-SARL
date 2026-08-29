@@ -19,7 +19,9 @@ import {
 export interface EngineeringHeaderMetadata {
   projectName?: string;
   projectCode?: string;
+  projectRef?: string;
   revisionNumber?: string;
+  revisionNo?: string;
   revision?: string;
   approvalStatus?: 'DRAFT' | 'REVIEWED' | 'APPROVED' | 'ISSUED' | string;
   companyLogo?: string;
@@ -34,7 +36,10 @@ export interface EngineeringHeaderMetadata {
   designCode?: string;
   aiConfidence?: number;
   date?: string;
+  dateStr?: string;
   documentTitle?: string;
+  title?: string;
+  subtitle?: string;
 }
 
 export interface EngineeringHeaderProps extends EngineeringHeaderMetadata {
@@ -46,6 +51,8 @@ export interface EngineeringHeaderProps extends EngineeringHeaderMetadata {
   compact?: boolean;
   className?: string;
   onStatusClick?: () => void;
+  onCycleApproval?: () => void;
+  onTriggerLiveSync?: () => Promise<void> | void;
 }
 
 export const EngineeringHeader: React.FC<EngineeringHeaderProps> = (props) => {
@@ -58,7 +65,7 @@ export const EngineeringHeader: React.FC<EngineeringHeaderProps> = (props) => {
   const projectCode = props.projectCode ?? meta.projectCode ?? 'STR-892104';
   const revisionNumber = props.revisionNumber ?? props.revision ?? meta.revisionNumber ?? meta.revision ?? 'REV-01';
   const approvalStatus = (props.approvalStatus ?? meta.approvalStatus ?? 'APPROVED').toUpperCase();
-  const companyLogo = props.companyLogo ?? meta.companyLogo;
+  const companyLogo = props.companyLogo ?? meta.companyLogo ?? '/logo.png';
   const companyName = props.companyName ?? meta.companyName ?? 'MADECC GROUP S.A.R.L.';
   const departmentName = props.departmentName ?? meta.departmentName ?? 'Civil & Structural Engineering Department';
   const clientName = props.clientName ?? meta.clientName ?? 'SOCIETE GENERALE CAMEROUN';
@@ -158,6 +165,7 @@ export const EngineeringHeader: React.FC<EngineeringHeaderProps> = (props) => {
                   src={companyLogo}
                   alt={companyName}
                   className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
                   onError={() => setLogoError(true)}
                 />
               </div>

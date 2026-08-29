@@ -296,11 +296,7 @@ export default function CmsPageBuilder() {
   // Helper to update hero config
   const updateHero = (field: keyof HeroSectionConfig, value: any) => {
     if (!pageData) return;
-    const currentHero = pageData.heroConfig || {
-      title: '',
-      subtitle: '',
-      showHero: true
-    };
+    const currentHero = pageData.heroConfig || createDefaultPageContent(selectedSlug).heroConfig;
     setPageData({
       ...pageData,
       heroConfig: {
@@ -313,7 +309,7 @@ export default function CmsPageBuilder() {
   // Helper to update video sub-settings
   const updateVideoSettings = (field: string, value: any) => {
     if (!pageData) return;
-    const currentHero = pageData.heroConfig || { title: '', subtitle: '' };
+    const currentHero = pageData.heroConfig || createDefaultPageContent(selectedSlug).heroConfig;
     const currentVideoSettings = currentHero.videoSettings || {
       autoplay: true,
       muted: true,
@@ -335,22 +331,7 @@ export default function CmsPageBuilder() {
     });
   };
 
-  const heroConfig = pageData.heroConfig || {
-    title: 'MADECC Group',
-    subtitle: '',
-    mediaType: 'video',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-construction-site-with-cranes-and-workers-40915-large.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
-    imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
-    videoSettings: {
-      autoplay: true,
-      muted: true,
-      loop: true,
-      playsInline: true,
-      disableOnMobile: false,
-      overlayOpacity: 75
-    }
-  };
+  const heroConfig: HeroSectionConfig = pageData.heroConfig || createDefaultPageContent(selectedSlug).heroConfig;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl text-slate-200" id="cms-page-builder">

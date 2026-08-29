@@ -2880,7 +2880,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-sm text-emerald-300">Interim Payment Certificate Ready</h3>
-                    <p className="text-xs text-emerald-400/80">Net Amount Payable to Contractor: {formatCurrency(currentBoq.grandTotal * 0.25, currentBoq.currency)}</p>
+                    <p className="text-xs text-emerald-400/80">Net Amount Payable to Contractor: {formatCurrency((Number(currentBoq.grandTotal) || 0) * 0.25, currentBoq.currency)}</p>
                   </div>
                   <button
                     onClick={() => { if (showToast) showToast('Generated IPC Valuation Certificate PDF', 'success'); }}

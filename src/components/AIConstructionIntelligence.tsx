@@ -1730,13 +1730,17 @@ export default function AIConstructionIntelligence({
                   projectId: `MADECC-PRJ-2026-${Math.floor(1000 + Math.random() * 9000)}`,
                   projectName: '',
                   client: '',
+                  contractor: 'MADECC GROUP S.A.R.L.',
+                  consultant: 'Ing. Marcel Mbida',
                   location: 'Douala, Cameroon',
-                  contractSum: 250000000,
+                  gpsCoordinates: '',
+                  buildingType: 'Commercial',
+                  numberOfFloors: 4,
                   currency: 'XAF',
+                  contractSum: '250000000',
                   startDate: new Date().toISOString().split('T')[0],
                   completionDate: '2027-02-28',
-                  engineerName: 'Ing. Marcel Mbida',
-                  contractorName: 'MADECC GROUP S.A.R.L.'
+                  projectStatus: 'Active'
                 });
                 setActiveTab('projects');
                 showToast('Initiating new project contract specification...', 'info');

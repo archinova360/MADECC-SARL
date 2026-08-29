@@ -50,7 +50,7 @@ export const AdminQuoteRequests: React.FC = () => {
   // Email Preview Modal
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
-  const [previewData, setPreviewData] = useState<{ adminSubject: string; adminHtml: string; clientSubject: string; clientHtml: string } | null>(null);
+  const [previewData, setPreviewData] = useState<{ adminSubject: string; adminHtml: string; clientSubject: string; clientHtml: string; referenceNumber?: string } | null>(null);
   const [previewTab, setPreviewTab] = useState<'admin' | 'client'>('admin');
 
   // Conversion Loading

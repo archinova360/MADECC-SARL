@@ -73,28 +73,37 @@ export default function FloatingVoiceAssistant() {
 
     // Load voices
     const loadVoices = () => {
-      const allVoices = window.speechSynthesis.getVoices();
-      // Filter for English voices or typical default ones
-      const englishVoices = allVoices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('fr'));
-      setVoices(englishVoices.length > 0 ? englishVoices : allVoices);
+      try {
+        if (!window.speechSynthesis) return;
+        const allVoices = window.speechSynthesis.getVoices() || [];
+        // Filter for English voices or typical default ones
+        const englishVoices = allVoices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('fr'));
+        setVoices(englishVoices.length > 0 ? englishVoices : allVoices);
 
-      // Attempt to pick a premium natural sounding English voice
-      const preferred = allVoices.find(v => 
-        v.name.includes('Google US English') || 
-        v.name.includes('Natural') || 
-        v.name.includes('Microsoft David') ||
-        v.lang === 'en-US'
-      );
-      if (preferred) {
-        setSelectedVoiceName(preferred.name);
-      } else if (allVoices.length > 0) {
-        setSelectedVoiceName(allVoices[0].name);
+        // Attempt to pick a premium natural sounding English voice
+        const preferred = allVoices.find(v => 
+          v.name.includes('Google US English') || 
+          v.name.includes('Natural') || 
+          v.name.includes('Microsoft David') ||
+          v.lang === 'en-US'
+        );
+        if (preferred) {
+          setSelectedVoiceName(preferred.name);
+        } else if (allVoices.length > 0) {
+          setSelectedVoiceName(allVoices[0].name);
+        }
+      } catch (err) {
+        console.warn('Non-fatal: SpeechSynthesis.getVoices restricted or unavailable:', err);
       }
     };
 
-    loadVoices();
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+    try {
+      loadVoices();
+      if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
+    } catch (err) {
+      console.warn('SpeechSynthesis init warning:', err);
     }
 
     // Load saved preferences from Neon database with local cache fallback
@@ -194,75 +203,93 @@ export default function FloatingVoiceAssistant() {
   };
 
   const speakScript = (index: number) => {
-    if (!isSynthesizingSupported) return;
+    if (!isSynthesizingSupported || typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    window.speechSynthesis.cancel();
-    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+    try {
+      window.speechSynthesis.cancel();
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
 
-    const text = NARRATION_SCRIPTS[index];
-    const utterance = new SpeechSynthesisUtterance(text);
-    utteranceRef.current = utterance;
+      const text = NARRATION_SCRIPTS[index];
+      const utterance = new SpeechSynthesisUtterance(text);
+      utteranceRef.current = utterance;
 
-    // Apply voice
-    if (selectedVoiceName) {
-      const voice = voices.find(v => v.name === selectedVoiceName);
-      if (voice) utterance.voice = voice;
-    }
-
-    utterance.volume = isMuted ? 0 : volume;
-    utterance.rate = rate;
-    utterance.pitch = 1.0;
-
-    utterance.onstart = () => {
-      setIsPlaying(true);
-      setIsPaused(false);
-    };
-
-    utterance.onend = () => {
-      // Intelligently loop: play next script randomly when complete
-      const nextIndex = (index + 1) % NARRATION_SCRIPTS.length;
-      setScriptIndex(nextIndex);
-      // Wait a brief 3 seconds pause between scripts
-      setTimeout(() => {
-        speakScript(nextIndex);
-      }, 3000);
-    };
-
-    utterance.onerror = (e) => {
-      console.warn('Speech synthesis utterance error:', e);
-      if (e.error !== 'interrupted') {
-        setIsPlaying(false);
-        setIsPaused(false);
+      // Apply voice
+      if (selectedVoiceName && voices.length > 0) {
+        const voice = voices.find(v => v.name === selectedVoiceName);
+        if (voice) utterance.voice = voice;
       }
-    };
 
-    window.speechSynthesis.speak(utterance);
-    
-    // Smooth volume fade-in at the start
-    utterance.volume = 0;
-    fadeVolume(isMuted ? 0 : volume, 500);
+      utterance.volume = isMuted ? 0 : volume;
+      utterance.rate = rate;
+      utterance.pitch = 1.0;
+
+      utterance.onstart = () => {
+        setIsPlaying(true);
+        setIsPaused(false);
+      };
+
+      utterance.onend = () => {
+        // Intelligently loop: play next script randomly when complete
+        const nextIndex = (index + 1) % NARRATION_SCRIPTS.length;
+        setScriptIndex(nextIndex);
+        // Wait a brief 3 seconds pause between scripts
+        setTimeout(() => {
+          speakScript(nextIndex);
+        }, 3000);
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('Speech synthesis utterance error:', e);
+        if (e.error !== 'interrupted') {
+          setIsPlaying(false);
+          setIsPaused(false);
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+      
+      // Smooth volume fade-in at the start
+      utterance.volume = 0;
+      fadeVolume(isMuted ? 0 : volume, 500);
+    } catch (err) {
+      console.warn('Speech synthesis speak error:', err);
+      setIsPlaying(false);
+      setIsPaused(false);
+    }
   };
 
   const playNarration = () => {
-    if (isPaused && window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-      setIsPaused(false);
-      setIsPlaying(true);
-    } else {
-      speakScript(scriptIndex);
+    try {
+      if (isPaused && window.speechSynthesis && window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+        setIsPlaying(true);
+      } else {
+        speakScript(scriptIndex);
+      }
+    } catch (err) {
+      console.warn('Speech play error:', err);
     }
   };
 
   const pauseNarration = () => {
     fadeVolume(0, 300, () => {
-      window.speechSynthesis.pause();
+      try {
+        if (window.speechSynthesis) window.speechSynthesis.pause();
+      } catch (err) {
+        console.warn('Speech pause error:', err);
+      }
       setIsPaused(true);
     });
   };
 
   const stopNarration = () => {
     fadeVolume(0, 200, () => {
-      window.speechSynthesis.cancel();
+      try {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      } catch (err) {
+        console.warn('Speech cancel error:', err);
+      }
       setIsPlaying(false);
       setIsPaused(false);
     });

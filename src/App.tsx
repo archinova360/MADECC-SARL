@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase.ts';
-import { User } from './types.ts';
+import { User, Tenant } from './types.ts';
 
 // Layout & Core Global Components
 import Navbar from './components/Navbar.tsx';
@@ -29,6 +29,14 @@ import DataDeletion from './components/DataDeletion.tsx';
 import FAQ from './components/FAQ.tsx';
 import { Tenders } from './components/Tenders.tsx';
 
+// SaaS Multi-Tenant Modules
+import { SuperAdmin } from './components/SuperAdmin.tsx';
+import { PublicSaaSMarketing } from './components/PublicSaaSMarketing.tsx';
+import { TenantBillingModal } from './components/TenantBillingModal.tsx';
+import { TenantThankYouModal } from './components/TenantThankYouModal.tsx';
+import { TenantOnboardingModal } from './components/TenantOnboardingModal.tsx';
+import { TenantService } from './services/tenantService.ts';
+
 import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';
 import { LanguageProvider } from './lib/LanguageContext.tsx';
 
@@ -41,7 +49,15 @@ function AppContent({
   setDbUser,
   loadingAuth,
   verificationToken,
-  setVerificationToken
+  setVerificationToken,
+  currentTenant,
+  setCurrentTenant,
+  isBillingOpen,
+  setIsBillingOpen,
+  isOnboardingOpen,
+  setIsOnboardingOpen,
+  thankYouModalState,
+  setThankYouModalState
 }: {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
@@ -52,6 +68,14 @@ function AppContent({
   loadingAuth: boolean;
   verificationToken: string;
   setVerificationToken: (t: string) => void;
+  currentTenant: Tenant;
+  setCurrentTenant: (t: Tenant) => void;
+  isBillingOpen: boolean;
+  setIsBillingOpen: (b: boolean) => void;
+  isOnboardingOpen: boolean;
+  setIsOnboardingOpen: (b: boolean) => void;
+  thankYouModalState: { isOpen: boolean; tenant: Tenant | null; planCode: string; confirmedBy?: string; transactionRef?: string };
+  setThankYouModalState: (s: any) => void;
 }) {
   const { theme } = useTheme();
   const [preselectedService, setPreselectedService] = useState<string>('');
@@ -62,6 +86,57 @@ function AppContent({
     }
     setCurrentTab(tab);
   };
+
+  const handleTenantSwitch = (tenant: Tenant) => {
+    TenantService.setActiveTenant(tenant);
+    setCurrentTenant(tenant);
+  };
+
+  // Special Full-Screen Views (Super Admin & SaaS Marketing Showcase)
+  if (currentTab === 'super-admin') {
+    return (
+      <SuperAdmin
+        onBackToApp={() => setCurrentTab('home')}
+        onImpersonateTenant={(t) => {
+          handleTenantSwitch(t);
+          setCurrentTab('admin');
+        }}
+        onTriggerThankYou={(t, planCode, txRef) => {
+          setThankYouModalState({
+            isOpen: true,
+            tenant: t,
+            planCode: planCode,
+            confirmedBy: 'Super Admin (Manual Direct Verification)',
+            transactionRef: txRef
+          });
+        }}
+      />
+    );
+  }
+
+  if (currentTab === 'saas-cloud') {
+    return (
+      <>
+        <PublicSaaSMarketing
+          onEnterFlagshipTenant={() => {
+            const flagship = TenantService.getTenantById(1) || currentTenant;
+            handleTenantSwitch(flagship);
+            setCurrentTab('home');
+          }}
+          onOpenOnboarding={() => setIsOnboardingOpen(true)}
+          onOpenSuperAdmin={() => setCurrentTab('super-admin')}
+        />
+        <TenantOnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+          onTenantCreated={(newTenant) => {
+            handleTenantSwitch(newTenant);
+            setCurrentTab('admin');
+          }}
+        />
+      </>
+    );
+  }
 
   const renderActiveScreen = () => {
     switch (currentTab) {
@@ -185,11 +260,16 @@ function AppContent({
         dbUser={dbUser} 
         setDbUser={setDbUser} 
         loadingAuth={loadingAuth}
+        currentTenant={currentTenant}
+        onTenantChange={handleTenantSwitch}
+        onOpenBilling={() => setIsBillingOpen(true)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onOpenSuperAdmin={() => setCurrentTab('super-admin')}
       />
 
       {/* Main Content View with transition wrapper */}
       <main className="flex-grow">
-        {loadingAuth ? (
+        {loadingAuth && currentTab === 'admin' ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
             <div className={`w-10 h-10 border-4 rounded-full animate-spin ${theme === 'light' ? 'border-slate-300 border-t-amber-500' : 'border-slate-800 border-t-amber-500'}`} />
             <span className={`text-xs font-mono uppercase tracking-widest ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>Verifying secure profile...</span>
@@ -213,14 +293,72 @@ function AppContent({
       {/* Enterprise AI Voice Assistant Narrator */}
       <FloatingVoiceAssistant />
 
+      {/* Multi-Tenant SaaS Modals */}
+      <TenantBillingModal
+        isOpen={isBillingOpen}
+        onClose={() => setIsBillingOpen(false)}
+        tenant={currentTenant}
+        onPaymentSubmitted={(details: any) => {
+          setIsBillingOpen(false);
+          // Show celebration / pending verification modal
+          setThankYouModalState({
+            isOpen: true,
+            tenant: currentTenant,
+            planCode: typeof details === 'string' ? details : (details?.planCode || 'ENTERPRISE'),
+            transactionRef: details?.transactionRef || details?.ref || 'TXN-DIRECT',
+            confirmedBy: 'Pending Super Admin Verification'
+          });
+        }}
+      />
+
+      <TenantOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onTenantCreated={(newTenant) => {
+          handleTenantSwitch(newTenant);
+          setCurrentTab('admin');
+        }}
+      />
+
+      {thankYouModalState.isOpen && thankYouModalState.tenant && (
+        <TenantThankYouModal
+          isOpen={thankYouModalState.isOpen}
+          onClose={() => setThankYouModalState({ isOpen: false, tenant: null, planCode: '' })}
+          tenant={thankYouModalState.tenant}
+          planCode={thankYouModalState.planCode}
+          confirmedBy={thankYouModalState.confirmedBy}
+          transactionRef={thankYouModalState.transactionRef}
+          onGoToDashboard={() => {
+            setThankYouModalState({ isOpen: false, tenant: null, planCode: '' });
+            setCurrentTab('admin');
+          }}
+        />
+      )}
     </div>
   );
 }
 
 export default function App() {
+  const [currentTenant, setCurrentTenant] = useState<Tenant>(() => TenantService.getActiveTenant());
+  const [isBillingOpen, setIsBillingOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [thankYouModalState, setThankYouModalState] = useState<{
+    isOpen: boolean;
+    tenant: Tenant | null;
+    planCode: string;
+    confirmedBy?: string;
+    transactionRef?: string;
+  }>({
+    isOpen: false,
+    tenant: null,
+    planCode: ''
+  });
+
   const [currentTab, setCurrentTab] = useState<string>(() => {
     const path = window.location.pathname.toLowerCase();
     const params = new URLSearchParams(window.location.search);
+    if (path.includes('super-admin') || params.get('tab') === 'super-admin') return 'super-admin';
+    if (path.includes('saas') || path.includes('cloud') || params.get('tab') === 'saas') return 'saas-cloud';
     if (path.includes('data-deletion') || path.includes('data_deletion') || params.get('tab') === 'data-deletion' || params.get('tracking')) return 'data-deletion';
     if (path.includes('services')) return 'services';
     if (path.includes('request-a-quote') || path.includes('request-quote')) return 'request-a-quote';
@@ -239,10 +377,16 @@ export default function App() {
     if (path.includes('booking')) return 'booking';
     return 'home';
   });
+
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [dbUser, setDbUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [verificationToken, setVerificationToken] = useState<string>('');
+
+  // Apply tenant branding on load and change
+  useEffect(() => {
+    TenantService.applyTenantBranding(currentTenant);
+  }, [currentTenant]);
 
   // Sync contract verification tokens from query parameters
   useEffect(() => {
@@ -312,7 +456,6 @@ export default function App() {
         })
         .catch(err => {
           console.error('Bypass login restore failed:', err);
-          // Only remove token if it was a definitive verification rejection, not a temporary network failure
           if (err.message === 'Verification failed' || err.message.includes('Unauthorized')) {
             sessionStorage.removeItem('admin_token');
           }
@@ -322,33 +465,47 @@ export default function App() {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoadingAuth(true);
-      if (firebaseUser) {
-        try {
-          const token = await firebaseUser.getIdToken();
-          (window as any).firebaseUserToken = token;
-
-          const response = await fetch('/api/auth/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.user) {
-              setDbUser(data.user);
-            }
-          }
-        } catch (error) {
-          console.error('Error synchronizing authenticated profile:', error);
-        }
-      } else {
-        setDbUser(null);
-        (window as any).firebaseUserToken = undefined;
-      }
+    // Fallback safety timer: ensure loadingAuth resolves within 1.5s even if Firebase is partitioned or slow in iframe
+    const fallbackTimer = setTimeout(() => {
       setLoadingAuth(false);
-    });
+    }, 1500);
 
-    return () => unsubscribe();
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          try {
+            const token = await firebaseUser.getIdToken();
+            (window as any).firebaseUserToken = token;
+
+            const response = await fetch('/api/auth/me', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.user) {
+                setDbUser(data.user);
+              }
+            }
+          } catch (error) {
+            console.error('Error synchronizing authenticated profile:', error);
+          }
+        } else {
+          setDbUser(null);
+          (window as any).firebaseUserToken = undefined;
+        }
+        setLoadingAuth(false);
+        clearTimeout(fallbackTimer);
+      });
+    } catch (err) {
+      console.warn('Firebase auth initialization warning:', err);
+      setLoadingAuth(false);
+    }
+
+    return () => {
+      clearTimeout(fallbackTimer);
+      unsubscribe();
+    };
   }, []);
 
   // Scroll to top of page whenever tab transitions occur & sync URL path
@@ -398,6 +555,14 @@ export default function App() {
           loadingAuth={loadingAuth}
           verificationToken={verificationToken}
           setVerificationToken={setVerificationToken}
+          currentTenant={currentTenant}
+          setCurrentTenant={setCurrentTenant}
+          isBillingOpen={isBillingOpen}
+          setIsBillingOpen={setIsBillingOpen}
+          isOnboardingOpen={isOnboardingOpen}
+          setIsOnboardingOpen={setIsOnboardingOpen}
+          thankYouModalState={thankYouModalState}
+          setThankYouModalState={setThankYouModalState}
         />
       </ThemeProvider>
     </LanguageProvider>

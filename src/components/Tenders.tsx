@@ -70,7 +70,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
   const [eoiEmail, setEoiEmail] = useState('');
   const [eoiPhone, setEoiPhone] = useState('');
   const [eoiStatement, setEoiStatement] = useState('');
-  const [eoiDocs, setEoiDocs] = useState<{ title: string; fileUrl: string }[]>([]);
+  const [eoiDocs, setEoiDocs] = useState<{ title: string; fileUrl: string; fileName?: string }[]>([]);
   const [uploadingEoi, setUploadingEoi] = useState(false);
   const [submittingEoi, setSubmittingEoi] = useState(false);
   const [eoiSuccess, setEoiSuccess] = useState<string | null>(null);

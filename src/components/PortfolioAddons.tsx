@@ -22,6 +22,7 @@ import {
   Scale
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import RotatingMovingText from './RotatingMovingText.tsx';
 
 // ==========================================
 // 1. BEFORE AND AFTER INTERACTIVE SLIDER
@@ -359,8 +360,18 @@ export function PortfolioHero() {
         <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full inline-block mb-4">
           Construction Execution Portfolio
         </span>
-        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-          Structural Projects in Cameroon
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          Structural Projects in Cameroon:{' '}
+          <RotatingMovingText 
+            words={[
+              'Commercial Towers',
+              'Luxury Duplexes',
+              'Highway Arteries',
+              'Hydraulic Drainage',
+              'Industrial Complexes'
+            ]}
+            highlightClassName="text-amber-400 decoration-amber-500/50 underline decoration-wavy decoration-2 underline-offset-8"
+          />
         </h1>
         <p className="text-slate-400 text-sm sm:text-base mt-4 leading-relaxed">
           Explore completed and active residential villas, apartment complexes, commercial facilities, and earthwork developments managed by MADECC Group across Cameroon.
@@ -368,18 +379,27 @@ export function PortfolioHero() {
 
         {/* Highlight Badges */}
         <div className="flex flex-wrap justify-center gap-3 mt-8">
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300"
+          >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>Turnkey Delivery</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
+          </motion.div>
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300"
+          >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>Milestone-Based Reporting</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
+          </motion.div>
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300"
+          >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>Fixed FCFA Contract Rates</span>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

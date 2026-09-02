@@ -228,13 +228,60 @@ export function PageTransition({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.32, ease: 'easeOut' }}
+      exit={{ opacity: 0, y: -16 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
       {children}
     </motion.div>
+  );
+}
+
+export function FloatElement({
+  children,
+  className = '',
+  offset = 8,
+  duration = 3.5,
+  ...props
+}: MotionProps & { offset?: number; duration?: number }) {
+  const shouldReduceMotion = useReducedMotion();
+
+  if (shouldReduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
+
+  return (
+    <motion.div
+      animate={{
+        y: [-offset, offset, -offset],
+      }}
+      transition={{
+        duration,
+        repeat: Infinity,
+        ease: 'easeInOut',
+      }}
+      className={className}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function PulseBeacon({
+  children,
+  className = '',
+}: {
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span className={`relative inline-flex items-center justify-center ${className}`}>
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-70" />
+      <span className="relative inline-flex rounded-full bg-amber-500" />
+      {children}
+    </span>
   );
 }

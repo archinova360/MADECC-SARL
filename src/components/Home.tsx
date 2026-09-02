@@ -36,9 +36,11 @@ import { HeroBannerSkeleton, ProjectListSkeleton } from './Skeleton.tsx';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import { TenantContentService } from '../services/tenantContentService.ts';
 import AnimatedCounter from './AnimatedCounter.tsx';
-import { FadeIn, FadeInDirection, ScaleIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import { FadeIn, FadeInDirection, ScaleIn, StaggerContainer, StaggerItem, InteractiveCard, FloatElement, PulseBeacon } from './MotionReveal.tsx';
 import { InteractiveQuickEstimator } from './InteractiveQuickEstimator.tsx';
 import { InteractiveBlueprintPreview } from './InteractiveBlueprintPreview.tsx';
+import RotatingMovingText from './RotatingMovingText.tsx';
+import { motion } from 'motion/react';
 
 interface HomeProps {
   setCurrentTab: (tab: string) => void;
@@ -313,6 +315,10 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           <div className="max-w-3xl text-white space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
                 <Building2 className="w-3.5 h-3.5" /> Construction & Civil Engineering — Cameroon
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md shadow-sm">
@@ -321,37 +327,53 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white drop-shadow-md">
-              MADECC Group — Building Cameroon’s Future
+              MADECC Group — Building Cameroon’s{' '}
+              <RotatingMovingText 
+                words={[
+                  'Future',
+                  'Modern Skylines',
+                  'Heavy Infrastructure',
+                  'Civil Landmarks',
+                  'Sustainable Tomorrow'
+                ]}
+                highlightClassName="text-amber-400 decoration-amber-500/60 decoration-wavy underline decoration-2 underline-offset-8"
+              />
             </h1>
 
             <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
-              Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.
+              Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon. Delivered with Eurocode 2 structural rigor and zero compromise.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-3">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentTab('request-a-quote')}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 cursor-pointer"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 flex items-center gap-2 cursor-pointer"
                 id="hero-cta-quote"
               >
                 Request a Free Quote <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentTab('budget-calculator')}
                 className="bg-slate-900/90 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/60 hover:text-amber-400 transition-all flex items-center gap-2 shadow-md cursor-pointer"
                 id="hero-cta-calculator"
               >
                 <Calculator className="w-4 h-4 text-amber-500" /> Calculate Budget (FCFA)
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentTab('schedule-consultation')}
                 className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                 id="hero-cta-consultation"
               >
                 Schedule Consultation →
-              </button>
+              </motion.button>
             </div>
 
             {/* Quick Trust Highlights with Interactive Modals */}
@@ -452,6 +474,44 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               </div>
             </StaggerItem>
           </StaggerContainer>
+        </div>
+
+        {/* Continuous Architectural & Engineering Moving Text Ribbon */}
+        <div className="mt-8 border-t border-slate-800/80 pt-3 overflow-hidden select-none">
+          <div className="flex overflow-x-hidden whitespace-nowrap group">
+            <div className="flex items-center gap-6 animate-marquee-reverse group-hover:[animation-play-state:paused] will-change-transform text-[11px] font-mono tracking-widest text-slate-400 uppercase">
+              {[
+                'STRUCTURAL REINFORCEMENT EUROCODE 2',
+                'GEOTECHNICAL SOIL SAMPLING & CBR TESTS',
+                'HIGHWAY CIVIL PAVING & ASPHALT SURFACING',
+                'TURNKEY RESIDENTIAL VILLAS & DUPLEXES',
+                'HYDRAULIC STORMWATER RETENTION & BASINS',
+                'PRE-STRESSED CONCRETE BEAMS & GIRDERS',
+                'TOWER CRANE LOGISTICS & STEEL FRAMING',
+                'MEP ELECTROMECHANICAL & SOLAR MICROGRIDS',
+                'BIM 3D ARCHITECTURAL MODELING',
+                'TOPOGRAPHIC TOTAL STATION SURVEYS',
+                '28-DAY CONCRETE CYLINDER CRUSH TESTING'
+              ].concat([
+                'STRUCTURAL REINFORCEMENT EUROCODE 2',
+                'GEOTECHNICAL SOIL SAMPLING & CBR TESTS',
+                'HIGHWAY CIVIL PAVING & ASPHALT SURFACING',
+                'TURNKEY RESIDENTIAL VILLAS & DUPLEXES',
+                'HYDRAULIC STORMWATER RETENTION & BASINS',
+                'PRE-STRESSED CONCRETE BEAMS & GIRDERS',
+                'TOWER CRANE LOGISTICS & STEEL FRAMING',
+                'MEP ELECTROMECHANICAL & SOLAR MICROGRIDS',
+                'BIM 3D ARCHITECTURAL MODELING',
+                'TOPOGRAPHIC TOTAL STATION SURVEYS',
+                '28-DAY CONCRETE CYLINDER CRUSH TESTING'
+              ]).map((phrase, idx) => (
+                <span key={idx} className="inline-flex items-center gap-3">
+                  <span className="text-amber-500 font-bold">•</span>
+                  <span className="hover:text-amber-300 transition-colors cursor-default">{phrase}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

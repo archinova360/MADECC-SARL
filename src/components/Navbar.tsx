@@ -42,6 +42,7 @@ import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { TenantService } from '../services/tenantService.ts';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface NavbarProps {
   currentTab: string;
@@ -409,23 +410,33 @@ export default function Navbar({
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-4 lg:gap-6">
             <div className="flex items-center gap-1">
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setCurrentTab(item.id);
-                    setMenuOpen(false);
-                  }}
-                  className={`px-3 lg:px-4 py-2 rounded-md font-sans text-sm font-medium transition-colors ${
-                    currentTab === item.id 
-                      ? 'text-amber-400 bg-slate-800/60' 
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/40'
-                  }`}
-                  id={`nav-link-${item.id}`}
-                >
-                  {item.label}
-                </button>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setCurrentTab(item.id);
+                      setMenuOpen(false);
+                    }}
+                    className={`relative px-3 lg:px-4 py-2 rounded-md font-sans text-sm font-medium transition-colors cursor-pointer select-none ${
+                      isActive 
+                        ? 'text-amber-400 font-bold' 
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    id={`nav-link-${item.id}`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="nav-active-indicator"
+                        className="absolute inset-0 bg-slate-800/80 rounded-md border border-amber-500/20"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{item.label}</span>
+                  </button>
+                );
+              })}
 
               {/* Cloud SaaS Portal Showcase Button */}
               <button
@@ -626,106 +637,114 @@ export default function Navbar({
       </div>
 
       {/* Mobile Navigation Panel */}
-      {menuOpen && (
-        <div className="md:hidden bg-slate-950 border-t border-slate-800 py-4 px-2 space-y-2 animate-in fade-in duration-100">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setCurrentTab(item.id);
-                setMenuOpen(false);
-              }}
-              className={`w-full text-left px-4 py-3 rounded-md font-sans text-base font-medium block ${
-                currentTab === item.id 
-                  ? 'text-amber-400 bg-slate-900 border-l-4 border-amber-500' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-
-          {/* Follow Us Button in Mobile Drawer */}
-          <button
-            onClick={() => {
-              setMenuOpen(false);
-              openFollowModal();
-            }}
-            className="w-full text-left px-4 py-3 rounded-md font-sans text-base font-bold flex items-center justify-between bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-            id="mobile-btn-follow-us"
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="md:hidden bg-slate-950 border-t border-slate-800 py-4 px-2 space-y-2 overflow-hidden"
           >
-            <div className="flex items-center gap-2.5">
-              <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
-              <span>Follow Us on Social</span>
-            </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
-              8 Networks
-            </span>
-          </button>
-
-          {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
-            <button
-              onClick={() => {
-                setCurrentTab('admin');
-                setMenuOpen(false);
-              }}
-              className={`w-full text-left px-4 py-3 rounded-md font-sans text-base font-medium flex items-center gap-2 ${
-                currentTab === 'admin' 
-                  ? 'text-amber-400 bg-slate-900 border-l-4 border-amber-500' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              {dbUser.role === 'social_media_reviewer' ? (
-                <>
-                  <Megaphone className="w-5 h-5 text-amber-500" />
-                  Social Media Studio
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-5 h-5 text-amber-500" />
-                  Admin Dashboard
-                </>
-              )}
-            </button>
-          )}
-
-          <div className="border-t border-slate-800 pt-4 px-4 flex flex-col gap-3">
-            {dbUser ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900">
-                    {dbUser.name[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <span className="block text-sm font-semibold">{dbUser.name}</span>
-                    <span className="block text-xs text-slate-400 truncate">{dbUser.email}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border border-red-500/20"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
-              </div>
-            ) : (
+            {menuItems.map((item) => (
               <button
+                key={item.id}
                 onClick={() => {
-                  setLoginError(null);
-                  setLoginModalOpen(true);
+                  setCurrentTab(item.id);
                   setMenuOpen(false);
                 }}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 shadow"
+                className={`w-full text-left px-4 py-3 rounded-md font-sans text-base font-medium block transition-colors ${
+                  currentTab === item.id 
+                    ? 'text-amber-400 bg-slate-900 border-l-4 border-amber-500' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                }`}
               >
-                <Key className="w-4 h-4" />
-                Sign In
+                {item.label}
+              </button>
+            ))}
+
+            {/* Follow Us Button in Mobile Drawer */}
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                openFollowModal();
+              }}
+              className="w-full text-left px-4 py-3 rounded-md font-sans text-base font-bold flex items-center justify-between bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+              id="mobile-btn-follow-us"
+            >
+              <div className="flex items-center gap-2.5">
+                <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
+                <span>Follow Us on Social</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-extrabold">
+                8 Networks
+              </span>
+            </button>
+
+            {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
+              <button
+                onClick={() => {
+                  setCurrentTab('admin');
+                  setMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-md font-sans text-base font-medium flex items-center gap-2 ${
+                  currentTab === 'admin' 
+                    ? 'text-amber-400 bg-slate-900 border-l-4 border-amber-500' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                {dbUser.role === 'social_media_reviewer' ? (
+                  <>
+                    <Megaphone className="w-5 h-5 text-amber-500" />
+                    Social Media Studio
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-5 h-5 text-amber-500" />
+                    Admin Dashboard
+                  </>
+                )}
               </button>
             )}
-          </div>
-        </div>
-      )}
+
+            <div className="border-t border-slate-800 pt-4 px-4 flex flex-col gap-3">
+              {dbUser ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900">
+                      {dbUser.name[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <span className="block text-sm font-semibold">{dbUser.name}</span>
+                      <span className="block text-xs text-slate-400 truncate">{dbUser.email}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border border-red-500/20"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setLoginError(null);
+                    setLoginModalOpen(true);
+                    setMenuOpen(false);
+                  }}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 shadow"
+                >
+                  <Key className="w-4 h-4" />
+                  Sign In
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sign In Dialog */}
       {loginModalOpen && (

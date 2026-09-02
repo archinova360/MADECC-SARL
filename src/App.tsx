@@ -11,6 +11,7 @@ import Footer from './components/Footer.tsx';
 import FloatingContactHub from './components/FloatingContactHub.tsx';
 import FloatingVoiceAssistant from './components/FloatingVoiceAssistant.tsx';
 import SEOHandler from './components/SEOHandler.tsx';
+import LiveTickerMarquee from './components/LiveTickerMarquee.tsx';
 
 // Tab Screens
 import Home from './components/Home.tsx';
@@ -295,6 +296,14 @@ function AppContent({
         onOpenBilling={() => setIsBillingOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onOpenSuperAdmin={() => setCurrentTab('super-admin')}
+      />
+
+      {/* Dynamic Moving Text Ticker Bar */}
+      <LiveTickerMarquee 
+        onNavigateToTab={(tab) => {
+          setCurrentTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       {/* Main Content View with transition wrapper */}

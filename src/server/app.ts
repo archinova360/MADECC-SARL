@@ -18,6 +18,7 @@ import { setupErpRoutes } from './routes/erpRoutes.ts';
 import { setupLessonRoutes } from './routes/lessonRoutes.ts';
 import { setupSocialRoutes } from './routes/socialRoutes.ts';
 import { setupSaasRoutes } from './routes/saasRoutes.ts';
+import apiPlatformRoutes from './routes/apiPlatformRoutes.ts';
 
 let isDatabaseSeeded = false;
 
@@ -69,17 +70,19 @@ export async function getApp(): Promise<express.Express> {
       return next();
     }
 
-    // Exclude CSRF token route, reviewer login, webhooks, compliance/data-deletion, and social studio publishing actions
+    // Exclude CSRF token route, reviewer login, webhooks, compliance/data-deletion, social studio, and v1 APIs
     if (
       req.path === '/csrf-token' ||
       req.path.startsWith('/auth') ||
+      req.path.startsWith('/v1') ||
       req.path.startsWith('/webhooks') ||
       req.path.startsWith('/social') ||
       req.path.startsWith('/marketing/posts') ||
       req.path.startsWith('/saas') ||
       req.path.startsWith('/compliance') ||
       req.path.startsWith('/data-deletion') ||
-      req.path.startsWith('/health')
+      req.path.startsWith('/health') ||
+      req.headers['x-api-key']
     ) {
       return next();
     }
@@ -125,6 +128,8 @@ export async function getApp(): Promise<express.Express> {
   setupLessonRoutes(app);
   setupSocialRoutes(app);
   setupSaasRoutes(app);
+  app.use('/api/v1', apiPlatformRoutes);
+  app.use('/api', apiPlatformRoutes);
 
   // Guarantee: Prevent SPA fallback on unmatched /api/* routes
   app.all('/api/*', (req, res) => {

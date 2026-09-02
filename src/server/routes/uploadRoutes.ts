@@ -43,7 +43,7 @@ export function setupUploadRoutes(app: express.Express) {
     }
   });
 
-  // Upload endpoint (accepts all media types: images, videos up to 150MB, audio, documents, and archives)
+  // Upload endpoint (accepts all media types: images, videos up to 2000MB / 2GB, audio, documents, and archives)
   app.post('/api/upload', upload.single('file'), async (req: any, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });

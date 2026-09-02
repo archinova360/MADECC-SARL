@@ -1443,23 +1443,32 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
       await db.insert(siteSettings).values({
         siteName: 'MADECC Group',
         tagline: 'Premier Construction, Civil Engineering & Project Management in Cameroon',
-        phone: '+237 670 00 00 00',
-        emergencyPhone: '+237 690 00 00 00',
-        email: 'contact@madeccgroup.com',
-        officeAddressYaounde: 'Mbankolo, Yaoundé, Centre Region, Cameroon',
+        developerName: 'Kasah Rodrick Reboya',
+        phone: '+237 671 063 511',
+        phoneSecondary: '+237 683 316 486',
+        phoneTertiary: '+237 640 194 505',
+        emergencyPhone: '+237 683 316 486',
+        email: 'madecccons@gmail.com',
+        secondaryEmail: 'Infomadeccconstruction@gmail.com',
+        officeAddressYaounde: 'Yaoundé, Centre Region, Cameroon',
         officeAddressDouala: 'Akwa, Douala, Littoral Region, Cameroon',
         businessHours: 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 14:00 (GMT+1)',
-        whatsappNumber: '+237670000000',
+        whatsappNumber: '+237 683 316 486',
+        whatsappSecondary: '+237 671 063 511',
+        paymentMtnNumbers: '671063511, 683316486, 671289643',
+        paymentOrangeNumbers: '689115595, 640194505',
+        paymentInstructions: 'Send payment via MTN Mobile Money or Orange Money to any of our official merchant/business accounts. Retain the transaction ID for instant verification.',
         facebookUrl: 'https://facebook.com/madeccgroup',
         linkedinUrl: 'https://linkedin.com/company/madecc-group',
         instagramUrl: 'https://instagram.com/madeccgroup',
         youtubeUrl: 'https://youtube.com/@madeccgroup',
         twitterUrl: 'https://x.com/madeccgroup',
+        tiktokUrl: 'https://tiktok.com/@madeccgroup',
         logoUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80',
         globalSeo: {
           seoTitle: 'MADECC Group — Premier Construction & Civil Engineering in Cameroon',
           metaDescription: 'Official portal of MADECC Group. Structural design, turn-key civil construction, Eurocode compliance, BOQ estimation, and project management in Yaoundé, Douala, and across Cameroon.',
-          canonicalUrl: 'https://madeccgroup.com',
+          canonicalUrl: 'https://madeccgroup.online',
           ogTitle: 'MADECC Group — Engineering Excellence in Cameroon',
           ogDescription: 'Leading construction and civil engineering contractor in Cameroon. Eurocode 2 standards, certified concrete batching, and turnkey execution.',
           ogImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
@@ -1474,8 +1483,9 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           { id: 'nav-sustainability', label: 'Sustainability', href: 'sustainability', order: 5, isEnabled: true },
           { id: 'nav-tenders', label: 'Tenders & Bids', href: 'tenders', order: 6, isEnabled: true },
           { id: 'nav-suppliers', label: 'Suppliers', href: 'suppliers', order: 7, isEnabled: true },
-          { id: 'nav-blog', label: 'Technical Insights', href: 'blog', order: 8, isEnabled: true },
-          { id: 'nav-contact', label: 'Contact', href: 'contact', order: 9, isEnabled: true }
+          { id: 'nav-developers', label: 'Developer API', href: 'developers', order: 8, isEnabled: true },
+          { id: 'nav-blog', label: 'Technical Insights', href: 'blog', order: 9, isEnabled: true },
+          { id: 'nav-contact', label: 'Contact', href: 'contact', order: 10, isEnabled: true }
         ],
         footerContent: {
           aboutText: 'MADECC Group is a premier multi-disciplinary construction, design-build, and civil engineering firm operating across Cameroon. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence.',
@@ -1947,8 +1957,210 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           ('Alpha Civil & Infra Group', 'alpha-civil', 'Alpha Civil Infrastructure & Roads SARL', 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80', 'alpha-civil.madecccloud.com', 'alpha-civil-cm.com', 'ACTIVE', 'STARTER', 'XAF', 'Africa/Douala', '+237 671 063 511', 'contact@alpha-civil-cm.com', 'Mvan Complex, Yaoundé', 'Cameroon', '{"primaryColor": "#064e3b", "secondaryColor": "#d97706", "accentColor": "#0284c7", "fontFamily": "Plus Jakarta Sans", "tagline": "Specialized Earthworks, Highways & Public Infrastructure"}'::jsonb, 85, false);
         `);
       }
-    } catch (saasTableErr) {
-      console.warn('[SAAS_TABLE_INIT_WARN]', saasTableErr);
+    } catch (tenantErr) {
+      console.warn('[TENANTS_SEED_WARN]', tenantErr);
+    }
+
+    // Initialize API Platform Tables & Seed Products/Plans
+    try {
+      console.log('Verifying API Platform tables infrastructure in Neon DB...');
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS api_products (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL UNIQUE,
+          description TEXT NOT NULL,
+          category TEXT DEFAULT 'Engineering & BOQ' NOT NULL,
+          version TEXT DEFAULT 'v1' NOT NULL,
+          endpoints JSONB,
+          documentation TEXT,
+          price_monthly INTEGER DEFAULT 0 NOT NULL,
+          currency TEXT DEFAULT 'XAF' NOT NULL,
+          billing_model TEXT DEFAULT 'MONTHLY' NOT NULL,
+          rate_limit_default INTEGER DEFAULT 60 NOT NULL,
+          enabled BOOLEAN DEFAULT TRUE NOT NULL,
+          requires_approval BOOLEAN DEFAULT TRUE NOT NULL,
+          available_plans JSONB,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_plans (
+          id SERIAL PRIMARY KEY,
+          code TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          description TEXT,
+          price INTEGER DEFAULT 0 NOT NULL,
+          currency TEXT DEFAULT 'XAF' NOT NULL,
+          billing_cycle TEXT DEFAULT 'MONTHLY' NOT NULL,
+          rate_limit_per_minute INTEGER DEFAULT 120 NOT NULL,
+          monthly_quota INTEGER DEFAULT 50000 NOT NULL,
+          max_api_keys INTEGER DEFAULT 5 NOT NULL,
+          permissions JSONB,
+          features JSONB,
+          is_popular BOOLEAN DEFAULT FALSE NOT NULL,
+          requires_approval BOOLEAN DEFAULT TRUE NOT NULL,
+          active BOOLEAN DEFAULT TRUE NOT NULL,
+          display_order INTEGER DEFAULT 1 NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_customers (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          developer_name TEXT NOT NULL,
+          company_name TEXT NOT NULL,
+          contact_email TEXT NOT NULL UNIQUE,
+          contact_phone TEXT,
+          website_url TEXT,
+          use_case_description TEXT,
+          billing_address TEXT,
+          country TEXT DEFAULT 'Cameroon',
+          status TEXT DEFAULT 'ACTIVE' NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_access_requests (
+          id SERIAL PRIMARY KEY,
+          "requestId" TEXT NOT NULL UNIQUE,
+          customer_id INTEGER REFERENCES api_customers(id) ON DELETE CASCADE,
+          customer_email TEXT NOT NULL,
+          customer_name TEXT NOT NULL,
+          company_name TEXT NOT NULL,
+          plan_code TEXT NOT NULL,
+          product_slug TEXT,
+          amount INTEGER DEFAULT 0 NOT NULL,
+          currency TEXT DEFAULT 'XAF' NOT NULL,
+          payment_method TEXT NOT NULL,
+          transaction_reference TEXT,
+          payer_phone TEXT,
+          payer_name TEXT,
+          payment_receipt_url TEXT,
+          status TEXT DEFAULT 'PENDING' NOT NULL,
+          admin_notes TEXT,
+          reviewed_by TEXT,
+          reviewed_at TIMESTAMP,
+          requested_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_payment_transactions (
+          id SERIAL PRIMARY KEY,
+          transaction_id TEXT NOT NULL UNIQUE,
+          access_request_id INTEGER REFERENCES api_access_requests(id) ON DELETE SET NULL,
+          customer_email TEXT NOT NULL,
+          amount INTEGER NOT NULL,
+          currency TEXT DEFAULT 'XAF' NOT NULL,
+          payment_method TEXT NOT NULL,
+          transaction_ref TEXT NOT NULL,
+          payer_phone TEXT,
+          payer_name TEXT,
+          receipt_url TEXT,
+          status TEXT DEFAULT 'PENDING' NOT NULL,
+          verified_by TEXT,
+          verified_at TIMESTAMP,
+          gateway_payload JSONB,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_entitlements (
+          id SERIAL PRIMARY KEY,
+          customer_id INTEGER REFERENCES api_customers(id) ON DELETE CASCADE,
+          customer_email TEXT NOT NULL,
+          plan_code TEXT NOT NULL,
+          permissions JSONB NOT NULL,
+          rate_limit_per_minute INTEGER DEFAULT 120 NOT NULL,
+          monthly_quota INTEGER DEFAULT 50000 NOT NULL,
+          quota_used_this_month INTEGER DEFAULT 0 NOT NULL,
+          is_unlimited BOOLEAN DEFAULT FALSE NOT NULL,
+          status TEXT DEFAULT 'ACTIVE' NOT NULL,
+          start_date TIMESTAMP DEFAULT NOW() NOT NULL,
+          expires_at TIMESTAMP,
+          approved_by TEXT DEFAULT 'MADECC API Administrator',
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_keys (
+          id SERIAL PRIMARY KEY,
+          customer_id INTEGER REFERENCES api_customers(id) ON DELETE CASCADE,
+          customer_email TEXT NOT NULL,
+          name TEXT NOT NULL,
+          key_id TEXT NOT NULL UNIQUE,
+          secret_hash TEXT NOT NULL,
+          secret_prefix TEXT NOT NULL,
+          environment TEXT DEFAULT 'production' NOT NULL,
+          permissions JSONB NOT NULL,
+          rate_limit_per_minute INTEGER DEFAULT 120 NOT NULL,
+          monthly_quota INTEGER DEFAULT 50000 NOT NULL,
+          status TEXT DEFAULT 'ACTIVE' NOT NULL,
+          last_used_at TIMESTAMP,
+          last_used_ip TEXT,
+          expires_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_requests_log (
+          id SERIAL PRIMARY KEY,
+          key_id TEXT,
+          customer_email TEXT,
+          endpoint TEXT NOT NULL,
+          method TEXT NOT NULL,
+          status_code INTEGER NOT NULL,
+          latency_ms INTEGER DEFAULT 0 NOT NULL,
+          ip_hash TEXT,
+          user_agent TEXT,
+          request_size INTEGER DEFAULT 0 NOT NULL,
+          response_size INTEGER DEFAULT 0 NOT NULL,
+          error_message TEXT,
+          timestamp TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_platform_audit_logs (
+          id SERIAL PRIMARY KEY,
+          admin_email TEXT NOT NULL,
+          action TEXT NOT NULL,
+          target_type TEXT NOT NULL,
+          target_id TEXT,
+          details TEXT NOT NULL,
+          metadata JSONB,
+          ip_address TEXT,
+          timestamp TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+      `);
+
+      // Seed default API Plans if table is empty
+      const existingApiPlans = await db.execute(sql`SELECT count(*) FROM api_plans`);
+      if (Number(existingApiPlans.rows[0]?.count || 0) === 0) {
+        await db.execute(sql`
+          INSERT INTO api_plans (code, name, description, price, currency, billing_cycle, rate_limit_per_minute, monthly_quota, max_api_keys, permissions, features, is_popular, requires_approval, active, display_order)
+          VALUES 
+          ('DEVELOPER_FREE', 'Developer Sandbox Tier', 'Free sandbox evaluation plan for testing MADECC construction and BOQ calculation endpoints.', 0, 'XAF', 'MONTHLY', 60, 1000, 2, '["boq:calculate", "budget:calculate", "concrete:calculate", "costs:read"]'::jsonb, '["1,000 requests per month", "60 requests per minute", "2 Sandbox API Keys", "Access to BOQ, Budget & Concrete APIs", "Community Developer Support"]'::jsonb, false, false, true, 1),
+          ('PROFESSIONAL', 'Professional API Plan', 'Designed for engineering software developers, AEC SaaS builders, and construction consultants.', 35000, 'XAF', 'MONTHLY', 180, 25000, 5, '["boq:calculate", "budget:calculate", "concrete:calculate", "reinforcement:calculate", "costs:read", "eurocode:calculate"]'::jsonb, '["25,000 requests per month", "180 requests per minute", "5 Production API Keys", "Full EN 1992 Eurocode 2 Calculator", "Real-time Material Cost Index", "Standard WhatsApp & Email Support"]'::jsonb, true, true, true, 2),
+          ('BUSINESS', 'Business & Agency API', 'High-throughput platform for enterprise ERPs, contractor software, and multi-tenant portals.', 95000, 'XAF', 'MONTHLY', 400, 100000, 15, '["boq:calculate", "budget:calculate", "concrete:calculate", "reinforcement:calculate", "costs:read", "eurocode:calculate", "ai:takeoff"]'::jsonb, '["100,000 requests per month", "400 requests per minute", "15 Production API Keys", "AI Drawing Takeoff & Auto-Quantities", "Sub-second response SLA (99.9%)", "Dedicated Tech Account Manager"]'::jsonb, false, true, true, 3),
+          ('ENTERPRISE_UNLIMITED', 'Enterprise Unlimited API', 'Uncapped fair-use high-capacity infrastructure for commercial platforms, banks, and major institutions.', 250000, 'XAF', 'MONTHLY', 1000, -1, 50, '["boq:calculate", "budget:calculate", "concrete:calculate", "reinforcement:calculate", "costs:read", "eurocode:calculate", "ai:takeoff", "admin:export"]'::jsonb, '["Unlimited Fair-Use Monthly Quota", "1,000 requests per minute", "Up to 50 API Keys & Webhooks", "Custom Eurocode Customizations", "24/7 Dedicated Emergency SLA", "Custom Billing & Wire Transfer Support"]'::jsonb, false, true, true, 4);
+        `);
+      }
+
+      // Seed default API Products if table is empty
+      const existingApiProducts = await db.execute(sql`SELECT count(*) FROM api_products`);
+      if (Number(existingApiProducts.rows[0]?.count || 0) === 0) {
+        await db.execute(sql`
+          INSERT INTO api_products (name, slug, description, category, version, endpoints, price_monthly, currency, billing_model, rate_limit_default, enabled, requires_approval, available_plans)
+          VALUES 
+          ('MADECC Smart BOQ & Quantity Take-Off API', 'boq-api', 'Programmatically generate standardized Bills of Quantities (BOQ), rate breakdowns (labor, materials, plant, overheads), and tender schedules compliant with Central African standards.', 'Engineering & BOQ', 'v1', '[{"method":"POST","path":"/api/v1/boq/calculate","description":"Calculates a comprehensive BOQ structure with material and labor rates given project dimensions and construction category","scopes":["boq:calculate"]},{"method":"GET","path":"/api/v1/boq/units","description":"Retrieves the verified standard Units of Measurement library for civil works","scopes":["boq:read"]}]'::jsonb, 25000, 'XAF', 'MONTHLY', 60, true, true, '["DEVELOPER_FREE", "PROFESSIONAL", "BUSINESS", "ENTERPRISE_UNLIMITED"]'::jsonb),
+          ('Construction Budget & Cost Estimation API', 'budget-calculator-api', 'Real-time building cost calculation by area (m2), typology (residential villa, commercial complex, industrial warehouse), finishes level, and Cameroonian city location.', 'Cost Intelligence', 'v1', '[{"method":"POST","path":"/api/v1/budget/calculate","description":"Calculates high-accuracy itemized turnkey construction estimates with structural, MEP, and finishes breakdowns","scopes":["budget:calculate"]}]'::jsonb, 15000, 'XAF', 'MONTHLY', 120, true, true, '["DEVELOPER_FREE", "PROFESSIONAL", "BUSINESS", "ENTERPRISE_UNLIMITED"]'::jsonb),
+          ('Eurocode 2 Concrete Mix & Batching API', 'concrete-mix-api', 'Calculates precise parametric mix designs (C20/25, C25/30, C30/37, C35/45) for cement, sand, 15/25 aggregate gravel, water-cement ratio, slump, and pozzolanic substitutions.', 'Structural Calculations', 'v1', '[{"method":"POST","path":"/api/v1/concrete/calculate-mix","description":"Computes Eurocode 2 water-cement ratio, component batch weights (kg/m3), bag count, and strength curve","scopes":["concrete:calculate"]}]'::jsonb, 20000, 'XAF', 'MONTHLY', 120, true, true, '["DEVELOPER_FREE", "PROFESSIONAL", "BUSINESS", "ENTERPRISE_UNLIMITED"]'::jsonb),
+          ('Structural Reinforcement & Rebar Detailing API', 'reinforcement-api', 'Calculates rebar bar bending schedules, total tonnage, bar diameter distributions (HA6 to HA32), and wastage factors for beams, columns, slabs, and footings.', 'Structural Calculations', 'v1', '[{"method":"POST","path":"/api/v1/reinforcement/calculate","description":"Generates bar cutting schedule, high-yield steel tonnage, and tie wire requirements","scopes":["reinforcement:calculate"]}]'::jsonb, 25000, 'XAF', 'MONTHLY', 120, true, true, '["PROFESSIONAL", "BUSINESS", "ENTERPRISE_UNLIMITED"]'::jsonb),
+          ('Cameroon Material Price & Rate Index API', 'construction-cost-api', 'Live parametric cost index for construction commodities in Central Africa (CPJ-35/42.5 cement, 500MPa steel, basalt aggregate, river sand, fuel, labor).', 'Cost Intelligence', 'v1', '[{"method":"GET","path":"/api/v1/costs/materials","description":"Returns current regional benchmark prices and 30-day volatility index for all primary building materials","scopes":["costs:read"]}]'::jsonb, 15000, 'XAF', 'MONTHLY', 180, true, false, '["DEVELOPER_FREE", "PROFESSIONAL", "BUSINESS", "ENTERPRISE_UNLIMITED"]'::jsonb),
+          ('Geotechnical Bearing Capacity & Footing API', 'structural-eurocode-api', 'Computes allowable soil bearing capacity, footing sizing (isolated, strip, raft), settlement margins, and seismic ground acceleration coefficients.', 'Eurocode Tools', 'v1', '[{"method":"POST","path":"/api/v1/eurocode/bearing-capacity","description":"Evaluates Terzaghi/Meyerhof bearing capacity and footing geometry under axial/bending loads","scopes":["eurocode:calculate"]}]'::jsonb, 30000, 'XAF', 'MONTHLY', 60, true, true, '["PROFESSIONAL", "BUSINESS", "ENTERPRISE_UNLIMITED"]'::jsonb);
+        `);
+      }
+    } catch (apiTableErr) {
+      console.warn('[API_PLATFORM_INIT_WARN]', apiTableErr);
     }
 
     console.log('--- Database Seeding Completed Successfully ---');

@@ -11,20 +11,39 @@ import {
   CheckCircle2, 
   AlertCircle,
   X,
-  FileDown
+  FileDown,
+  Share2,
+  Globe,
+  Copy,
+  Check,
+  Users,
+  Radio
 } from 'lucide-react';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 interface FooterProps {
   setCurrentTab: (tab: string) => void;
 }
 
 export default function Footer({ setCurrentTab }: FooterProps) {
+  const { settings, openFollowModal } = useSiteSettings();
   const [email, setEmail] = useState('');
   const [captcha, setCaptcha] = useState('');
   const [captchaError, setCaptchaError] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [msg, setMsg] = useState('');
   const [modalType, setModalType] = useState<'privacy' | 'terms' | 'safety' | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const websiteUrl = 'https://madeccgroup.online';
+  const shareText = 'MADECC Group — Premier Civil Engineering, Structural Design & Construction Firm in Cameroon.';
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(websiteUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,8 +111,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
                 <img 
-                  src="/logo.png" 
-                  alt="MADECC Group Logo" 
+                  src={settings?.logoUrl || "/logo.png"} 
+                  alt={`${settings?.siteName || 'MADECC Group'} Logo`} 
                   className="h-full w-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -102,15 +121,135 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 />
               </div>
               <span className="font-sans font-extrabold text-lg tracking-tight text-white">
-                MADECC<span className="text-amber-500">GROUP</span>
+                {settings?.siteName ? (
+                  settings.siteName
+                ) : (
+                  <>MADECC<span className="text-amber-500">GROUP</span></>
+                )}
               </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
-              MADECC Group is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence.
+              {settings?.footerContent?.aboutText || 
+                "MADECC Group is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence."}
             </p>
-            <div className="flex items-center gap-2 pt-2 text-xs font-mono text-slate-500">
+            <div className="flex items-center gap-2 pt-1 text-xs font-mono text-slate-500">
               <Clock className="w-4 h-4 text-amber-500" />
-              <span>Mon - Fri: 08:00 - 18:00</span>
+              <span>{settings?.businessHours || "Mon - Fri: 08:00 - 18:00"}</span>
+            </div>
+
+            {/* Social Media Channels & Follow Us Central Launch */}
+            <div className="pt-2 border-t border-slate-800/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Connect With Us</span>
+                <button
+                  type="button"
+                  onClick={openFollowModal}
+                  className="flex items-center gap-1 text-[11px] font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                  id="footer-open-follow-modal-btn"
+                >
+                  <Users className="w-3 h-3" />
+                  <span>Follow Us Hub</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {settings?.linkedinUrl && (
+                  <a
+                    href={settings.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC LinkedIn Profile"
+                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-[#0077B5] hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    title="LinkedIn"
+                  >
+                    in
+                  </a>
+                )}
+                {settings?.facebookUrl && (
+                  <a
+                    href={settings.facebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC Facebook Profile"
+                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-[#1877F2] hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    title="Facebook"
+                  >
+                    fb
+                  </a>
+                )}
+                {settings?.youtubeUrl && (
+                  <a
+                    href={settings.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC YouTube Channel"
+                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-[#FF0000] hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    title="YouTube"
+                  >
+                    yt
+                  </a>
+                )}
+                {settings?.twitterUrl && (
+                  <a
+                    href={settings.twitterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC Twitter Profile"
+                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-white hover:text-black text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    title="X (Twitter)"
+                  >
+                    𝕏
+                  </a>
+                )}
+                {settings?.instagramUrl && (
+                  <a
+                    href={settings.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC Instagram Profile"
+                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-gradient-to-tr hover:from-amber-500 hover:to-pink-500 hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    title="Instagram"
+                  >
+                    ig
+                  </a>
+                )}
+                {settings?.whatsappNumber && (
+                  <a
+                    href={`https://wa.me/${settings.whatsappNumber.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC WhatsApp Desk"
+                    className="w-8 h-8 rounded-lg bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-800/60 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    title="WhatsApp"
+                  >
+                    wa
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 transition-all text-xs font-bold cursor-pointer"
+                  id="footer-share-website-btn"
+                  title="Share MADECC Website"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share</span>
+                </button>
+              </div>
+
+              {/* Follow Us Button with Visual Beacon */}
+              <button
+                type="button"
+                onClick={openFollowModal}
+                className="w-full mt-2 py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 hover:border-amber-500 transition-all text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
+                id="footer-follow-us-cta-btn"
+              >
+                <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span>Follow Us on Social Media</span>
+                <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded font-mono">
+                  LIVE
+                </span>
+              </button>
             </div>
           </div>
 
@@ -127,6 +266,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 { label: 'Project Budget Calculator', id: 'budget-calculator' },
                 { label: 'Schedule Consultation', id: 'schedule-consultation' },
                 { label: 'Construction Cost Guide', id: 'construction-cost-guide' },
+                { label: 'Developer & Paid API Platform', id: 'developers' },
                 { label: 'Request a Quote', id: 'request-a-quote' },
                 { label: 'About MADECC', id: 'about' },
                 { label: 'Contact Office', id: 'contact' },
@@ -161,25 +301,49 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                <span>Yaoundé Mbankolo, Cameroon<br /><span className="text-xs text-amber-400 font-mono">Operating Nationwide in Cameroon &amp; Across Africa</span></span>
+                <span>
+                  {settings?.officeAddressYaounde || "Yaoundé Mbankolo, Cameroon"}
+                  <br />
+                  <span className="text-xs text-amber-400 font-mono">Operating Nationwide in Cameroon &amp; Across Africa</span>
+                </span>
               </li>
               <li className="flex flex-col gap-2">
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-amber-500 shrink-0" />
-                  <a href="tel:237683316486" className="hover:text-amber-400 transition-colors font-mono font-bold">+237 683 316 486</a>
+                  <div className="flex flex-col gap-0.5">
+                    <a href={`tel:${(settings?.phone || '+237 683 316 486').replace(/\s+/g, '')}`} className="hover:text-amber-400 transition-colors font-mono font-bold">
+                      {settings?.phone || '+237 683 316 486'}
+                    </a>
+                    {settings?.phoneSecondary && (
+                      <a href={`tel:${settings.phoneSecondary.replace(/\s+/g, '')}`} className="hover:text-amber-400 transition-colors font-mono text-xs text-slate-400">
+                        {settings.phoneSecondary}
+                      </a>
+                    )}
+                    {settings?.phoneTertiary && (
+                      <a href={`tel:${settings.phoneTertiary.replace(/\s+/g, '')}`} className="hover:text-amber-400 transition-colors font-mono text-xs text-slate-400">
+                        {settings.phoneTertiary}
+                      </a>
+                    )}
+                  </div>
                 </div>
                 <div className="pl-8 text-xs text-slate-500 font-mono">
-                  General & WhatsApp Support
+                  General, Engineering & MoMo/OM Desk
                 </div>
               </li>
               <li className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-amber-500 shrink-0" />
-                  <a href="mailto:kreboya603@gmail.com" className="hover:text-amber-400 transition-colors font-mono">kreboya603@gmail.com</a>
+                  <a href={`mailto:${settings?.email || 'Infomadeccconstruction@gmail.com'}`} className="hover:text-amber-400 transition-colors font-mono">
+                    {settings?.email || 'Infomadeccconstruction@gmail.com'}
+                  </a>
                 </div>
-                <div className="flex items-center gap-3 pl-8">
-                  <a href="mailto:madecccons@gmail.com" className="hover:text-amber-400 transition-colors font-mono">madecccons@gmail.com</a>
-                </div>
+                {settings?.secondaryEmail && (
+                  <div className="flex items-center gap-3 pl-8">
+                    <a href={`mailto:${settings.secondaryEmail}`} className="hover:text-amber-400 transition-colors font-mono">
+                      {settings.secondaryEmail}
+                    </a>
+                  </div>
+                )}
               </li>
             </ul>
           </div>
@@ -259,7 +423,18 @@ export default function Footer({ setCurrentTab }: FooterProps) {
 
         {/* Bottom copyright line */}
         <div className="border-t border-slate-800/60 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4" id="footer-bottom-nav">
-          <p>© {new Date().getFullYear()} MADECC Group. All rights reserved.</p>
+          <div className="space-y-1 text-center sm:text-left">
+            <p>
+              {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} MADECC Group. All rights reserved.`}
+            </p>
+            {(settings?.rccmNumber || settings?.niuTaxId) && (
+              <p className="text-[10px] font-mono text-slate-600">
+                {settings.rccmNumber && <span>RCCM: {settings.rccmNumber} </span>}
+                {settings.niuTaxId && <span>• NIU: {settings.niuTaxId} </span>}
+                {settings.legalStatus && <span>• {settings.legalStatus}</span>}
+              </p>
+            )}
+          </div>
           <div className="flex gap-6">
             <button 
               onClick={() => setModalType('privacy')} 
@@ -373,6 +548,125 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 id="close-legal-modal-footer"
               >
                 Acknowledge & Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Website Modal Overlay */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="share-modal-overlay">
+          <div className="bg-[#0E0E12] border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-250">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-850 flex items-center justify-between bg-slate-900/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+                  <Share2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">Share MADECC Group</h3>
+                  <p className="text-[11px] text-slate-400">Recommend our engineering & construction firm</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="text-slate-400 hover:text-white bg-slate-850 hover:bg-slate-800 p-1.5 rounded-lg transition-all"
+                id="close-share-modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Social Share Grid */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* WhatsApp */}
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + websiteUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 hover:bg-emerald-900/60 transition-all text-xs font-semibold"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs font-mono">WA</span>
+                  <span>WhatsApp</span>
+                </a>
+
+                {/* LinkedIn */}
+                <a
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(websiteUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-950/40 border border-blue-800/40 text-blue-300 hover:bg-blue-900/60 transition-all text-xs font-semibold"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs font-mono">in</span>
+                  <span>LinkedIn</span>
+                </a>
+
+                {/* Facebook */}
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(websiteUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-3 rounded-xl bg-sky-950/40 border border-sky-800/40 text-sky-300 hover:bg-sky-900/60 transition-all text-xs font-semibold"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-xs font-mono">fb</span>
+                  <span>Facebook</span>
+                </a>
+
+                {/* X / Twitter */}
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(websiteUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-750 text-slate-200 hover:bg-slate-800 transition-all text-xs font-semibold"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-slate-700 text-white flex items-center justify-center font-bold text-xs font-mono">𝕏</span>
+                  <span>X / Twitter</span>
+                </a>
+              </div>
+
+              {/* Email Referral */}
+              <a
+                href={`mailto:?subject=${encodeURIComponent('MADECC Group — Premier Construction & Engineering Firm')}&body=${encodeURIComponent(shareText + '\n\nVisit: ' + websiteUrl)}`}
+                className="flex items-center justify-center gap-2 w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold transition-all"
+              >
+                <Mail className="w-4 h-4 text-amber-500" />
+                <span>Share via Email</span>
+              </a>
+
+              {/* Copy URL Link Bar */}
+              <div className="pt-2 border-t border-slate-850 space-y-1.5">
+                <label className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">Official Canonical Link</label>
+                <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1.5 pl-3">
+                  <span className="text-xs text-slate-300 font-mono truncate flex-1">{websiteUrl}</span>
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-slate-850 bg-[#0A0A0C] flex justify-end">
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="bg-slate-850 hover:bg-slate-800 text-slate-300 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              >
+                Close
               </button>
             </div>
           </div>

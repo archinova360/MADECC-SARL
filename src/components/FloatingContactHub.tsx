@@ -10,9 +10,11 @@ import {
   ShieldCheck, 
   Zap,
   Users,
-  MessageCircle
+  MessageCircle,
+  Radio
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -21,6 +23,7 @@ interface ChatMessage {
 }
 
 export default function FloatingContactHub() {
+  const { settings, openFollowModal } = useSiteSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
@@ -86,17 +89,17 @@ export default function FloatingContactHub() {
     }
   };
 
+  const whatsappNum = (settings?.whatsappNumber || '237683316486').replace(/[^0-9]/g, '');
+
   const phoneNumbers = [
-    { label: 'General & WhatsApp', number: '+237 683 316 486', url: 'tel:237683316486' },
-    { label: 'Operations Department', number: '+237 671 063 511', url: 'tel:237671063511' },
-    { label: 'Project Management', number: '+237 689 115 595', url: 'tel:237689115595' },
-    { label: 'Administration Desk', number: '+237 671 289 643', url: 'tel:237671289643' },
-    { label: 'Customer Support Desk', number: '+237 640 194 505', url: 'tel:237640194505' },
+    { label: 'General & Engineering Desk', number: settings?.phone || '+237 683 316 486', url: `tel:${(settings?.phone || '+237 683 316 486').replace(/\s+/g, '')}` },
+    ...(settings?.phoneSecondary ? [{ label: 'Operations Department', number: settings.phoneSecondary, url: `tel:${settings.phoneSecondary.replace(/\s+/g, '')}` }] : [{ label: 'Operations Department', number: '+237 671 063 511', url: 'tel:237671063511' }]),
+    ...(settings?.phoneTertiary ? [{ label: 'Customer Support Desk', number: settings.phoneTertiary, url: `tel:${settings.phoneTertiary.replace(/\s+/g, '')}` }] : [{ label: 'Customer Support Desk', number: '+237 640 194 505', url: 'tel:237640194505' }]),
   ];
 
   const emails = [
-    { label: 'Tenders & Estimates', email: 'kreboya603@gmail.com' },
-    { label: 'General Construction Services', email: 'madecccons@gmail.com' }
+    { label: 'Primary Contact & Tenders', email: settings?.email || 'Infomadeccconstruction@gmail.com' },
+    ...(settings?.secondaryEmail ? [{ label: 'General Services Desk', email: settings.secondaryEmail }] : [{ label: 'General Services Desk', email: 'madecccons@gmail.com' }])
   ];
 
   return (
@@ -106,7 +109,7 @@ export default function FloatingContactHub() {
       <AnimatePresence>
         {!isOpen && !showChat && (
           <motion.a
-            href="https://wa.me/237683316486?text=Hello%20MADECC%20Group%20Cameroon,%20I%20would%20like%20to%20inquire%20about%20your%20services."
+            href={`https://wa.me/${whatsappNum}?text=Hello%20MADECC%20Group%20Cameroon,%20I%20would%20like%20to%20inquire%20about%20your%20services.`}
             target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -229,10 +232,34 @@ export default function FloatingContactHub() {
                   </div>
                 </div>
 
+                {/* Social Media Hub Quick Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      openFollowModal();
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-amber-500/15 border border-amber-500/30 text-amber-400 hover:text-white hover:border-amber-500 text-xs font-bold flex items-center justify-between transition-all"
+                    id="hub-follow-us-btn"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <span>Follow Us on Social Media</span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-slate-950 px-2 py-0.5 rounded text-amber-400 font-extrabold">
+                      8 Channels
+                    </span>
+                  </button>
+                </div>
+
                 {/* Secure Gateway info */}
-                <div className="pt-3 flex items-center gap-2 text-[9px] text-slate-500 font-mono uppercase tracking-wider">
-                  <ShieldCheck className="w-4 h-4 text-amber-500" />
-                  <span>Verified Corporate Directory</span>
+                <div className="pt-2 flex items-center justify-between text-[9px] text-slate-500 font-mono uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Verified Corporate Directory</span>
+                  </div>
+                  <span>MADECC SARL</span>
                 </div>
               </div>
             )}

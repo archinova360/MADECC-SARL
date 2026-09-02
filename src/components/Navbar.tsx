@@ -33,12 +33,15 @@ import {
   Download,
   Phone,
   ExternalLink,
-  FileDown
+  FileDown,
+  Users,
+  Radio
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { TenantService } from '../services/tenantService.ts';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 interface NavbarProps {
   currentTab: string;
@@ -67,6 +70,7 @@ export default function Navbar({
 }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
+  const { settings, openFollowModal } = useSiteSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -437,6 +441,21 @@ export default function Navbar({
                 <span>Cloud SaaS</span>
               </button>
 
+              {/* Developer API Platform Portal Button */}
+              <button
+                onClick={() => setCurrentTab('developers')}
+                className={`px-3 py-2 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border ${
+                  currentTab === 'developers'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'text-emerald-400 hover:text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/10'
+                }`}
+                title="Explore Paid Construction & BOQ APIs"
+                id="nav-link-developers"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>Developer APIs</span>
+              </button>
+
               {/* Admin or Reviewer Studio Button */}
               {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
                 <button
@@ -466,6 +485,21 @@ export default function Navbar({
             {/* Auth section */}
             <div className={`border-l pl-6 flex items-center gap-3 ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
               
+              {/* Follow Us on Social Media Button */}
+              <button
+                onClick={openFollowModal}
+                className="relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0"
+                title="Follow MADECC Group on Social Media (LinkedIn, Facebook, YouTube, X, Instagram, TikTok, WhatsApp)"
+                id="nav-btn-follow-us"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <Radio className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Follow Us</span>
+              </button>
+
               {/* Theme Toggle Button */}
               <button
                 onClick={toggleTheme}
@@ -610,6 +644,24 @@ export default function Navbar({
               {item.label}
             </button>
           ))}
+
+          {/* Follow Us Button in Mobile Drawer */}
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              openFollowModal();
+            }}
+            className="w-full text-left px-4 py-3 rounded-md font-sans text-base font-bold flex items-center justify-between bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+            id="mobile-btn-follow-us"
+          >
+            <div className="flex items-center gap-2.5">
+              <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
+              <span>Follow Us on Social</span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+              8 Networks
+            </span>
+          </button>
 
           {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
             <button

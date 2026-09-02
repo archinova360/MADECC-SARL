@@ -313,20 +313,43 @@ export interface SiteSettings {
   id: number;
   siteName: string;
   tagline: string;
+  developerName?: string;
   phone: string;
+  phoneSecondary?: string;
+  phoneTertiary?: string;
   emergencyPhone: string;
   email: string;
+  secondaryEmail?: string;
   officeAddressYaounde: string;
   officeAddressDouala: string;
   businessHours: string;
   whatsappNumber: string;
+  whatsappSecondary?: string;
+  paymentMtnNumbers?: string;
+  paymentOrangeNumbers?: string;
+  paymentInstructions?: string;
   facebookUrl?: string;
   linkedinUrl?: string;
   instagramUrl?: string;
   youtubeUrl?: string;
   twitterUrl?: string;
+  tiktokUrl?: string;
+  pinterestUrl?: string;
+  rccmNumber?: string;
+  niuTaxId?: string;
+  legalStatus?: string;
+  shareHeadline?: string;
+  shareDescription?: string;
   logoUrl?: string;
   faviconUrl?: string;
+  themeSettings?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontHeading?: string;
+    fontBody?: string;
+    borderRadius?: string;
+    containerWidth?: string;
+  };
   globalSeo: SeoConfig;
   navigationLinks: Array<{
     id: string;
@@ -562,6 +585,184 @@ export interface DirectPaymentConfig {
   contactWhatsApp: string;
   contactEmail: string;
   promoNote?: string;
+}
+
+// =========================================================================
+// PAID API PLATFORM INTERFACES
+// =========================================================================
+
+export interface ApiProductEndpoint {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  description: string;
+  requestBody?: any;
+  responseBody?: any;
+  scopes?: string[];
+}
+
+export interface ApiProduct {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  category: string;
+  version: string;
+  endpoints: ApiProductEndpoint[];
+  documentation?: string;
+  priceMonthly: number;
+  currency: string;
+  billingModel: 'MONTHLY' | 'PER_REQUEST' | 'ANNUAL' | 'UNLIMITED';
+  rateLimitDefault: number;
+  enabled: boolean;
+  requiresApproval: boolean;
+  availablePlans?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiPlan {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency: string;
+  billingCycle: 'MONTHLY' | 'ANNUAL' | 'PAY_AS_YOU_GO';
+  rateLimitPerMinute: number;
+  monthlyQuota: number; // -1 for unlimited
+  maxApiKeys: number;
+  permissions: string[];
+  features: string[];
+  isPopular: boolean;
+  requiresApproval: boolean;
+  active: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiCustomer {
+  id: number;
+  userId: string;
+  developerName: string;
+  companyName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  websiteUrl?: string;
+  useCaseDescription?: string;
+  billingAddress?: string;
+  country: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiAccessRequest {
+  id: number;
+  requestId: string;
+  customerId?: number;
+  customerEmail: string;
+  customerName: string;
+  companyName: string;
+  planCode: string;
+  productSlug?: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  transactionReference?: string;
+  payerPhone?: string;
+  payerName?: string;
+  paymentReceiptUrl?: string;
+  status: 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  adminNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  requestedAt: string;
+  updatedAt: string;
+}
+
+export interface ApiPaymentTransaction {
+  id: number;
+  transactionId: string;
+  accessRequestId?: number;
+  customerEmail: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  transactionRef: string;
+  payerPhone?: string;
+  payerName?: string;
+  receiptUrl?: string;
+  status: 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
+  verifiedBy?: string;
+  verifiedAt?: string;
+  gatewayPayload?: any;
+  createdAt: string;
+}
+
+export interface ApiEntitlement {
+  id: number;
+  customerId: number;
+  customerEmail: string;
+  planCode: string;
+  permissions: string[];
+  rateLimitPerMinute: number;
+  monthlyQuota: number;
+  quotaUsedThisMonth: number;
+  isUnlimited: boolean;
+  status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+  startDate: string;
+  expiresAt?: string;
+  approvedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiKeyItem {
+  id: number;
+  customerId: number;
+  customerEmail: string;
+  name: string;
+  keyId: string;
+  secretPrefix: string;
+  environment: 'production' | 'sandbox';
+  permissions: string[];
+  rateLimitPerMinute: number;
+  monthlyQuota: number;
+  status: 'ACTIVE' | 'REVOKED' | 'SUSPENDED' | 'EXPIRED';
+  lastUsedAt?: string;
+  lastUsedIp?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiRequestLog {
+  id: number;
+  keyId?: string;
+  customerEmail?: string;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  latencyMs: number;
+  ipHash?: string;
+  userAgent?: string;
+  requestSize: number;
+  responseSize: number;
+  errorMessage?: string;
+  timestamp: string;
+}
+
+export interface ApiPlatformAuditLog {
+  id: number;
+  adminEmail: string;
+  action: string;
+  targetType: string;
+  targetId?: string;
+  details: string;
+  metadata?: any;
+  ipAddress?: string;
+  timestamp: string;
 }
 
 

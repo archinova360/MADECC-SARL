@@ -108,6 +108,7 @@ import { AdminTenders } from './AdminTenders.tsx';
 import CmsPageBuilder from './CmsPageBuilder.tsx';
 import CmsMediaLibrary from './CmsMediaLibrary.tsx';
 import CmsSiteSettings from './CmsSiteSettings.tsx';
+import AdminApiPlatform from './AdminApiPlatform.tsx';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 
 import { getOptimizedImageUrl, getYouTubeEmbedUrl, ensureAbsoluteUrl } from '../lib/utils.ts';
@@ -166,7 +167,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   };
 
   // Navigation internal to admin
-  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
+  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio' | 'api-platform'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
   const [activeSyllabus, setActiveSyllabus] = useState<any | null>(null);
 
   // Lock and default reviewer to Social Media Studio
@@ -1867,8 +1868,18 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       title: '💰 FINANCE & TRANSACTIONS',
       icon: DollarSign,
       items: [
+        { id: 'api-platform', label: 'API Platform & MoMo Verification', icon: Key },
         { id: 'doc-history', label: 'Receipt & Contract History', icon: ShieldCheck },
         { id: 'enterprise-erp', label: 'ERP Financial Statements', icon: Building2 }
+      ]
+    },
+    {
+      id: 'api-platform-group',
+      title: '🔌 DEVELOPER API PLATFORM',
+      icon: Key,
+      items: [
+        { id: 'api-platform', label: 'API Products, Keys & MoMo', icon: Key },
+        { id: 'db-architecture', label: 'DB & API Documentation', icon: Database }
       ]
     },
     {
@@ -5806,6 +5817,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* DEVELOPER API PLATFORM MONETIZATION & APPROVAL VIEW */}
+        {activeAdminTab === 'api-platform' && (
+          <div className="animate-in fade-in duration-300">
+            <AdminApiPlatform onBackToDashboard={() => setActiveAdminTab('command-center')} />
           </div>
         )}
         </>

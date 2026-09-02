@@ -102,6 +102,21 @@ export const newsletterSubscribers = pgTable('newsletter_subscribers', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// 9b. Data Deletion / GDPR / Meta Privacy Requests
+export const dataDeletionRequests = pgTable('data_deletion_requests', {
+  id: serial('id').primaryKey(),
+  trackingCode: text('tracking_code').notNull(),
+  email: text('email').notNull(),
+  fullName: text('full_name').notNull(),
+  requestType: text('request_type').notNull().default('all'),
+  details: text('details'),
+  status: text('status').default('pending').notNull(), // pending, in_progress, completed, rejected
+  complianceNotes: text('compliance_notes'),
+  processedAt: timestamp('processed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // 10. Services table
 export const services = pgTable('services', {
   id: serial('id').primaryKey(),
@@ -1492,20 +1507,33 @@ export const siteSettings = pgTable('site_settings', {
   id: serial('id').primaryKey(),
   siteName: text('site_name').notNull().default('MADECC Group'),
   tagline: text('tagline').default('Premier Engineering, Construction & Project Management in Cameroon'),
-  phone: text('phone').default('+237 670 00 00 00'),
-  emergencyPhone: text('emergency_phone').default('+237 690 00 00 00'),
-  email: text('email').default('contact@madeccgroup.com'),
-  officeAddressYaounde: text('office_address_yaounde').default('Mbankolo, Yaoundé, Centre Region, Cameroon'),
+  developerName: text('developer_name').default('Kasah Rodrick Reboya'),
+  phone: text('phone').default('+237 671 063 511'),
+  phoneSecondary: text('phone_secondary').default('+237 683 316 486'),
+  phoneTertiary: text('phone_tertiary').default('+237 640 194 505'),
+  emergencyPhone: text('emergency_phone').default('+237 683 316 486'),
+  email: text('email').default('madecccons@gmail.com'),
+  secondaryEmail: text('secondary_email').default('Infomadeccconstruction@gmail.com'),
+  officeAddressYaounde: text('office_address_yaounde').default('Yaoundé, Centre Region, Cameroon'),
   officeAddressDouala: text('office_address_douala').default('Akwa, Douala, Littoral Region, Cameroon'),
   businessHours: text('business_hours').default('Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 14:00 (GMT+1)'),
-  whatsappNumber: text('whatsapp_number').default('+237670000000'),
+  whatsappNumber: text('whatsapp_number').default('+237 683 316 486'),
+  whatsappSecondary: text('whatsapp_secondary').default('+237 671 063 511'),
+  paymentMtnNumbers: text('payment_mtn_numbers').default('671063511, 683316486, 671289643'),
+  paymentOrangeNumbers: text('payment_orange_numbers').default('689115595, 640194505'),
+  paymentInstructions: text('payment_instructions').default('Send payment via MTN Mobile Money or Orange Money to any of our official merchant/business accounts. Retain the transaction ID for instant verification.'),
   facebookUrl: text('facebook_url').default('https://facebook.com/madeccgroup'),
   linkedinUrl: text('linkedin_url').default('https://linkedin.com/company/madecc-group'),
   instagramUrl: text('instagram_url').default('https://instagram.com/madeccgroup'),
   youtubeUrl: text('youtube_url').default('https://youtube.com/@madeccgroup'),
   twitterUrl: text('twitter_url').default('https://x.com/madeccgroup'),
+  tiktokUrl: text('tiktok_url').default('https://tiktok.com/@madeccgroup'),
   logoUrl: text('logo_url'),
   faviconUrl: text('favicon_url'),
+  legalStatus: text('legal_status').default('SARL (Société à Responsabilité Limitée)'),
+  rccmNumber: text('rccm_number').default('RC/YAO/2023/B/1458'),
+  niuTaxId: text('niu_tax_id').default('M072318492019A'),
+  themeSettings: json('theme_settings'), // { primaryColor, accentColor, fontHeading, fontBody, borderRadius, containerWidth }
   globalSeo: json('global_seo'), // { seoTitle, metaDescription, canonicalBase, ogImage, keywords }
   navigationLinks: json('navigation_links'), // Array of nav items
   footerContent: json('footer_content'), // { aboutText, copyrightText, accreditationBadges }
@@ -1728,23 +1756,196 @@ export const featureFlags = pgTable('feature_flags', {
 });
 
 // =========================================================================
-// 78. DATA DELETION REQUESTS (Meta App Review Compliance)
+// 79. API PRODUCTS CATALOG (PAID API PLATFORM)
 // =========================================================================
-export const dataDeletionRequests = pgTable('data_deletion_requests', {
+export const apiProducts = pgTable('api_products', {
   id: serial('id').primaryKey(),
-  confirmationCode: text('confirmation_code'),
-  trackingCode: text('tracking_code'),
-  email: text('email'),
-  userEmail: text('user_email'),
-  userName: text('user_name'),
-  facebookUserId: text('facebook_user_id'),
-  requestReason: text('request_reason'),
-  status: text('status').default('PENDING').notNull(), // 'PENDING', 'COMPLETED', 'REJECTED'
-  details: text('details'),
-  requestedAt: timestamp('requested_at').defaultNow().notNull(),
-  completedAt: timestamp('completed_at'),
+  name: text('name').notNull(), // e.g. 'MADECC Smart BOQ & Quantity Take-Off API'
+  slug: text('slug').notNull().unique(), // 'boq-api'
+  description: text('description').notNull(),
+  category: text('category').notNull().default('Engineering & BOQ'), // 'Engineering & BOQ', 'Cost Intelligence', 'Structural Calculations', 'Eurocode Tools'
+  version: text('version').notNull().default('v1'),
+  endpoints: json('endpoints'), // Array of { method, path, description, requestBody, responseBody, scopes }
+  documentation: text('documentation'), // Markdown documentation
+  priceMonthly: integer('price_monthly').default(0).notNull(), // in FCFA (XAF)
+  currency: text('currency').default('XAF').notNull(),
+  billingModel: text('billing_model').default('MONTHLY').notNull(), // 'MONTHLY', 'PER_REQUEST', 'ANNUAL', 'UNLIMITED'
+  rateLimitDefault: integer('rate_limit_default').default(60).notNull(), // requests per minute
+  enabled: boolean('enabled').default(true).notNull(),
+  requiresApproval: boolean('requires_approval').default(true).notNull(),
+  availablePlans: json('available_plans'), // List of plan codes
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 80. API SUBSCRIPTION PLANS & TIERS
+// =========================================================================
+export const apiPlans = pgTable('api_plans', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(), // 'DEVELOPER_FREE', 'PROFESSIONAL', 'BUSINESS', 'ENTERPRISE_UNLIMITED'
+  name: text('name').notNull(), // 'Enterprise Unlimited'
+  description: text('description'),
+  price: integer('price').notNull().default(0), // in FCFA (XAF)
+  currency: text('currency').notNull().default('XAF'),
+  billingCycle: text('billing_cycle').notNull().default('MONTHLY'), // 'MONTHLY', 'ANNUAL', 'PAY_AS_YOU_GO'
+  rateLimitPerMinute: integer('rate_limit_per_minute').notNull().default(120),
+  monthlyQuota: integer('monthly_quota').notNull().default(50000), // -1 for unlimited (fair use)
+  maxApiKeys: integer('max_api_keys').notNull().default(5),
+  permissions: json('permissions'), // Array of scopes: ['boq:calculate', 'budget:calculate', 'concrete:calculate', 'reinforcement:calculate', 'costs:read', 'eurocode:calculate']
+  features: json('features'), // Array of descriptive feature bullet points
+  isPopular: boolean('is_popular').default(false).notNull(),
+  requiresApproval: boolean('requires_approval').default(true).notNull(),
+  active: boolean('active').default(true).notNull(),
+  displayOrder: integer('display_order').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 81. API CUSTOMERS / DEVELOPER PROFILES
+// =========================================================================
+export const apiCustomers = pgTable('api_customers', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(), // Firebase UID or developer account ID
+  developerName: text('developer_name').notNull(),
+  companyName: text('company_name').notNull(),
+  contactEmail: text('contact_email').notNull().unique(),
+  contactPhone: text('contact_phone'),
+  websiteUrl: text('website_url'),
+  useCaseDescription: text('use_case_description'),
+  billingAddress: text('billing_address'),
+  country: text('country').default('Cameroon'),
+  status: text('status').default('ACTIVE').notNull(), // 'ACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 82. API ACCESS REQUESTS & APPLICATION ONBOARDING
+// =========================================================================
+export const apiAccessRequests = pgTable('api_access_requests', {
+  id: serial('id').primaryKey(),
+  requestId: text('requestId').notNull().unique(), // e.g. REQ-2026-0001
+  customerId: integer('customer_id').references(() => apiCustomers.id, { onDelete: 'cascade' }),
+  customerEmail: text('customer_email').notNull(),
+  customerName: text('customer_name').notNull(),
+  companyName: text('company_name').notNull(),
+  planCode: text('plan_code').notNull(),
+  productSlug: text('product_slug'), // Specific product or 'all-products'
+  amount: integer('amount').notNull().default(0), // Price in FCFA
+  currency: text('currency').notNull().default('XAF'),
+  paymentMethod: text('payment_method').notNull(), // 'MTN_MOMO', 'ORANGE_MONEY', 'VISA_MASTERCARD', 'BANK_TRANSFER'
+  transactionReference: text('transaction_reference'), // MoMo/Orange TxID or Gateway Ref
+  payerPhone: text('payer_phone'),
+  payerName: text('payer_name'),
+  paymentReceiptUrl: text('payment_receipt_url'), // Uploaded proof of payment
+  status: text('status').default('PENDING').notNull(), // 'PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'CANCELLED'
+  adminNotes: text('admin_notes'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at'),
+  requestedAt: timestamp('requested_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 83. API PAYMENT TRANSACTIONS LEDGER
+// =========================================================================
+export const apiPaymentTransactions = pgTable('api_payment_transactions', {
+  id: serial('id').primaryKey(),
+  transactionId: text('transaction_id').notNull().unique(), // e.g. TXN-2026-XXXX
+  accessRequestId: integer('access_request_id').references(() => apiAccessRequests.id, { onDelete: 'set null' }),
+  customerEmail: text('customer_email').notNull(),
+  amount: integer('amount').notNull(),
+  currency: text('currency').default('XAF').notNull(),
+  paymentMethod: text('payment_method').notNull(), // 'MTN_MOMO', 'ORANGE_MONEY', 'VISA_CARD', 'BANK_WIRE'
+  transactionRef: text('transaction_ref').notNull(),
+  payerPhone: text('payer_phone'),
+  payerName: text('payer_name'),
+  receiptUrl: text('receipt_url'),
+  status: text('status').default('PENDING').notNull(), // 'PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'REFUNDED'
+  verifiedBy: text('verified_by'),
+  verifiedAt: timestamp('verified_at'),
+  gatewayPayload: json('gateway_payload'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 84. ACTIVE API ENTITLEMENTS (PERMISSIONS & SUBSCRIPTIONS)
+// =========================================================================
+export const apiEntitlements = pgTable('api_entitlements', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => apiCustomers.id, { onDelete: 'cascade' }),
+  customerEmail: text('customer_email').notNull(),
+  planCode: text('plan_code').notNull(),
+  permissions: json('permissions').notNull(), // Array of granted permission scopes
+  rateLimitPerMinute: integer('rate_limit_per_minute').default(120).notNull(),
+  monthlyQuota: integer('monthly_quota').default(50000).notNull(),
+  quotaUsedThisMonth: integer('quota_used_this_month').default(0).notNull(),
+  isUnlimited: boolean('is_unlimited').default(false).notNull(),
+  status: text('status').default('ACTIVE').notNull(), // 'ACTIVE', 'SUSPENDED', 'EXPIRED'
+  startDate: timestamp('start_date').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at'),
+  approvedBy: text('approved_by').default('MADECC API Administrator'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 85. CRYPTOGRAPHICALLY SECURE API CREDENTIALS (API KEYS & HASHES)
+// =========================================================================
+export const apiKeys = pgTable('api_keys', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => apiCustomers.id, { onDelete: 'cascade' }),
+  customerEmail: text('customer_email').notNull(),
+  name: text('name').notNull(), // e.g. 'Production Core Server Key'
+  keyId: text('key_id').notNull().unique(), // e.g. 'mk_live_9f83a8b2c1d4...'
+  secretHash: text('secret_hash').notNull(), // SHA-256 hash of secret
+  secretPrefix: text('secret_prefix').notNull(), // e.g. 'sec_live_9f83...' (first 12 chars for verification display)
+  environment: text('environment').default('production').notNull(), // 'production', 'sandbox'
+  permissions: json('permissions').notNull(), // Array of allowed scopes
+  rateLimitPerMinute: integer('rate_limit_per_minute').default(120).notNull(),
+  monthlyQuota: integer('monthly_quota').default(50000).notNull(),
+  status: text('status').default('ACTIVE').notNull(), // 'ACTIVE', 'REVOKED', 'SUSPENDED', 'EXPIRED'
+  lastUsedAt: timestamp('last_used_at'),
+  lastUsedIp: text('last_used_ip'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 86. API REQUESTS & TELEMETRY LOGS (REAL-TIME USAGE & LATENCY)
+// =========================================================================
+export const apiRequestsLog = pgTable('api_requests_log', {
+  id: serial('id').primaryKey(),
+  keyId: text('key_id'),
+  customerEmail: text('customer_email'),
+  endpoint: text('endpoint').notNull(), // e.g. '/api/v1/boq/calculate'
+  method: text('method').notNull(), // 'GET', 'POST'
+  statusCode: integer('status_code').notNull(), // 200, 400, 401, 429, 500
+  latencyMs: integer('latency_ms').default(0).notNull(),
+  ipHash: text('ip_hash'),
+  userAgent: text('user_agent'),
+  requestSize: integer('request_size').default(0).notNull(),
+  responseSize: integer('response_size').default(0).notNull(),
+  errorMessage: text('error_message'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 87. API PLATFORM AUDIT LOGS
+// =========================================================================
+export const apiPlatformAuditLogs = pgTable('api_platform_audit_logs', {
+  id: serial('id').primaryKey(),
+  adminEmail: text('admin_email').notNull(),
+  action: text('action').notNull(), // 'APPROVE_ACCESS', 'REJECT_PAYMENT', 'REVOKE_KEY', 'GENERATE_KEY', 'MODIFY_PLAN'
+  targetType: text('target_type').notNull(), // 'REQUEST', 'KEY', 'PLAN', 'CUSTOMER', 'TRANSACTION'
+  targetId: text('target_id'),
+  details: text('details').notNull(),
+  metadata: json('metadata'),
+  ipAddress: text('ip_address'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
 });
 
 

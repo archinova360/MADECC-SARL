@@ -30,6 +30,7 @@ import LegalPage from './components/LegalPage.tsx';
 import DataDeletion from './components/DataDeletion.tsx';
 import FAQ from './components/FAQ.tsx';
 import { Tenders } from './components/Tenders.tsx';
+import DeveloperPortal from './components/DeveloperPortal.tsx';
 
 // SaaS Multi-Tenant Modules
 import { SuperAdmin } from './components/SuperAdmin.tsx';
@@ -41,6 +42,8 @@ import { TenantService } from './services/tenantService.ts';
 
 import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';
 import { LanguageProvider } from './lib/LanguageContext.tsx';
+import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext.tsx';
+import FollowUsModal from './components/FollowUsModal.tsx';
 
 function AppContent({
   currentTab,
@@ -80,6 +83,7 @@ function AppContent({
   setThankYouModalState: (s: any) => void;
 }) {
   const { theme } = useTheme();
+  const { settings, isFollowModalOpen, closeFollowModal } = useSiteSettings();
   const [preselectedService, setPreselectedService] = useState<string>('');
 
   const handleNavigateWithState = (tab: string, extraState?: any) => {
@@ -210,6 +214,9 @@ function AppContent({
         return <DataDeletion onNavigateToTab={handleNavigateWithState} setCurrentTab={setCurrentTab} />;
       case 'faq':
         return <FAQ onNavigateToTab={handleNavigateWithState} />;
+      case 'developers':
+      case 'api-platform':
+        return <DeveloperPortal onNavigateToTab={handleNavigateWithState} />;
       case 'tenders':
         return <Tenders onNavigateToTab={handleNavigateWithState} />;
       case 'verify':
@@ -251,6 +258,26 @@ function AppContent({
         ? 'bg-slate-50 text-slate-800 selection:bg-amber-200 selection:text-slate-900'
         : 'bg-[#0A0A0B] text-slate-200 selection:bg-amber-500 selection:text-slate-950'
     }`}>
+      {/* Emergency / Site-Wide Broadcast Banner */}
+      {settings?.emergencyBanner?.enabled && settings.emergencyBanner.message && (
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-between gap-3 shadow-md z-40">
+          <div className="flex items-center gap-2 max-w-5xl mx-auto flex-grow justify-center text-center">
+            <span className="bg-slate-950 text-amber-400 text-[10px] uppercase font-mono px-2 py-0.5 rounded tracking-wider font-extrabold">
+              {settings.emergencyBanner.badgeType === 'urgent' ? 'URGENT DISPATCH' : 'ANNOUNCEMENT'}
+            </span>
+            <span>{settings.emergencyBanner.message}</span>
+            {settings.emergencyBanner.linkText && settings.emergencyBanner.linkUrl && (
+              <a 
+                href={settings.emergencyBanner.linkUrl}
+                className="underline hover:text-white font-extrabold ml-2 inline-flex items-center gap-0.5"
+              >
+                {settings.emergencyBanner.linkText} &rarr;
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       <SEOHandler currentTab={currentTab} selectedProjectId={selectedProjectId} currentTenant={currentTenant} />
       
       {/* Header Navigation Section */}
@@ -341,6 +368,14 @@ function AppContent({
           }}
         />
       )}
+
+      {/* Global Follow Us on Social Media Modal */}
+      <FollowUsModal 
+        isOpen={isFollowModalOpen} 
+        onClose={closeFollowModal}
+        isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
+        onNavigateToAdminCms={() => setCurrentTab('admin')}
+      />
     </div>
   );
 }
@@ -599,25 +634,27 @@ export default function App() {
   return (
     <LanguageProvider>
       <ThemeProvider dbUser={dbUser}>
-        <AppContent
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-          selectedProjectId={selectedProjectId}
-          setSelectedProjectId={setSelectedProjectId}
-          dbUser={dbUser}
-          setDbUser={setDbUser}
-          loadingAuth={loadingAuth}
-          verificationToken={verificationToken}
-          setVerificationToken={setVerificationToken}
-          currentTenant={currentTenant}
-          setCurrentTenant={setCurrentTenant}
-          isBillingOpen={isBillingOpen}
-          setIsBillingOpen={setIsBillingOpen}
-          isOnboardingOpen={isOnboardingOpen}
-          setIsOnboardingOpen={setIsOnboardingOpen}
-          thankYouModalState={thankYouModalState}
-          setThankYouModalState={setThankYouModalState}
-        />
+        <SiteSettingsProvider>
+          <AppContent
+            currentTab={currentTab}
+            setCurrentTab={setCurrentTab}
+            selectedProjectId={selectedProjectId}
+            setSelectedProjectId={setSelectedProjectId}
+            dbUser={dbUser}
+            setDbUser={setDbUser}
+            loadingAuth={loadingAuth}
+            verificationToken={verificationToken}
+            setVerificationToken={setVerificationToken}
+            currentTenant={currentTenant}
+            setCurrentTenant={setCurrentTenant}
+            isBillingOpen={isBillingOpen}
+            setIsBillingOpen={setIsBillingOpen}
+            isOnboardingOpen={isOnboardingOpen}
+            setIsOnboardingOpen={setIsOnboardingOpen}
+            thankYouModalState={thankYouModalState}
+            setThankYouModalState={setThankYouModalState}
+          />
+        </SiteSettingsProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

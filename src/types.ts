@@ -561,6 +561,7 @@ export interface DirectPaymentConfig {
   };
   contactWhatsApp: string;
   contactEmail: string;
+  promoNote?: string;
 }
 
 

@@ -20,6 +20,7 @@ import {
   Scale
 } from 'lucide-react';
 import { CompanyDocument, TeamMember } from '../types.ts';
+import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
 
 export default function About() {
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
@@ -89,7 +90,7 @@ export default function About() {
           <div className="lg:col-span-7 space-y-12">
             
             {/* Who We Are */}
-            <div className="space-y-4">
+            <FadeIn className="space-y-4">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
                 <Building2 className="w-6 h-6 text-amber-500" /> Who We Are
               </h2>
@@ -99,10 +100,10 @@ export default function About() {
               <p className="text-slate-400 text-sm leading-relaxed">
                 Too many property developers, diaspora builders, and institutional investors in Cameroon experience unexpected cost overruns, substandard concrete pours, foundation cracking, or permit disputes. MADECC Group bridges this gap by applying disciplined engineering standards (Eurocode 2 and BAEL 91), verified geotechnical testing, and detailed Bills of Quantities (BOQ) with fixed unit rates.
               </p>
-            </div>
+            </FadeIn>
 
             {/* Our Geographical Footprint in Cameroon */}
-            <div className="space-y-4 bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl">
+            <FadeIn delay={0.1} className="space-y-4 bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl hover:border-slate-700 transition-colors">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-amber-500" /> Operational Reach Across Cameroon
               </h3>
@@ -135,85 +136,85 @@ export default function About() {
                   <span><strong>Northern Regions:</strong> Garoua, Maroua, Ngaoundéré civil & enterprise infrastructure</span>
                 </div>
               </div>
-            </div>
+            </FadeIn>
 
             {/* Core Values grid */}
             <div className="space-y-6 pt-2">
               <h3 className="text-xl font-bold text-white border-b border-slate-800 pb-3">Our Core Corporate Pillars</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2">
+              <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <StaggerItem className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2 hover:border-amber-500/30 transition-colors">
                   <div className="flex items-center gap-2.5 text-amber-500">
                     <Ruler className="w-5 h-5" />
                     <h4 className="font-bold text-white text-sm">Engineering Rigor & Calculation</h4>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">Every structural element is calculated using Eurocode 2 / BAEL 91 formulas. We verify load distributions, rebar bending schedules (BBS), and soil bearing capacities before excavation.</p>
-                </div>
+                </StaggerItem>
                 
-                <div className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2">
+                <StaggerItem className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2 hover:border-amber-500/30 transition-colors">
                   <div className="flex items-center gap-2.5 text-amber-500">
                     <Scale className="w-5 h-5" />
                     <h4 className="font-bold text-white text-sm">Transparent Quantity Surveying</h4>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">No arbitrary estimations or surprise surcharges. We formulate detailed BOQs with transparent material, labor, and plant itemizations in Central African CFA Francs (FCFA).</p>
-                </div>
+                </StaggerItem>
 
-                <div className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2">
+                <StaggerItem className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2 hover:border-amber-500/30 transition-colors">
                   <div className="flex items-center gap-2.5 text-amber-500">
                     <ShieldCheck className="w-5 h-5" />
                     <h4 className="font-bold text-white text-sm">Zero-Harm QHSE Safety Policy</h4>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">Mandatory PPE on all active sites, scaffold safety checks, harness requirements for height work, and strict compliance with national environmental impact guidelines.</p>
-                </div>
+                </StaggerItem>
 
-                <div className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2">
+                <StaggerItem className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2 hover:border-amber-500/30 transition-colors">
                   <div className="flex items-center gap-2.5 text-amber-500">
                     <HardHat className="w-5 h-5" />
                     <h4 className="font-bold text-white text-sm">Tropical Climate Adaptation</h4>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">We design for Cameroon's heavy equatorial rainfall and high humidity: deep perimeter drainage, multi-coat bitumen foundation waterproofing, and anti-efflorescence plastering.</p>
-                </div>
-              </div>
+                </StaggerItem>
+              </StaggerContainer>
             </div>
 
             {/* Who We Build For */}
             <div className="space-y-4 pt-2">
               <h3 className="text-xl font-bold text-white border-b border-slate-800 pb-3">Who Our Services Are For</h3>
-              <div className="space-y-3 text-sm text-slate-300">
-                <div className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl">
+              <StaggerContainer className="space-y-3 text-sm text-slate-300">
+                <StaggerItem className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl hover:border-slate-700 transition-colors">
                   <span className="font-mono text-amber-500 font-bold text-xs bg-amber-500/10 px-2 py-0.5 rounded">01</span>
                   <div>
                     <strong className="text-white block text-xs uppercase tracking-wide">Diaspora Property Developers & Families:</strong>
                     <span className="text-xs text-slate-400">Cameroonians living abroad in France, North America, UK, Germany, and globally who need a trustworthy, accountable partner with weekly video updates, milestone-based banking escrow, and transparent receipts.</span>
                   </div>
-                </div>
-                <div className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl">
+                </StaggerItem>
+                <StaggerItem className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl hover:border-slate-700 transition-colors">
                   <span className="font-mono text-amber-500 font-bold text-xs bg-amber-500/10 px-2 py-0.5 rounded">02</span>
                   <div>
                     <strong className="text-white block text-xs uppercase tracking-wide">Private Landowners & Homebuilders:</strong>
                     <span className="text-xs text-slate-400">Individuals building custom duplexes, contemporary villas, or multi-family rental apartments seeking turnkey design-build excellence without the stress of managing informal labor.</span>
                   </div>
-                </div>
-                <div className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl">
+                </StaggerItem>
+                <StaggerItem className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl hover:border-slate-700 transition-colors">
                   <span className="font-mono text-amber-500 font-bold text-xs bg-amber-500/10 px-2 py-0.5 rounded">03</span>
                   <div>
                     <strong className="text-white block text-xs uppercase tracking-wide">Commercial & Industrial Enterprises:</strong>
                     <span className="text-xs text-slate-400">Companies requiring warehouse logistics hubs, corporate offices, retail complexes, or agricultural processing plants built to strict industrial specifications and load standards.</span>
                   </div>
-                </div>
-                <div className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl">
+                </StaggerItem>
+                <StaggerItem className="flex items-start gap-3 p-3.5 bg-slate-900/30 border border-slate-800/60 rounded-xl hover:border-slate-700 transition-colors">
                   <span className="font-mono text-amber-500 font-bold text-xs bg-amber-500/10 px-2 py-0.5 rounded">04</span>
                   <div>
                     <strong className="text-white block text-xs uppercase tracking-wide">Public Sector & Institutional Partners:</strong>
                     <span className="text-xs text-slate-400">Organizations issuing public tenders (Appels d'Offres) requiring registered contractors with verified administrative dossiers, tax clearance (Quitus Fiscal), and FIDIC contract adherence.</span>
                   </div>
-                </div>
-              </div>
+                </StaggerItem>
+              </StaggerContainer>
             </div>
 
           </div>
 
           {/* Right sidebar: Technical Standards & Document downloads */}
-          <div className="lg:col-span-5 space-y-8">
+          <FadeIn direction="left" className="lg:col-span-5 space-y-8">
             
             {/* Technical Framework & Compliance Card */}
             <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 space-y-5">
@@ -326,7 +327,7 @@ export default function About() {
               <div className="pt-1 space-y-2">
                 <a 
                   href="tel:+237683316486" 
-                  className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md hover:shadow-amber-500/20"
                 >
                   Direct Call: (+237) 683 31 64 86
                 </a>
@@ -334,20 +335,20 @@ export default function About() {
                   href="https://wa.me/237683316486" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md"
                 >
                   WhatsApp Engineering Line
                 </a>
               </div>
             </div>
 
-          </div>
+          </FadeIn>
 
         </div>
 
         {/* Our Team Section */}
         <div className="mt-24 border-t border-slate-900 pt-16 space-y-12" id="our-team-section">
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
+          <FadeIn className="text-center space-y-3 max-w-2xl mx-auto">
             <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest block">
               Professional Engineering Organization
             </span>
@@ -355,7 +356,7 @@ export default function About() {
             <p className="text-slate-400 text-sm leading-relaxed">
               Our engineering team brings together certified civil engineers, quantity surveyors, architects, and on-site project supervisors committed to execution excellence in Cameroon.
             </p>
-          </div>
+          </FadeIn>
 
           {loadingTeam ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -369,9 +370,9 @@ export default function About() {
               ))}
             </div>
           ) : team.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {team.map((member) => (
-                <div 
+                <StaggerItem
                   key={member.id} 
                   className="bg-slate-900/30 border border-slate-850 hover:border-amber-500/50 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
                   itemScope 
@@ -426,9 +427,9 @@ export default function About() {
                       </a>
                     </div>
                   )}
-                </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerContainer>
           ) : (
             <div className="text-center p-12 bg-slate-900/30 border border-slate-850 rounded-2xl text-slate-500 text-sm">
               Technical leadership profiles available on request.

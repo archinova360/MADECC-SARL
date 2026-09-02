@@ -110,19 +110,41 @@ export const DEFAULT_PLANS: SaaSPlan[] = [
 ];
 
 export class SubscriptionService {
+  private static cachedPlans: SaaSPlan[] = DEFAULT_PLANS;
+  private static cachedConfig: DirectPaymentConfig = DIRECT_PAYMENT_CONFIG;
+
   /**
-   * Fetch available plans
+   * Fetch available plans from backend with fallback
+   */
+  static async fetchPlansFromApi(): Promise<SaaSPlan[]> {
+    try {
+      const res = await fetch('/api/saas/plans');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          this.cachedPlans = data;
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('[FETCH_PLANS_WARN]', e);
+    }
+    return this.cachedPlans;
+  }
+
+  /**
+   * Synchronous plan getter
    */
   static getPlans(): SaaSPlan[] {
-    return DEFAULT_PLANS;
+    return this.cachedPlans;
   }
 
   /**
    * Get plan details by code
    */
   static getPlanByCode(code: PlanCode | string): SaaSPlan {
-    const match = DEFAULT_PLANS.find(p => p.code.toUpperCase() === code.toUpperCase());
-    return match || DEFAULT_PLANS[0];
+    const match = this.cachedPlans.find(p => p.code.toUpperCase() === code.toUpperCase());
+    return match || this.cachedPlans[0] || DEFAULT_PLANS[0];
   }
 
   /**
@@ -133,9 +155,76 @@ export class SubscriptionService {
   }
 
   /**
+   * Fetch payment configuration from API
+   */
+  static async fetchPaymentConfigFromApi(): Promise<DirectPaymentConfig> {
+    try {
+      const res = await fetch('/api/saas/payment-config');
+      if (res.ok) {
+        const data = await res.json();
+        this.cachedConfig = data;
+        return data;
+      }
+    } catch (e) {
+      console.warn('[FETCH_CONFIG_WARN]', e);
+    }
+    return this.cachedConfig;
+  }
+
+  /**
    * Get direct payment instructions
    */
   static getPaymentConfig(): DirectPaymentConfig {
-    return DIRECT_PAYMENT_CONFIG;
+    return this.cachedConfig;
+  }
+
+  /**
+   * Submit subscription payment
+   */
+  static async submitPayment(payload: {
+    tenantId: number;
+    planCode: string;
+    billingCycle: 'MONTHLY' | 'ANNUAL';
+    amount: number;
+    currency?: string;
+    paymentMethod: string;
+    paymentReference: string;
+    senderPhone?: string;
+    notes?: string;
+  }) {
+    const res = await fetch('/api/saas/subscriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return res.json();
+  }
+
+  /**
+   * Confirm subscription payment
+   */
+  static async confirmPayment(subscriptionId: number, confirmedBy?: string) {
+    const res = await fetch(`/api/saas/subscriptions/${subscriptionId}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmedBy })
+    });
+    return res.json();
+  }
+
+  /**
+   * Save updated payment config
+   */
+  static async savePaymentConfig(config: Partial<DirectPaymentConfig>) {
+    const res = await fetch('/api/saas/payment-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    const data = await res.json();
+    if (data?.config) {
+      this.cachedConfig = data.config;
+    }
+    return data;
   }
 }

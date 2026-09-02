@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
+import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 import { 
   HardHat, 
   Mail, 
@@ -9,7 +10,8 @@ import {
   Send, 
   CheckCircle2, 
   AlertCircle,
-  X
+  X,
+  FileDown
 } from 'lucide-react';
 
 interface FooterProps {
@@ -140,6 +142,16 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   </button>
                 </li>
               ))}
+              <li>
+                <button
+                  onClick={() => downloadWebsiteNavigationGuidePdf()}
+                  className="text-amber-400 hover:text-amber-300 transition-colors text-left font-bold flex items-center gap-1.5"
+                  id="footer-download-navigation-guide"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-amber-500" />
+                  Navigation Manual (A4 PDF)
+                </button>
+              </li>
             </ul>
           </div>
 

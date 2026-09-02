@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase.ts';
 import { User, Tenant } from './types.ts';
+import { AnimatePresence } from 'motion/react';
+import { PageTransition } from './components/MotionReveal.tsx';
 
 // Layout & Core Global Components
 import Navbar from './components/Navbar.tsx';
@@ -145,6 +147,7 @@ function AppContent({
           <Home 
             setCurrentTab={setCurrentTab} 
             setSelectedProjectId={setSelectedProjectId} 
+            currentTenant={currentTenant}
           />
         );
       case 'services':
@@ -248,7 +251,7 @@ function AppContent({
         ? 'bg-slate-50 text-slate-800 selection:bg-amber-200 selection:text-slate-900'
         : 'bg-[#0A0A0B] text-slate-200 selection:bg-amber-500 selection:text-slate-950'
     }`}>
-      <SEOHandler currentTab={currentTab} selectedProjectId={selectedProjectId} />
+      <SEOHandler currentTab={currentTab} selectedProjectId={selectedProjectId} currentTenant={currentTenant} />
       
       {/* Header Navigation Section */}
       <Navbar 
@@ -275,7 +278,11 @@ function AppContent({
             <span className={`text-xs font-mono uppercase tracking-widest ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>Verifying secure profile...</span>
           </div>
         ) : (
-          renderActiveScreen()
+          <AnimatePresence mode="wait">
+            <PageTransition key={currentTab}>
+              {renderActiveScreen()}
+            </PageTransition>
+          </AnimatePresence>
         )}
       </main>
 
@@ -400,16 +407,33 @@ export default function App() {
 
   // Sync Firebase authentication or Reviewer / Admin session tokens with our PostgreSQL user roles
   useEffect(() => {
-    const reviewerToken = sessionStorage.getItem('reviewer_token');
+    const reviewerToken = sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
     if (reviewerToken) {
       setLoadingAuth(true);
-      fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${reviewerToken}` }
-      })
-        .then(res => {
-          if (res.ok) return res.json();
-          throw new Error('Reviewer verification failed');
+      (window as any).firebaseUserToken = reviewerToken;
+
+      const fetchReviewerWithRetry = (retries = 3, delay = 1000): Promise<any> => {
+        return fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${reviewerToken}` }
         })
+          .then(res => {
+            if (res.ok) return res.json();
+            if (res.status === 401 || res.status === 403) {
+              throw new Error('Reviewer verification failed');
+            }
+            throw new Error(`Server returned ${res.status}`);
+          })
+          .catch(err => {
+            if (retries > 0 && err.message !== 'Reviewer verification failed') {
+              console.warn(`Reviewer verification fetch failed, retrying in ${delay}ms... (${retries} retries left)`);
+              return new Promise(resolve => setTimeout(resolve, delay))
+                .then(() => fetchReviewerWithRetry(retries - 1, delay * 1.5));
+            }
+            throw err;
+          });
+      };
+
+      fetchReviewerWithRetry()
         .then(data => {
           if (data.user) {
             setDbUser(data.user);
@@ -417,15 +441,18 @@ export default function App() {
           setLoadingAuth(false);
         })
         .catch(err => {
-          console.error('Reviewer login restore failed:', err);
-          sessionStorage.removeItem('reviewer_token');
-          setDbUser(null);
+          console.error('Reviewer login restore notice:', err);
+          if (err.message === 'Reviewer verification failed') {
+            sessionStorage.removeItem('reviewer_token');
+            localStorage.removeItem('reviewer_token');
+            setDbUser(null);
+          }
           setLoadingAuth(false);
         });
       return;
     }
 
-    const bypassToken = sessionStorage.getItem('admin_token');
+    const bypassToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
     if (bypassToken === 'Adminmadeccgroup' || bypassToken === 'MADECC Group admin') {
       setLoadingAuth(true);
 
@@ -465,6 +492,29 @@ export default function App() {
       return;
     }
 
+    // Check for stored admin token or reviewer session on app initialization
+    const storedAdminToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+    const storedReviewerToken = sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
+    const initialToken = storedAdminToken || storedReviewerToken;
+
+    if (initialToken) {
+      fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${initialToken}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data?.user) {
+            setDbUser(data.user);
+          }
+        })
+        .catch(err => {
+          console.warn('Initial token validation error:', err);
+        })
+        .finally(() => {
+          setLoadingAuth(false);
+        });
+    }
+
     // Fallback safety timer: ensure loadingAuth resolves within 1.5s even if Firebase is partitioned or slow in iframe
     const fallbackTimer = setTimeout(() => {
       setLoadingAuth(false);
@@ -472,31 +522,44 @@ export default function App() {
 
     let unsubscribe = () => {};
     try {
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          try {
-            const token = await firebaseUser.getIdToken();
-            (window as any).firebaseUserToken = token;
+      unsubscribe = onAuthStateChanged(
+        auth,
+        async (firebaseUser) => {
+          if (firebaseUser) {
+            try {
+              const token = await firebaseUser.getIdToken();
+              (window as any).firebaseUserToken = token;
 
-            const response = await fetch('/api/auth/me', {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-              const data = await response.json();
-              if (data.user) {
-                setDbUser(data.user);
+              const response = await fetch('/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (response.ok) {
+                const data = await response.json();
+                if (data.user) {
+                  setDbUser(data.user);
+                }
               }
+            } catch (error) {
+              console.warn('Error synchronizing authenticated profile:', error);
             }
-          } catch (error) {
-            console.error('Error synchronizing authenticated profile:', error);
+          } else {
+            // If no Firebase user, check if we have a valid admin or reviewer token before clearing
+            const activeBypass = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token') || sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
+            if (!activeBypass) {
+              setDbUser(null);
+              (window as any).firebaseUserToken = undefined;
+            }
           }
-        } else {
-          setDbUser(null);
-          (window as any).firebaseUserToken = undefined;
+          setLoadingAuth(false);
+          clearTimeout(fallbackTimer);
+        },
+        (error) => {
+          // Gracefully capture network request errors (e.g. auth/network-request-failed or offline iframe)
+          console.warn('Firebase onAuthStateChanged network notice:', error?.message || error);
+          setLoadingAuth(false);
+          clearTimeout(fallbackTimer);
         }
-        setLoadingAuth(false);
-        clearTimeout(fallbackTimer);
-      });
+      );
     } catch (err) {
       console.warn('Firebase auth initialization warning:', err);
       setLoadingAuth(false);
@@ -532,15 +595,6 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
-  // Handle instant redirect if admin/staff/reviewer role is revoked during sandbox toggling
-  useEffect(() => {
-    if (currentTab === 'admin') {
-      if (!dbUser || (dbUser.role !== 'admin' && dbUser.role !== 'staff' && dbUser.role !== 'social_media_reviewer')) {
-        setCurrentTab('home');
-      }
-    }
-  }, [dbUser, currentTab]);
 
   return (
     <LanguageProvider>

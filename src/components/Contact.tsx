@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Building2 
 } from 'lucide-react';
+import { FadeIn, StaggerContainer, StaggerItem } from './MotionReveal.tsx';
 
 export default function Contact() {
   const { t } = useLanguage();
@@ -111,7 +112,7 @@ export default function Contact() {
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
            
            {/* Column Left: Directory details */}
-           <div className="lg:col-span-5 space-y-10">
+           <FadeIn direction="right" className="lg:col-span-5 space-y-10">
              <div className="space-y-3">
                <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">{t('headquarters_location')}</span>
               <h2 className="text-2xl font-bold text-white">MADECC Group Cameroon</h2>
@@ -120,8 +121,8 @@ export default function Contact() {
               </p>
             </div>
 
-            <div className="space-y-6 text-sm">
-              <div className="flex items-start gap-4">
+            <StaggerContainer className="space-y-6 text-sm">
+              <StaggerItem className="flex items-start gap-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:border-amber-500/40 transition-colors">
                 <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-3 rounded-lg shrink-0">
                   <MapPin className="w-5 h-5" />
                 </div>
@@ -129,9 +130,9 @@ export default function Contact() {
                   <h4 className="font-bold text-white">{t('registered_address')}</h4>
                   <p className="text-slate-400 mt-1">Yaoundé Mbankolo, Cameroon<br /><span className="text-xs text-amber-400 font-mono">Operating Everywhere in Cameroon &amp; Across Africa</span></p>
                 </div>
-              </div>
+              </StaggerItem>
 
-              <div className="flex items-start gap-4">
+              <StaggerItem className="flex items-start gap-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:border-amber-500/40 transition-colors">
                 <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-3 rounded-lg shrink-0">
                   <Phone className="w-5 h-5" />
                 </div>
@@ -145,9 +146,9 @@ export default function Contact() {
                     Customer Support: +237 640 194 505
                   </p>
                 </div>
-              </div>
+              </StaggerItem>
 
-              <div className="flex items-start gap-4">
+              <StaggerItem className="flex items-start gap-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:border-amber-500/40 transition-colors">
                 <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-3 rounded-lg shrink-0">
                   <Mail className="w-5 h-5" />
                 </div>
@@ -158,9 +159,9 @@ export default function Contact() {
                     Construction Services: madecccons@gmail.com
                   </p>
                 </div>
-              </div>
+              </StaggerItem>
 
-              <div className="flex items-start gap-4">
+              <StaggerItem className="flex items-start gap-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:border-amber-500/40 transition-colors">
                 <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-3 rounded-lg shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
@@ -168,11 +169,11 @@ export default function Contact() {
                   <h4 className="font-bold text-white">{t('working_hours')}</h4>
                   <p className="text-slate-400 mt-1">Mon - Fri: 08:00 - 18:00 (WAT)<br />Sat: 09:00 - 13:00 (Site Inspections)</p>
                 </div>
-              </div>
-            </div>
+              </StaggerItem>
+            </StaggerContainer>
 
             {/* Live Google Map Location */}
-            <div className="border border-slate-800/80 bg-[#0E0E10]/90 rounded-xl overflow-hidden shadow-sm">
+            <div className="border border-slate-800/80 bg-[#0E0E10]/90 rounded-xl overflow-hidden shadow-sm hover:border-slate-700 transition-colors">
               <iframe 
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3980.5961209540305!2d11.488756373717328!3d3.89638634810761!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x108bcff0d23b430d%3A0x6e5c797f8a468176!2sMADECC!5e0!3m2!1sen!2scm!4v1784346151859!5m2!1sen!2scm" 
                 width="100%" 
@@ -185,10 +186,10 @@ export default function Contact() {
               />
             </div>
 
-          </div>
+          </FadeIn>
 
           {/* Column Right: Message submission form */}
-          <div className="lg:col-span-7 bg-[#0E0E10]/90 border border-slate-850 rounded-2xl p-8 shadow-sm relative overflow-hidden">
+          <FadeIn direction="left" className="lg:col-span-7 bg-[#0E0E10]/90 border border-slate-850 rounded-2xl p-8 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
             <div className="space-y-2 mb-8">
               <h3 className="font-bold text-xl text-white">{t('send_message')}</h3>
@@ -317,7 +318,7 @@ export default function Contact() {
                 <button
                   type="submit"
                   disabled={status === 'submitting'}
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-amber-500/20"
                   id="submit-contact-btn"
                 >
                   <Send className="w-4 h-4 text-slate-950" />
@@ -327,7 +328,7 @@ export default function Contact() {
               </form>
             )}
 
-          </div>
+          </FadeIn>
 
         </div>
       </div>

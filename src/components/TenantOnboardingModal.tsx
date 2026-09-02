@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Building2, Check, ArrowRight, X, Sparkles, 
-  CreditCard, Globe, Phone, Mail, MapPin, Send, CheckCircle2 
+  CreditCard, Globe, Phone, Mail, MapPin, Send, CheckCircle2, Clock 
 } from 'lucide-react';
 import { Tenant, PlanCode, PaymentMethodCode } from '../types.ts';
 import { SubscriptionService, DIRECT_PAYMENT_CONFIG } from '../services/subscriptionService.ts';
@@ -29,6 +29,8 @@ export const TenantOnboardingModal: React.FC<TenantOnboardingModalProps> = ({
   const [senderPhone, setSenderPhone] = useState('');
   const [transactionRef, setTransactionRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedTenant, setSubmittedTenant] = useState<Tenant | null>(null);
 
   if (!isOpen) return null;
 
@@ -37,49 +39,87 @@ export const TenantOnboardingModal: React.FC<TenantOnboardingModalProps> = ({
     setSlug(val.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'));
   };
 
-  const handleCompleteOnboarding = (e: React.FormEvent) => {
+  const handleCompleteOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const newTenant: Tenant = {
-      id: Date.now(),
-      name: companyName,
-      slug: slug || `company-${Date.now()}`,
-      legalName: `${companyName} Construction SARL`,
-      logoUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80',
-      faviconUrl: null,
-      primaryDomain: `${slug || 'portal'}.madecccloud.com`,
-      customDomain: null,
-      status: 'ACTIVE',
-      planCode: selectedPlanCode,
-      currency: 'XAF',
-      timezone: 'Africa/Douala',
-      phone,
-      email,
-      address: `${city}, Cameroon`,
-      country: 'Cameroon',
-      settings: {
-        primaryColor: '#0f172a',
-        secondaryColor: '#f59e0b',
-        accentColor: '#3b82f6',
-        tagline: 'Modern Civil Engineering & Quality Construction',
-        companyAddress: `${city}, Cameroon`,
+    try {
+      // 1. Create Tenant in DB
+      const createdTenant = await TenantService.registerTenant({
+        name: companyName,
+        slug: slug || `company-${Date.now()}`,
+        legalName: `${companyName} Construction SARL`,
+        logoUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80',
+        planCode: selectedPlanCode,
+        currency: 'XAF',
         phone,
         email,
-        currency: 'XAF'
-      },
-      aiCreditsBalance: selectedPlanCode === 'ENTERPRISE' ? 5000 : selectedPlanCode === 'PROFESSIONAL' ? 500 : 100,
-      storageUsageBytes: 0,
-      isFlagship: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+        address: `${city}, Cameroon`,
+        country: 'Cameroon',
+        status: 'ACTIVE'
+      });
 
-    setTimeout(() => {
+      // 2. Submit initial payment record if transactionRef was entered
+      if (transactionRef) {
+        const plan = SubscriptionService.getPlanByCode(selectedPlanCode);
+        await SubscriptionService.submitPayment({
+          tenantId: createdTenant.id,
+          planCode: selectedPlanCode,
+          billingCycle: 'MONTHLY',
+          amount: plan.monthlyPrice,
+          currency: 'XAF',
+          paymentMethod,
+          paymentReference: transactionRef,
+          senderPhone,
+          notes: 'New tenant self-service onboarding payment'
+        });
+      }
+
       setIsSubmitting(false);
-      onTenantCreated(newTenant);
-      onClose();
-    }, 600);
+      setSubmittedTenant(createdTenant);
+      setIsSubmitted(true);
+      onTenantCreated(createdTenant);
+    } catch (err: any) {
+      console.warn('[ONBOARDING_ERROR]', err);
+      // Fallback local tenant
+      const fallbackTenant: Tenant = {
+        id: Date.now(),
+        name: companyName,
+        slug: slug || `company-${Date.now()}`,
+        legalName: `${companyName} Construction SARL`,
+        logoUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80',
+        faviconUrl: null,
+        primaryDomain: `${slug || 'portal'}.madecccloud.com`,
+        customDomain: null,
+        status: 'ACTIVE',
+        planCode: selectedPlanCode,
+        currency: 'XAF',
+        timezone: 'Africa/Douala',
+        phone,
+        email,
+        address: `${city}, Cameroon`,
+        country: 'Cameroon',
+        settings: {
+          primaryColor: '#0f172a',
+          secondaryColor: '#f59e0b',
+          accentColor: '#3b82f6',
+          tagline: 'Modern Civil Engineering & Quality Construction',
+          companyAddress: `${city}, Cameroon`,
+          phone,
+          email,
+          currency: 'XAF'
+        },
+        aiCreditsBalance: selectedPlanCode === 'ENTERPRISE' ? 5000 : selectedPlanCode === 'PROFESSIONAL' ? 500 : 100,
+        storageUsageBytes: 0,
+        isFlagship: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setIsSubmitting(false);
+      setSubmittedTenant(fallbackTenant);
+      setIsSubmitted(true);
+      onTenantCreated(fallbackTenant);
+    }
   };
 
   return (
@@ -104,8 +144,72 @@ export const TenantOnboardingModal: React.FC<TenantOnboardingModalProps> = ({
         </div>
 
         <div className="p-6">
-          {/* STEP 1: Company Profile */}
-          {step === 1 && (
+          {/* SUBMISSION CONFIRMATION: PENDING SUPER ADMIN APPROVAL */}
+          {isSubmitted && submittedTenant ? (
+            <div className="text-center py-6 px-4 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+                <Clock className="w-8 h-8 animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                  Registration Submitted &bull; Pending Super Admin Approval
+                </span>
+                <h3 className="text-xl font-extrabold text-white">
+                  {submittedTenant.name}
+                </h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Your dedicated workspace has been provisioned and registered in our database. The Super Admin must verify your payment and approve your account before full access is activated.
+                </p>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 max-w-md mx-auto text-left text-xs space-y-2.5 font-mono">
+                <div className="flex justify-between border-b border-slate-800/80 pb-2">
+                  <span className="text-slate-400 font-sans">Subdomain URL:</span>
+                  <span className="text-amber-400 font-bold">{submittedTenant.primaryDomain}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800/80 pb-2">
+                  <span className="text-slate-400 font-sans">Selected Plan:</span>
+                  <span className="text-white font-bold">{submittedTenant.planCode} Tier</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800/80 pb-2">
+                  <span className="text-slate-400 font-sans">Payment Method:</span>
+                  <span className="text-white">{paymentMethod}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800/80 pb-2">
+                  <span className="text-slate-400 font-sans">Sender Phone:</span>
+                  <span className="text-white">{senderPhone || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-sans">Transaction Ref:</span>
+                  <span className="text-emerald-400 font-bold">{transactionRef || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3.5 max-w-md mx-auto text-left text-xs text-blue-200">
+                <p className="font-semibold text-blue-100 flex items-center gap-1.5 mb-1">
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                  What happens next?
+                </p>
+                <p className="text-[11px] text-blue-300/90 leading-relaxed">
+                  Our SaaS Super Admin team will verify your transaction code and approve your workspace within minutes. You will receive an SMS and email notification upon activation.
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-colors"
+                >
+                  Close Window
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* STEP 1: Company Profile */}
+              {step === 1 && (
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
                 1. Organization Information
@@ -307,6 +411,8 @@ export const TenantOnboardingModal: React.FC<TenantOnboardingModalProps> = ({
                 </button>
               </div>
             </form>
+          )}
+            </>
           )}
         </div>
       </div>

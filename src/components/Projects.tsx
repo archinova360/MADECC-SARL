@@ -17,6 +17,7 @@ import {
 import { Project, Category, ProjectProgress, GalleryItem } from '../types.ts';
 import { getOptimizedImageUrl, formatCurrency } from '../lib/utils.ts';
 import { ProjectListSkeleton } from './Skeleton.tsx';
+import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
 import { 
   PortfolioHero, 
   BeforeAfterGallery, 
@@ -417,12 +418,12 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
             {loadingProjects ? (
               <ProjectListSkeleton count={6} />
             ) : filteredProjects.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredProjects.map((project) => (
-                  <div
+                  <StaggerItem
                     key={project.id}
                     onClick={() => setSelectedProjectId(project.id)}
-                    className="bg-slate-900/50 border border-slate-800/85 rounded-xl overflow-hidden shadow-sm hover:border-slate-700/80 hover:bg-slate-900 transition-all flex flex-col h-full cursor-pointer group"
+                    className="bg-slate-900/50 border border-slate-800/85 rounded-xl overflow-hidden shadow-sm hover:border-amber-500/50 hover:bg-slate-900 transition-all flex flex-col h-full cursor-pointer group"
                     id={`portfolio-item-${project.id}`}
                   >
                     <div className="relative h-52 bg-slate-950 overflow-hidden">
@@ -461,14 +462,14 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
                             {project.budget ? formatCurrency(project.budget, (project as any).currency || 'XAF') : 'TBA'}
                           </span>
                         </div>
-                        <span className="text-amber-500 font-bold inline-flex items-center gap-1 group-hover:text-amber-400 transition-colors">
+                        <span className="text-amber-500 font-bold inline-flex items-center gap-1 group-hover:text-amber-400 group-hover:translate-x-1 transition-all">
                           View Milestone Timeline →
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerContainer>
             ) : (
               <div className="text-center py-24 bg-[#0E0E10]/90 border border-slate-850 rounded-xl text-slate-400 max-w-xl mx-auto">
                 <FolderKanban className="w-10 h-10 mx-auto text-slate-600 mb-3 animate-bounce" />

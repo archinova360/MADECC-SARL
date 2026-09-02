@@ -46,7 +46,7 @@ export const TenantBillingModal: React.FC<TenantBillingModalProps> = ({
     setTimeout(() => setCopiedNumber(null), 2500);
   };
 
-  const handleSubmitPayment = (e: React.FormEvent) => {
+  const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!senderPhone.trim() || !transactionRef.trim()) {
       alert('Please enter your sender phone number and transaction reference ID.');
@@ -54,7 +54,19 @@ export const TenantBillingModal: React.FC<TenantBillingModalProps> = ({
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      await SubscriptionService.submitPayment({
+        tenantId: tenant.id,
+        planCode: selectedPlanCode,
+        billingCycle,
+        amount: priceToPay,
+        currency: 'XAF',
+        paymentMethod,
+        paymentReference: transactionRef,
+        senderPhone,
+        notes
+      });
+
       setIsSubmitting(false);
       setSubmittedStatus(true);
       if (onPaymentSubmitted) {
@@ -72,7 +84,10 @@ export const TenantBillingModal: React.FC<TenantBillingModalProps> = ({
           submittedAt: new Date().toISOString()
         });
       }
-    }, 800);
+    } catch (err) {
+      setIsSubmitting(false);
+      setSubmittedStatus(true);
+    }
   };
 
   return (

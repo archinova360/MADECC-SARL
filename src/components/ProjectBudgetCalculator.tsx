@@ -97,19 +97,44 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
   const [isSubmittingLead, setIsSubmittingLead] = useState<boolean>(false);
   const [leadSubmittedSuccess, setLeadSubmittedSuccess] = useState<boolean>(false);
 
-  // Active Rates Data from Server
-  const [rateData, setRateData] = useState<any>(null);
+  // Active Rates Data from Server with default fallback
+  const [rateData, setRateData] = useState<any>({
+    rateVersion: 'MADECC-RATES-2026',
+    currency: 'XAF',
+    regionalFactors: {
+      'Centre': 1.0,
+      'Littoral': 0.96,
+      'South': 1.05,
+      'West': 1.03,
+      'North-West': 1.08,
+      'South-West': 1.08,
+      'North': 1.12,
+      'Far North': 1.18,
+      'Adamawa': 1.10,
+      'East': 1.08
+    }
+  });
 
   // Fetch server rate library info on mount
   useEffect(() => {
-    fetch('/api/budget-calculator/rates')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.regionalFactors) {
-          setRateData(data);
+    let isMounted = true;
+    const fetchRates = async () => {
+      try {
+        const res = await fetch('/api/budget-calculator/rates');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data && (data.regionalFactors || data.rates)) {
+            setRateData(data);
+          }
         }
-      })
-      .catch(err => console.error('Failed fetching rate library:', err));
+      } catch {
+        // Fallback defaults are already initialized
+      }
+    };
+    fetchRates();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Area conversion helper

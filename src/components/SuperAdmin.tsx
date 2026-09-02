@@ -1,26 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Shield, Building2, Users, CreditCard, Activity, 
   Layers, HardDrive, Zap, CheckCircle2, AlertTriangle, 
   Clock, Plus, Search, Filter, RefreshCw, Check, X, 
-  ArrowRight, ExternalLink, Sparkles, Sliders, FileText, Globe
+  ArrowRight, ExternalLink, Sparkles, Sliders, FileText, Globe,
+  Phone, Mail, Landmark, DollarSign, Settings, Save, Trash2, Edit3
 } from 'lucide-react';
-import { Tenant, SaaSPlan, PlanCode, PaymentMethodCode } from '../types.ts';
+import { Tenant, SaaSPlan, PlanCode, PaymentMethodCode, DirectPaymentConfig } from '../types.ts';
 import { TenantService, INITIAL_PILOT_TENANTS } from '../services/tenantService.ts';
 import { SubscriptionService, DEFAULT_PLANS, DIRECT_PAYMENT_CONFIG } from '../services/subscriptionService.ts';
 
 interface PaymentSubmission {
-  id: string;
+  id: string | number;
   tenantId: number;
-  tenantName: string;
-  planCode: PlanCode;
+  tenantName?: string;
+  planCode: string;
   amount: number;
   currency: string;
-  paymentMethod: PaymentMethodCode;
-  senderPhone: string;
-  transactionRef: string;
-  submittedAt: string;
-  status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
+  paymentMethod: string;
+  senderPhone?: string;
+  paymentReference?: string;
+  transactionRef?: string;
+  submittedAt?: string;
+  createdAt?: string;
+  status: 'PENDING' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'ACTIVE' | 'REJECTED' | 'CANCELLED';
   notes?: string;
 }
 
@@ -35,94 +38,246 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
   onImpersonateTenant,
   onTriggerThankYou
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'TENANTS' | 'PAYMENTS' | 'PLANS' | 'AI_USAGE' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'TENANTS' | 'PAYMENTS' | 'PLANS' | 'PAYMENT_CONFIG' | 'AI_USAGE' | 'AUDIT'>('OVERVIEW');
   const [tenantsList, setTenantsList] = useState<Tenant[]>(INITIAL_PILOT_TENANTS);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
   
   // Pending payment requests state
-  const [pendingPayments, setPendingPayments] = useState<PaymentSubmission[]>([
-    {
-      id: 'PAY-2024-001',
-      tenantId: 2,
-      tenantName: 'BuildPro Engineering Ltd',
-      planCode: 'PROFESSIONAL',
-      amount: 100000,
-      currency: 'XAF',
-      paymentMethod: 'MTN_MOMO',
-      senderPhone: '+237 671 063 511',
-      transactionRef: 'MTN.240828.9812A',
-      submittedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 mins ago
-      status: 'PENDING',
-      notes: 'Monthly renewal for Douala headquarters.'
-    },
-    {
-      id: 'PAY-2024-002',
-      tenantId: 3,
-      tenantName: 'Alpha Civil & Infra Group',
-      planCode: 'STARTER',
-      amount: 50000,
-      currency: 'XAF',
-      paymentMethod: 'ORANGE_MONEY',
-      senderPhone: '+237 689 115 595',
-      transactionRef: 'OM.240828.4311B',
-      submittedAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(), // 2 hours ago
-      status: 'PENDING',
-      notes: 'Initial subscription payment via Orange OM.'
-    }
-  ]);
+  const [pendingPayments, setPendingPayments] = useState<PaymentSubmission[]>([]);
 
   // Plans state (editable)
   const [plans, setPlans] = useState<SaaSPlan[]>(DEFAULT_PLANS);
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
+
+  // Payment Accounts & Direct Payout Config
+  const [paymentConfig, setPaymentConfig] = useState<DirectPaymentConfig>(DIRECT_PAYMENT_CONFIG);
+  const [momoInput, setMomoInput] = useState('');
+  const [omInput, setOmInput] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankSwift, setBankSwift] = useState('');
+  const [contactWhatsApp, setContactWhatsApp] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [promoNote, setPromoNote] = useState('');
+
+  // New Tenant Modal State
+  const [showAddTenantModal, setShowAddTenantModal] = useState(false);
+  const [newTenantName, setNewTenantName] = useState('');
+  const [newTenantSlug, setNewTenantSlug] = useState('');
+  const [newTenantLegalName, setNewTenantLegalName] = useState('');
+  const [newTenantPlan, setNewTenantPlan] = useState<PlanCode>('PROFESSIONAL');
+  const [newTenantPhone, setNewTenantPhone] = useState('');
+  const [newTenantEmail, setNewTenantEmail] = useState('');
+  const [newTenantAddress, setNewTenantAddress] = useState('');
 
   const showNotification = (msg: string) => {
     setNotificationMsg(msg);
     setTimeout(() => setNotificationMsg(null), 4000);
   };
 
-  // 1. Confirm Payment Action (The Core "Payment Received Successfully / OK" workflow)
-  const handleConfirmPayment = (payment: PaymentSubmission) => {
-    // 1. Update Payment Status in list
-    setPendingPayments(prev => prev.map(p => p.id === payment.id ? { ...p, status: 'CONFIRMED' } : p));
-    
-    // 2. Update the Tenant's Plan to Active & Updated
-    setTenantsList(prev => prev.map(t => {
-      if (t.id === payment.tenantId) {
-        return {
-          ...t,
-          status: 'ACTIVE',
-          planCode: payment.planCode,
-          updatedAt: new Date().toISOString()
-        };
+  // Load live data from API
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Tenants
+      const tenants = await TenantService.fetchTenantsFromApi();
+      if (tenants && tenants.length > 0) {
+        setTenantsList(tenants);
       }
-      return t;
-    }));
 
-    showNotification(`Payment for ${payment.tenantName} confirmed successfully! Workspace activated.`);
+      // 2. Fetch Plans
+      const fetchedPlans = await SubscriptionService.fetchPlansFromApi();
+      if (fetchedPlans && fetchedPlans.length > 0) {
+        setPlans(fetchedPlans);
+      }
 
-    // 3. Trigger the Tenant's Thank You celebration screen
-    const targetTenant = tenantsList.find(t => t.id === payment.tenantId) || INITIAL_PILOT_TENANTS[0];
-    if (onTriggerThankYou) {
-      onTriggerThankYou(targetTenant, payment.planCode, payment.transactionRef);
+      // 3. Fetch Subscriptions / Payments
+      const resSubs = await fetch('/api/saas/subscriptions');
+      if (resSubs.ok) {
+        const subs = await resSubs.json();
+        if (Array.isArray(subs) && subs.length > 0) {
+          setPendingPayments(subs.map((s: any) => ({
+            id: s.id,
+            tenantId: s.tenantId,
+            tenantName: tenants.find((t: any) => t.id === s.tenantId)?.name || `Tenant #${s.tenantId}`,
+            planCode: s.planCode,
+            amount: s.amount,
+            currency: s.currency || 'XAF',
+            paymentMethod: s.paymentMethod || 'MTN_MOMO',
+            senderPhone: s.senderPhone || 'Direct Transfer',
+            transactionRef: s.paymentReference || `TXID-${s.id}`,
+            submittedAt: s.createdAt,
+            status: s.status === 'PENDING_CONFIRMATION' ? 'PENDING' : s.status === 'ACTIVE' ? 'CONFIRMED' : s.status,
+            notes: s.notes
+          })));
+        }
+      }
+
+      // 4. Fetch Payment Config
+      const config = await SubscriptionService.fetchPaymentConfigFromApi();
+      if (config) {
+        setPaymentConfig(config);
+        setMomoInput((config.momoNumbers || []).join(', '));
+        setOmInput((config.orangeMoneyNumbers || []).join(', '));
+        setBankAccountName(config.bankAccount?.accountName || '');
+        setBankName(config.bankAccount?.bankName || '');
+        setBankAccountNumber(config.bankAccount?.accountNumber || '');
+        setBankSwift(config.bankAccount?.ibanOrSwift || '');
+        setContactWhatsApp(config.contactWhatsApp || '');
+        setContactEmail(config.contactEmail || '');
+        setPromoNote(config.promoNote || '');
+      }
+    } catch (err: any) {
+      console.warn('[SUPER_ADMIN_LOAD_ERROR]', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 2. Toggle Tenant Status (Active / Suspended)
-  const handleToggleTenantStatus = (tenantId: number) => {
-    setTenantsList(prev => prev.map(t => {
-      if (t.id === tenantId) {
-        const nextStatus = t.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-        showNotification(`Tenant ${t.name} is now ${nextStatus}.`);
-        return { ...t, status: nextStatus };
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // 1. Confirm Payment Action
+  const handleConfirmPayment = async (payment: PaymentSubmission) => {
+    try {
+      const numId = typeof payment.id === 'number' ? payment.id : parseInt(String(payment.id).replace(/\D/g, ''), 10);
+      if (!isNaN(numId) && numId > 0) {
+        await SubscriptionService.confirmPayment(numId, 'Super Admin');
       }
-      return t;
-    }));
+
+      // Update Local State
+      setPendingPayments(prev => prev.map(p => p.id === payment.id ? { ...p, status: 'CONFIRMED' } : p));
+      
+      setTenantsList(prev => prev.map(t => {
+        if (t.id === payment.tenantId) {
+          return {
+            ...t,
+            status: 'ACTIVE',
+            planCode: payment.planCode as PlanCode,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return t;
+      }));
+
+      showNotification(`Payment for ${payment.tenantName || 'Tenant'} confirmed! Workspace fully activated.`);
+
+      const targetTenant = tenantsList.find(t => t.id === payment.tenantId) || INITIAL_PILOT_TENANTS[0];
+      if (onTriggerThankYou) {
+        onTriggerThankYou(targetTenant, payment.planCode, payment.transactionRef || 'CONFIRMED');
+      }
+    } catch (err: any) {
+      showNotification(`Confirmation error: ${err.message}`);
+    }
   };
 
-  // 3. Update Plan price dynamically in Super Admin
-  const handleUpdatePlanPrice = (code: PlanCode, newPrice: number) => {
-    setPlans(prev => prev.map(p => p.code === code ? { ...p, monthlyPrice: newPrice } : p));
-    showNotification(`Plan ${code} monthly price updated to ${SubscriptionService.formatPrice(newPrice)}`);
+  // 2. Reject Payment Action
+  const handleRejectPayment = async (paymentId: string | number) => {
+    try {
+      const numId = typeof paymentId === 'number' ? paymentId : parseInt(String(paymentId).replace(/\D/g, ''), 10);
+      if (!isNaN(numId) && numId > 0) {
+        await fetch(`/api/saas/subscriptions/${numId}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'Payment reference not found in bank/MoMo statement' })
+        });
+      }
+      setPendingPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status: 'REJECTED' } : p));
+      showNotification('Payment submission marked as rejected.');
+    } catch (err: any) {
+      showNotification(`Error: ${err.message}`);
+    }
+  };
+
+  // 3. Toggle Tenant Status (Active / Suspended)
+  const handleToggleTenantStatus = async (tenantId: number) => {
+    const current = tenantsList.find(t => t.id === tenantId);
+    if (!current) return;
+    const nextStatus = current.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    try {
+      await TenantService.updateTenant(tenantId, { status: nextStatus });
+      setTenantsList(prev => prev.map(t => t.id === tenantId ? { ...t, status: nextStatus } : t));
+      showNotification(`Tenant ${current.name} is now ${nextStatus}.`);
+    } catch (err: any) {
+      showNotification(`Update error: ${err.message}`);
+    }
+  };
+
+  // 4. Update Plan price dynamically in Super Admin
+  const handleUpdatePlanPrice = async (plan: SaaSPlan, newPrice: number) => {
+    try {
+      await fetch(`/api/saas/plans/${plan.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monthlyPrice: newPrice })
+      });
+      setPlans(prev => prev.map(p => p.code === plan.code ? { ...p, monthlyPrice: newPrice } : p));
+      showNotification(`Plan ${plan.name} monthly price updated to ${SubscriptionService.formatPrice(newPrice)}`);
+    } catch (err: any) {
+      showNotification(`Failed to save price: ${err.message}`);
+    }
+  };
+
+  // 5. Save Direct Payment Receiving Accounts
+  const handleSavePaymentConfig = async () => {
+    try {
+      const momoArr = momoInput.split(',').map(s => s.trim()).filter(Boolean);
+      const omArr = omInput.split(',').map(s => s.trim()).filter(Boolean);
+
+      const updated: DirectPaymentConfig = {
+        momoNumbers: momoArr,
+        orangeMoneyNumbers: omArr,
+        bankAccount: {
+          accountName: bankAccountName,
+          bankName: bankName,
+          accountNumber: bankAccountNumber,
+          ibanOrSwift: bankSwift
+        },
+        contactWhatsApp,
+        contactEmail,
+        promoNote
+      };
+
+      await SubscriptionService.savePaymentConfig(updated);
+      setPaymentConfig(updated);
+      showNotification('Monetization receiving accounts saved successfully! All checkout pages updated.');
+    } catch (err: any) {
+      showNotification(`Error saving accounts: ${err.message}`);
+    }
+  };
+
+  // 6. Create New Tenant Workspace
+  const handleCreateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTenantName) return;
+
+    try {
+      const created = await TenantService.registerTenant({
+        name: newTenantName,
+        slug: newTenantSlug || newTenantName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        legalName: newTenantLegalName || newTenantName,
+        planCode: newTenantPlan,
+        phone: newTenantPhone,
+        email: newTenantEmail,
+        address: newTenantAddress,
+        status: 'ACTIVE'
+      });
+
+      setTenantsList(prev => [created, ...prev]);
+      setShowAddTenantModal(false);
+      setNewTenantName('');
+      setNewTenantSlug('');
+      setNewTenantLegalName('');
+      setNewTenantPhone('');
+      setNewTenantEmail('');
+      setNewTenantAddress('');
+      showNotification(`Workspace ${created.name} provisioned successfully!`);
+    } catch (err: any) {
+      showNotification(`Provisioning failed: ${err.message}`);
+    }
   };
 
   // Filtered tenants
@@ -138,6 +293,8 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
     return acc + (plan?.monthlyPrice || 0);
   }, 0);
 
+  const totalARR = totalMRR * 12;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Super Admin Top Banner */}
@@ -149,19 +306,36 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-white tracking-tight">
-                MADECC SaaS Control Plane
+                MADECC SaaS Super Admin & Monetization Plane
               </h1>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold uppercase">
-                Super Admin
+                Production Ready
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Platform-wide multi-tenant management, manual direct billing approvals, and resource metering.
+              Manage multi-tenant construction workspaces, customize receiving accounts, and approve cash/MoMo subscriptions.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-colors"
+            title="Refresh live data from server"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => setShowAddTenantModal(true)}
+            className="flex items-center gap-2 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            New Workspace
+          </button>
+
           {pendingPayments.filter(p => p.status === 'PENDING').length > 0 && (
             <button
               onClick={() => setActiveTab('PAYMENTS')}
@@ -232,6 +406,18 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('PAYMENT_CONFIG')}
+          className={`py-3 px-4 border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'PAYMENT_CONFIG'
+              ? 'border-amber-500 text-amber-400 bg-amber-500/5'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <DollarSign className="w-4 h-4" />
+          Payout & Receiving Accounts
+        </button>
+
+        <button
           onClick={() => setActiveTab('PLANS')}
           className={`py-3 px-4 border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'PLANS'
@@ -292,106 +478,59 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
 
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>Monthly Recurring Revenue</span>
+                  <span>Monthly Recurring Revenue (MRR)</span>
                   <CreditCard className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="text-2xl font-extrabold text-white font-mono">
                   {SubscriptionService.formatPrice(totalMRR)}
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Across Starter, Pro & Enterprise tiers
+                  Annualized Run Rate: <strong className="text-emerald-400">{SubscriptionService.formatPrice(totalARR)}</strong>
                 </p>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>AI Takeoff Requests (30d)</span>
-                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>Pending Payment Approvals</span>
+                  <Clock className="w-4 h-4 text-amber-400" />
                 </div>
-                <div className="text-3xl font-extrabold text-white font-mono">
-                  1,482
+                <div className="text-3xl font-extrabold text-amber-400 font-mono">
+                  {pendingPayments.filter(p => p.status === 'PENDING').length}
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  CAD Analysis, BOQ & Eurocode calcs
+                  Ready for one-click verification
                 </p>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>Cloud Object Storage</span>
-                  <HardDrive className="w-4 h-4 text-purple-400" />
+                  <span>AI Takeoff Credits Used</span>
+                  <Zap className="w-4 h-4 text-purple-400" />
                 </div>
                 <div className="text-3xl font-extrabold text-white font-mono">
-                  8.5 GB
+                  1,257
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Supabase / Cloudinary drawing partitions
+                  Across 3 active tenant workspaces
                 </p>
               </div>
             </div>
 
-            {/* Direct Payment Channels Reference Box */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-amber-500/30 rounded-2xl p-6 space-y-4">
+            {/* Quick Workspace Switcher & Status Table */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                    <CreditCard className="w-5 h-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-white text-base">Direct Payment Accounts for Customer Subscriptions</h3>
-                    <p className="text-xs text-slate-400">Official phone numbers & bank account displayed to tenants at checkout</p>
-                  </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Active Tenant Workspaces</h3>
+                  <p className="text-xs text-slate-400">
+                    Switch between tenant instances or inspect their individual databases.
+                  </p>
                 </div>
                 <button
-                  onClick={() => setActiveTab('PAYMENTS')}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors"
+                  onClick={() => setShowAddTenantModal(true)}
+                  className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
                 >
-                  Review Pending Payments ({pendingPayments.filter(p => p.status === 'PENDING').length})
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-4 text-xs">
-                <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
-                  <span className="text-amber-400 font-bold block mb-1">MTN Mobile Money (MoMo)</span>
-                  <div className="space-y-1 font-mono text-slate-200">
-                    {DIRECT_PAYMENT_CONFIG.momoNumbers.map((n, i) => (
-                      <div key={i} className="bg-slate-900 px-2 py-1 rounded">{n}</div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
-                  <span className="text-orange-400 font-bold block mb-1">Orange Money (OM)</span>
-                  <div className="space-y-1 font-mono text-slate-200">
-                    {DIRECT_PAYMENT_CONFIG.orangeMoneyNumbers.map((n, i) => (
-                      <div key={i} className="bg-slate-900 px-2 py-1 rounded">{n}</div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
-                  <span className="text-blue-400 font-bold block mb-1">Visa / Bank Wire</span>
-                  <div className="text-[11px] text-slate-300 space-y-0.5">
-                    <div>{DIRECT_PAYMENT_CONFIG.bankAccount.accountName}</div>
-                    <div className="font-mono text-white text-[10px]">{DIRECT_PAYMENT_CONFIG.bankAccount.accountNumber}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Tenant Directory Table Preview */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-amber-400" />
-                  Registered Companies & Tenants
-                </h3>
-                <button
-                  onClick={() => setActiveTab('TENANTS')}
-                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1"
-                >
-                  View Full Directory <ArrowRight className="w-3 h-3" />
+                  <Plus className="w-3.5 h-3.5" />
+                  Add New Tenant
                 </button>
               </div>
 
@@ -488,8 +627,15 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-xs text-slate-400">Total: {filteredTenants.length}</span>
+                <button
+                  onClick={() => setShowAddTenantModal(true)}
+                  className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Workspace
+                </button>
               </div>
             </div>
 
@@ -528,9 +674,11 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         t.status === 'ACTIVE'
                           ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                          : t.status === 'PENDING_APPROVAL'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse'
                           : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
                       }`}>
-                        {t.status}
+                        {t.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : t.status}
                       </span>
                     </div>
 
@@ -584,7 +732,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: PAYMENT APPROVALS INBOX (ONE-CLICK "OK / CONFIRM PAYMENT") */}
+        {/* TAB 3: PAYMENT APPROVALS INBOX */}
         {/* ========================================================================= */}
         {activeTab === 'PAYMENTS' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -596,7 +744,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                     Subscription Payment Approvals Inbox
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    When customers pay via MTN MoMo, Orange OM, or Visa and submit their details, confirm receipt here with one click.
+                    When customers pay via MTN MoMo, Orange OM, or Bank and submit their TXID, click confirm to enable their workspace instantly.
                   </p>
                 </div>
                 <span className="text-xs px-3 py-1 rounded-full bg-slate-800 text-amber-400 border border-amber-500/30 font-medium">
@@ -638,15 +786,13 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                             <div>
                               <span className="text-slate-400 block text-[10px]">Payment Method</span>
                               <strong className="text-white flex items-center gap-1 mt-0.5">
-                                {payment.paymentMethod === 'MTN_MOMO' && 'MTN Mobile Money'}
-                                {payment.paymentMethod === 'ORANGE_MONEY' && 'Orange Money'}
-                                {payment.paymentMethod === 'VISA_CARD' && 'Visa / Bank Card'}
+                                {payment.paymentMethod}
                               </strong>
                             </div>
 
                             <div>
                               <span className="text-slate-400 block text-[10px]">Sender Phone / Account</span>
-                              <strong className="text-amber-400 font-mono mt-0.5 block">{payment.senderPhone}</strong>
+                              <strong className="text-amber-400 font-mono mt-0.5 block">{payment.senderPhone || 'N/A'}</strong>
                             </div>
 
                             <div>
@@ -670,13 +816,22 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                           </div>
 
                           {payment.status === 'PENDING' ? (
-                            <button
-                              onClick={() => handleConfirmPayment(payment)}
-                              className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all transform hover:scale-105"
-                            >
-                              <Check className="w-4 h-4 stroke-[3]" />
-                              Payment Received Successfully (OK)
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleConfirmPayment(payment)}
+                                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all transform hover:scale-105"
+                              >
+                                <Check className="w-4 h-4 stroke-[3]" />
+                                Payment OK (Confirm)
+                              </button>
+                              <button
+                                onClick={() => handleRejectPayment(payment.id)}
+                                className="p-2.5 bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 border border-slate-700 rounded-xl text-xs transition-colors"
+                                title="Reject payment"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
                           ) : (
                             <div className="text-emerald-400 font-semibold text-xs flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30">
                               <CheckCircle2 className="w-4 h-4" />
@@ -694,7 +849,163 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 4: PLANS & PRICING MANAGER */}
+        {/* TAB 4: DIRECT PAYOUT & MONETIZATION RECEIVING ACCOUNTS */}
+        {/* ========================================================================= */}
+        {activeTab === 'PAYMENT_CONFIG' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-emerald-400" />
+                    Direct Payment & Monetization Receiving Accounts
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Customize the Mobile Money phone numbers, Bank accounts, and WhatsApp concierge where subscribing clients send money.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSavePaymentConfig}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Payment Configuration
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Mobile Money Accounts */}
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                    <Phone className="w-4 h-4" />
+                    MTN Mobile Money Numbers
+                  </div>
+                  <p className="text-xs text-slate-400">Comma-separated phone numbers displayed to customers.</p>
+                  <input
+                    type="text"
+                    value={momoInput}
+                    onChange={(e) => setMomoInput(e.target.value)}
+                    placeholder="+237671063511, +237683316486"
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs font-mono focus:ring-1 focus:ring-amber-500"
+                  />
+
+                  <div className="flex items-center gap-2 text-orange-400 font-bold text-sm pt-3 border-t border-slate-800">
+                    <Phone className="w-4 h-4" />
+                    Orange Money Numbers
+                  </div>
+                  <p className="text-xs text-slate-400">Comma-separated phone numbers displayed to customers.</p>
+                  <input
+                    type="text"
+                    value={omInput}
+                    onChange={(e) => setOmInput(e.target.value)}
+                    placeholder="+237689115595, +237640194505"
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs font-mono focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Bank Account Wire Details */}
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
+                    <Landmark className="w-4 h-4" />
+                    Official Bank Account Details
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="text-slate-400 block mb-1">Account Holder Name</label>
+                      <input
+                        type="text"
+                        value={bankAccountName}
+                        onChange={(e) => setBankAccountName(e.target.value)}
+                        placeholder="MADECC GROUP SAAS / DIRECT SERVICES"
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2 text-xs focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-400 block mb-1">Bank Name & Branch</label>
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="UBA Cameroon / Afriland First Bank"
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2 text-xs focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-400 block mb-1">RIB / Account / IBAN Number</label>
+                      <input
+                        type="text"
+                        value={bankAccountNumber}
+                        onChange={(e) => setBankAccountNumber(e.target.value)}
+                        placeholder="CM21 10005 00012 34567890123 45"
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2 text-xs font-mono focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-400 block mb-1">SWIFT / BIC Code</label>
+                      <input
+                        type="text"
+                        value={bankSwift}
+                        onChange={(e) => setBankSwift(e.target.value)}
+                        placeholder="UNAFCMCXXXX"
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2 text-xs font-mono focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Billing Concierge & WhatsApp */}
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                    <Phone className="w-4 h-4" />
+                    Billing WhatsApp Hotline
+                  </div>
+                  <input
+                    type="text"
+                    value={contactWhatsApp}
+                    onChange={(e) => setContactWhatsApp(e.target.value)}
+                    placeholder="+237671063511"
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2 text-xs font-mono focus:ring-1 focus:ring-emerald-500"
+                  />
+
+                  <div className="flex items-center gap-2 text-sky-400 font-bold text-sm pt-2">
+                    <Mail className="w-4 h-4" />
+                    Billing Email Address
+                  </div>
+                  <input
+                    type="text"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="billing@madeccgroup.online"
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2 text-xs focus:ring-1 focus:ring-sky-500"
+                  />
+                </div>
+
+                {/* Annual Promo & Guarantee Notice */}
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    Promotional Notice (Shown on checkout)
+                  </div>
+                  <textarea
+                    value={promoNote}
+                    onChange={(e) => setPromoNote(e.target.value)}
+                    rows={3}
+                    placeholder="Enjoy 2 Months Free with Annual Billing! Instant Workspace Activation."
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-xs focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 5: PLANS & PRICING MANAGER */}
         {/* ========================================================================= */}
         {activeTab === 'PLANS' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -728,7 +1039,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                       <input
                         type="number"
                         value={p.monthlyPrice}
-                        onChange={(e) => handleUpdatePlanPrice(p.code, parseInt(e.target.value, 10) || 0)}
+                        onChange={(e) => handleUpdatePlanPrice(p, parseInt(e.target.value, 10) || 0)}
                         className="bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs font-mono font-bold w-full"
                       />
                       <span className="text-xs text-slate-400 font-mono">XAF</span>
@@ -770,7 +1081,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 5: AI & PLATFORM METERING */}
+        {/* TAB 6: AI & PLATFORM METERING */}
         {/* ========================================================================= */}
         {activeTab === 'AI_USAGE' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -804,7 +1115,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 6: AUDIT LOGS */}
+        {/* TAB 7: AUDIT LOGS */}
         {/* ========================================================================= */}
         {activeTab === 'AUDIT' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -840,6 +1151,128 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
           </div>
         )}
       </main>
+
+      {/* MODAL: ADD NEW TENANT */}
+      {showAddTenantModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white font-bold text-base">
+                <Building2 className="w-5 h-5 text-amber-400" />
+                Provision New Tenant Workspace
+              </div>
+              <button
+                onClick={() => setShowAddTenantModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTenant} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 block mb-1 font-semibold">Workspace / Company Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newTenantName}
+                  onChange={(e) => setNewTenantName(e.target.value)}
+                  placeholder="e.g. Sahel Engineering Ltd"
+                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 block mb-1 font-semibold">Subdomain Slug</label>
+                  <input
+                    type="text"
+                    value={newTenantSlug}
+                    onChange={(e) => setNewTenantSlug(e.target.value)}
+                    placeholder="sahel-engineering"
+                    className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2 font-mono focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-semibold">Plan Tier</label>
+                  <select
+                    value={newTenantPlan}
+                    onChange={(e) => setNewTenantPlan(e.target.value as PlanCode)}
+                    className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 font-semibold focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="STARTER">Starter Portal (50,000 XAF)</option>
+                    <option value="PROFESSIONAL">Professional Suite (100,000 XAF)</option>
+                    <option value="ENTERPRISE">Enterprise Cloud ERP (250,000 XAF)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1 font-semibold">Legal Company Name</label>
+                <input
+                  type="text"
+                  value={newTenantLegalName}
+                  onChange={(e) => setNewTenantLegalName(e.target.value)}
+                  placeholder="Sahel Civil & Structural Engineering SARL"
+                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 block mb-1 font-semibold">Contact Phone</label>
+                  <input
+                    type="text"
+                    value={newTenantPhone}
+                    onChange={(e) => setNewTenantPhone(e.target.value)}
+                    placeholder="+237 671 000 000"
+                    className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2 focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-semibold">Contact Email</label>
+                  <input
+                    type="email"
+                    value={newTenantEmail}
+                    onChange={(e) => setNewTenantEmail(e.target.value)}
+                    placeholder="admin@sahel-eng.cm"
+                    className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2 focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1 font-semibold">Physical Head Office Address</label>
+                <input
+                  type="text"
+                  value={newTenantAddress}
+                  onChange={(e) => setNewTenantAddress(e.target.value)}
+                  placeholder="Boulevard de la Liberté, Douala, Cameroon"
+                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTenantModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-md transition-all"
+                >
+                  Create & Activate Workspace
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

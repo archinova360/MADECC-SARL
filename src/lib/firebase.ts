@@ -24,5 +24,10 @@ export async function getAuthToken(): Promise<string | null> {
   if (genericToken) {
     return genericToken;
   }
-  return await auth.currentUser?.getIdToken() || null;
+  try {
+    return (await auth.currentUser?.getIdToken()) || null;
+  } catch (err) {
+    console.warn('Could not retrieve Firebase getIdToken (offline or network partitioned):', err);
+    return null;
+  }
 }

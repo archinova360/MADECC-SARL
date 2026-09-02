@@ -5,7 +5,8 @@ export async function logAudit(
   userId: string | null, 
   userEmail: string | null, 
   action: string, 
-  details: string
+  details: string,
+  ipAddress?: string | null
 ) {
   try {
     await db.insert(auditLogs).values({
@@ -15,7 +16,7 @@ export async function logAudit(
       details,
       timestamp: new Date()
     });
-    console.log(`[AUDIT] ${action} by ${userEmail || 'system'}: ${details}`);
+    console.log(`[AUDIT] ${action} by ${userEmail || 'system'}${ipAddress ? ` [IP: ${ipAddress}]` : ''}: ${details}`);
   } catch (err) {
     console.error('Failed to write audit log:', err);
   }

@@ -29,44 +29,80 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react';
-import { Service, Project, Review, HeroBanner, PageContent, HeroSectionConfig } from '../types.ts';
+import { Service, Project, Review, HeroBanner, PageContent, HeroSectionConfig, Tenant } from '../types.ts';
 import LucideIcon from './LucideIcon.tsx';
 import { getOptimizedImageUrl, formatCurrency } from '../lib/utils.ts';
 import { HeroBannerSkeleton, ProjectListSkeleton } from './Skeleton.tsx';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
+import { TenantContentService } from '../services/tenantContentService.ts';
+import AnimatedCounter from './AnimatedCounter.tsx';
+import { FadeIn, FadeInDirection, ScaleIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import { InteractiveQuickEstimator } from './InteractiveQuickEstimator.tsx';
+import { InteractiveBlueprintPreview } from './InteractiveBlueprintPreview.tsx';
 
 interface HomeProps {
   setCurrentTab: (tab: string) => void;
   setSelectedProjectId: (id: number | null) => void;
+  currentTenant?: Tenant;
 }
 
-const DEFAULT_BANNERS: HeroBanner[] = [
-  {
-    id: 1,
-    title: 'Engineered Construction & Enterprise Solutions in Cameroon',
-    subtitle: 'MADECC Group delivers certified civil engineering, turnkey residential villas, commercial complexes, and transparent quantity surveying across Yaoundé, Douala, Kribi, and all 10 regions.',
-    imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
-    displayOrder: 1,
-    active: true,
-  },
-  {
-    id: 2,
-    title: 'Structural Precision & Zero-Harm Building Standards',
-    subtitle: 'From geotechnical soil testing and Eurocode 2 structural calculations to fixed-price BOQ estimates in FCFA, we protect your investment with engineering rigor.',
-    imageUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1600&q=80',
-    displayOrder: 2,
-    active: true,
-  }
-];
-
-export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps) {
+export default function Home({ setCurrentTab, setSelectedProjectId, currentTenant }: HomeProps) {
   const { t } = useLanguage();
+  const tenantId = currentTenant?.id || 1;
+  const tenantProfile = TenantContentService.getProfile(tenantId);
+  const tenant = currentTenant || tenantProfile.tenant;
+
+  const tenantBanners: HeroBanner[] = [
+    {
+      id: 1,
+      title: tenantProfile.hero.title,
+      subtitle: tenantProfile.hero.subtitle,
+      imageUrl: tenantProfile.hero.bannerImage,
+      displayOrder: 1,
+      active: true,
+    },
+    {
+      id: 2,
+      title: `${tenant.name} — Precision Civil Engineering & Execution`,
+      subtitle: `${tenant.settings?.tagline || 'Structural calculation, zero-harm standards, and transparent BOQ deliverables.'} Operating across ${tenant.country || 'Cameroon'}.`,
+      imageUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1600&q=80',
+      displayOrder: 2,
+      active: true,
+    }
+  ];
+
   const [cmsPageData, setCmsPageData] = useState<PageContent | null>(null);
-  const [banners, setBanners] = useState<HeroBanner[]>(DEFAULT_BANNERS);
-  const [services, setServices] = useState<Service[]>([]);
-  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
+  const [banners, setBanners] = useState<HeroBanner[]>(tenantBanners);
+  const [services, setServices] = useState<Service[]>(tenantProfile.services as unknown as Service[]);
+  const [featuredProjects, setFeaturedProjects] = useState<Project[]>(tenantProfile.projects as unknown as Project[]);
   const [approvedReviews, setApprovedReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Sync state when tenant changes
+  useEffect(() => {
+    const profile = TenantContentService.getProfile(tenantId);
+    setBanners([
+      {
+        id: 1,
+        title: profile.hero.title,
+        subtitle: profile.hero.subtitle,
+        imageUrl: profile.hero.bannerImage,
+        displayOrder: 1,
+        active: true,
+      },
+      {
+        id: 2,
+        title: `${profile.tenant.name} — Certified Engineering & Execution`,
+        subtitle: `${profile.tenant.settings?.tagline || 'Structural calculations and certified deliverables.'} Certified compliance in ${profile.tenant.country || 'Cameroon'}.`,
+        imageUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1600&q=80',
+        displayOrder: 2,
+        active: true,
+      }
+    ]);
+    setServices(profile.services as unknown as Service[]);
+    setFeaturedProjects(profile.projects as unknown as Project[]);
+  }, [tenantId]);
+
   
   // Carousel State
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -355,21 +391,86 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
       </section>
 
       {/* ==========================================
+          LIVE PERFORMANCE & STATS TICKER BANNER
+          ========================================== */}
+      <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-y border-amber-500/20 py-8 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+            <StaggerItem className="flex items-center gap-4 p-3 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+              <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/30 shrink-0">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-white">
+                  <AnimatedCounter value={150} suffix="+" />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                  Engineered Builds Handed Over
+                </div>
+              </div>
+            </StaggerItem>
+
+            <StaggerItem className="flex items-center gap-4 p-3 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+              <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/30 shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-white">
+                  <AnimatedCounter value={100} suffix="%" />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                  Eurocode 2 & Lab Verified
+                </div>
+              </div>
+            </StaggerItem>
+
+            <StaggerItem className="flex items-center gap-4 p-3 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+              <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/30 shrink-0">
+                <HardHat className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-white">
+                  <AnimatedCounter value={2.8} suffix="M+" decimals={1} />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                  Safe Man-Hours Zero LTI
+                </div>
+              </div>
+            </StaggerItem>
+
+            <StaggerItem className="flex items-center gap-4 p-3 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+              <div className="p-3 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/30 shrink-0">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-white">
+                  <AnimatedCounter value={10} suffix=" Regions" />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                  Cameroon-Wide Deployment
+                </div>
+              </div>
+            </StaggerItem>
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* ==========================================
           ENGINEERING PILLARS & VALUE PROPOSITION
           ========================================== */}
       <section className="py-16 bg-[#0E0E10] border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-3xl mx-auto mb-12 space-y-2">
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Why Property Owners Choose MADECC</span>
+          <FadeIn className="text-center max-w-3xl mx-auto mb-12 space-y-2">
+            <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Why Property Owners Choose {tenant.name}</span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Disciplined Engineering. Total Cost Transparency.</h2>
             <p className="text-xs sm:text-sm text-slate-400">
               We eliminate the common pitfalls of construction in Cameroon—untested concrete mixes, unverified soil bearing, unauthorized price inflation, and absent site supervisors.
             </p>
-          </div>
+          </FadeIn>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/50 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-colors">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StaggerItem className="bg-slate-900/50 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-colors">
               <div className="bg-amber-500/10 text-amber-500 p-3 rounded-xl border border-amber-500/20 w-fit">
                 <ShieldCheck className="w-6 h-6" />
               </div>
@@ -377,9 +478,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
               <p className="text-xs text-slate-400 leading-relaxed">
                 Every beam, column, and foundation raft is designed in accordance with Eurocode 2 and BAEL 91 structural standards, complete with detailed Bar Bending Schedules (BBS) to prevent structural cracking.
               </p>
-            </div>
+            </StaggerItem>
 
-            <div className="bg-slate-900/50 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-colors">
+            <StaggerItem className="bg-slate-900/50 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-colors">
               <div className="bg-amber-500/10 text-amber-500 p-3 rounded-xl border border-amber-500/20 w-fit">
                 <Layers className="w-6 h-6" />
               </div>
@@ -387,9 +488,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
               <p className="text-xs text-slate-400 leading-relaxed">
                 Our quantity surveyors provide exhaustive BOQs with transparent material, labor, and equipment rates in Central African CFA Francs (FCFA). You know exactly where every Franc is spent.
               </p>
-            </div>
+            </StaggerItem>
 
-            <div className="bg-slate-900/50 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-colors">
+            <StaggerItem className="bg-slate-900/50 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-colors">
               <div className="bg-amber-500/10 text-amber-500 p-3 rounded-xl border border-amber-500/20 w-fit">
                 <HardHat className="w-6 h-6" />
               </div>
@@ -397,9 +498,20 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
               <p className="text-xs text-slate-400 leading-relaxed">
                 Resident civil engineers supervise all concrete batching, slump tests, and curing. Concrete test cubes are crushed at 7 and 28 days in accredited laboratories to verify compressive strength.
               </p>
-            </div>
-          </div>
+            </StaggerItem>
+          </StaggerContainer>
 
+        </div>
+      </section>
+
+      {/* ==========================================
+          INTERACTIVE BLUEPRINT & CODE INSPECTOR
+          ========================================== */}
+      <section className="py-16 bg-[#0A0A0B] border-b border-slate-800/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <FadeIn>
+            <InteractiveBlueprintPreview onNavigateToTab={setCurrentTab} />
+          </FadeIn>
         </div>
       </section>
 
@@ -408,166 +520,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId }: HomeProps)
           ========================================== */}
       <section className="py-20 bg-gradient-to-b from-[#0A0A0B] via-[#0D0D10] to-[#0A0A0B] border-b border-slate-800/80" id="instant-cost-estimator">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-              
-              {/* Left Column: Form Controls */}
-              <div className="lg:col-span-7 space-y-6">
-                <div>
-                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-md inline-block mb-2">
-                    Instant Construction Cost Estimator
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                    Estimate Your Building Budget in Cameroon (FCFA)
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Get an instant preliminary estimate based on average 2026 construction benchmarks across Yaoundé and Douala.
-                  </p>
-                </div>
-
-                {/* Building Type Selector */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                    1. Select Building Typology
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { id: 'villa', label: 'Modern Villa / Duplex' },
-                      { id: 'apartments', label: 'Rental Apartments' },
-                      { id: 'commercial', label: 'Commercial Office' },
-                      { id: 'warehouse', label: 'Industrial Warehouse' },
-                    ].map((type) => (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() => setCalcBuildingType(type.id)}
-                        className={`p-3 rounded-xl border text-xs font-bold transition-all text-left ${
-                          calcBuildingType === type.id
-                            ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        {type.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Gross Floor Area Slider */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <label className="font-bold uppercase tracking-wider text-slate-300">
-                      2. Gross Built Area (m²)
-                    </label>
-                    <span className="font-mono font-bold text-amber-400 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800">
-                      {calcArea} m² (approx. {(calcArea * 10.764).toFixed(0)} sq ft)
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="1000"
-                    step="10"
-                    value={calcArea}
-                    onChange={(e) => setCalcArea(parseInt(e.target.value))}
-                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                    <span>50 m² (Small Bungalow)</span>
-                    <span>250 m² (Standard 4-Bed Duplex)</span>
-                    <span>1,000 m² (Multi-Unit Complex)</span>
-                  </div>
-                </div>
-
-                {/* Finishing Specification */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                    3. Target Finishing Grade
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'economic', label: 'Economic Standard', desc: 'Standard local tiles & fixtures' },
-                      { id: 'medium', label: 'High Standard (Popular)', desc: 'Quality porcelain & POP ceilings' },
-                      { id: 'premium', label: 'Luxury Grade', desc: 'Imported marble, smart systems' },
-                    ].map((grade) => (
-                      <button
-                        key={grade.id}
-                        type="button"
-                        onClick={() => setCalcFinishing(grade.id)}
-                        className={`p-3 rounded-xl border text-left transition-all ${
-                          calcFinishing === grade.id
-                            ? 'bg-amber-500/10 border-amber-500 text-amber-400'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className="block text-xs font-bold text-white">{grade.label}</span>
-                        <span className="block text-[10px] text-slate-400 mt-0.5">{grade.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Right Column: Estimated Valuation Card */}
-              <div className="lg:col-span-5 bg-slate-950 border border-slate-850 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-                
-                <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 block">Preliminary Budget Estimate</span>
-                  <span className="text-2xl sm:text-3xl font-black text-white font-mono block mt-1">
-                    {estimatedTotalCost.toLocaleString()} FCFA
-                  </span>
-                  <span className="text-xs text-amber-400 font-mono block mt-0.5">
-                    (~ {estimatedRatePerSqm.toLocaleString()} FCFA / m²)
-                  </span>
-                </div>
-
-                {/* Sub-phase Breakdown */}
-                <div className="space-y-2.5 pt-4 border-t border-slate-850 text-xs text-slate-300">
-                  <div className="flex justify-between py-1 border-b border-slate-900">
-                    <span className="text-slate-400">Foundation & Substructure (20%):</span>
-                    <span className="font-mono font-bold text-white">{Math.round(estimatedTotalCost * 0.20).toLocaleString()} FCFA</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-900">
-                    <span className="text-slate-400">Reinforced Concrete Superstructure (35%):</span>
-                    <span className="font-mono font-bold text-white">{Math.round(estimatedTotalCost * 0.35).toLocaleString()} FCFA</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-900">
-                    <span className="text-slate-400">Roofing, Masonry & Plaster (15%):</span>
-                    <span className="font-mono font-bold text-white">{Math.round(estimatedTotalCost * 0.15).toLocaleString()} FCFA</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-900">
-                    <span className="text-slate-400">Plumbing & Electrical (MEP) (12%):</span>
-                    <span className="font-mono font-bold text-white">{Math.round(estimatedTotalCost * 0.12).toLocaleString()} FCFA</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-slate-400">Interior & Exterior Finishing (18%):</span>
-                    <span className="font-mono font-bold text-white">{Math.round(estimatedTotalCost * 0.18).toLocaleString()} FCFA</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 space-y-3">
-                  <button
-                    onClick={() => setCurrentTab('request-quote')}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
-                  >
-                    Request Itemized Formal BOQ <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setCurrentTab('construction-cost-guide')}
-                    className="w-full text-center text-xs text-slate-400 hover:text-amber-400 transition-colors"
-                  >
-                    Read Detailed 2026 Cameroon Construction Cost Guide →
-                  </button>
-                </div>
-
-              </div>
-
-            </div>
-          </div>
-
+          <FadeIn>
+            <InteractiveQuickEstimator onNavigateToTab={setCurrentTab} currency={tenant.currency || 'XAF'} />
+          </FadeIn>
         </div>
       </section>
 

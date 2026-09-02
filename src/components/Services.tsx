@@ -24,6 +24,7 @@ import {
   MapPin,
   X
 } from 'lucide-react';
+import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
 
 interface ServicesProps {
   onNavigateToTab: (tab: string, extraState?: any) => void;
@@ -507,8 +508,8 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
 
         {/* 2. SERVICES GRID SECTION */}
         <div>
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">
+          <FadeIn className="text-center max-w-3xl mx-auto mb-12">
+            <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 font-mono">
               Our Core Expertise
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
@@ -517,13 +518,13 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             <p className="text-slate-600 text-sm sm:text-base mt-3">
               Explore our core capabilities or click any service card for detailed process workflows, deliverables, and project scopes.
             </p>
-          </div>
+          </FadeIn>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {combinedServices.map((service) => {
               const IconComp = service.icon;
               return (
-                <div
+                <StaggerItem
                   key={service.id}
                   className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group hover:border-amber-400"
                 >
@@ -570,16 +571,16 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
                       {service.ctaLabel} &rarr;
                     </button>
                   </div>
-                </div>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerContainer>
         </div>
 
         {/* 3. HOW WE WORK (PROCESS SECTION) */}
-        <div className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 border border-slate-800 shadow-2xl relative overflow-hidden">
+        <FadeIn className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 border border-slate-800 shadow-2xl relative overflow-hidden">
           <div className="max-w-3xl mb-10">
-            <div className="text-xs font-extrabold text-amber-400 uppercase tracking-widest mb-2">
+            <div className="text-xs font-extrabold text-amber-400 uppercase tracking-widest mb-2 font-mono">
               Structured Project Delivery
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-white">
@@ -590,7 +591,7 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {[
               { num: '01', name: 'Understand', desc: 'We understand your project requirements, objectives, site location, scope, and target budget.' },
               { num: '02', name: 'Assess', desc: 'Our team reviews drawings, soil/site conditions, quantities, and structural constraints.' },
@@ -598,21 +599,21 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
               { num: '04', name: 'Execute', desc: 'Our engineers coordinate physical construction, quality testing, and safety controls.' },
               { num: '05', name: 'Handover', desc: 'We conduct final inspections, client walkthroughs, documentation sign-off, and handover.' }
             ].map((step) => (
-              <div key={step.num} className="p-5 bg-slate-800/80 rounded-2xl border border-slate-700/60 flex flex-col justify-between space-y-3">
+              <StaggerItem key={step.num} className="p-5 bg-slate-800/80 rounded-2xl border border-slate-700/60 flex flex-col justify-between space-y-3 hover:border-amber-400/40 transition-colors">
                 <div>
                   <div className="text-2xl font-black text-amber-400 font-mono mb-1">{step.num}</div>
                   <div className="text-sm font-bold text-white mb-2">{step.name}</div>
                   <div className="text-xs text-slate-300 leading-relaxed">{step.desc}</div>
                 </div>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
-        </div>
+          </StaggerContainer>
+        </FadeIn>
 
         {/* 4. WHY CHOOSE MADECC */}
-        <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl">
+        <FadeIn className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl">
           <div className="text-center max-w-3xl mx-auto mb-10">
-            <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">
+            <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 font-mono">
               The MADECC Advantage
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
@@ -620,7 +621,7 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-xs sm:text-sm">
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-xs sm:text-sm">
             {[
               { title: 'Engineering-Led Approach', desc: 'Civil and structural engineers supervise site works directly rather than relying on unmonitored masons.' },
               { title: 'Transparent Cost Estimation', desc: 'Itemized material quantity breakdowns and real Cameroon market price indices eliminate surprises.' },
@@ -629,21 +630,21 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
               { title: 'Local Cameroon Market Expertise', desc: 'Deep knowledge of regional soil types, quarry sources, and logistics in Yaoundé, Douala, and all 10 regions.' },
               { title: 'Integrated Services', desc: 'From initial architectural sketches to foundation pouring and final finishing under one umbrella.' }
             ].map((item, i) => (
-              <div key={i} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
+              <StaggerItem key={i} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3 hover:border-amber-400/50 hover:bg-slate-50/80 transition-colors">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-slate-900 text-sm mb-1">{item.title}</div>
                   <div className="text-slate-600 leading-relaxed text-xs">{item.desc}</div>
                 </div>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
-        </div>
+          </StaggerContainer>
+        </FadeIn>
 
-        {/* 5. FREQUENTLY ASKED QUESTIONS */}
-        <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl space-y-6">
+            {/* 5. FREQUENTLY ASKED QUESTIONS */}
+        <FadeIn className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl space-y-6">
           <div>
-            <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">
+            <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1 font-mono">
               Knowledge & Clarity
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
@@ -678,16 +679,16 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
                 a: 'Our engineering intake team reviews submitted project enquiries and contacts clients within 24 to 48 business hours.'
               }
             ].map((faq, idx) => (
-              <div key={idx} className="p-5 rounded-2xl bg-slate-50 border border-slate-200 leading-relaxed space-y-1.5">
+              <div key={idx} className="p-5 rounded-2xl bg-slate-50 border border-slate-200 leading-relaxed space-y-1.5 hover:border-amber-400/40 transition-colors">
                 <div className="font-bold text-slate-900 text-sm">{faq.q}</div>
                 <div className="text-slate-600 text-xs">{faq.a}</div>
               </div>
             ))}
           </div>
-        </div>
+        </FadeIn>
 
         {/* 6. BOTTOM CTA BANNER */}
-        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-slate-950 text-slate-950 rounded-3xl p-8 sm:p-12 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+        <FadeIn className="bg-gradient-to-r from-amber-500 via-amber-600 to-slate-950 text-slate-950 rounded-3xl p-8 sm:p-12 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <h3 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
               Ready to Start Your Construction Project in Cameroon?
@@ -700,19 +701,19 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               onClick={() => onNavigateToTab('request-a-quote')}
-              className="px-6 py-3.5 bg-slate-950 hover:bg-slate-900 text-amber-400 font-black text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center gap-2"
+              className="px-6 py-3.5 bg-slate-950 hover:bg-slate-900 text-amber-400 font-black text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
             >
               Request a Quote <ArrowRight className="w-4 h-4" />
             </button>
 
             <button
               onClick={() => onNavigateToTab('schedule-consultation')}
-              className="px-6 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-sm transition-all"
+              className="px-6 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-sm hover:shadow-md transition-all"
             >
               Schedule Consultation
             </button>
           </div>
-        </div>
+        </FadeIn>
 
       </div>
 

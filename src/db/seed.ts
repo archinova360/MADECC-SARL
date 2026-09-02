@@ -1824,6 +1824,133 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
       ]);
     }
 
+    // Ensure SaaS multi-tenant tables and initial plans exist in Neon DB
+    try {
+      console.log('Verifying SaaS multi-tenant tables and monetization engine...');
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS tenants (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL UNIQUE,
+          legal_name TEXT,
+          logo_url TEXT,
+          favicon_url TEXT,
+          primary_domain TEXT,
+          custom_domain TEXT,
+          status TEXT NOT NULL DEFAULT 'ACTIVE',
+          plan_code TEXT NOT NULL DEFAULT 'ENTERPRISE',
+          currency TEXT NOT NULL DEFAULT 'XAF',
+          timezone TEXT DEFAULT 'Africa/Douala',
+          phone TEXT,
+          email TEXT,
+          address TEXT,
+          country TEXT DEFAULT 'Cameroon',
+          settings JSONB,
+          ai_credits_balance INTEGER DEFAULT 10000 NOT NULL,
+          storage_usage_bytes BIGINT DEFAULT 0 NOT NULL,
+          is_flagship BOOLEAN DEFAULT FALSE NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS tenant_memberships (
+          id SERIAL PRIMARY KEY,
+          tenant_id INTEGER NOT NULL,
+          user_id TEXT NOT NULL,
+          email TEXT NOT NULL,
+          full_name TEXT,
+          role TEXT NOT NULL DEFAULT 'MEMBER',
+          permissions JSONB,
+          status TEXT NOT NULL DEFAULT 'ACTIVE',
+          invited_by TEXT,
+          invited_at TIMESTAMP,
+          last_active_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS plans (
+          id SERIAL PRIMARY KEY,
+          code TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          description TEXT,
+          monthly_price INTEGER NOT NULL,
+          annual_price INTEGER NOT NULL,
+          currency TEXT NOT NULL DEFAULT 'XAF',
+          max_users INTEGER NOT NULL DEFAULT 3,
+          max_projects INTEGER NOT NULL DEFAULT 5,
+          max_storage_gb INTEGER NOT NULL DEFAULT 5,
+          ai_credits_monthly INTEGER NOT NULL DEFAULT 100,
+          features JSONB,
+          is_popular BOOLEAN DEFAULT FALSE,
+          status TEXT NOT NULL DEFAULT 'ACTIVE',
+          display_order INTEGER DEFAULT 1 NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          id SERIAL PRIMARY KEY,
+          tenant_id INTEGER NOT NULL,
+          plan_code TEXT NOT NULL,
+          billing_cycle TEXT NOT NULL DEFAULT 'MONTHLY',
+          amount INTEGER NOT NULL,
+          currency TEXT NOT NULL DEFAULT 'XAF',
+          status TEXT NOT NULL DEFAULT 'PENDING_CONFIRMATION',
+          payment_method TEXT,
+          payment_reference TEXT,
+          sender_phone TEXT,
+          notes TEXT,
+          start_date TIMESTAMP DEFAULT NOW() NOT NULL,
+          renewal_date TIMESTAMP NOT NULL,
+          confirmed_at TIMESTAMP,
+          confirmed_by TEXT,
+          thank_you_shown BOOLEAN DEFAULT FALSE NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS tenant_domains (
+          id SERIAL PRIMARY KEY,
+          tenant_id INTEGER NOT NULL,
+          domain TEXT NOT NULL UNIQUE,
+          domain_type TEXT NOT NULL DEFAULT 'CUSTOM',
+          status TEXT NOT NULL DEFAULT 'ACTIVE',
+          ssl_status TEXT DEFAULT 'PROVISIONED',
+          verification_token TEXT,
+          verified_at TIMESTAMP DEFAULT NOW(),
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+      `);
+
+      // Seed initial plans if empty
+      const existingPlans = await db.execute(sql`SELECT count(*) FROM plans`);
+      if (Number(existingPlans.rows[0]?.count || 0) === 0) {
+        await db.execute(sql`
+          INSERT INTO plans (code, name, description, monthly_price, annual_price, currency, max_users, max_projects, max_storage_gb, ai_credits_monthly, features, is_popular, status, display_order)
+          VALUES 
+          ('STARTER', 'Starter Construction Portal', 'Perfect for small contractors, craft teams, and specialized site builders.', 50000, 500000, 'XAF', 3, 5, 5, 100, '["Basic Construction Company Website", "Client Quote Intake System", "Standard BOQ Studio (up to 5 active projects)", "Basic Labor Cost Calculator", "5 GB Cloud Storage", "100 AI Estimation Credits/month", "Standard Email & WhatsApp Support"]'::jsonb, false, 'ACTIVE', 1),
+          ('PROFESSIONAL', 'Professional Engineering Suite', 'Designed for growing civil engineering firms, general contractors, and consultancies.', 100000, 1000000, 'XAF', 10, 25, 25, 500, '["Full Dynamic White-Label Website & CMS", "Complete BOQ Studio with Revision Tree", "AI CAD/Drawing Takeoff Studio (Auto-Quantities)", "EN 1992 Eurocode 2 Structural Calculator", "Document Studio (Contracts, IPCs, Receipts with QR)", "Social Media Studio Multi-Platform Publisher", "Enterprise Staff & Subcontractor RBAC", "25 GB Cloud Storage", "500 AI Quantity Takeoff Credits/month", "Priority Phone & WhatsApp Support"]'::jsonb, true, 'ACTIVE', 2),
+          ('ENTERPRISE', 'Enterprise Cloud ERP', 'Comprehensive platform for premier construction groups, developers, and builders.', 250000, 2500000, 'XAF', -1, -1, 100, 5000, '["Unlimited Users, Engineers & Project Managers", "Unlimited Concurrent Construction Projects", "Custom Domain Support (e.g., yourcompany.com)", "Full White-Label Branding (Zero MADECC references)", "Advanced AI Quantity Takeoff & Drawing Analysis", "Full ERP Hub (Inventory, Change Orders, Site Daily Logs)", "Dedicated Cloud Database & Storage Partition", "Custom Eurocode & Local Parametric Libraries", "Dedicated Account Manager & 24/7 SLA Hotline", "On-Site / Video Training for Staff"]'::jsonb, false, 'ACTIVE', 3);
+        `);
+      }
+
+      // Seed Flagship Tenant if empty
+      const existingTenants = await db.execute(sql`SELECT count(*) FROM tenants`);
+      if (Number(existingTenants.rows[0]?.count || 0) === 0) {
+        await db.execute(sql`
+          INSERT INTO tenants (name, slug, legal_name, logo_url, primary_domain, custom_domain, status, plan_code, currency, timezone, phone, email, address, country, settings, ai_credits_balance, is_flagship)
+          VALUES 
+          ('MADECC-CONSTRUCTION', 'madecc-construction', 'MADECC Construction & Civil Engineering Group SARL', '/logo.png', 'madecc-construction.madecccloud.com', 'madeccgroup.online', 'ACTIVE', 'ENTERPRISE', 'XAF', 'Africa/Douala', '+237 671 063 511 / +237 683 316 486', 'contact@madeccgroup.online', 'Commercial Avenue, Bamenda & Douala, Cameroon', 'Cameroon', '{"primaryColor": "#0f172a", "secondaryColor": "#f59e0b", "accentColor": "#3b82f6", "fontFamily": "Plus Jakarta Sans", "tagline": "Leading Civil Engineering & Turnkey Construction Platform"}'::jsonb, 50000, true),
+          ('BuildPro Engineering Ltd', 'buildpro-engineering', 'BuildPro Civil & Structural Contractors Ltd', 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80', 'buildpro.madecccloud.com', 'buildpro-contractors.com', 'ACTIVE', 'PROFESSIONAL', 'XAF', 'Africa/Douala', '+237 689 115 595', 'info@buildpro-contractors.com', 'Bonanjo Commercial District, Douala', 'Cameroon', '{"primaryColor": "#1e3a8a", "secondaryColor": "#10b981", "accentColor": "#f97316", "fontFamily": "Inter", "tagline": "Modern Structural Solutions & Commercial General Contracting"}'::jsonb, 450, false),
+          ('Alpha Civil & Infra Group', 'alpha-civil', 'Alpha Civil Infrastructure & Roads SARL', 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80', 'alpha-civil.madecccloud.com', 'alpha-civil-cm.com', 'ACTIVE', 'STARTER', 'XAF', 'Africa/Douala', '+237 671 063 511', 'contact@alpha-civil-cm.com', 'Mvan Complex, Yaoundé', 'Cameroon', '{"primaryColor": "#064e3b", "secondaryColor": "#d97706", "accentColor": "#0284c7", "fontFamily": "Plus Jakarta Sans", "tagline": "Specialized Earthworks, Highways & Public Infrastructure"}'::jsonb, 85, false);
+        `);
+      }
+    } catch (saasTableErr) {
+      console.warn('[SAAS_TABLE_INIT_WARN]', saasTableErr);
+    }
+
     console.log('--- Database Seeding Completed Successfully ---');
   } catch (error) {
     console.error('Error during database seeding:', error);

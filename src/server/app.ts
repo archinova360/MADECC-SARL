@@ -52,7 +52,7 @@ export async function getApp(): Promise<express.Express> {
       status: 'ok',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
-      service: 'MADECC Group Portal API',
+      service: 'MADECC GROUP Portal API',
       environment: process.env.NODE_ENV || 'development'
     });
   });

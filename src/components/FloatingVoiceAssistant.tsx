@@ -18,33 +18,33 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-// At least 25 unique professional scripts promoting MADECC Group
+// At least 25 unique professional scripts promoting MADECC GROUP
 const NARRATION_SCRIPTS = [
-  "Welcome to MADECC Group, where cutting-edge engineering excellence meets sustainable infrastructure solutions. We are dedicated to shaping the future of African innovation with global standards.",
-  "At MADECC Group, we power digital transformation and modern construction technologies to deliver unparalleled business development consultancy across the globe.",
-  "Driven by a commitment to renewable energy and sustainable civil engineering, MADECC Group provides professional services designed to exceed customer satisfaction.",
-  "Welcome to the vanguard of industrial growth. MADECC Group blends advanced technology, professional consultancy, and architectural mastery to turn bold visions into landmark realities.",
-  "Our mission at MADECC Group is simple: to establish new benchmarks for quality, safety, and performance in civil works, technology systems, and clean energy deployment.",
-  "With deep-seated expertise in renewable resources, MADECC Group empowers public and private sectors to achieve rapid, eco-friendly infrastructural transformation.",
-  "Experience the power of premium consultancy with MADECC Group. We guide ambitious enterprises through high-impact business development, technological upgrades, and optimized asset management.",
-  "MADECC Group is a premier partner for civil infrastructure, engineering design, and digital systems. Together, we build sturdy foundations for a brighter tomorrow.",
-  "Harnessing the spirit of African innovation, MADECC Group integrates smart building materials and smart grid solutions to deliver durable, cost-effective, and high-performance projects.",
-  "Our global workforce at MADECC Group combines decades of experience in real estate development, green energy planning, and state-of-the-art construction management.",
-  "MADECC Group stands at the intersection of heavy engineering and digital intelligence, accelerating sustainable industrialization and carbon-neutral infrastructure.",
-  "By adhering strictly to rigorous quality and compliance standards, MADECC Group guarantees elite project execution from initial feasibility study to operational hand-off.",
-  "Welcome to MADECC Group. We help you capitalize on clean energy markets, resilient architectural designs, and forward-looking digital assets to scale your enterprise successfully.",
-  "MADECC Group is your trusted advisor for complex engineering projects. We offer end-to-end solutions that elevate efficiency, reduce waste, and secure community-wide benefits.",
-  "Our passion for craftsmanship and smart engineering fuels MADECC Group. We create sustainable corporate structures, residential complexes, and power plants of the future.",
-  "Through our specialized business development and tech consultancy, MADECC Group guides modern corporations to achieve high-performance standards in dynamic global markets.",
-  "At MADECC Group, we design resilient engineering frameworks, robust software platforms, and clean energy solutions to prepare your organization for the next decade of growth.",
-  "Step into a world of zero-harm engineering and innovative construction with MADECC Group, where customer trust and sustainable execution are our highest priority.",
-  "MADECC Group delivers premier structural and environmental engineering, bringing sophisticated digital automation to major civic works and urban developments.",
-  "We believe in the power of professional services to transform lives. MADECC Group is proud to pioneer sustainable architectural designs and clean technology networks.",
-  "MADECC Group provides world-class project supervision, contract management, and technical advisory services that consistently exceed the industry's highest expectations.",
-  "By combining advanced computing, IoT integration, and classic structural mechanics, MADECC Group crafts the highly optimized infrastructure of tomorrow.",
-  "MADECC Group translates complex technical challenges into simple, elegant, and highly profitable assets for communities, investors, and governments.",
-  "Empower your projects with MADECC Group's multidisciplinary team, delivering superior quality in civil construction, corporate advisory, and power grid optimization.",
-  "Welcome to MADECC Group, the leading platform for premium engineering, sustainable technology, and professional consultancy. We are building the future, together."
+  "Welcome to MADECC GROUP, where cutting-edge engineering excellence meets sustainable infrastructure solutions. We are dedicated to shaping the future of African innovation with global standards.",
+  "At MADECC GROUP, we power digital transformation and modern construction technologies to deliver unparalleled business development consultancy across the globe.",
+  "Driven by a commitment to renewable energy and sustainable civil engineering, MADECC GROUP provides professional services designed to exceed customer satisfaction.",
+  "Welcome to the vanguard of industrial growth. MADECC GROUP blends advanced technology, professional consultancy, and architectural mastery to turn bold visions into landmark realities.",
+  "Our mission at MADECC GROUP is simple: to establish new benchmarks for quality, safety, and performance in civil works, technology systems, and clean energy deployment.",
+  "With deep-seated expertise in renewable resources, MADECC GROUP empowers public and private sectors to achieve rapid, eco-friendly infrastructural transformation.",
+  "Experience the power of premium consultancy with MADECC GROUP. We guide ambitious enterprises through high-impact business development, technological upgrades, and optimized asset management.",
+  "MADECC GROUP is a premier partner for civil infrastructure, engineering design, and digital systems. Together, we build sturdy foundations for a brighter tomorrow.",
+  "Harnessing the spirit of African innovation, MADECC GROUP integrates smart building materials and smart grid solutions to deliver durable, cost-effective, and high-performance projects.",
+  "Our global workforce at MADECC GROUP combines decades of experience in real estate development, green energy planning, and state-of-the-art construction management.",
+  "MADECC GROUP stands at the intersection of heavy engineering and digital intelligence, accelerating sustainable industrialization and carbon-neutral infrastructure.",
+  "By adhering strictly to rigorous quality and compliance standards, MADECC GROUP guarantees elite project execution from initial feasibility study to operational hand-off.",
+  "Welcome to MADECC GROUP. We help you capitalize on clean energy markets, resilient architectural designs, and forward-looking digital assets to scale your enterprise successfully.",
+  "MADECC GROUP is your trusted advisor for complex engineering projects. We offer end-to-end solutions that elevate efficiency, reduce waste, and secure community-wide benefits.",
+  "Our passion for craftsmanship and smart engineering fuels MADECC GROUP. We create sustainable corporate structures, residential complexes, and power plants of the future.",
+  "Through our specialized business development and tech consultancy, MADECC GROUP guides modern corporations to achieve high-performance standards in dynamic global markets.",
+  "At MADECC GROUP, we design resilient engineering frameworks, robust software platforms, and clean energy solutions to prepare your organization for the next decade of growth.",
+  "Step into a world of zero-harm engineering and innovative construction with MADECC GROUP, where customer trust and sustainable execution are our highest priority.",
+  "MADECC GROUP delivers premier structural and environmental engineering, bringing sophisticated digital automation to major civic works and urban developments.",
+  "We believe in the power of professional services to transform lives. MADECC GROUP is proud to pioneer sustainable architectural designs and clean technology networks.",
+  "MADECC GROUP provides world-class project supervision, contract management, and technical advisory services that consistently exceed the industry's highest expectations.",
+  "By combining advanced computing, IoT integration, and classic structural mechanics, MADECC GROUP crafts the highly optimized infrastructure of tomorrow.",
+  "MADECC GROUP translates complex technical challenges into simple, elegant, and highly profitable assets for communities, investors, and governments.",
+  "Empower your projects with MADECC GROUP's multidisciplinary team, delivering superior quality in civil construction, corporate advisory, and power grid optimization.",
+  "Welcome to MADECC GROUP, the leading platform for premium engineering, sustainable technology, and professional consultancy. We are building the future, together."
 ];
 
 export default function FloatingVoiceAssistant() {

@@ -17,8 +17,8 @@ export async function getAuthToken(): Promise<string | null> {
   if (bypass === 'Adminmadeccgroup' || bypass === 'ADMIN_BYPASS:Adminmadeccgroup') {
     return 'ADMIN_BYPASS:Adminmadeccgroup';
   }
-  if (bypass === 'MADECC Group admin' || bypass === 'ADMIN_BYPASS:MADECC Group admin' || bypass === 'MADECC_Group_admin') {
-    return 'ADMIN_BYPASS:MADECC Group admin';
+  if (bypass === 'MADECC GROUP admin' || bypass === 'ADMIN_BYPASS:MADECC GROUP admin' || bypass === 'MADECC_GROUP_admin' || bypass === 'MADECC Group admin' || bypass === 'ADMIN_BYPASS:MADECC Group admin' || bypass === 'MADECC_Group_admin') {
+    return 'ADMIN_BYPASS:MADECC GROUP admin';
   }
   const genericToken = localStorage.getItem('token') || sessionStorage.getItem('token');
   if (genericToken) {

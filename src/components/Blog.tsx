@@ -247,7 +247,7 @@ export default function Blog() {
 
               {/* Bottom bar */}
               <div className="pt-6 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-                <span>© {new Date().getFullYear()} MADECC Group Technical Directorate</span>
+                <span>© {new Date().getFullYear()} MADECC GROUP Technical Directorate</span>
                 <button
                   onClick={() => setActivePost(null)}
                   className="bg-slate-900 hover:bg-slate-850 text-slate-350 hover:text-white border border-slate-800 px-4 py-2 rounded-lg font-bold transition-all"

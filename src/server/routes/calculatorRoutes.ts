@@ -310,7 +310,7 @@ export function setupCalculatorRoutes(app: express.Express) {
       const record = updated[0];
 
       // Send SMTP email notification to admin (kreboya603@gmail.com)
-      const emailSubject = `[MADECC Group] New Client Budget Estimate Request: ${estimateReference}`;
+      const emailSubject = `[MADECC GROUP] New Client Budget Estimate Request: ${estimateReference}`;
       const emailText = `A client has requested a professional BOQ & quotation for estimate ${estimateReference}:\n\nClient Name: ${clientName}\nEmail: ${clientEmail}\nPhone: ${clientPhone}\nContact Method: ${preferredContactMethod}\nProject: ${record.projectType} (${record.totalFloorAreaM2} m2 in ${record.location})\nEstimated Budget: XAF ${Number(record.estimatedBudgetExpected).toLocaleString()}\nTimeline: ${projectTimeline || 'Immediate'}\n\nPlease review in the Admin Dashboard.`;
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -324,7 +324,7 @@ export function setupCalculatorRoutes(app: express.Express) {
           <p><strong>Calculated Budget:</strong> <span style="font-weight: bold; color: #16a34a; font-size: 18px;">XAF ${Number(record.estimatedBudgetExpected).toLocaleString()}</span></p>
           <p><strong>Project Timeline:</strong> ${projectTimeline || 'Not specified'}</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #64748b;">MADECC Group Client Acquisition Portal &bull; Central Cameroon Division</p>
+          <p style="font-size: 12px; color: #64748b;">MADECC GROUP Client Acquisition Portal &bull; Central Cameroon Division</p>
         </div>
       `;
 
@@ -563,7 +563,7 @@ export function setupCalculatorRoutes(app: express.Express) {
         currency: 'XAF',
         lastUpdated: maxDate.toISOString(),
         effectiveDate: '2026-08-01',
-        disclaimer: 'Important: Construction prices are indicative and can vary according to location, supplier, quantity, project specifications, site conditions, market conditions, transportation, labour availability and other factors. The prices shown on this page are not a final quotation. For a project-specific cost estimate, BOQ or quotation, contact MADECC Group.',
+        disclaimer: 'Important: Construction prices are indicative and can vary according to location, supplier, quantity, project specifications, site conditions, market conditions, transportation, labour availability and other factors. The prices shown on this page are not a final quotation. For a project-specific cost estimate, BOQ or quotation, contact MADECC GROUP.',
         priceIndices,
         materials,
         labour,

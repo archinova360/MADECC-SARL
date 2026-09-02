@@ -62,7 +62,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
           {type === 'privacy' && (
             <>
               <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-300">
-                <strong>Data Privacy Commitment:</strong> MADECC Group ("we", "our", or "us") adheres strictly to global data protection principles and the Cameroon Law No. 2010/012 of 21 December 2010 on Cybersecurity and Cybercriminality.
+                <strong>Data Privacy Commitment:</strong> MADECC GROUP ("we", "our", or "us") adheres strictly to global data protection principles and the Cameroon Law No. 2010/012 of 21 December 2010 on Cybersecurity and Cybercriminality.
               </div>
 
               <section className="space-y-3">
@@ -117,7 +117,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   For inquiries regarding your personal data, rights to rectification, or data deletion requests, submit an automated request via our <button onClick={() => setCurrentTab('data-deletion')} className="text-amber-400 font-bold hover:underline cursor-pointer">Official Data Deletion Portal (/data-deletion)</button> or contact our Compliance Office:
                 </p>
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-400 space-y-1">
-                  <p><strong>Entity:</strong> MADECC Group Compliance & Legal Department</p>
+                  <p><strong>Entity:</strong> MADECC GROUP Compliance & Legal Department</p>
                   <p><strong>Headquarters:</strong> Yaoundé Mbankolo, Republic of Cameroon (Operating Nationwide &amp; Pan-Africa)</p>
                   <p><strong>Official Email:</strong> <a href="mailto:kreboya603@gmail.com" className="text-amber-400">kreboya603@gmail.com</a> / <a href="mailto:madecccons@gmail.com" className="text-amber-400">madecccons@gmail.com</a></p>
                 </div>
@@ -128,7 +128,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
           {type === 'terms' && (
             <>
               <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-300">
-                <strong>Binding Agreement:</strong> By accessing or using the MADECC Group digital platform (<a href="https://madeccgroup.online" className="text-amber-400 hover:underline">https://madeccgroup.online</a>), you agree to be bound by these Terms of Service and all applicable laws in Cameroon.
+                <strong>Binding Agreement:</strong> By accessing or using the MADECC GROUP digital platform (<a href="https://madeccgroup.online" className="text-amber-400 hover:underline">https://madeccgroup.online</a>), you agree to be bound by these Terms of Service and all applicable laws in Cameroon.
               </div>
 
               <section className="space-y-3">
@@ -136,7 +136,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   <span className="text-amber-500">01.</span> Intellectual Property & Technical Assets
                 </h2>
                 <p>
-                  All structural algorithms, engineering drawings, custom takeoff estimators, architectural models, and corporate publications displayed on this website are the proprietary property of MADECC Group. Users are granted a limited, revocable license for non-commercial viewing.
+                  All structural algorithms, engineering drawings, custom takeoff estimators, architectural models, and corporate publications displayed on this website are the proprietary property of MADECC GROUP. Users are granted a limited, revocable license for non-commercial viewing.
                 </p>
               </section>
 
@@ -145,7 +145,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   <span className="text-amber-500">02.</span> Project Estimates & Quotations Disclaimer
                 </h2>
                 <p>
-                  Interactive cost estimates, budgetary calculators, and price indicators (e.g. in FCFA) provided on this portal are for preliminary feasibility guidance only. Binding contractual agreements require formal engineering site surveys, geotechnical validation, and signed contract instruments executed by authorized MADECC Group directors.
+                  Interactive cost estimates, budgetary calculators, and price indicators (e.g. in FCFA) provided on this portal are for preliminary feasibility guidance only. Binding contractual agreements require formal engineering site surveys, geotechnical validation, and signed contract instruments executed by authorized MADECC GROUP directors.
                 </p>
               </section>
 
@@ -154,7 +154,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   <span className="text-amber-500">03.</span> Contractual Standards & Governing Law
                 </h2>
                 <p>
-                  All formal construction contracts, procurement orders, and joint venture partnerships executed by MADECC Group are governed under FIDIC (International Federation of Consulting Engineers) contract conditions and the exclusive jurisdiction of the Commercial Court of Douala / Republic of Cameroon.
+                  All formal construction contracts, procurement orders, and joint venture partnerships executed by MADECC GROUP are governed under FIDIC (International Federation of Consulting Engineers) contract conditions and the exclusive jurisdiction of the Commercial Court of Douala / Republic of Cameroon.
                 </p>
               </section>
 
@@ -172,7 +172,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
           {type === 'safety' && (
             <>
               <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs text-emerald-300">
-                <strong>Zero-Harm Policy:</strong> Safety is the cornerstone of every MADECC Group project. We enforce zero-tolerance for unsafe construction practices across all operational sites in Central Africa.
+                <strong>Zero-Harm Policy:</strong> Safety is the cornerstone of every MADECC GROUP project. We enforce zero-tolerance for unsafe construction practices across all operational sites in Central Africa.
               </div>
 
               <section className="space-y-3">
@@ -189,7 +189,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   <span className="text-amber-500">02.</span> Environmental Impact Assessment (EIA)
                 </h2>
                 <p>
-                  MADECC Group designs and executes all projects in harmony with the Ministry of Environment, Protection of Nature and Sustainable Development (MINEPDED) guidelines, incorporating sustainable drainage, low-clinker cement formulations, and comprehensive construction waste recycling programs.
+                  MADECC GROUP designs and executes all projects in harmony with the Ministry of Environment, Protection of Nature and Sustainable Development (MINEPDED) guidelines, incorporating sustainable drainage, low-clinker cement formulations, and comprehensive construction waste recycling programs.
                 </p>
               </section>
             </>

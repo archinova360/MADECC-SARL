@@ -1,5 +1,5 @@
 /**
- * MADECC Group Social Media Media Classifier & Normalizer
+ * MADECC GROUP Social Media Media Classifier & Normalizer
  * Provides robust validation, classification, sanitization, and compatibility diagnostics
  * for images, direct videos, and YouTube URLs.
  */

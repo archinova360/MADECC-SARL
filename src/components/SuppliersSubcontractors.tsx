@@ -275,7 +275,7 @@ export const SuppliersSubcontractors: React.FC<Props> = ({ onNavigateToTab }) =>
           </h1>
 
           <p className="text-slate-300 text-base max-w-2xl mx-auto mb-6">
-            Partner with MADECC Group to deliver quality construction and engineering solutions across Cameroon.
+            Partner with MADECC GROUP to deliver quality construction and engineering solutions across Cameroon.
           </p>
 
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400">
@@ -307,7 +307,7 @@ export const SuppliersSubcontractors: React.FC<Props> = ({ onNavigateToTab }) =>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed mb-6">
-              Thank you for applying to partner with MADECC Group. Our procurement and engineering evaluation committee will review your company credentials. A confirmation message has been dispatched to your email address.
+              Thank you for applying to partner with MADECC GROUP. Our procurement and engineering evaluation committee will review your company credentials. A confirmation message has been dispatched to your email address.
             </p>
 
             <button
@@ -572,7 +572,7 @@ export const SuppliersSubcontractors: React.FC<Props> = ({ onNavigateToTab }) =>
                     className="mt-1 accent-amber-500"
                   />
                   <label htmlFor="supDec" className="text-xs text-slate-300 leading-relaxed cursor-pointer">
-                    I declare that all company information and product details provided are accurate and authentic. I authorize MADECC Group procurement committee to evaluate this prequalification file.
+                    I declare that all company information and product details provided are accurate and authentic. I authorize MADECC GROUP procurement committee to evaluate this prequalification file.
                   </label>
                 </div>
 
@@ -729,7 +729,7 @@ export const SuppliersSubcontractors: React.FC<Props> = ({ onNavigateToTab }) =>
                     className="mt-1 accent-amber-500"
                   />
                   <label htmlFor="subDec" className="text-xs text-slate-300 leading-relaxed cursor-pointer">
-                    I confirm that our trade team upholds strict site safety and quality standards. I authorize MADECC Group to review our technical profile for upcoming subcontracts.
+                    I confirm that our trade team upholds strict site safety and quality standards. I authorize MADECC GROUP to review our technical profile for upcoming subcontracts.
                   </label>
                 </div>
 

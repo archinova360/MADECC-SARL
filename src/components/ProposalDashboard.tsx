@@ -159,7 +159,7 @@ export default function ProposalDashboard({
 
   // AI Statutory Charter Drafter State
   const [showAiDrafter, setShowAiDrafter] = useState(false);
-  const [aiCompanyName, setAiCompanyName] = useState('MADECC Group');
+  const [aiCompanyName, setAiCompanyName] = useState('MADECC GROUP');
   const [aiLegalForm, setAiLegalForm] = useState('SARL');
   const [aiCapital, setAiCapital] = useState('10,000,000 FCFA');
   const [aiManager, setAiManager] = useState('Mr. Jean-Pierre Bebga');
@@ -417,7 +417,7 @@ export default function ProposalDashboard({
       const padding = 15;
       let currentY = padding + 5;
 
-      const companyName = aoa.clientName || 'MADECC Group';
+      const companyName = aoa.clientName || 'MADECC GROUP';
       const legalForm = aoa.clientNiu || 'SARL';
       const headOffice = aoa.clientAddress || 'Douala, Cameroon';
       const jurisdiction = aoa.clientCity || 'Cameroon (OHADA)';
@@ -626,7 +626,7 @@ export default function ProposalDashboard({
   // Formatted DOC/DOCX Microsoft Word exporter
   const handleExportAoaDOCX = (aoa: any) => {
     try {
-      const companyName = aoa.clientName || 'MADECC Group';
+      const companyName = aoa.clientName || 'MADECC GROUP';
       const legalForm = aoa.clientNiu || 'SARL';
       const headOffice = aoa.clientAddress || 'Douala, Cameroon';
       const jurisdiction = aoa.clientCity || 'Cameroon (OHADA)';
@@ -1510,7 +1510,7 @@ export default function ProposalDashboard({
                     value={aiCompanyName}
                     onChange={(e) => setAiCompanyName(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-                    placeholder="e.g., MADECC Group Cameroon"
+                    placeholder="e.g., MADECC GROUP Cameroon"
                   />
                 </div>
 

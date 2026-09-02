@@ -1013,7 +1013,7 @@ export const staffTrainingRecords = pgTable('staff_training_records', {
 export const socialMediaChannels = pgTable('social_media_channels', {
   id: serial('id').primaryKey(),
   platform: text('platform').notNull(), // youtube, facebook, instagram, whatsapp, tiktok, linkedin, twitter, custom
-  channelName: text('channel_name').notNull(), // e.g. "MADECC Group Official YouTube", "MADECC Cameroon FB"
+  channelName: text('channel_name').notNull(), // e.g. "MADECC GROUP Official YouTube", "MADECC Cameroon FB"
   accountHandle: text('account_handle'), // @madeccgroup_cm
   accountId: text('account_id'), // Provider account or page ID
   profileImageUrl: text('profile_image_url'),
@@ -1505,7 +1505,7 @@ export const reviewerCredentials = pgTable('reviewer_credentials', {
 // =========================================================================
 export const siteSettings = pgTable('site_settings', {
   id: serial('id').primaryKey(),
-  siteName: text('site_name').notNull().default('MADECC Group'),
+  siteName: text('site_name').notNull().default('MADECC GROUP'),
   tagline: text('tagline').default('Premier Engineering, Construction & Project Management in Cameroon'),
   developerName: text('developer_name').default('Kasah Rodrick Reboya'),
   phone: text('phone').default('+237 671 063 511'),
@@ -1605,7 +1605,7 @@ export const pageContentRevisions = pgTable('page_content_revisions', {
 // =========================================================================
 export const tenants = pgTable('tenants', {
   id: serial('id').primaryKey(),
-  name: text('name').notNull(), // e.g. 'MADECC Group'
+  name: text('name').notNull(), // e.g. 'MADECC GROUP'
   slug: text('slug').notNull().unique(), // e.g. 'madecc-group'
   legalName: text('legal_name'),
   logoUrl: text('logo_url'),

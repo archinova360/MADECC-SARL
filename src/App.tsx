@@ -497,7 +497,7 @@ export default function App() {
     }
 
     const bypassToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-    if (bypassToken === 'Adminmadeccgroup' || bypassToken === 'MADECC Group admin') {
+    if (bypassToken === 'Adminmadeccgroup' || bypassToken === 'MADECC GROUP admin' || bypassToken === 'MADECC Group admin') {
       setLoadingAuth(true);
 
       const fetchWithRetry = (retries = 3, delay = 1000): Promise<any> => {

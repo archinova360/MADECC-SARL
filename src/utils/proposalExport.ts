@@ -195,7 +195,7 @@ export async function generateProposalPdf(proposal: any): Promise<{ pdf: jsPDF; 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('MADECC Group S.A.R.L. — Official Engineering Proposal Document', margin, footerY + 2);
+    doc.text('MADECC GROUP S.A.R.L. — Official Engineering Proposal Document', margin, footerY + 2);
     doc.text(`Page ${p} of ${totalPages} | Generated: ${getFormattedDate()}`, pageWidth - margin, footerY + 2, { align: 'right' });
   }
 

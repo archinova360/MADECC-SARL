@@ -10,7 +10,7 @@ export async function sendEmail(to: string, subject: string, text: string, html?
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'MADECC Group <notifications@madeccgroup.online>',
+          from: process.env.EMAIL_FROM || 'MADECC GROUP <notifications@madeccgroup.online>',
           to: [to],
           reply_to: options?.replyTo,
           subject,

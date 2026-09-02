@@ -213,7 +213,7 @@ const generateProposalSections = (templateType: string, companyName: string, cli
         content = `### TECHNICAL APPENDICES\n\n- **Appendix A:** Complete Geotechnical Soil Testing Report (Laboratoire National de Génie Civil - LABOGENIE).\n- **Appendix B:** Conceptual Architectural CAD drawings & Layout Blueprints.\n- **Appendix C:** Material safety data sheets (MSDS) for cement composites.`;
         break;
       case 'signoff-terms':
-        content = `### AGREEMENT SIGNATURE & STAMP BLOCK\n\nBy signing below, the Client and Contractor formally accept the terms, specifications, and BOQ values outlined in this document.\n\n- **On behalf of the Contractor:** Authorized Executive Director, ${companyName}\n- **On behalf of the Client:** Authorized Representative, ${clientName}\n\n**Authorized Compliance Stamp:** MADECC Group Enterprise Ledger Verified`;
+        content = `### AGREEMENT SIGNATURE & STAMP BLOCK\n\nBy signing below, the Client and Contractor formally accept the terms, specifications, and BOQ values outlined in this document.\n\n- **On behalf of the Contractor:** Authorized Executive Director, ${companyName}\n- **On behalf of the Client:** Authorized Representative, ${clientName}\n\n**Authorized Compliance Stamp:** MADECC GROUP Enterprise Ledger Verified`;
         break;
       default:
         content = `### ${s.title}\n\nGeneric placeholder content for section: ${s.title}.`;
@@ -265,7 +265,7 @@ const DEFAULT_PROPOSALS: Proposal[] = [
     clientName: "Cameroon Ministry of Basic Education",
     clientContact: "mbeducation.gov@gmail.com",
     location: "Yaoundé, Cameroon",
-    sections: generateProposalSections("school", "MADECC Group", "Cameroon Ministry of Basic Education", "126,950,000 FCFA", "Yaoundé, Cameroon"),
+    sections: generateProposalSections("school", "MADECC GROUP", "Cameroon Ministry of Basic Education", "126,950,000 FCFA", "Yaoundé, Cameroon"),
     boq: getInitialBOQ(),
     schedule: getInitialSchedule(),
     risks: getInitialRisks(),
@@ -287,7 +287,7 @@ const DEFAULT_PROPOSALS: Proposal[] = [
     clientName: "Douala Municipal Water Authority",
     clientContact: "muni-water@douala.cm",
     location: "Douala, Cameroon",
-    sections: generateProposalSections("solar", "MADECC Group", "Douala Municipal Water Authority", "35,000,000 FCFA", "Douala, Cameroon"),
+    sections: generateProposalSections("solar", "MADECC GROUP", "Douala Municipal Water Authority", "35,000,000 FCFA", "Douala, Cameroon"),
     boq: getInitialBOQ().slice(4),
     schedule: getInitialSchedule().slice(2),
     risks: getInitialRisks(),
@@ -434,7 +434,7 @@ export default function ProposalStudio({
       clientName: "Ministry of Housing and Urban Development",
       clientContact: "info@minhdu.gov.cm",
       location: "Douala, Cameroon",
-      sections: generateProposalSections(defaultTemplate.id, "MADECC Group", "Ministry of Housing and Urban Development", "150,000,000 FCFA", "Douala, Cameroon"),
+      sections: generateProposalSections(defaultTemplate.id, "MADECC GROUP", "Ministry of Housing and Urban Development", "150,000,000 FCFA", "Douala, Cameroon"),
       boq: getInitialBOQ(),
       schedule: getInitialSchedule(),
       risks: getInitialRisks(),
@@ -782,7 +782,7 @@ export default function ProposalStudio({
           templateType: selectedProposal.templateType,
           sectionName: SECTION_NAMES.find(n => n.id === activeSectionId)?.title || activeSectionId,
           currentContent: activeSectionContent,
-          companyDetails: { name: "MADECC Group", headOffice: "Yaoundé, Cameroon", role: selectedRole },
+          companyDetails: { name: "MADECC GROUP", headOffice: "Yaoundé, Cameroon", role: selectedRole },
           clientDetails: {
             name: selectedProposal.clientName,
             projectValue: `${selectedProposal.projectValue.toLocaleString()} ${selectedProposal.currency}`,

@@ -172,7 +172,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
       doc.text('DISCLAIMER: Prices shown are indicative market rates for feasibility estimation and do not constitute a binding quotation.', 14, y);
-      doc.text('Contact MADECC Group for formal BOQs: +237 671 063 511 / +237 683 316 486 | kreboya603@gmail.com', 14, y + 4);
+      doc.text('Contact MADECC GROUP for formal BOQs: +237 671 063 511 / +237 683 316 486 | kreboya603@gmail.com', 14, y + 4);
 
       doc.save(`MADECC-Cameroon-Construction-Cost-Guide-${selectedRegion}-2026.pdf`);
       if (showToast) showToast('Cost guide PDF downloaded successfully.', 'success');
@@ -183,7 +183,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
   };
 
   const getWhatsAppUrl = (topic: string = 'General Inquiry') => {
-    const msg = `Hello MADECC Group, I am reviewing your Cameroon Construction Cost Guide 2026 (${topic}). I would like to request assistance for my construction project in ${selectedRegion}.`;
+    const msg = `Hello MADECC GROUP, I am reviewing your Cameroon Construction Cost Guide 2026 (${topic}). I would like to request assistance for my construction project in ${selectedRegion}.`;
     return `https://wa.me/237683316486?text=${encodeURIComponent(msg)}`;
   };
 
@@ -241,7 +241,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
               rel="noopener noreferrer"
               className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
             >
-              <MessageSquare className="w-4 h-4" /> Talk to MADECC Group
+              <MessageSquare className="w-4 h-4" /> Talk to MADECC GROUP
             </a>
           </div>
 
@@ -255,7 +255,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-8 backdrop-blur-sm flex items-start gap-3 shadow-sm">
           <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            <span className="font-bold text-amber-900">Important Price Disclaimer:</span> {data?.disclaimer || 'Construction prices are indicative and can vary according to location, supplier, quantity, project specifications, site conditions, market conditions, transportation, labour availability and other factors. The prices shown on this page are not a final quotation. For a project-specific cost estimate, BOQ or quotation, contact MADECC Group.'}
+            <span className="font-bold text-amber-900">Important Price Disclaimer:</span> {data?.disclaimer || 'Construction prices are indicative and can vary according to location, supplier, quantity, project specifications, site conditions, market conditions, transportation, labour availability and other factors. The prices shown on this page are not a final quotation. For a project-specific cost estimate, BOQ or quotation, contact MADECC GROUP.'}
           </div>
         </div>
 
@@ -613,8 +613,8 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
                 a: 'This cost guide provides preliminary indicative market benchmarks for feasibility planning. A professional Bill of Quantities (BOQ) is an exact line-item measure calculated directly from architectural and structural engineering drawings.'
               },
               {
-                q: 'How can MADECC Group help reduce my building construction cost?',
-                a: 'MADECC Group provides quantity surveying value engineering, direct bulk material sourcing from manufacturers (Dangal, Cimencam), and strict site material control to minimize waste.'
+                q: 'How can MADECC GROUP help reduce my building construction cost?',
+                a: 'MADECC GROUP provides quantity surveying value engineering, direct bulk material sourcing from manufacturers (Dangal, Cimencam), and strict site material control to minimize waste.'
               }
             ].map((faq, idx) => {
               const isOpen = openFaqIndex === idx;

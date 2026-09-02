@@ -1757,7 +1757,7 @@ export default function StaffManagementHub({ currentUser, userRole = 'admin' }: 
               <h2 className="text-base font-black text-white flex items-center justify-center gap-2">
                 <Layers className="w-5 h-5 text-cyan-400" /> Executive & Engineering Hierarchy
               </h2>
-              <p className="text-xs text-slate-400 mt-1">Official MADECC Group Governance & Reporting Lines.</p>
+              <p className="text-xs text-slate-400 mt-1">Official MADECC GROUP Governance & Reporting Lines.</p>
             </div>
 
             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 flex flex-col items-center space-y-8">

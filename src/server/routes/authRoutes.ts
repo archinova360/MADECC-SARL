@@ -19,8 +19,8 @@ export function setupAuthRoutes(app: express.Express) {
       const validAdminKeys = [
         'Adminmadeccgroup',
         'ADMIN_BYPASS:Adminmadeccgroup',
-        'MADECC Group admin',
-        'ADMIN_BYPASS:MADECC Group admin',
+        'MADECC GROUP admin',
+        'ADMIN_BYPASS:MADECC GROUP admin',
         'MADECC_Group_admin',
         'ADMIN_BYPASS:MADECC_Group_admin',
         'madecc2026',
@@ -61,9 +61,9 @@ export function setupAuthRoutes(app: express.Express) {
 
       // 1. Direct Admin credential fallback check
       if (
-        (normalizedEmail === 'kreboya603@gmail.com' && (rawPassword === 'Adminmadeccgroup' || rawPassword === 'MADECC Group admin' || rawPassword === 'madecc2026')) ||
+        (normalizedEmail === 'kreboya603@gmail.com' && (rawPassword === 'Adminmadeccgroup' || rawPassword === 'MADECC GROUP admin' || rawPassword === 'madecc2026')) ||
         rawPassword === 'Adminmadeccgroup' ||
-        rawPassword === 'MADECC Group admin' ||
+        rawPassword === 'MADECC GROUP admin' ||
         rawPassword === 'MADECC_Group_admin'
       ) {
         const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
@@ -218,8 +218,8 @@ export function setupAuthRoutes(app: express.Express) {
         const validAdminKeys = [
           'Adminmadeccgroup',
           'ADMIN_BYPASS:Adminmadeccgroup',
-          'MADECC Group admin',
-          'ADMIN_BYPASS:MADECC Group admin',
+          'MADECC GROUP admin',
+          'ADMIN_BYPASS:MADECC GROUP admin',
           'MADECC_Group_admin',
           'ADMIN_BYPASS:MADECC_Group_admin',
           'madecc2026',
@@ -243,9 +243,9 @@ export function setupAuthRoutes(app: express.Express) {
 
         // 1. Admin login check
         if (
-          (normalizedEmail === 'kreboya603@gmail.com' && (rawPassword === 'Adminmadeccgroup' || rawPassword === 'MADECC Group admin' || rawPassword === 'madecc2026')) ||
+          (normalizedEmail === 'kreboya603@gmail.com' && (rawPassword === 'Adminmadeccgroup' || rawPassword === 'MADECC GROUP admin' || rawPassword === 'madecc2026')) ||
           rawPassword === 'Adminmadeccgroup' ||
-          rawPassword === 'MADECC Group admin'
+          rawPassword === 'MADECC GROUP admin'
         ) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
           return res.json({

@@ -129,7 +129,7 @@ export function generateSocialCalendarPdf(posts: SocialPostItem[], channels: Soc
       const totalPages = (doc as any).internal.getNumberOfPages();
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
-      doc.text(`MADECC Group S.A. Social Media & SEO Studio - Page ${data.pageNumber} of ${totalPages}`, 14, 202);
+      doc.text(`MADECC GROUP S.A. Social Media & SEO Studio - Page ${data.pageNumber} of ${totalPages}`, 14, 202);
     }
   });
 
@@ -269,7 +269,7 @@ export async function generateSocialCalendarDocx(posts: SocialPostItem[], channe
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: 'Confidential Internal Marketing Document - MADECC Group Cameroon', size: 14, color: '94A3B8' })
+                  new TextRun({ text: 'Confidential Internal Marketing Document - MADECC GROUP Cameroon', size: 14, color: '94A3B8' })
                 ]
               })
             ]
@@ -429,7 +429,7 @@ export function exportPostJsonDossier(post: SocialPostItem): void {
     dossierType: 'MADECC_SOCIAL_BROADCAST_DOSSIER',
     version: '2.0-hardened',
     exportedAt: new Date().toISOString(),
-    issuer: 'MADECC Group S.A. Cameroon',
+    issuer: 'MADECC GROUP S.A. Cameroon',
     post: {
       id: post.id,
       title: post.title,
@@ -446,7 +446,7 @@ export function exportPostJsonDossier(post: SocialPostItem): void {
       createdAt: post.createdAt
     },
     organization: {
-      name: 'MADECC Group S.A.',
+      name: 'MADECC GROUP S.A.',
       domains: ['madeccgroup.online', 'madeccgroup.com'],
       primaryWhatsApp: '+237 671 063 511',
       secondaryContact: '+237 683 316 486',

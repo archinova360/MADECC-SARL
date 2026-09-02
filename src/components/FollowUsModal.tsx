@@ -142,7 +142,7 @@ export default function FollowUsModal({
       name: 'WhatsApp Official Channel',
       category: 'Instant Tenders & Direct Dispatch',
       handle: '+237 683 316 486',
-      url: `https://wa.me/237683316486?text=${encodeURIComponent('Hello MADECC Group, I would like to join your official broadcast updates & inquire about construction services.')}`,
+      url: `https://wa.me/237683316486?text=${encodeURIComponent('Hello MADECC GROUP, I would like to join your official broadcast updates & inquire about construction services.')}`,
       color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
       badgeColor: 'bg-emerald-500/20 text-emerald-300',
       iconText: '💬',
@@ -161,8 +161,8 @@ export default function FollowUsModal({
 
   const handleShareApp = async () => {
     const shareData = {
-      title: settings?.shareHeadline || 'MADECC Group — Premier Construction & Civil Engineering Firm',
-      text: settings?.shareDescription || 'Check out MADECC Group for certified civil engineering, structural calculations, digital BOQs, and heavy construction in Cameroon.',
+      title: settings?.shareHeadline || 'MADECC GROUP — Premier Construction & Civil Engineering Firm',
+      text: settings?.shareDescription || 'Check out MADECC GROUP for certified civil engineering, structural calculations, digital BOQs, and heavy construction in Cameroon.',
       url: window.location.origin
     };
 
@@ -201,7 +201,7 @@ export default function FollowUsModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                  Follow & Connect with <span className="text-amber-400">{settings?.siteName || 'MADECC Group'}</span>
+                  Follow & Connect with <span className="text-amber-400">{settings?.siteName || 'MADECC GROUP'}</span>
                 </h3>
                 <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <ShieldCheck className="w-3 h-3" /> Official Channels
@@ -445,7 +445,7 @@ export default function FollowUsModal({
             <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-6">
               <div>
                 <span className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-wider block">
-                  Share MADECC Group With Partners
+                  Share MADECC GROUP With Partners
                 </span>
                 <h4 className="text-lg font-bold text-white mt-1">
                   Recommend Our Engineering & Construction Services
@@ -463,7 +463,7 @@ export default function FollowUsModal({
                   </div>
                   <div>
                     <h5 className="text-sm font-bold text-white">
-                      {settings?.shareHeadline || 'MADECC Group — Leading Civil Engineering & Construction'}
+                      {settings?.shareHeadline || 'MADECC GROUP — Leading Civil Engineering & Construction'}
                     </h5>
                     <span className="text-[11px] font-mono text-slate-400">
                       {window.location.origin}
@@ -471,7 +471,7 @@ export default function FollowUsModal({
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 italic">
-                  "{settings?.shareDescription || 'Check out MADECC Group for certified civil engineering, structural design, cost calculators, and turnkey construction.'}"
+                  "{settings?.shareDescription || 'Check out MADECC GROUP for certified civil engineering, structural design, cost calculators, and turnkey construction.'}"
                 </p>
               </div>
 
@@ -488,7 +488,7 @@ export default function FollowUsModal({
 
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    `${settings?.shareHeadline || 'MADECC Group'}\n${window.location.origin}\n\n${settings?.shareDescription || ''}`
+                    `${settings?.shareHeadline || 'MADECC GROUP'}\n${window.location.origin}\n\n${settings?.shareDescription || ''}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

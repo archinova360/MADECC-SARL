@@ -327,7 +327,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white drop-shadow-md">
-              MADECC Group — Building Cameroon’s{' '}
+              MADECC GROUP — Building Cameroon’s{' '}
               <RotatingMovingText 
                 words={[
                   'Future',
@@ -596,7 +596,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Comprehensive Solutions</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Our Construction & Enterprise Services</h2>
             <p className="text-slate-400 leading-relaxed text-sm">
-              MADECC Group provides end-to-end engineering, design-build execution, and commercial advisory across Cameroon.
+              MADECC GROUP provides end-to-end engineering, design-build execution, and commercial advisory across Cameroon.
             </p>
           </div>
 
@@ -1083,15 +1083,15 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           <div className="space-y-4" id="faq-accordions-group">
             {[
               {
-                q: "Where is MADECC Group headquartered and where do you operate in Cameroon?",
-                a: "MADECC Group is headquartered in Yaoundé (Mbankolo), Centre Region, Cameroon. We operate across all 10 regions of Cameroon: Centre (Yaoundé), Littoral (Douala), South (Kribi), West (Bafoussam), North-West (Bamenda), South-West (Limbe/Buea), East (Bertoua), and Northern regions (Garoua, Maroua, Ngaoundéré). We deploy resident site supervisors and mobile machinery to urban and peri-urban locations."
+                q: "Where is MADECC GROUP headquartered and where do you operate in Cameroon?",
+                a: "MADECC GROUP is headquartered in Yaoundé (Mbankolo), Centre Region, Cameroon. We operate across all 10 regions of Cameroon: Centre (Yaoundé), Littoral (Douala), South (Kribi), West (Bafoussam), North-West (Bamenda), South-West (Limbe/Buea), East (Bertoua), and Northern regions (Garoua, Maroua, Ngaoundéré). We deploy resident site supervisors and mobile machinery to urban and peri-urban locations."
               },
               {
-                q: "How does MADECC Group ensure accurate construction pricing in FCFA?",
+                q: "How does MADECC GROUP ensure accurate construction pricing in FCFA?",
                 a: "We prepare detailed, itemized Bills of Quantities (BOQ) breaking down every component into materials (cement, high-yield rebar, sand, gravel), skilled labor (masons, iron fixers, carpenters), equipment plant hire, and preliminaries. We use transparent unit rates based on real-time market rates across Cameroon and fix the price in formal contract milestones."
               },
               {
-                q: "Does MADECC Group handle the municipal building permit (Permis de Construire)?",
+                q: "Does MADECC GROUP handle the municipal building permit (Permis de Construire)?",
                 a: "Yes. Our engineering and architectural team prepares the complete technical permit dossier (dossier de permis de construire) including architectural plans, structural calculation notes, geotechnical soil analysis, and sanitation plans. We coordinate directly with the Yaoundé Urban Council (CUY), Douala Urban Council (CUD), and regional municipal councils."
               },
               {
@@ -1103,7 +1103,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 a: "Cameroon features diverse soil types: marshy, low-bearing coastal ground in Douala and Kribi requiring reinforced raft foundations or micro-piles, and lateritic clay or rocky terrains in Yaoundé and Bafoussam. A soil test (Penetrometer / CPT) determines the safe bearing capacity and prevents severe foundation settling and wall cracking."
               },
               {
-                q: "What concrete strength standards are enforced on MADECC Group sites?",
+                q: "What concrete strength standards are enforced on MADECC GROUP sites?",
                 a: "All reinforced concrete elements (footings, columns, ring beams, slabs) are dosed at a minimum of 350 kg/m³ using CEM II 42.5R cement. We perform standard slump tests on-site and cast 150mm test cubes for 7-day and 28-day compression crush testing in accredited civil engineering laboratories."
               }
             ].map((faq, idx) => {
@@ -1194,7 +1194,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                 <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
                   <p>
-                    At <strong>MADECC Group</strong>, every beam, column, slab, and foundation is rigorously calculated under <strong className="text-white">Eurocode 2 (EN 1992-1-1)</strong> and validated against French-Cameroonian <strong className="text-white">BAEL 91 (Béton Armé aux États Limites)</strong> standards.
+                    At <strong>MADECC GROUP</strong>, every beam, column, slab, and foundation is rigorously calculated under <strong className="text-white">Eurocode 2 (EN 1992-1-1)</strong> and validated against French-Cameroonian <strong className="text-white">BAEL 91 (Béton Armé aux États Limites)</strong> standards.
                   </p>
                   <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
                     <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
@@ -1252,7 +1252,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                 <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
                   <p>
-                    MADECC Group eliminates contractor inflation and unexpected price hikes through a rigorous, transparent <strong className="text-white">Bill of Quantities (BOQ / DQE)</strong>.
+                    MADECC GROUP eliminates contractor inflation and unexpected price hikes through a rigorous, transparent <strong className="text-white">Bill of Quantities (BOQ / DQE)</strong>.
                   </p>
                   <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
                     <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">

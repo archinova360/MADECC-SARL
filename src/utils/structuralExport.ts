@@ -249,7 +249,7 @@ export async function generateStructuralPdf(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(isA3 ? 8 : 7);
     doc.setTextColor(100, 116, 139);
-    doc.text(`MADECC Group SARL — Certified Eurocode EN 1992-1-1 Structural Engineering Report | Ref: ${projectMeta.projectCode}`, margin, footerY + 2);
+    doc.text(`MADECC GROUP SARL — Certified Eurocode EN 1992-1-1 Structural Engineering Report | Ref: ${projectMeta.projectCode}`, margin, footerY + 2);
     doc.text(`Page ${pageNum} of ${totalPages} | ${projectMeta.revisionNumber} | Date: ${getFormattedDate()}`, pageWidth - margin, footerY + 2, { align: 'right' });
   };
 

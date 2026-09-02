@@ -197,15 +197,15 @@ export function CompanyTimeline() {
 export function FAQSection() {
   const faqs = [
     {
-      q: "What construction codes are adhered to by MADECC Group?",
+      q: "What construction codes are adhered to by MADECC GROUP?",
       a: "Our civil and structural engineers calculate load-bearing members according to Eurocode 2 (Design of Concrete Structures) and French BAEL 91 standards, verified through accredited civil engineering calculation sheets."
     },
     {
-      q: "How does MADECC Group support Cameroonians in the diaspora building locally?",
+      q: "How does MADECC GROUP support Cameroonians in the diaspora building locally?",
       a: "We provide diaspora property developers with complete financial and visual transparency: milestone escrow releases, weekly high-resolution drone photo/video progress reports, and certified site logbooks."
     },
     {
-      q: "Can MADECC Group assist with municipal building permit dossiers (Permis de Construire)?",
+      q: "Can MADECC GROUP assist with municipal building permit dossiers (Permis de Construire)?",
       a: "Yes. We prepare the complete architectural and structural submission dossier, including geotechnical soil analysis and MEP plans, coordinating directly with the Yaoundé (CUY) and Douala (CUD) Urban Councils."
     },
     {
@@ -374,7 +374,7 @@ export function PortfolioHero() {
           />
         </h1>
         <p className="text-slate-400 text-sm sm:text-base mt-4 leading-relaxed">
-          Explore completed and active residential villas, apartment complexes, commercial facilities, and earthwork developments managed by MADECC Group across Cameroon.
+          Explore completed and active residential villas, apartment complexes, commercial facilities, and earthwork developments managed by MADECC GROUP across Cameroon.
         </p>
 
         {/* Highlight Badges */}
@@ -413,7 +413,7 @@ export function AdSenseReadinessBlock() {
   return (
     <div className="py-8 bg-[#070709] border-t border-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-500 text-[10px] font-mono space-y-2">
-        <p>© {new Date().getFullYear()} MADECC Group Cameroon. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} MADECC GROUP Cameroon. All rights reserved.</p>
         <div className="flex justify-center gap-4 text-slate-400">
           <a href="/privacy-policy" className="hover:text-amber-500 transition-colors">Privacy Policy</a>
           <span>•</span>

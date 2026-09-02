@@ -54,7 +54,7 @@ export const SERVICES_DATA: ServiceItem[] = [
     category: 'Construction & Execution',
     icon: Building2,
     shortDesc: 'Turn-key construction services from site clearance and foundation works to structural frames, MEP services, roofing, high-end finishing, and handover.',
-    overview: 'MADECC Group provides end-to-end building construction services across Cameroon. Our engineering-led construction team manages site safety, quality assurance, material testing, and strict program scheduling for residential, commercial, and industrial facilities.',
+    overview: 'MADECC GROUP provides end-to-end building construction services across Cameroon. Our engineering-led construction team manages site safety, quality assurance, material testing, and strict program scheduling for residential, commercial, and industrial facilities.',
     whatWeDeliver: [
       'Substructure & deep foundation engineering',
       'Reinforced concrete structural framing',
@@ -85,7 +85,7 @@ export const SERVICES_DATA: ServiceItem[] = [
       { title: 'Quality Inspection & Handover', desc: 'Rigorous client inspection, MEP testing, clean-up, and key handover.' }
     ],
     faqs: [
-      { q: 'Does MADECC Group handle turn-key residential construction?', a: 'Yes. We handle everything from land preparation, structural execution, finishing, to final occupancy certification.' },
+      { q: 'Does MADECC GROUP handle turn-key residential construction?', a: 'Yes. We handle everything from land preparation, structural execution, finishing, to final occupancy certification.' },
       { q: 'What quality standards do you follow for concrete and rebar?', a: 'We strictly adhere to Eurocode / French BAEL standards, testing cement batches and cube compression strengths at accredited labs.' }
     ],
     ctaLabel: 'Request Building Construction Quote'
@@ -475,7 +475,7 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
           </h1>
 
           <p className="text-slate-300 text-base sm:text-xl max-w-3xl leading-relaxed mb-10 font-normal">
-            MADECC Group provides integrated construction, civil & structural engineering, quantity surveying, project management, and consultancy services for residential, commercial, industrial, and infrastructure projects across Cameroon.
+            MADECC GROUP provides integrated construction, civil & structural engineering, quantity surveying, project management, and consultancy services for residential, commercial, industrial, and infrastructure projects across Cameroon.
           </p>
 
           <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start">
@@ -617,7 +617,7 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
               The MADECC Advantage
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Why Project Owners Trust MADECC Group
+              Why Project Owners Trust MADECC GROUP
             </h2>
           </div>
 

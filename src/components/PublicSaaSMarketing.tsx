@@ -59,7 +59,7 @@ export const PublicSaaSMarketing: React.FC<PublicSaaSMarketingProps> = ({
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5"
           >
             <Globe className="w-3.5 h-3.5 text-amber-400" />
-            <span>View Flagship (MADECC Group)</span>
+            <span>View Flagship (MADECC GROUP)</span>
           </button>
 
           <button
@@ -291,7 +291,7 @@ export const PublicSaaSMarketing: React.FC<PublicSaaSMarketingProps> = ({
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-amber-400" />
             <span className="font-bold text-white">MADECC Construction Cloud</span>
-            <span>&copy; {new Date().getFullYear()} MADECC Group SARL. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} MADECC GROUP SARL. All rights reserved.</span>
           </div>
 
           <div className="flex items-center gap-4">

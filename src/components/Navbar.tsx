@@ -142,6 +142,10 @@ export default function Navbar({
     const validKeys = [
       'Adminmadeccgroup',
       'ADMIN_BYPASS:Adminmadeccgroup',
+      'MADECC GROUP admin',
+      'ADMIN_BYPASS:MADECC GROUP admin',
+      'MADECC_GROUP_admin',
+      'ADMIN_BYPASS:MADECC_GROUP_admin',
       'MADECC Group admin',
       'ADMIN_BYPASS:MADECC Group admin',
       'MADECC_Group_admin',
@@ -500,7 +504,7 @@ export default function Navbar({
               <button
                 onClick={openFollowModal}
                 className="relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0"
-                title="Follow MADECC Group on Social Media (LinkedIn, Facebook, YouTube, X, Instagram, TikTok, WhatsApp)"
+                title="Follow MADECC GROUP on Social Media (LinkedIn, Facebook, YouTube, X, Instagram, TikTok, WhatsApp)"
                 id="nav-btn-follow-us"
               >
                 <span className="relative flex h-2 w-2">
@@ -764,7 +768,7 @@ export default function Navbar({
               <div className="bg-amber-500/10 text-amber-500 p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto shadow-inner">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-extrabold tracking-tight text-white font-sans">MADECC Group Portal</h3>
+              <h3 className="text-xl font-extrabold tracking-tight text-white font-sans">MADECC GROUP Portal</h3>
               <p className="text-xs text-slate-400">Authenticate for Admin, Staff, or Meta App Review access</p>
             </div>
 

@@ -355,7 +355,7 @@ export async function generateLabourDocx(data: LabourData): Promise<{ blob: Blob
               new Paragraph({ children: [new TextRun({ text: 'PREPARED BY (QUANTITY SURVEYOR):', bold: true, size: 16 })] }),
               new Paragraph({ text: '', spacing: { after: 250 } }),
               new Paragraph({ children: [new TextRun({ text: data.preparedBy, bold: true, size: 16 })] }),
-              new Paragraph({ children: [new TextRun({ text: 'Civil Engineering Dept, MADECC Group', size: 14, color: '64748B' })] })
+              new Paragraph({ children: [new TextRun({ text: 'Civil Engineering Dept, MADECC GROUP', size: 14, color: '64748B' })] })
             ]
           }),
           new TableCell({
@@ -693,7 +693,7 @@ export function generateLabourPdf(data: LabourData, orientation: 'portrait' | 'l
 
   y += 4;
   doc.text('Civil Engineering & Quantity Surveying Dept', margin, y);
-  doc.text('Chief Structural Auditor, MADECC Group', pageWidth / 2 + 10, y);
+  doc.text('Chief Structural Auditor, MADECC GROUP', pageWidth / 2 + 10, y);
 
   // Footer Page Number
   const totalPages = doc.getNumberOfPages();
@@ -702,7 +702,7 @@ export function generateLabourPdf(data: LabourData, orientation: 'portrait' | 'l
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `MADECC Group S.A.R.L. — Official Labour Calculation Statement | Page ${i} of ${totalPages}`,
+      `MADECC GROUP S.A.R.L. — Official Labour Calculation Statement | Page ${i} of ${totalPages}`,
       pageWidth / 2,
       pageHeight - 6,
       { align: 'center' }

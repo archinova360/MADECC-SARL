@@ -66,7 +66,7 @@ export class CivilWorksExporter {
 
     const summaryData = [
       ['Project Name', model.projectName || 'Civil Works Project', 'Record ID', model.recordId],
-      ['Client Name', model.clientName || 'N/A', 'Contractor', model.contractorName || 'MADECC Group'],
+      ['Client Name', model.clientName || 'N/A', 'Contractor', model.contractorName || 'MADECC GROUP'],
       ['Site Location', model.siteLocation || 'Cameroon', 'Work Category', model.workCategory || 'Civil Infrastructure'],
       ['Start Date', model.startDate || 'N/A', 'Completion Target', model.completionDate || 'N/A'],
       ['Current Progress', `${model.progressPercentage || 0}% Completed`, 'Status', model.status || 'IN_PROGRESS'],
@@ -323,7 +323,7 @@ export class CivilWorksExporter {
                     new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Client Name:', bold: true })] })] }),
                     new TableCell({ children: [new Paragraph(model.clientName || 'N/A')] }),
                     new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Contractor:', bold: true })] })] }),
-                    new TableCell({ children: [new Paragraph(model.contractorName || 'MADECC Group')] }),
+                    new TableCell({ children: [new Paragraph(model.contractorName || 'MADECC GROUP')] }),
                   ],
                 }),
                 new TableRow({

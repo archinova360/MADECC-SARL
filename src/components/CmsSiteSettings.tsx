@@ -408,14 +408,14 @@ export default function CmsSiteSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Yaoundé Headquarters Physical Address
+                  Yaoundé Headquarters Physical Address (Valid Official Address)
                 </label>
                 <input
                   type="text"
                   value={settings.officeAddressYaounde || ''}
                   onChange={e => setSettings({ ...settings, officeAddressYaounde: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="BP 14520, Yaoundé, Centre Region, Cameroon"
+                  placeholder="Mbankolo, Yaoundé, Cameroon"
                 />
               </div>
 
@@ -675,7 +675,7 @@ export default function CmsSiteSettings() {
                   Website Sharing Links for Visitors & Clients (Editable in Admin)
                 </h4>
                 <p className="text-xs text-slate-400">
-                  Customize the pre-filled message and title when clients or visitors share MADECC Group to their colleagues and partners.
+                  Customize the pre-filled message and title when clients or visitors share MADECC GROUP to their colleagues and partners.
                 </p>
               </div>
 
@@ -684,7 +684,7 @@ export default function CmsSiteSettings() {
                   <label className="block text-[11px] text-slate-300 font-semibold mb-1">Default Share Headline</label>
                   <input
                     type="text"
-                    value={settings.shareHeadline || 'MADECC Group — Leading Civil Engineering & Construction Firm'}
+                    value={settings.shareHeadline || 'MADECC GROUP — Leading Civil Engineering & Construction Firm'}
                     onChange={e => setSettings({ ...settings, shareHeadline: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-750 rounded px-2.5 py-1.5 text-xs text-white focus:border-amber-500"
                   />
@@ -693,7 +693,7 @@ export default function CmsSiteSettings() {
                   <label className="block text-[11px] text-slate-300 font-semibold mb-1">Default Share Message / Brief</label>
                   <input
                     type="text"
-                    value={settings.shareDescription || 'Check out MADECC Group for certified civil engineering, structural design, cost calculators, and turnkey construction.'}
+                    value={settings.shareDescription || 'Check out MADECC GROUP for certified civil engineering, structural design, cost calculators, and turnkey construction.'}
                     onChange={e => setSettings({ ...settings, shareDescription: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-750 rounded px-2.5 py-1.5 text-xs text-white focus:border-amber-500"
                   />

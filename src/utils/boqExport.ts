@@ -294,7 +294,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
       spacing: { before: 100 },
       children: [
         new TextRun({
-          text: 'Disclaimer: This Bill of Quantities / Construction Rate Estimate is produced by MADECC Group S.A.R.L. based on standard civil engineering measurement rules. Figures are binding upon official approval.',
+          text: 'Disclaimer: This Bill of Quantities / Construction Rate Estimate is produced by MADECC GROUP S.A.R.L. based on standard civil engineering measurement rules. Figures are binding upon official approval.',
           italics: true,
           size: 14,
           color: '94A3B8'

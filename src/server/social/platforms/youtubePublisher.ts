@@ -92,7 +92,7 @@ export async function publishToYouTube(ctx: YouTubePublishContext): Promise<Soci
           body: JSON.stringify({
             id: existingVideoId,
             snippet: {
-              title: (title || 'MADECC Group Engineering Project').slice(0, 100),
+              title: (title || 'MADECC GROUP Engineering Project').slice(0, 100),
               description: fullDescription,
               tags: (hashtags || '').split(' ').filter(h => h.startsWith('#')).map(h => h.replace('#', '')),
               categoryId: '28' // Science & Technology
@@ -130,7 +130,7 @@ export async function publishToYouTube(ctx: YouTubePublishContext): Promise<Soci
         },
         body: JSON.stringify({
           snippet: {
-            title: (title || 'MADECC Group Civil Engineering Update').slice(0, 100),
+            title: (title || 'MADECC GROUP Civil Engineering Update').slice(0, 100),
             description: fullDescription,
             tags: (hashtags || '').split(' ').filter(h => h.startsWith('#')).map(h => h.replace('#', '')),
             categoryId: '28'

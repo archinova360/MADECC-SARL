@@ -95,7 +95,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
   const introText = 
-    'The MADECC Group digital platform is an enterprise-grade web application uniting multi-disciplinary ' +
+    'The MADECC GROUP digital platform is an enterprise-grade web application uniting multi-disciplinary ' +
     'civil & structural engineering, renewable energy modeling, construction project management, and automated ' +
     'document intelligence. Built for public clients, enterprise contractors, and authenticated auditors, ' +
     'this document outlines full navigation pathways across every module.';
@@ -396,7 +396,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
       ['Primary WhatsApp Channel:', '+237 671 063 511 (Instant Credential Dispatch)'],
       ['Secondary WhatsApp Channel:', '+237 640 194 505'],
       ['Official Website URL:', 'https://madeccgroup.online'],
-      ['Headquarters Address:', 'MADECC Group S.A.R.L, Omnisports / Bastos, Yaoundé, Centre Region, Cameroon'],
+      ['Headquarters Address:', 'MADECC GROUP S.A.R.L, Omnisports / Bastos, Yaoundé, Centre Region, Cameroon'],
       ['Business Classification:', 'Civil Engineering, Geotechnics, Renewable Energy & Cloud Systems']
     ]
   });
@@ -416,7 +416,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85);
-  doc.text('This document serves as the official navigational reference for the MADECC Group ecosystem. For technical inquiries, contact support directly.', margin + 4, y + 10);
+  doc.text('This document serves as the official navigational reference for the MADECC GROUP ecosystem. For technical inquiries, contact support directly.', margin + 4, y + 10);
   doc.text('MADECC GROUP S.A.R.L © 2026. All Rights Reserved. ISO 9001 & OHADA Compliant Documentation.', margin + 4, y + 14);
 
   return doc;

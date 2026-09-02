@@ -358,7 +358,7 @@ export function setupProcurementRoutes(app: express.Express) {
                   ${reviewNotes ? `<p style="margin: 0;"><strong>Committee Remarks:</strong> ${reviewNotes}</p>` : ''}
                 </div>
                 <p>If you have any questions or require further details, please reach out to our procurement office at <a href="mailto:procurement@madeccgroup.com" style="color: #d97706;">procurement@madeccgroup.com</a> or call +237 683 316 486.</p>
-                <p style="margin-top: 24px;">Sincerely,<br><strong>MADECC Group Procurement Board</strong><br>Yaounde & Douala, Cameroon</p>
+                <p style="margin-top: 24px;">Sincerely,<br><strong>MADECC GROUP Procurement Board</strong><br>Yaounde & Douala, Cameroon</p>
               </div>
             </div>
           `;
@@ -551,7 +551,7 @@ Tender Reference: ${tenderRef}
 Tender Title: ${tenderTitle}
 Submission Number: ${eoiNum}
 
-Your submission has been logged into the MADECC Group Procurement System and forwarded to the Technical Evaluation Committee.
+Your submission has been logged into the MADECC GROUP Procurement System and forwarded to the Technical Evaluation Committee.
 
 Next Steps:
 - Technical Evaluation: Our engineering team will assess your capacity dossier against the minimum qualification criteria.
@@ -560,7 +560,7 @@ Next Steps:
 For any enquiries, please reply to this email or contact us at procurement@madeccgroup.com.
 
 Best regards,
-MADECC Group Procurement Department
+MADECC GROUP Procurement Department
 Yaounde Mbankolo & Douala, Cameroon
 Phone: +237 683 316 486
       `;
@@ -573,7 +573,7 @@ Phone: +237 683 316 486
           </div>
           <div style="padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-top: none;">
             <p style="font-size: 15px; margin-top: 0;">Dear <strong>${data.contactPerson || data.companyName}</strong>,</p>
-            <p>Thank you for submitting your formal Expression of Interest (EOI) to partner with MADECC Group.</p>
+            <p>Thank you for submitting your formal Expression of Interest (EOI) to partner with MADECC GROUP.</p>
             
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin: 20px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -613,7 +613,7 @@ Phone: +237 683 316 486
               Phone / WhatsApp: +237 683 316 486 * Yaounde Mbankolo & Douala, Cameroon
             </div>
 
-            <p style="margin-top: 24px; font-size: 13px; color: #64748b;">Sincerely,<br><strong style="color: #0f172a;">MADECC Group Procurement Board</strong></p>
+            <p style="margin-top: 24px; font-size: 13px; color: #64748b;">Sincerely,<br><strong style="color: #0f172a;">MADECC GROUP Procurement Board</strong></p>
           </div>
         </div>
       `;

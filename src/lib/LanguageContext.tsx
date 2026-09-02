@@ -27,7 +27,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Hero
     hero_badge: 'Enterprise Construction & Engineering',
     hero_title: 'Engineering the Future of African Infrastructure',
-    hero_subtitle: 'MADECC Group delivers world-class civil engineering, structural design, and construction project management with total safety compliance and OHADA regulatory standards.',
+    hero_subtitle: 'MADECC GROUP delivers world-class civil engineering, structural design, and construction project management with total safety compliance and OHADA regulatory standards.',
     hero_cta_booking: 'Schedule Engineering Bid',
     hero_cta_projects: 'Explore Active Tenders',
 
@@ -83,7 +83,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Hero
     hero_badge: 'Construction et Ingénierie d\'Entreprise',
     hero_title: 'Concevoir l\'Avenir de l\'Infrastructure Africaine',
-    hero_subtitle: 'MADECC Group fournit des services d\'ingénierie civile, de conception structurelle et de gestion de projets de construction de classe mondiale, dans le respect total des normes de sécurité et de la réglementation OHADA.',
+    hero_subtitle: 'MADECC GROUP fournit des services d\'ingénierie civile, de conception structurelle et de gestion de projets de construction de classe mondiale, dans le respect total des normes de sécurité et de la réglementation OHADA.',
     hero_cta_booking: 'Planifier Appel d\'Offre',
     hero_cta_projects: 'Découvrir les Marchés Actifs',
 

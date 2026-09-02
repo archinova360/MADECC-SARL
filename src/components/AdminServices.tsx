@@ -397,7 +397,7 @@ export const AdminServices: React.FC = () => {
             Services CMS Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
-            Manage MADECC Group's construction, engineering, consultancy, and project delivery services catalog served on the public website.
+            Manage MADECC GROUP's construction, engineering, consultancy, and project delivery services catalog served on the public website.
           </p>
         </div>
 
@@ -1094,7 +1094,7 @@ export const AdminServices: React.FC = () => {
                     <label className="block font-bold text-slate-700 mb-1">SEO Title Tag</label>
                     <input
                       type="text"
-                      placeholder="e.g. Building Construction & Civil Engineering | MADECC Group Cameroon"
+                      placeholder="e.g. Building Construction & Civil Engineering | MADECC GROUP Cameroon"
                       value={editingService.seoTitle}
                       onChange={(e) => setEditingService({ ...editingService, seoTitle: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"

@@ -72,7 +72,7 @@ export default function About() {
               Corporate Overview & Engineering Philosophy
             </span>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-              About MADECC Group Cameroon
+              About MADECC GROUP Cameroon
             </h1>
             <p className="text-slate-300 text-base sm:text-lg mt-4 leading-relaxed font-normal">
               A multi-disciplinary civil engineering, building construction, and quantity surveying company based in Yaoundé, delivering robust structural execution, transparent cost control, and full regulatory compliance across Cameroon.
@@ -95,10 +95,10 @@ export default function About() {
                 <Building2 className="w-6 h-6 text-amber-500" /> Who We Are
               </h2>
               <p className="text-slate-300 text-sm leading-relaxed">
-                MADECC Group is a full-service construction, civil engineering, and enterprise consulting company headquartered in Yaoundé Mbankolo, Cameroon. We were established to address the critical need for technical precision, transparent pricing, and rigorous on-site execution in the Central African construction sector.
+                MADECC GROUP is a full-service construction, civil engineering, and enterprise consulting company headquartered in Yaoundé Mbankolo, Cameroon. We were established to address the critical need for technical precision, transparent pricing, and rigorous on-site execution in the Central African construction sector.
               </p>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Too many property developers, diaspora builders, and institutional investors in Cameroon experience unexpected cost overruns, substandard concrete pours, foundation cracking, or permit disputes. MADECC Group bridges this gap by applying disciplined engineering standards (Eurocode 2 and BAEL 91), verified geotechnical testing, and detailed Bills of Quantities (BOQ) with fixed unit rates.
+                Too many property developers, diaspora builders, and institutional investors in Cameroon experience unexpected cost overruns, substandard concrete pours, foundation cracking, or permit disputes. MADECC GROUP bridges this gap by applying disciplined engineering standards (Eurocode 2 and BAEL 91), verified geotechnical testing, and detailed Bills of Quantities (BOQ) with fixed unit rates.
               </p>
             </FadeIn>
 
@@ -284,7 +284,7 @@ export default function About() {
               </div>
               
               <p className="text-xs text-slate-400 leading-relaxed">
-                Access official MADECC Group safety manuals, engineering guidelines, and company credentials.
+                Access official MADECC GROUP safety manuals, engineering guidelines, and company credentials.
               </p>
 
               {documents.length > 0 ? (

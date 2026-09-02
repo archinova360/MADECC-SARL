@@ -129,7 +129,7 @@ export default function CareerStudio({ mode, showToast }: CareerStudioProps) {
         {
           id: 'exp-1',
           role: 'Lead Project Director',
-          company: 'MADECC Group SARL',
+          company: 'MADECC GROUP SARL',
           location: 'Douala, Cameroon',
           dateRange: '2021 - Present',
           description: 'Direct construction bids, environmental impact assessments, and resource dispatch for green-certified structural tenders across Littoral and Center regions. Manage a multidisciplinary team of 24 structural engineers and draftsmen.'
@@ -258,16 +258,16 @@ export default function CareerStudio({ mode, showToast }: CareerStudioProps) {
       senderNiu: 'M12090001423X',
       recipientName: 'The Managing Director',
       recipientTitle: 'Human Resources & Engineering Board',
-      recipientCompany: 'MADECC Group SARL',
+      recipientCompany: 'MADECC GROUP SARL',
       recipientAddress: 'Yaoundé Mbankolo, Cameroon',
       date: new Date().toLocaleDateString('en-GB'),
       subject: 'APPLICATION FOR THE POSITION OF SENIOR PROJECTS INFRASTRUCTURE DIRECTOR',
       salutation: 'Dear Board of Directors,',
       bodyParagraphs: [
-        'It is with great enthusiasm that I submit my application for the position of Senior Projects Infrastructure Director at MADECC Group SARL. As a registered Professional Civil Engineer in Cameroon with 12 years of specialized infrastructure experience, I have long admired MADECC’s industry-leading sustainable civil engineering designs and municipal development projects.',
+        'It is with great enthusiasm that I submit my application for the position of Senior Projects Infrastructure Director at MADECC GROUP SARL. As a registered Professional Civil Engineer in Cameroon with 12 years of specialized infrastructure experience, I have long admired MADECC’s industry-leading sustainable civil engineering designs and municipal development projects.',
         'Throughout my career, I have successfully directed structural bids, geotechnical testing, and concrete reinforcement operations for complex public works. My technical supervision on the Yaounde Municipal Bridge expansion and Littoral high-rise developments ensured 100% safety compliance, while advanced load computations helped reduce raw materials cost overheads by 15% without sacrificing design durability.',
         'I possess extensive knowledge in engineering software suites including Autodesk Civil 3D, Revit, and SAP2000, alongside comprehensive experience navigating local building codes and ONIGC compliance frameworks. My leadership style centers on active site supervision, seamless materials logistics coordination, and clear stakeholder communications.',
-        'I would welcome the opportunity to discuss how my project management background and technical background can add value to MADECC Group’s upcoming civil portfolios. Thank you for your review and consideration.'
+        'I would welcome the opportunity to discuss how my project management background and technical background can add value to MADECC GROUP’s upcoming civil portfolios. Thank you for your review and consideration.'
       ],
       signoff: 'Yours sincerely,'
     }
@@ -1496,7 +1496,7 @@ export default function CareerStudio({ mode, showToast }: CareerStudioProps) {
       doc.line(20, 278, 190, 278);
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
-      doc.text('MADECC Group Certified Administrative Studio  |  A4 Corporate Standard Cover Letter', 20, 283);
+      doc.text('MADECC GROUP Certified Administrative Studio  |  A4 Corporate Standard Cover Letter', 20, 283);
 
       doc.save(`MADECC-Letter-${data.senderName.replace(/\s+/g, '-')}.pdf`);
       showToast('Printers-ready Cover Letter A4 PDF exported successfully!', 'success');

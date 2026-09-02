@@ -1116,7 +1116,7 @@ export function setupCmsRoutes(app: express.Express) {
       return res.json({
         success: true,
         settings: {
-          siteName: 'MADECC Group',
+          siteName: 'MADECC GROUP',
           tagline: 'Premier Construction, Civil Engineering & Project Management in Cameroon',
           phone: '+237 670 00 00 00',
           emergencyPhone: '+237 690 00 00 00',
@@ -1131,7 +1131,7 @@ export function setupCmsRoutes(app: express.Express) {
           youtubeUrl: 'https://youtube.com/@madeccgroup',
           twitterUrl: 'https://x.com/madeccgroup',
           globalSeo: {
-            seoTitle: 'MADECC Group -- Premier Construction & Civil Engineering in Cameroon',
+            seoTitle: 'MADECC GROUP -- Premier Construction & Civil Engineering in Cameroon',
             metaDescription: 'Leading Cameroonian construction and engineering firm. Eurocode 2 standards, certified concrete batching, and turnkey execution.',
             robotsIndex: true
           }
@@ -1253,7 +1253,7 @@ export function setupCmsRoutes(app: express.Express) {
               status: 'PUBLISHED',
               version: 1,
               heroConfig: {
-                title: pt.slug === 'home' ? "MADECC Group -- Building Cameroon's Future" : `${pt.title} | MADECC Group`,
+                title: pt.slug === 'home' ? "MADECC GROUP -- Building Cameroon's Future" : `${pt.title} | MADECC GROUP`,
                 subtitle: 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.',
                 eyebrow: 'Construction & Civil Engineering -- Cameroon',
                 mediaType: 'video',
@@ -1283,8 +1283,8 @@ export function setupCmsRoutes(app: express.Express) {
                 }
               ],
               seo: {
-                seoTitle: `${pt.title} | MADECC Group Cameroon`,
-                metaDescription: `Official ${pt.title} page for MADECC Group, leading civil engineering and building contractor in Cameroon.`,
+                seoTitle: `${pt.title} | MADECC GROUP Cameroon`,
+                metaDescription: `Official ${pt.title} page for MADECC GROUP, leading civil engineering and building contractor in Cameroon.`,
                 keywords: 'construction cameroon, yaounde builder, civil engineering',
                 robotsIndex: true
               },
@@ -1332,7 +1332,7 @@ export function setupCmsRoutes(app: express.Express) {
           status: 'PUBLISHED',
           version: 1,
           heroConfig: {
-            title: slug === 'home' ? "MADECC Group -- Building Cameroon's Future" : `${formattedTitle} | MADECC Group`,
+            title: slug === 'home' ? "MADECC GROUP -- Building Cameroon's Future" : `${formattedTitle} | MADECC GROUP`,
             subtitle: 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.',
             eyebrow: 'Construction & Civil Engineering -- Cameroon',
             mediaType: 'video',
@@ -1362,8 +1362,8 @@ export function setupCmsRoutes(app: express.Express) {
             }
           ],
           seo: {
-            seoTitle: `${formattedTitle} | MADECC Group Cameroon`,
-            metaDescription: `Official ${formattedTitle} page for MADECC Group, leading civil engineering and building contractor in Cameroon.`,
+            seoTitle: `${formattedTitle} | MADECC GROUP Cameroon`,
+            metaDescription: `Official ${formattedTitle} page for MADECC GROUP, leading civil engineering and building contractor in Cameroon.`,
             keywords: 'construction cameroon, yaounde builder, civil engineering',
             robotsIndex: true
           },
@@ -1677,13 +1677,13 @@ export function setupCmsRoutes(app: express.Express) {
             tags: ['roads', 'infrastructure', 'asphalt', 'civil engineering']
           },
           {
-            title: 'MADECC Group Official Corporate Vector Mark',
+            title: 'MADECC GROUP Official Corporate Vector Mark',
             filename: 'madecc-group-logo.png',
             fileUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
             fileType: 'logo',
             mimeType: 'image/png',
             fileSize: 450000,
-            altText: 'MADECC Group Construction & Engineering Branding',
+            altText: 'MADECC GROUP Construction & Engineering Branding',
             caption: 'Official corporate logo for tender submissions and digital portals',
             category: 'Logos',
             tags: ['logo', 'branding', 'corporate']

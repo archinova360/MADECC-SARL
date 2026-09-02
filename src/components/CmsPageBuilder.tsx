@@ -56,7 +56,7 @@ const createDefaultPageContent = (slug: string): PageContent => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   heroConfig: {
-    title: slug === 'home' ? 'MADECC Group — Building Cameroon’s Future' : `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ')} | MADECC Group`,
+    title: slug === 'home' ? 'MADECC GROUP — Building Cameroon’s Future' : `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ')} | MADECC GROUP`,
     subtitle: 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.',
     description: 'Delivering resilient infrastructure corridors, commercial complexes, and sustainable industrial projects across Cameroon.',
     eyebrow: 'Construction & Civil Engineering — Cameroon',
@@ -93,7 +93,7 @@ const createDefaultPageContent = (slug: string): PageContent => ({
     }
   ],
   seo: {
-    seoTitle: `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ')} | MADECC Group Cameroon`,
+    seoTitle: `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ')} | MADECC GROUP Cameroon`,
     metaDescription: 'Leading civil engineering, road infrastructure, and commercial construction contractor in Cameroon.',
     keywords: 'construction cameroon, yaounde builder, civil engineering',
     robotsIndex: true

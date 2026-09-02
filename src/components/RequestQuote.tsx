@@ -649,7 +649,7 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
                     {trackResult.status === 'UNDER_REVIEW' && "Our engineering team is currently analyzing your architectural specifications, site location, and structural parameters."}
                     {trackResult.status === 'ESTIMATING' && "Our Quantity Surveying division is calculating material quantities, labor hours, and local Cameroonian supply rates for your project."}
                     {trackResult.status === 'QUOTATION_SENT' && "A formal cost estimate and structural proposal has been generated and dispatched to your email address."}
-                    {trackResult.status === 'WON' && "This enquiry has been officially converted into an active MADECC Group construction contract file."}
+                    {trackResult.status === 'WON' && "This enquiry has been officially converted into an active MADECC GROUP construction contract file."}
                     {trackResult.status === 'LOST' && "This enquiry file is currently archived."}
                   </p>
                 </div>
@@ -694,7 +694,7 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
                 {/* PRIVACY NOTICE */}
                 <div className="text-[11px] text-slate-500 italic flex items-center gap-1.5 pt-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Internal technical notes, staff communications, and material calculations are kept secure and confidential by MADECC Group.</span>
+                  <span>Internal technical notes, staff communications, and material calculations are kept secure and confidential by MADECC GROUP.</span>
                 </div>
 
                 <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
@@ -737,7 +737,7 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
               </h2>
 
               <p className="text-slate-600 text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed">
-                Thank you, <strong>{formData.clientName}</strong>. Your project details have been successfully received by MADECC Group. Our Quantity Surveying, Engineering, and Project team will review the information provided and determine the appropriate next steps for your project.
+                Thank you, <strong>{formData.clientName}</strong>. Your project details have been successfully received by MADECC GROUP. Our Quantity Surveying, Engineering, and Project team will review the information provided and determine the appropriate next steps for your project.
               </p>
             </div>
 
@@ -881,7 +881,7 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
               <Info className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
               <div>
                 <strong className="block font-bold text-slate-800 mb-0.5 uppercase tracking-wider text-[10px]">Important Notice:</strong>
-                Submission of a project enquiry confirms that MADECC Group has received your information. It does not constitute a quotation, contract, project acceptance, or guarantee of service. Final project costs and technical recommendations are subject to project-specific information, drawings, specifications, site conditions, quantities, material prices, labour, logistics, taxes, and other applicable factors.
+                Submission of a project enquiry confirms that MADECC GROUP has received your information. It does not constitute a quotation, contract, project acceptance, or guarantee of service. Final project costs and technical recommendations are subject to project-specific information, drawings, specifications, site conditions, quantities, material prices, labour, logistics, taxes, and other applicable factors.
               </div>
             </div>
 

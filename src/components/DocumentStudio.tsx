@@ -455,7 +455,7 @@ export default function DocumentStudio({
           title,
           projectName: contractProject,
           clientName,
-          contractorName: 'MADECC Group Construction',
+          contractorName: 'MADECC GROUP Construction',
           siteLocation: contractProjectLocation,
           workCategory: 'Civil Infrastructure',
           status: isContractDigitallySigned ? 'EXECUTED' : 'DRAFT',

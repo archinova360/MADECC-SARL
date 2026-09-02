@@ -439,7 +439,7 @@ export function exportTenderNoticePDF(tender: any) {
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text(tender.contactInstructions || 'Email: procurement@madeccgroup.com | Hotline: +237 683 316 486 / +237 670 00 00 00', 18, currentY + 12);
-  doc.text('Physical Dossiers: MADECC Group Headquarters, Douala & Yaoundé, Cameroon.', 18, currentY + 17);
+  doc.text('Physical Dossiers: MADECC GROUP Headquarters, Douala & Yaoundé, Cameroon.', 18, currentY + 17);
 
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -705,7 +705,7 @@ export async function exportSustainabilityDOCX(data: any) {
             heading: HeadingLevel.HEADING_2
           }),
           new Paragraph({
-            text: data.content?.introduction || 'MADECC Group is dedicated to sustainable construction and community impact across Cameroon.'
+            text: data.content?.introduction || 'MADECC GROUP is dedicated to sustainable construction and community impact across Cameroon.'
           }),
           new Paragraph({ text: '' }),
           new Paragraph({

@@ -64,22 +64,22 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     // 1. General Category
     {
       id: 1,
-      question: 'What is MADECC Group and where does the company operate?',
-      answer: 'MADECC Group is a premier multi-disciplinary construction, civil engineering, and quantity surveying group headquartered in Yaoundé Mbankolo, Cameroon. We operate everywhere across the entire national territory of Cameroon (all 10 regions: Centre, Littoral, West, North-West, South-West, South, East, Adamawa, North, Far North) and across Africa. We deliver custom residential developments, commercial high-rises, industrial complexes, and public infrastructure projects.',
+      question: 'What is MADECC GROUP and where does the company operate?',
+      answer: 'MADECC GROUP is a premier multi-disciplinary construction, civil engineering, and quantity surveying group headquartered in Yaoundé Mbankolo, Cameroon. We operate everywhere across the entire national territory of Cameroon (all 10 regions: Centre, Littoral, West, North-West, South-West, South, East, Adamawa, North, Far North) and across Africa. We deliver custom residential developments, commercial high-rises, industrial complexes, and public infrastructure projects.',
       categoryName: 'General',
       tags: ['company', 'location', 'yaounde', 'mbankolo', 'cameroon', 'africa'],
       featured: true
     },
     {
       id: 2,
-      question: 'Does MADECC Group work with private residential clients as well as commercial developers?',
+      question: 'Does MADECC GROUP work with private residential clients as well as commercial developers?',
       answer: 'Yes. We cater to individual private homeowners, commercial real estate developers, industrial corporations, and public sector institutions. Whether building a custom duplex villa, an multi-unit apartment complex, a corporate headquarters, or an industrial logistics terminal, our engineering standards remain identical.',
       categoryName: 'General',
       tags: ['residential', 'commercial', 'developers', 'clients']
     },
     {
       id: 3,
-      question: 'What engineering standards and building codes does MADECC Group adhere to?',
+      question: 'What engineering standards and building codes does MADECC GROUP adhere to?',
       answer: 'Our engineering calculations and structural designs adhere to Eurocode 2 (Design of concrete structures), BAEL 91 (Béton Armé aux États Limites), NF P standards, and local Cameroonian urban planning guidelines (MINDDU / MINMAP). All contract executions follow standard International Federation of Consulting Engineers (FIDIC) conditions.',
       categoryName: 'General',
       tags: ['eurocode', 'standards', 'fidic', 'quality', 'engineering'],
@@ -90,7 +90,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 4,
       question: 'What core construction and civil engineering services does MADECC provide?',
-      answer: 'MADECC Group delivers end-to-end EPC (Engineering, Procurement, and Construction) services including:\n• Structural reinforced concrete framing and steel erection\n• Geotechnical soil testing and foundation design (shallow and deep piling)\n• Architectural planning and detailed MEP (Mechanical, Electrical, Plumbing) engineering\n• Earthworks, drainage infrastructure, and asphalt paving\n• Turnkey interior finishing, waterproofing, and acoustic engineering\n• On-site construction supervision and quality control auditing',
+      answer: 'MADECC GROUP delivers end-to-end EPC (Engineering, Procurement, and Construction) services including:\n• Structural reinforced concrete framing and steel erection\n• Geotechnical soil testing and foundation design (shallow and deep piling)\n• Architectural planning and detailed MEP (Mechanical, Electrical, Plumbing) engineering\n• Earthworks, drainage infrastructure, and asphalt paving\n• Turnkey interior finishing, waterproofing, and acoustic engineering\n• On-site construction supervision and quality control auditing',
       categoryName: 'Construction Services',
       tags: ['services', 'epc', 'concrete', 'steel', 'earthworks'],
       relatedPage: 'services',
@@ -113,7 +113,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 7,
       question: 'What Quality, Health, Safety, and Environment (QHSE) protocols are enforced on site?',
-      answer: 'MADECC Group enforces a strict Zero-Harm policy across all construction sites. All personnel must wear full certified PPE (hard hats, high-vis vests, steel-toe boots, eye protection). Sites maintain daily safety briefings (toolbox talks), perimeter safety netting, fall-arrest harnesses for height work, and strict compliance with environmental protection regulations (EIA guidelines).',
+      answer: 'MADECC GROUP enforces a strict Zero-Harm policy across all construction sites. All personnel must wear full certified PPE (hard hats, high-vis vests, steel-toe boots, eye protection). Sites maintain daily safety briefings (toolbox talks), perimeter safety netting, fall-arrest harnesses for height work, and strict compliance with environmental protection regulations (EIA guidelines).',
       categoryName: 'Construction Services',
       tags: ['qhse', 'safety', 'zero-harm', 'ppe', 'environment'],
       relatedPage: 'safety'
@@ -165,7 +165,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 13,
       question: 'How does the online Contract & Receipt Verification tool work?',
-      answer: 'Every official contract, appointment notice, and payment receipt issued by MADECC Group includes a cryptographic verification token and secure QR code. Clients, financial institutions, and partners can enter the token into our "Verify Contract" portal to instantly validate document authenticity, signatory authority, and project status.',
+      answer: 'Every official contract, appointment notice, and payment receipt issued by MADECC GROUP includes a cryptographic verification token and secure QR code. Clients, financial institutions, and partners can enter the token into our "Verify Contract" portal to instantly validate document authenticity, signatory authority, and project status.',
       categoryName: 'Projects & Contracting',
       tags: ['verification', 'token', 'qr code', 'security', 'authenticity'],
       relatedPage: 'verify'
@@ -182,7 +182,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 15,
       question: 'How does MADECC ensure client intellectual property and blueprint confidentiality?',
-      answer: 'All architectural drawings, cadastral plans, and financial specifications submitted to MADECC Group are protected under strict Non-Disclosure Protocols and encrypted cloud storage. Your plans are never shared with unauthorized third parties or published publicly without explicit written consent.',
+      answer: 'All architectural drawings, cadastral plans, and financial specifications submitted to MADECC GROUP are protected under strict Non-Disclosure Protocols and encrypted cloud storage. Your plans are never shared with unauthorized third parties or published publicly without explicit written consent.',
       categoryName: 'Technical Documents',
       tags: ['confidentiality', 'nda', 'privacy', 'intellectual property']
     },
@@ -217,14 +217,14 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 19,
       question: 'How is user data handled in compliance with privacy laws and Google AdSense policies?',
-      answer: 'MADECC Group complies with Cameroon Law No. 2010/012 on Cybersecurity and international GDPR standards. We do not sell or trade user data. Cookies are used strictly for session security, regional preference saving, and non-intrusive advertising disclosures. Full details can be reviewed in our Privacy Policy and Terms of Service.',
+      answer: 'MADECC GROUP complies with Cameroon Law No. 2010/012 on Cybersecurity and international GDPR standards. We do not sell or trade user data. Cookies are used strictly for session security, regional preference saving, and non-intrusive advertising disclosures. Full details can be reviewed in our Privacy Policy and Terms of Service.',
       categoryName: 'Account & Support',
       tags: ['privacy', 'cookies', 'adsense', 'gdpr', 'security'],
       relatedPage: 'privacy'
     },
     {
       id: 20,
-      question: 'How can I reach MADECC Group offices directly for project or emergency structural queries?',
+      question: 'How can I reach MADECC GROUP offices directly for project or emergency structural queries?',
       answer: 'You can contact our central operations desk at:\n• Headquarters: Yaoundé Mbankolo, Cameroon (Operating Everywhere in Cameroon & Across Africa)\n• Telephone / WhatsApp: +237 683 316 486\n• Official Emails: kreboya603@gmail.com / madecccons@gmail.com\n• Operating Hours: Monday to Friday, 08:00 - 18:00 WAT (West Africa Time).',
       categoryName: 'Account & Support',
       tags: ['contact', 'phone', 'whatsapp', 'office', 'yaounde', 'mbankolo', 'cameroon', 'africa'],
@@ -388,7 +388,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono uppercase tracking-widest mb-4">
             <HelpCircle className="w-4 h-4 text-amber-400" />
-            <span>MADECC Group Engineering & Client Knowledge Base</span>
+            <span>MADECC GROUP Engineering & Client Knowledge Base</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
@@ -638,7 +638,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
 
             <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-amber-500" />
-              <span>Ask MADECC Group Technical Desk</span>
+              <span>Ask MADECC GROUP Technical Desk</span>
             </h3>
             <p className="text-xs text-slate-400 mb-6">
               Submit your engineering or cost estimation question. Our team reviews and replies via email within 24 hours.

@@ -86,7 +86,7 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
     content: {
       title: 'Sustainability & Social Impact',
       heroSubtitle: 'Building responsibly. Creating lasting value across Cameroon.',
-      introduction: 'MADECC Group integrates sustainable engineering practices, environmental stewardship, and social responsibility into every phase of construction. From reducing carbon footprints through local material sourcing to training Cameroonian tradespeople, we build for longevity and equity.',
+      introduction: 'MADECC GROUP integrates sustainable engineering practices, environmental stewardship, and social responsibility into every phase of construction. From reducing carbon footprints through local material sourcing to training Cameroonian tradespeople, we build for longevity and equity.',
       environmentalPolicy: 'We minimize site waste, utilize energy-efficient machinery, enforce responsible runoff control, and optimize eco-friendly building designs to preserve local ecosystems.',
       safetyPolicy: 'Target Zero Harm: ISO-aligned QHSE standards protect every worker, client, and neighboring community on every MADECC site.',
       localEconomicCommitment: 'Over 85% of our site workforce and raw material procurement is sourced directly within Cameroon, fostering economic resilience.',
@@ -179,7 +179,7 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
             </h1>
 
             <p className="text-lg text-slate-300 leading-relaxed mb-8">
-              {content.heroSubtitle} At MADECC Group, sustainable construction is not an afterthought — it is an engineering discipline that preserves Cameroon's natural resources and uplifts local communities.
+              {content.heroSubtitle} At MADECC GROUP, sustainable construction is not an afterthought — it is an engineering discipline that preserves Cameroon's natural resources and uplifts local communities.
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -267,7 +267,7 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
               <span>Policy & Compliance Documents</span>
             </h3>
             <p className="text-xs text-slate-400 mb-6">
-              Download official MADECC Group policy frameworks and environmental certifications.
+              Download official MADECC GROUP policy frameworks and environmental certifications.
             </p>
             <div className="space-y-3">
               {content.documents?.map((doc, idx) => (

@@ -735,6 +735,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       const validKeys = [
         'Adminmadeccgroup',
         'ADMIN_BYPASS:Adminmadeccgroup',
+        'MADECC GROUP admin',
+        'ADMIN_BYPASS:MADECC GROUP admin',
+        'MADECC_GROUP_admin',
+        'ADMIN_BYPASS:MADECC_GROUP_admin',
         'MADECC Group admin',
         'ADMIN_BYPASS:MADECC Group admin',
         'MADECC_Group_admin',
@@ -2216,7 +2220,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-widest text-amber-500 font-bold bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
-                      MADECC Group Executive Operations
+                      MADECC GROUP Executive Operations
                     </span>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mt-2">
                       Command Center

@@ -6,7 +6,7 @@ import { Type } from '@google/genai';
   
   function getFallbackLetter(letterType: string, subType: string, senderName: string, recipientCompany: string) {
     const sName = senderName || 'Jane Doe';
-    const rCompany = recipientCompany || 'MADECC Group';
+    const rCompany = recipientCompany || 'MADECC GROUP';
 
     if (letterType === 'teaching-jobs') {
       switch (subType) {
@@ -445,15 +445,15 @@ export function setupGeminiRoutes(app: express.Express) {
     const gemini = getGeminiClient();
     if (!gemini) {
       return res.json({ 
-        reply: "Thank you for reaching out to MADECC Group! Our AI virtual assistant is currently offline for scheduled maintenance. Please feel free to contact our direct customer support desk at +237 683 316 486 (or on WhatsApp) or email us at kreboya603@gmail.com. We look forward to assisting you with your construction and engineering needs!" 
+        reply: "Thank you for reaching out to MADECC GROUP! Our AI virtual assistant is currently offline for scheduled maintenance. Please feel free to contact our direct customer support desk at +237 683 316 486 (or on WhatsApp) or email us at kreboya603@gmail.com. We look forward to assisting you with your construction and engineering needs!" 
       });
     }
 
     try {
-      const systemInstruction = `You are "MADECC Bot", a virtual assistant representing MADECC Group, a premier construction and civil engineering firm in Cameroon.
+      const systemInstruction = `You are "MADECC Bot", a virtual assistant representing MADECC GROUP, a premier construction and civil engineering firm in Cameroon.
 Your role is to assist website visitors with their construction inquiries in a polite, highly informative, and professional manner.
 
-MADECC Group Corporate Profiles:
+MADECC GROUP Corporate Profiles:
 - Headquarters: Yaounde Mbankolo, Cameroon. (Operating nationwide everywhere in Cameroon and across Africa).
 - Phone Numbers for customer calls & Whatsapp:
   * +237 683 316 486 (General & WhatsApp)
@@ -742,7 +742,7 @@ Additional requirements or custom legal clauses:
 
     // Setup fallback responses in case Gemini API is offline or missing
     const getFallbackResponse = () => {
-      const coName = companyDetails?.name || 'MADECC Group';
+      const coName = companyDetails?.name || 'MADECC GROUP';
       const clName = clientDetails?.name || 'Ministry of Public Works';
       const projVal = clientDetails?.projectValue || '500,000,000 FCFA';
       const loc = clientDetails?.location || 'Douala, Cameroon';
@@ -816,7 +816,7 @@ We align our delivery with the national infrastructure acceleration programs (SN
     }
 
     try {
-      const coName = companyDetails?.name || 'MADECC Group';
+      const coName = companyDetails?.name || 'MADECC GROUP';
       const clName = clientDetails?.name || 'Ministry of Public Works';
       const projVal = clientDetails?.projectValue || '500,000,000 FCFA';
       const loc = clientDetails?.location || 'Douala, Cameroon';

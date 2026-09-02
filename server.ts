@@ -1,4 +1,4 @@
-// ⚡ MADECC Group Enterprise Server — Full-Stack Application Engine (Modular Architecture)
+// ⚡ MADECC GROUP Enterprise Server — Full-Stack Application Engine (Modular Architecture)
 import express from 'express';
 import nodePath from 'path';
 import { getApp } from './src/server/app.ts';
@@ -36,7 +36,7 @@ const PORT = 3000;
 export async function startServer() {
   validateEnvironmentVariables();
   console.log('========================================================================');
-  console.log('[LAUNCH] Starting MADECC Group Portal (Node.js ' + process.version + ')');
+  console.log('[LAUNCH] Starting MADECC GROUP Portal (Node.js ' + process.version + ')');
   console.log('[GLOBAL] Environment: ' + (process.env.NODE_ENV || 'development'));
   console.log('[SIGNAL] Port: ' + PORT);
   console.log('[DB] Database: ' + (process.env.DATABASE_URL ? 'CONFIGURED' : 'MISSING'));

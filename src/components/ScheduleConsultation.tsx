@@ -168,7 +168,7 @@ export const ScheduleConsultation: React.FC<ScheduleConsultationProps> = ({ onNa
             Schedule an Engineering Consultation
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl mx-auto">
-            Book a dedicated 1-on-1 session with MADECC Group civil engineers or quantity surveyors to review drawings, cost estimates, or site feasibility across Cameroon and Central Africa.
+            Book a dedicated 1-on-1 session with MADECC GROUP civil engineers or quantity surveyors to review drawings, cost estimates, or site feasibility across Cameroon and Central Africa.
           </p>
         </div>
       </div>
@@ -321,7 +321,7 @@ export const ScheduleConsultation: React.FC<ScheduleConsultationProps> = ({ onNa
                   required
                 />
                 <span className="text-xs text-slate-600 leading-relaxed">
-                  I agree to the <button type="button" onClick={() => onNavigateToTab('terms')} className="text-amber-600 underline font-semibold hover:text-amber-700">Terms &amp; Conditions</button> and <button type="button" onClick={() => onNavigateToTab('privacy')} className="text-amber-600 underline font-semibold hover:text-amber-700">Privacy Policy</button>. I consent to MADECC Group contacting me regarding this consultation request.
+                  I agree to the <button type="button" onClick={() => onNavigateToTab('terms')} className="text-amber-600 underline font-semibold hover:text-amber-700">Terms &amp; Conditions</button> and <button type="button" onClick={() => onNavigateToTab('privacy')} className="text-amber-600 underline font-semibold hover:text-amber-700">Privacy Policy</button>. I consent to MADECC GROUP contacting me regarding this consultation request.
                 </span>
               </label>
             </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
 import { useLanguage } from '../lib/LanguageContext.tsx';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 import { 
   Mail, 
   Phone, 
@@ -15,6 +16,7 @@ import { FadeIn, StaggerContainer, StaggerItem } from './MotionReveal.tsx';
 
 export default function Contact() {
   const { t } = useLanguage();
+  const { settings } = useSiteSettings();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -115,9 +117,9 @@ export default function Contact() {
            <FadeIn direction="right" className="lg:col-span-5 space-y-10">
              <div className="space-y-3">
                <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">{t('headquarters_location')}</span>
-              <h2 className="text-2xl font-bold text-white">MADECC Group Cameroon</h2>
+              <h2 className="text-2xl font-bold text-white">{settings?.siteName || 'MADECC GROUP'} Cameroon</h2>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Our central corporate headquarters and technical directorate are located in Yaoundé Mbankolo, Cameroon. MADECC Group executes multi-disciplinary civil engineering, infrastructure, residential, and industrial construction everywhere across Cameroon and throughout Africa.
+                Our central corporate headquarters and technical directorate are located in {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'}. {settings?.siteName || 'MADECC GROUP'} executes multi-disciplinary civil engineering, infrastructure, residential, and industrial construction everywhere across Cameroon and throughout Africa.
               </p>
             </div>
 
@@ -128,7 +130,13 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="font-bold text-white">{t('registered_address')}</h4>
-                  <p className="text-slate-400 mt-1">Yaoundé Mbankolo, Cameroon<br /><span className="text-xs text-amber-400 font-mono">Operating Everywhere in Cameroon &amp; Across Africa</span></p>
+                  <p className="text-slate-400 mt-1">
+                    <strong className="text-slate-200">Headquarters:</strong> {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'}<br />
+                    {settings?.officeAddressDouala && (
+                      <span className="text-xs text-slate-400"><strong className="text-slate-300">Regional Branch:</strong> {settings.officeAddressDouala}<br /></span>
+                    )}
+                    <span className="text-xs text-amber-400 font-mono">Operating Everywhere in Cameroon &amp; Across Africa</span>
+                  </p>
                 </div>
               </StaggerItem>
 
@@ -139,11 +147,10 @@ export default function Contact() {
                 <div>
                   <h4 className="font-bold text-white">{t('corporate_hotlines')}</h4>
                   <p className="text-slate-400 mt-1">
-                    General & WhatsApp: +237 683 316 486<br />
-                    Operations: +237 671 063 511<br />
-                    Projects Desk: +237 689 115 595<br />
-                    Administration: +237 671 289 643<br />
-                    Customer Support: +237 640 194 505
+                    General &amp; WhatsApp: {settings?.phone || '+237 683 316 486'}<br />
+                    Operations: {settings?.phoneSecondary || '+237 671 063 511'}<br />
+                    Projects Desk: {settings?.phoneTertiary || '+237 689 115 595'}<br />
+                    Emergency Dispatch: {settings?.emergencyPhone || '+237 671 063 511'}
                   </p>
                 </div>
               </StaggerItem>
@@ -155,8 +162,8 @@ export default function Contact() {
                 <div>
                   <h4 className="font-bold text-white">{t('digital_inboxes')}</h4>
                   <p className="text-slate-400 mt-1">
-                    General & Tenders: kreboya603@gmail.com<br />
-                    Construction Services: madecccons@gmail.com
+                    General &amp; Commercial: {settings?.email || 'Infomadeccconstruction@gmail.com'}<br />
+                    Technical &amp; Tenders: {settings?.secondaryEmail || 'madecccons@gmail.com'}
                   </p>
                 </div>
               </StaggerItem>
@@ -167,7 +174,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="font-bold text-white">{t('working_hours')}</h4>
-                  <p className="text-slate-400 mt-1">Mon - Fri: 08:00 - 18:00 (WAT)<br />Sat: 09:00 - 13:00 (Site Inspections)</p>
+                  <p className="text-slate-400 mt-1">{settings?.businessHours || 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 13:00 (WAT)'}</p>
                 </div>
               </StaggerItem>
             </StaggerContainer>
@@ -182,7 +189,7 @@ export default function Contact() {
                 allowFullScreen={true} 
                 loading="lazy" 
                 referrerPolicy="strict-origin-when-cross-origin"
-                title="MADECC Group Cameroon Google Maps Location"
+                title="MADECC GROUP Cameroon Google Maps Location"
               />
             </div>
 
@@ -304,7 +311,7 @@ export default function Contact() {
                     required
                   />
                   <label htmlFor="agreeContactTerms" className="text-xs text-slate-400 select-none leading-relaxed">
-                    I agree to MADECC Group's terms & conditions and privacy policy and consent to being contacted regarding my inquiry.
+                    I agree to MADECC GROUP's terms & conditions and privacy policy and consent to being contacted regarding my inquiry.
                   </label>
                 </div>
 

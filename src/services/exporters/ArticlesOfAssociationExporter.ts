@@ -64,7 +64,7 @@ export class ArticlesOfAssociationExporter {
     currentY += 5;
 
     const companyData = [
-      ['Company Name', model.companyName || 'MADECC Group SARL', 'Reg. Number', model.registrationNumber || 'N/A'],
+      ['Company Name', model.companyName || 'MADECC GROUP SARL', 'Reg. Number', model.registrationNumber || 'N/A'],
       ['Registered Office', model.registeredOffice || 'Douala, Cameroon', 'Share Capital', model.shareCapital || '10,000,000 FCFA'],
       ['Statute Version', `Version ${model.version || '1.0'}`, 'Adoption Date', model.adoptionDate || timestamp],
     ];

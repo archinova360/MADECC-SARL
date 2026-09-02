@@ -30,7 +30,7 @@ export default function FloatingContactHub() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'bot',
-      text: 'Hello! Welcome to MADECC Group Cameroon. I am your Gemini-powered virtual assistant. How can I assist you with your construction, architectural design, or civil engineering inquiries today?',
+      text: 'Hello! Welcome to MADECC GROUP Cameroon. I am your Gemini-powered virtual assistant. How can I assist you with your construction, architectural design, or civil engineering inquiries today?',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);

@@ -938,7 +938,7 @@ export function setupSocialOAuthRoutes(app: Express, db: any) {
           if (pagesData.data && pagesData.data.length > 0) {
             const page = pagesData.data[0];
             accountId = page.id;
-            accountName = page.name || 'MADECC Group Official Page';
+            accountName = page.name || 'MADECC GROUP Official Page';
             accountHandle = `@${accountName.toLowerCase().replace(/\s+/g, '')}`;
             if (page.access_token) rawAccessToken = page.access_token;
             profileImageUrl = page.picture?.data?.url || null;
@@ -1036,11 +1036,11 @@ export function setupSocialOAuthRoutes(app: Express, db: any) {
         if (ytData.items && ytData.items.length > 0) {
           const item = ytData.items[0];
           accountId = item.id;
-          accountName = item.snippet?.title || 'MADECC Group Official Channel';
+          accountName = item.snippet?.title || 'MADECC GROUP Official Channel';
           accountHandle = item.snippet?.customUrl || `@madeccgroup_yt`;
           profileImageUrl = item.snippet?.thumbnails?.default?.url || null;
         } else {
-          accountName = 'MADECC Group Official Channel';
+          accountName = 'MADECC GROUP Official Channel';
           accountHandle = '@madeccgroup';
         }
       } else if (provider === 'tiktok') {
@@ -1117,13 +1117,13 @@ export function setupSocialOAuthRoutes(app: Express, db: any) {
           const userData = await userRes.json();
           if (userData.sub) {
             accountId = userData.sub;
-            accountName = 'MADECC Group S.A. (Company Page)';
+            accountName = 'MADECC GROUP S.A. (Company Page)';
             accountHandle = '@madeccgroup';
             profileImageUrl = userData.picture || null;
           }
         } catch (uErr) {
           console.warn('[LINKEDIN_USERINFO_WARN]', uErr);
-          accountName = 'MADECC Group Company Page';
+          accountName = 'MADECC GROUP Company Page';
           accountHandle = '@madeccgroup';
         }
 
@@ -1181,13 +1181,13 @@ export function setupSocialOAuthRoutes(app: Express, db: any) {
           const userData = await userRes.json();
           if (userData.data) {
             accountId = userData.data.id || accountId;
-            accountName = userData.data.name || 'MADECC Group';
+            accountName = userData.data.name || 'MADECC GROUP';
             accountHandle = `@${userData.data.username || 'MADECCGroup'}`;
             profileImageUrl = userData.data.profile_image_url || null;
           }
         } catch (twErr) {
           console.warn('[TWITTER_USERINFO_WARN]', twErr);
-          accountName = 'MADECC Group';
+          accountName = 'MADECC GROUP';
           accountHandle = '@MADECCGroup';
         }
       }
@@ -1638,7 +1638,7 @@ export function setupSocialOAuthRoutes(app: Express, db: any) {
 
       const testPayload = {
         event: 'broadcast.test_connection',
-        source: 'MADECC Group Cameroon',
+        source: 'MADECC GROUP Cameroon',
         broadcastId,
         publishedAt: new Date().toISOString(),
         content: {
@@ -3405,7 +3405,7 @@ export async function executePublishBroadcast(params: {
     }
   }
 
-  const effectiveTitle = title || dbPost?.title || 'MADECC Group Announcement';
+  const effectiveTitle = title || dbPost?.title || 'MADECC GROUP Announcement';
   const effectiveCaption = caption || dbPost?.caption || '';
   const effectiveHashtags = hashtags || dbPost?.hashtags || '#MADECCGroup #CivilEngineering';
   const effectiveCta = ctaText || dbPost?.ctaText || 'https://madeccgroup.online';
@@ -3489,7 +3489,7 @@ export async function executePublishBroadcast(params: {
 
         let payloadToSend: any = {
           event: 'content.publish',
-          source: 'MADECC Group S.A.',
+          source: 'MADECC GROUP S.A.',
           broadcastId,
           publishedAt: new Date().toISOString(),
           content: {

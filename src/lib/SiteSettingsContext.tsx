@@ -14,18 +14,18 @@ interface SiteSettingsContextType {
 
 const defaultSettings: SiteSettings = {
   id: 1,
-  siteName: 'MADECC Group',
+  siteName: 'MADECC GROUP',
   tagline: 'Leading Civil Engineering, Infrastructure & Turnkey Construction in Cameroon',
-  developerName: 'MADECC Engineering & Construction PLC',
+  developerName: 'MADECC GROUP PLC',
   phone: '+237 683 316 486',
   phoneSecondary: '+237 671 063 511',
   phoneTertiary: '+237 640 194 505',
   emergencyPhone: '+237 671 063 511',
   email: 'Infomadeccconstruction@gmail.com',
   secondaryEmail: 'madecccons@gmail.com',
-  officeAddressYaounde: 'BP 14520, Yaoundé, Centre Region, Cameroon',
+  officeAddressYaounde: 'Mbankolo, Yaoundé, Cameroon',
   officeAddressDouala: 'Akwa Boulevard de la Liberté, Douala, Littoral Region, Cameroon',
-  businessHours: 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 13:00',
+  businessHours: 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 13:00 (WAT)',
   whatsappNumber: '+237 683 316 486',
   whatsappSecondary: '+237 671 063 511',
   paymentMtnNumbers: '+237 683 316 486 (KREBOYA GILLES)',
@@ -41,8 +41,8 @@ const defaultSettings: SiteSettings = {
   rccmNumber: 'RC/YAO/2021/B/1429',
   niuTaxId: 'M052114299876K',
   legalStatus: 'Société à Responsabilité Limitée (SARL)',
-  shareHeadline: 'MADECC Group — Premier Construction & Civil Engineering in Central Africa',
-  shareDescription: 'Explore certified civil engineering, structural calculations, digital BOQs, and heavy construction services across Cameroon.',
+  shareHeadline: 'MADECC GROUP — Premier Construction & Civil Engineering in Central Africa',
+  shareDescription: 'Explore certified civil engineering, structural calculations, digital BOQs, and heavy construction services across Cameroon with MADECC GROUP.',
   logoUrl: '/logo.png',
   faviconUrl: '/favicon.ico',
   themeSettings: {
@@ -52,7 +52,7 @@ const defaultSettings: SiteSettings = {
     containerWidth: '1280px'
   },
   globalSeo: {
-    seoTitle: 'MADECC Group | Civil Engineering & Construction Cameroon',
+    seoTitle: 'MADECC GROUP | Civil Engineering & Construction Cameroon',
     metaDescription: 'Certified general contractor and civil engineering firm specializing in commercial complexes, road infrastructure, and turnkey buildings in Cameroon.',
     keywords: 'construction cameroon, yaounde builder, civil engineering, madecc group, building contractor douala',
     robotsIndex: true
@@ -67,8 +67,8 @@ const defaultSettings: SiteSettings = {
     { id: 'contact', label: 'Contact', href: '/contact', order: 7, isEnabled: true }
   ],
   footerContent: {
-    aboutText: 'MADECC Group is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence.',
-    copyrightText: '© 2026 MADECC Group. All rights reserved.',
+    aboutText: 'MADECC GROUP is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence.',
+    copyrightText: '© 2026 MADECC GROUP. All rights reserved.',
     accreditationBadges: ['ISO 9001:2015 Certified', 'Eurocode Compliance', 'MINTP Registered Contractor']
   },
   emergencyBanner: {

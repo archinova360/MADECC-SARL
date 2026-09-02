@@ -54,7 +54,7 @@ export function setupCrmRoutes(app: express.Express) {
       }).returning();
 
       // Send SMTP email notification to kreboya603@gmail.com (Admin)
-      const emailSubject = `[MADECC Group] New Consultation Booking Request: ${serviceName}`;
+      const emailSubject = `[MADECC GROUP] New Consultation Booking Request: ${serviceName}`;
       const emailText = `A new consultation booking request has been submitted:\n\nClient: ${clientName}\nEmail: ${clientEmail}\nService: ${serviceName}\nDate: ${appointmentDate}\n\nNotes:\n${notes || 'None'}`;
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -69,7 +69,7 @@ export function setupCrmRoutes(app: express.Express) {
           </div>
           <p style="font-size: 14px; color: #475569; margin-top: 20px;">Please access the MADECC administrative dashboard to confirm or reschedule this appointment.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Portal Notifications &bull; Cameroon</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
       sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
@@ -80,11 +80,11 @@ export function setupCrmRoutes(app: express.Express) {
       const autoResponseFallbackHtml = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-            <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC Group</h2>
+            <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC GROUP</h2>
             <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Consultation Booking Desk</p>
           </div>
           <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${clientName}</strong>,</p>
-          <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">Thank you for scheduling a consultation with MADECC Group. We have successfully received your booking request for <strong>${serviceName}</strong> on <strong>${new Date(appointmentDate).toLocaleString()}</strong>.</p>
+          <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">Thank you for scheduling a consultation with MADECC GROUP. We have successfully received your booking request for <strong>${serviceName}</strong> on <strong>${new Date(appointmentDate).toLocaleString()}</strong>.</p>
           <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">Our local booking desk is currently reviewing your requested slot. A senior MADECC representative will contact you within 24 hours to confirm your appointment and provide details on how to join the consultation.</p>
           <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
             <p style="margin: 0 0 8px 0; font-weight: bold; font-size: 14px; color: #475569;">Booking Summary:</p>
@@ -96,11 +96,11 @@ export function setupCrmRoutes(app: express.Express) {
           </div>
           <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">If you have any urgent changes or questions, please reach out to us at <a href="mailto:kreboya603@gmail.com" style="color: #d97706; text-decoration: none; font-weight: 600;">kreboya603@gmail.com</a>.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group &bull; Yaounde Mbankolo, Cameroon (Operating Nationwide &amp; Across Africa)</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP &bull; Yaounde Mbankolo, Cameroon (Operating Nationwide &amp; Across Africa)</p>
         </div>
       `;
 
-      const aiPrompt = `You are an AI Consultation Booking Specialist representing 'MADECC Group' (a premier civil engineering, construction, and green architecture firm in Cameroon).
+      const aiPrompt = `You are an AI Consultation Booking Specialist representing 'MADECC GROUP' (a premier civil engineering, construction, and green architecture firm in Cameroon).
 Write a professional, warm, and highly personalized email auto-response replying to the client's consultation booking request.
 
 Client Name: ${clientName}
@@ -119,7 +119,7 @@ Your response must:
 Do NOT write any email subject lines or metadata. Output ONLY the clean HTML email body message (from opening to closing, no markdown wrappers like \`\`\`html, just direct HTML code). Use clean, professional inline CSS styling suitable for high-end corporate communication.`;
 
       generateAIResponse(aiPrompt, autoResponseFallbackHtml).then(htmlContent => {
-        const clientSubject = `Consultation Request Received: ${serviceName} - MADECC Group`;
+        const clientSubject = `Consultation Request Received: ${serviceName} - MADECC GROUP`;
         const clientText = `Dear ${clientName},\n\nThank you for booking a consultation for "${serviceName}" on ${new Date(appointmentDate).toLocaleString()}.\n\nOur team is currently reviewing your slot and will officially confirm shortly.\n\nWarm regards,\nMADECC Booking Desk`;
         sendEmail(clientEmail.trim(), clientSubject, clientText, htmlContent).catch(err => {
           console.error('[SMTP_ERROR] Failed to send booking autoresponder:', err);
@@ -199,18 +199,18 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
             statusColor = '#ef4444'; // Red
           } else if (status === 'completed') {
             statusTitle = 'Consultation Completed';
-            statusText = `Thank you for attending your consultation session with MADECC Group. We appreciate the opportunity to collaborate.`;
+            statusText = `Thank you for attending your consultation session with MADECC GROUP. We appreciate the opportunity to collaborate.`;
             statusColor = '#3b82f6'; // Blue
           } else {
             statusTitle = `Consultation Update`;
             statusText = `Your consultation status has been updated.`;
           }
 
-          const emailSubject = `[MADECC Group] ${statusTitle}: ${serviceName}`;
+          const emailSubject = `[MADECC GROUP] ${statusTitle}: ${serviceName}`;
           const emailHtml = `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
               <div style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-                <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px;">MADECC Group</h2>
+                <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px;">MADECC GROUP</h2>
                 <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Consultation Booking Desk</p>
               </div>
               <h3 style="color: ${statusColor}; font-size: 20px; margin-top: 0; font-weight: 700;">${statusTitle}</h3>
@@ -226,10 +226,10 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
               </div>
               <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">If you need to make changes or have questions, please reach out to us at <a href="mailto:contact@madecc.com" style="color: #d97706; text-decoration: none; font-weight: 600;">contact@madecc.com</a>.</p>
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-              <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group &bull; Douala, Cameroon</p>
+              <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP &bull; Douala, Cameroon</p>
             </div>
           `;
-          sendEmail(clientEmail.trim(), emailSubject, `Dear ${clientName},\n\nYour consultation booking for "${serviceName}" status has been updated to "${status}".\n\nWarm regards,\nMADECC Group`, emailHtml).catch(err => {
+          sendEmail(clientEmail.trim(), emailSubject, `Dear ${clientName},\n\nYour consultation booking for "${serviceName}" status has been updated to "${status}".\n\nWarm regards,\nMADECC GROUP`, emailHtml).catch(err => {
             console.error('[SMTP_ERROR] Failed to send appointment update email notification:', err);
           });
         }
@@ -272,7 +272,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
       }).returning();
 
       // Send SMTP email notification to kreboya603@gmail.com
-      const emailSubject = `[MADECC Group] New Contact Inquiry: ${subject}`;
+      const emailSubject = `[MADECC GROUP] New Contact Inquiry: ${subject}`;
       const emailText = `A new contact message has been submitted:\n\nName: ${name}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`;
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -285,7 +285,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
             <p style="margin: 0; line-height: 1.6; color: #334155; white-space: pre-wrap;">${message}</p>
           </div>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Portal Notifications &bull; Cameroon</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
       sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
@@ -296,23 +296,23 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
       const autoResponseFallbackHtml = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-            <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC Group</h2>
+            <h2 style="color: #d97706; margin: 0 0 4px 0; font-weight: 800; font-size: 26px; letter-spacing: -0.025em;">MADECC GROUP</h2>
             <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Client Relations Desk</p>
           </div>
           <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${name}</strong>,</p>
-          <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">Thank you for reaching out to MADECC Group. We have successfully received your inquiry regarding <strong>"${subject}"</strong>.</p>
-          <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">Our local client support team and resident engineers are currently reviewing your request. A designated MADECC Group representative will get in touch with you within 24 hours to address your questions and discuss any engineering or project requirements you may have.</p>
+          <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">Thank you for reaching out to MADECC GROUP. We have successfully received your inquiry regarding <strong>"${subject}"</strong>.</p>
+          <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">Our local client support team and resident engineers are currently reviewing your request. A designated MADECC GROUP representative will get in touch with you within 24 hours to address your questions and discuss any engineering or project requirements you may have.</p>
           <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
             <p style="margin: 0 0 8px 0; font-weight: bold; font-size: 14px; color: #475569;">Your Message Details:</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #0f172a; white-space: pre-wrap;">${message}</p>
           </div>
           <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">We look forward to partnering with you on your next sustainable infrastructure endeavor.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group &bull; Yaounde Mbankolo, Cameroon (Operating Nationwide &amp; Across Africa)</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP &bull; Yaounde Mbankolo, Cameroon (Operating Nationwide &amp; Across Africa)</p>
         </div>
       `;
 
-      const aiPrompt = `You are an AI Client Success Agent representing 'MADECC Group' (a premier civil engineering, construction, and green architecture firm in Cameroon).
+      const aiPrompt = `You are an AI Client Success Agent representing 'MADECC GROUP' (a premier civil engineering, construction, and green architecture firm in Cameroon).
 Write a professional, warm, and highly personalized email auto-response replying to the client's contact inquiry.
 
 Client Name: ${name}
@@ -332,8 +332,8 @@ Your response must:
 Do NOT write any email subject lines or metadata. Output ONLY the clean HTML email body message (from opening to closing, no markdown wrappers like \`\`\`html, just direct HTML code). Use clean, professional inline CSS styling suitable for high-end corporate communication.`;
 
       generateAIResponse(aiPrompt, autoResponseFallbackHtml).then(htmlContent => {
-        const clientSubject = `Inquiry Received: ${subject} - MADECC Group`;
-        const clientText = `Dear ${name},\n\nThank you for reaching out to MADECC Group regarding "${subject}". Our engineering team is reviewing your message and will reach out within 24 hours.\n\nWarm regards,\nMADECC Client Services`;
+        const clientSubject = `Inquiry Received: ${subject} - MADECC GROUP`;
+        const clientText = `Dear ${name},\n\nThank you for reaching out to MADECC GROUP regarding "${subject}". Our engineering team is reviewing your message and will reach out within 24 hours.\n\nWarm regards,\nMADECC Client Services`;
         sendEmail(email.trim(), clientSubject, clientText, htmlContent).catch(err => {
           console.error('[SMTP_ERROR] Failed to send contact inquiry autoresponder:', err);
         });
@@ -395,7 +395,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
         const updated = await db.update(newsletterSubscribers).set({ status: 'subscribed' }).where(eq(newsletterSubscribers.email, email)).returning();
         
         // Notify subscription update
-        const emailSubject = `[MADECC Group] Newsletter Subscription Updated`;
+        const emailSubject = `[MADECC GROUP] Newsletter Subscription Updated`;
         const emailText = `A newsletter subscriber re-activated their subscription:\n\nEmail: ${email}`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -403,7 +403,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
             <p style="font-size: 15px; margin: 8px 0;">The following email address has re-subscribed to the newsletter:</p>
             <p style="font-size: 16px; margin: 15px 0; font-weight: bold;"><a href="mailto:${email}" style="color: #f59e0b; text-decoration: none;">${email}</a></p>
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
-            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Portal Notifications &bull; Cameroon</p>
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
           </div>
         `;
         sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
@@ -415,15 +415,15 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
       const result = await db.insert(newsletterSubscribers).values({ email, status: 'subscribed' }).returning();
 
       // Notify new subscription
-      const emailSubject = `[MADECC Group] New Newsletter Subscriber`;
-      const emailText = `A new user has subscribed to the MADECC Group newsletter:\n\nEmail: ${email}`;
+      const emailSubject = `[MADECC GROUP] New Newsletter Subscriber`;
+      const emailText = `A new user has subscribed to the MADECC GROUP newsletter:\n\nEmail: ${email}`;
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
           <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 22px;">New Newsletter Subscriber</h2>
           <p style="font-size: 15px; margin: 8px 0;">A new user has signed up to receive newsletter updates:</p>
           <p style="font-size: 16px; margin: 15px 0; font-weight: bold;"><a href="mailto:${email}" style="color: #f59e0b; text-decoration: none;">${email}</a></p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Portal Notifications &bull; Cameroon</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
       sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
@@ -552,7 +552,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
           </div>
           <p style="font-size: 13px; color: #64748b;">This request was registered in the database and must be fulfilled within standard statutory timeframes (24 to 72 hours).</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group S.A. &bull; Data Protection &amp; Legal Compliance Office</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP S.A. &bull; Data Protection &amp; Legal Compliance Office</p>
         </div>
       `;
 
@@ -561,17 +561,17 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
       });
 
       // Send User Confirmation with Tracking Code
-      const clientSubject = `Data Deletion Request Acknowledgment (${trackingCode}) - MADECC Group`;
-      const clientText = `Dear ${cleanName},\n\nWe have received your formal Data Deletion Request under our Privacy Policy and regulatory standards.\n\nYour Tracking Code is: ${trackingCode}\nRequest Type: ${requestType}\nStatus: PENDING PROCESSING\n\nYou can track the live progress of your request at:\nhttps://madeccgroup.online/data-deletion?tracking=${trackingCode}\n\nOur Data Protection Officer will review and permanently purge the relevant records within 24 to 48 business hours.\n\nMADECC Group Legal & Compliance Team`;
+      const clientSubject = `Data Deletion Request Acknowledgment (${trackingCode}) - MADECC GROUP`;
+      const clientText = `Dear ${cleanName},\n\nWe have received your formal Data Deletion Request under our Privacy Policy and regulatory standards.\n\nYour Tracking Code is: ${trackingCode}\nRequest Type: ${requestType}\nStatus: PENDING PROCESSING\n\nYou can track the live progress of your request at:\nhttps://madeccgroup.online/data-deletion?tracking=${trackingCode}\n\nOur Data Protection Officer will review and permanently purge the relevant records within 24 to 48 business hours.\n\nMADECC GROUP Legal & Compliance Team`;
       const clientHtml = `
         <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
           <div style="text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
-            <h2 style="color: #d97706; margin: 0; font-size: 22px;">MADECC Group S.A.</h2>
+            <h2 style="color: #d97706; margin: 0; font-size: 22px;">MADECC GROUP S.A.</h2>
             <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">Data Protection &amp; Privacy Desk</p>
           </div>
           <p style="font-size: 15px; line-height: 1.5;">Dear <strong>${cleanName}</strong>,</p>
           <p style="font-size: 14px; line-height: 1.6; color: #334155;">
-            We confirm receipt of your formal request to delete or anonymize your personal data held across MADECC Group's servers, databases, and connected advertising identifiers in compliance with Google AdSense, Meta Platform policies, and applicable data privacy regulations.
+            We confirm receipt of your formal request to delete or anonymize your personal data held across MADECC GROUP's servers, databases, and connected advertising identifiers in compliance with Google AdSense, Meta Platform policies, and applicable data privacy regulations.
           </p>
           <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
             <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Your Tracking Reference:</p>
@@ -590,7 +590,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
             If you have questions or did not authorize this request, please immediately contact our Legal &amp; Compliance team at <a href="mailto:madecccons@gmail.com" style="color: #d97706; font-weight: 600;">madecccons@gmail.com</a>.
           </p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Civil Engineering &bull; Yaounde Mbankolo, Cameroon</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Civil Engineering &bull; Yaounde Mbankolo, Cameroon</p>
         </div>
       `;
 

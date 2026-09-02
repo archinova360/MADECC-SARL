@@ -262,7 +262,7 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
           <p className={`text-sm mt-3 leading-relaxed max-w-3xl ${
             isLight ? 'text-slate-600' : 'text-slate-300'
           }`}>
-            MADECC Group respects your fundamental right to digital privacy, anonymity, and data erasure. Use this official portal to initiate a formal data deletion request, revoke advertising personalization profiles, or track the live status of an existing request.
+            MADECC GROUP respects your fundamental right to digital privacy, anonymity, and data erasure. Use this official portal to initiate a formal data deletion request, revoke advertising personalization profiles, or track the live status of an existing request.
           </p>
 
           {/* Interactive Navigation Tabs */}
@@ -547,7 +547,7 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
                   <label htmlFor="consent-checkbox" className={`text-xs leading-relaxed cursor-pointer ${
                     isLight ? 'text-slate-600' : 'text-slate-300'
                   }`}>
-                    I hereby certify that I am the authorized owner or legal representative of the email address provided above. I understand that once executed, this data erasure is irreversible and will permanently delete my project specifications, quote history, and saved preferences from MADECC Group's servers.
+                    I hereby certify that I am the authorized owner or legal representative of the email address provided above. I understand that once executed, this data erasure is irreversible and will permanently delete my project specifications, quote history, and saved preferences from MADECC GROUP's servers.
                   </label>
                 </div>
 
@@ -717,7 +717,7 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
                 <ShieldCheck className="w-5 h-5" /> 1. Google AdSense &amp; Advertising Personalization Opt-Out
               </h3>
               <p className={isLight ? 'text-slate-600' : 'text-slate-300'}>
-                MADECC Group complies fully with Google AdSense Publisher Policies and international digital advertising regulations:
+                MADECC GROUP complies fully with Google AdSense Publisher Policies and international digital advertising regulations:
               </p>
               <ul className="list-disc pl-5 space-y-2 text-xs text-slate-400">
                 <li>
@@ -737,14 +737,14 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
                 <Lock className="w-5 h-5" /> 2. Meta (Facebook &amp; Instagram) Data Deletion Instructions
               </h3>
               <p className={isLight ? 'text-slate-600' : 'text-slate-300'}>
-                According to Meta Platform Rules for Facebook App Integration: If you logged into MADECC Group using Facebook or connected your Meta Account, you can remove your activities by following these steps:
+                According to Meta Platform Rules for Facebook App Integration: If you logged into MADECC GROUP using Facebook or connected your Meta Account, you can remove your activities by following these steps:
               </p>
               <div className={`p-4 rounded-xl border text-xs space-y-2 font-mono ${
                 isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'
               }`}>
                 <p>1. Go to your Facebook Account’s <strong>Settings &amp; Privacy &gt; Settings</strong>.</p>
                 <p>2. Click on <strong>Apps and Websites</strong> to view all connected web applications.</p>
-                <p>3. Search for <strong>MADECC Group S.A.</strong> or our associated client login.</p>
+                <p>3. Search for <strong>MADECC GROUP S.A.</strong> or our associated client login.</p>
                 <p>4. Click the <strong>Remove</strong> button to revoke all app permissions.</p>
                 <p>5. Click on <strong>View Removed Apps and Websites</strong> and click <strong>Send Request</strong> to automatically trigger our automated callback.</p>
               </div>
@@ -773,7 +773,7 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
                     Direct Contact: Data Protection Officer
                   </span>
                   <span className="text-xs text-slate-500">
-                    MADECC Group S.A. Legal &amp; Compliance Office, Yaoundé Mbankolo, Cameroon
+                    MADECC GROUP S.A. Legal &amp; Compliance Office, Yaoundé Mbankolo, Cameroon
                   </span>
                 </div>
               </div>
@@ -796,7 +796,7 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
 
       {/* Bottom Compliance Badge */}
       <div className="mt-8 text-center text-xs text-slate-500 font-mono space-y-1">
-        <p>&copy; {new Date().getFullYear()} MADECC Group S.A. &bull; Official Digital Compliance Portal</p>
+        <p>&copy; {new Date().getFullYear()} MADECC GROUP S.A. &bull; Official Digital Compliance Portal</p>
         <p>Accessible worldwide at <a href="https://madeccgroup.online/data-deletion" className="text-amber-500 hover:underline">https://madeccgroup.online/data-deletion</a></p>
       </div>
 

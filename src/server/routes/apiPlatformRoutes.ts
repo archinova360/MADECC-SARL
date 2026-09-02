@@ -167,7 +167,7 @@ router.get('/company-payment-config', async (req: Request, res: Response) => {
     const [settings] = await db.select().from(siteSettings).limit(1);
     return res.json({
       success: true,
-      company: settings?.siteName || 'MADECC Group',
+      company: settings?.siteName || 'MADECC GROUP',
       developer: settings?.developerName || 'Kasah Rodrick Reboya',
       location: settings?.officeAddressYaounde || 'Yaoundé, Cameroon',
       emails: {

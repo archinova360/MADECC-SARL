@@ -186,7 +186,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     {
       id: 1,
       platform: 'youtube',
-      channelName: 'MADECC Group Official YouTube',
+      channelName: 'MADECC GROUP Official YouTube',
       accountHandle: '@madeccgroup_official',
       status: 'CONNECTED',
       approvalStatus: 'APPROVED',
@@ -194,14 +194,14 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
       lastSynced: 'Just now',
       tokenStatus: 'Valid (OAuth 2.0 Encrypted)',
       notes: 'Primary video channel for structural site tours, BOQ engineering tutorials, and corporate project handovers.',
-      defaultCta: 'Subscribe to MADECC Group for certified civil engineering insights.',
+      defaultCta: 'Subscribe to MADECC GROUP for certified civil engineering insights.',
       isCustom: false
     },
     {
       id: 2,
       platform: 'facebook',
-      channelName: 'MADECC Group Cameroon Page',
-      accountHandle: 'MADECC Group Cameroon',
+      channelName: 'MADECC GROUP Cameroon Page',
+      accountHandle: 'MADECC GROUP Cameroon',
       status: 'CONNECTED',
       approvalStatus: 'APPROVED',
       healthStatus: 'HEALTHY',
@@ -236,7 +236,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
       lastSynced: '1 min ago',
       tokenStatus: 'Valid (Cloud API Direct)',
       notes: 'Direct client communication line for quotes, BOQ consultations, and site inquiries.',
-      defaultCta: 'WhatsApp MADECC Group: https://wa.me/237671063511',
+      defaultCta: 'WhatsApp MADECC GROUP: https://wa.me/237671063511',
       isCustom: false
     },
     {
@@ -256,21 +256,21 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     {
       id: 6,
       platform: 'linkedin',
-      channelName: 'MADECC Group Corporate LinkedIn',
-      accountHandle: 'MADECC Group S.A. (Company Page)',
+      channelName: 'MADECC GROUP Corporate LinkedIn',
+      accountHandle: 'MADECC GROUP S.A. (Company Page)',
       status: 'CONNECTED',
       approvalStatus: 'APPROVED',
       healthStatus: 'HEALTHY',
       lastSynced: '15 mins ago',
       tokenStatus: 'Valid (OAuth 2.0 Organization Admin)',
       notes: 'Executive thought leadership, institutional partnerships, and CEMAC engineering tenders.',
-      defaultCta: 'Connect with MADECC Group S.A. on LinkedIn for corporate partnerships.',
+      defaultCta: 'Connect with MADECC GROUP S.A. on LinkedIn for corporate partnerships.',
       isCustom: false
     },
     {
       id: 7,
       platform: 'twitter',
-      channelName: 'MADECC Group Official X',
+      channelName: 'MADECC GROUP Official X',
       accountHandle: '@MADECCGroupCM',
       status: 'CONNECTED',
       approvalStatus: 'APPROVED',
@@ -543,8 +543,8 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
       title: 'Structural Handover of Douala Commercial Complex',
       seoTopic: 'Civil Engineering & Quantity Surveying Cameroon',
       targetPlatforms: ['youtube', 'facebook', 'linkedin', 'instagram'],
-      caption: 'MADECC Group S.A. is proud to announce the milestone completion and structural handover of the Douala Commercial Complex! Built to Eurocode 2 standards with zero site safety incidents. #MADECCGroup #CivilEngineering #Douala #Cameroon',
-      hashtags: '#MADECCGroup #CivilEngineering #QuantitySurveying #ConstructionCameroon #Douala #Yaounde #BuildingTrust',
+      caption: 'MADECC GROUP S.A. is proud to announce the milestone completion and structural handover of the Douala Commercial Complex! Built to Eurocode 2 standards with zero site safety incidents. #MADECCGROUP #CivilEngineering #Douala #Cameroon',
+      hashtags: '#MADECCGROUP #CivilEngineering #QuantitySurveying #ConstructionCameroon #Douala #Yaounde #BuildingTrust',
       ctaText: 'Inquire for your next structural project: contact@madeccgroup.online | +237 671 063 511',
       mediaUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80',
       mediaType: 'image',
@@ -560,8 +560,8 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
       title: 'Top 5 Tips for Quantity Surveying & BOQ Accuracy in Central Africa',
       seoTopic: 'Quantity Surveying & Cost Engineering',
       targetPlatforms: ['facebook', 'instagram', 'whatsapp', 'tiktok'],
-      caption: 'Are you managing a high-stakes construction budget in Cameroon or Central Africa? Discover how MADECC Group eliminates cost overruns with automated BOQ estimation and real-time material price tracking.',
-      hashtags: '#QuantitySurveying #BOQEstimation #CostEngineering #MADECCGroup #CameroonConstruction #BuildingCost',
+      caption: 'Are you managing a high-stakes construction budget in Cameroon or Central Africa? Discover how MADECC GROUP eliminates cost overruns with automated BOQ estimation and real-time material price tracking.',
+      hashtags: '#QuantitySurveying #BOQEstimation #CostEngineering #MADECCGROUP #CameroonConstruction #BuildingCost',
       ctaText: 'Download sample BOQ templates or request a consultation at https://madeccgroup.online',
       mediaUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1200&q=80',
       mediaType: 'image',
@@ -590,7 +590,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
       timestamp: new Date(Date.now() - 3600000).toISOString(),
       user: currentUser?.email || 'admin@madeccgroup.online',
       action: 'ACCOUNT_APPROVED',
-      details: 'Approved channel: MADECC Group Cameroon Page (Facebook)',
+      details: 'Approved channel: MADECC GROUP Cameroon Page (Facebook)',
       category: 'ACCOUNT',
       status: 'SUCCESS'
     }
@@ -641,8 +641,8 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
             seoTopic: item.seoTopic || item.campaignName || 'Civil Engineering & Quantity Surveying Cameroon',
             targetPlatforms: item.targetPlatforms || ['facebook', 'instagram', 'youtube'],
             caption: item.caption || '',
-            hashtags: item.hashtags || '#MADECCGroup #CivilEngineering',
-            ctaText: item.ctaText || 'Contact MADECC Group S.A. | +237 671 063 511',
+            hashtags: item.hashtags || '#MADECCGROUP #CivilEngineering',
+            ctaText: item.ctaText || 'Contact MADECC GROUP S.A. | +237 671 063 511',
             mediaUrl: item.mediaUrl || null,
             mediaType: item.mediaType || 'image',
             status: (item.status as any) || 'DRAFT',
@@ -920,16 +920,16 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     const callStr = callNumbers.join(' / ');
 
     let styleIntro = 'Ready to build with confidence in Cameroon?';
-    if (style === 'Direct') styleIntro = 'Get in touch directly with MADECC Group:';
+    if (style === 'Direct') styleIntro = 'Get in touch directly with MADECC GROUP:';
     if (style === 'Sales-focused') styleIntro = 'Lock in your civil engineering & building quote now:';
     if (style === 'Consultation-focused') styleIntro = 'Schedule an expert engineering consultation today:';
-    if (style === 'Professional') styleIntro = 'Partner with MADECC Group S.A. for certified engineering execution:';
+    if (style === 'Professional') styleIntro = 'Partner with MADECC GROUP S.A. for certified engineering execution:';
 
     if (strategy === 'WhatsApp') {
-      return `${styleIntro}\n\n💬 WhatsApp MADECC Group: https://wa.me/237${waClean} (${waNumber})\n✉️ contact@madeccgroup.online | 🌐 https://madeccgroup.online`;
+      return `${styleIntro}\n\n💬 WhatsApp MADECC GROUP: https://wa.me/237${waClean} (${waNumber})\n✉️ contact@madeccgroup.online | 🌐 https://madeccgroup.online`;
     }
     if (strategy === 'Facebook') {
-      return `${styleIntro}\n\n📘 Follow & Message MADECC Group on Facebook: ${fbUrl}\n✉️ contact@madeccgroup.online | 🌐 https://madeccgroup.online`;
+      return `${styleIntro}\n\n📘 Follow & Message MADECC GROUP on Facebook: ${fbUrl}\n✉️ contact@madeccgroup.online | 🌐 https://madeccgroup.online`;
     }
     if (strategy === 'Phone Call') {
       return `${styleIntro}\n\n📞 Call Commercial Desk: +237 ${callStr}\n✉️ contact@madeccgroup.online | 🌐 https://madeccgroup.online`;
@@ -971,15 +971,15 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     endpoint: 'https://api.madeccgroup.online/webhook/broadcast-test',
     method: 'POST',
     headers: '{\n  "Authorization": "Bearer madecc_sec_token_9982",\n  "Content-Type": "application/json"\n}',
-    payload: '{\n  "event": "MADECC_BROADCAST_TEST",\n  "topic": "Civil Engineering & BOQ",\n  "company": "MADECC Group S.A."\n}',
+    payload: '{\n  "event": "MADECC_BROADCAST_TEST",\n  "topic": "Civil Engineering & BOQ",\n  "company": "MADECC GROUP S.A."\n}',
     result: null,
     isTesting: false
   });
 
   // Modal Form Inputs for New Channel & Custom Webhook Outlet
   const [newChanPlatform, setNewChanPlatform] = useState<string>('facebook');
-  const [newChanCustomName, setNewChanCustomName] = useState<string>('MADECC Group Cameroon Page');
-  const [newChanHandle, setNewChanHandle] = useState<string>('MADECC Group Cameroon');
+  const [newChanCustomName, setNewChanCustomName] = useState<string>('MADECC GROUP Cameroon Page');
+  const [newChanHandle, setNewChanHandle] = useState<string>('MADECC GROUP Cameroon');
   const [newChanToken, setNewChanToken] = useState<string>('');
   const [newChanNotes, setNewChanNotes] = useState<string>('Official Facebook Business Page for Cameroon & CEMAC region client announcements.');
   const [newChanWebhookUrl, setNewChanWebhookUrl] = useState<string>('https://api.partner.madeccgroup.online/v1/broadcasts');
@@ -1029,8 +1029,8 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
         title: data.title || topicInput,
         seoTopic: topicInput,
         targetPlatforms: targetPlatformsInput,
-        caption: data.caption || 'High-impact civil engineering & construction update by MADECC Group.',
-        hashtags: data.hashtags || '#MADECCGroup #CivilEngineering #QuantitySurveying #ConstructionCameroon',
+        caption: data.caption || 'High-impact civil engineering & construction update by MADECC GROUP.',
+        hashtags: data.hashtags || '#MADECCGROUP #CivilEngineering #QuantitySurveying #ConstructionCameroon',
         ctaText: data.ctaText || data.cta || formattedCta,
         mediaUrl: sanitizeMediaUrl(data.suggestedImageUrl) || FALLBACK_ENGINEERING_IMAGES[0],
         mediaType: 'image',
@@ -1059,8 +1059,8 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
         title: `MADECC Civil Engineering & BOQ Masterclass: ${topicInput}`,
         seoTopic: topicInput,
         targetPlatforms: targetPlatformsInput,
-        caption: `At MADECC Group S.A., structural precision is our hallmark. Exploring "${topicInput}" across Cameroon & Central Africa.\n\nKey Engineering Takeaway:\n1. Strict compliance with Eurocode 2 & 8 structural codes.\n2. Transparent BOQ cost estimation eliminating site budget overruns.\n3. Turnkey project management from foundation to final commissioning.`,
-        hashtags: `#MADECCGroup #${topicInput.replace(/\s+/g, '')} #CivilEngineering #QuantitySurveying #CameroonBuilding #Douala #Yaounde`,
+        caption: `At MADECC GROUP S.A., structural precision is our hallmark. Exploring "${topicInput}" across Cameroon & Central Africa.\n\nKey Engineering Takeaway:\n1. Strict compliance with Eurocode 2 & 8 structural codes.\n2. Transparent BOQ cost estimation eliminating site budget overruns.\n3. Turnkey project management from foundation to final commissioning.`,
+        hashtags: `#MADECCGROUP #${topicInput.replace(/\s+/g, '')} #CivilEngineering #QuantitySurveying #CameroonBuilding #Douala #Yaounde`,
         ctaText: formattedCta,
         mediaUrl: FALLBACK_ENGINEERING_IMAGES[0],
         mediaType: 'image',
@@ -1772,12 +1772,12 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     setNewChanPlatform(platform);
     setNewChanModalTestResult(null);
     if (platform === 'youtube') {
-      setNewChanCustomName('MADECC Group Official YouTube');
+      setNewChanCustomName('MADECC GROUP Official YouTube');
       setNewChanHandle('@madeccgroup_official');
       setNewChanNotes('Primary video channel for site execution tours and BOQ engineering tutorials.');
     } else if (platform === 'facebook') {
-      setNewChanCustomName('MADECC Group Cameroon Page');
-      setNewChanHandle('MADECC Group Cameroon');
+      setNewChanCustomName('MADECC GROUP Cameroon Page');
+      setNewChanHandle('MADECC GROUP Cameroon');
       setNewChanNotes('Official Facebook Business Page for Cameroon & CEMAC region client announcements.');
     } else if (platform === 'instagram') {
       setNewChanCustomName('MADECC Engineering IG');
@@ -1788,17 +1788,17 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
       setNewChanHandle('+237 671 063 511 / 683 316 486 (Verified MADECC Lines)');
       setNewChanNotes('Direct client communication line for quotes, BOQ consultations, and site inquiries.');
     } else if (platform === 'tiktok') {
-      setNewChanCustomName('MADECC Group Official TikTok');
+      setNewChanCustomName('MADECC GROUP Official TikTok');
       setNewChanHandle('@madeccgroup_cm');
       setNewChanNotes('Short-form structural engineering highlights and construction site walkthroughs.');
     } else if (platform === 'linkedin') {
-      setNewChanCustomName('MADECC Group Corporate LinkedIn');
-      setNewChanHandle('MADECC Group S.A.');
+      setNewChanCustomName('MADECC GROUP Corporate LinkedIn');
+      setNewChanHandle('MADECC GROUP S.A.');
       setNewChanNotes('Corporate B2B page for investor updates, procurement partnerships, and civil engineering tenders.');
     } else if (platform === 'twitter') {
-      setNewChanCustomName('MADECC Group Official X');
+      setNewChanCustomName('MADECC GROUP Official X');
       setNewChanHandle('@MADECCGroupCM');
-      setNewChanNotes('Official executive announcements and quick updates from MADECC Group.');
+      setNewChanNotes('Official executive announcements and quick updates from MADECC GROUP.');
     } else if (platform === 'custom') {
       setNewChanCustomName('MADECC Syndicated Broadcast Webhook');
       setNewChanHandle('https://api.partner.madeccgroup.online/v1/broadcasts');
@@ -1899,7 +1899,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
         apiKeyOrToken: isCustomType ? newChanToken : undefined,
         httpMethod: isCustomType ? newChanHttpMethod : undefined,
         authenticationType: isCustomType ? newChanAuthType : undefined,
-        defaultCta: 'Contact MADECC Group via verified lines.'
+        defaultCta: 'Contact MADECC GROUP via verified lines.'
       };
 
       const res = await fetch('/api/marketing/channels', {
@@ -2088,7 +2088,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
             <Share2 className="w-6 h-6 text-amber-400" /> Social Accounts, Publishing & Broadcast Center
           </h1>
           <p className="text-xs text-slate-400 max-w-3xl">
-            Centralized hub to manage connected MADECC Group social channels, broadcast webhooks, AI SEO copywriting, content approvals, republication versions, and verified Cameroon CTA contacts.
+            Centralized hub to manage connected MADECC GROUP social channels, broadcast webhooks, AI SEO copywriting, content approvals, republication versions, and verified Cameroon CTA contacts.
           </p>
         </div>
 
@@ -2637,7 +2637,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                         </div>
                         <div>
                           <h4 className="font-extrabold text-white text-xs flex items-center gap-1.5">
-                            MADECC Group S.A. <span className="text-[10px] text-slate-400 font-normal">• 1st</span>
+                            MADECC GROUP S.A. <span className="text-[10px] text-slate-400 font-normal">• 1st</span>
                           </h4>
                           <span className="text-[10px] text-slate-400 block">Engineering & Construction Services • Douala, Cameroon</span>
                           <span className="text-[9px] text-slate-500 flex items-center gap-1">Just now • <Globe className="w-2.5 h-2.5" /></span>
@@ -2753,7 +2753,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                           </div>
                           <div>
                             <div className="font-extrabold text-white text-xs flex items-center gap-1">
-                              MADECC Group <span className="text-slate-500 text-[10px] font-mono">@MADECCGroupCM</span>
+                              MADECC GROUP <span className="text-slate-500 text-[10px] font-mono">@MADECCGroupCM</span>
                             </div>
                           </div>
                         </div>
@@ -2783,7 +2783,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                         f
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-white text-xs">MADECC Group Cameroon</h4>
+                        <h4 className="font-extrabold text-white text-xs">MADECC GROUP Cameroon</h4>
                         <span className="text-[10px] text-slate-400 flex items-center gap-1">Just now • 🌍 Public</span>
                       </div>
                     </div>
@@ -2864,7 +2864,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                         onClick={() => {
                           const jsonStr = JSON.stringify({
                             event: 'content.publish',
-                            source: 'MADECC Group S.A.',
+                            source: 'MADECC GROUP S.A.',
                             broadcastId: `BROADCAST-${Date.now()}`,
                             publishedAt: new Date().toISOString(),
                             content: {
@@ -2888,7 +2888,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                     <pre className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-emerald-400 font-mono text-[11px] overflow-x-auto max-h-72 leading-relaxed">
                       {JSON.stringify({
                         event: 'content.publish',
-                        source: 'MADECC Group S.A.',
+                        source: 'MADECC GROUP S.A.',
                         broadcastId: `BROADCAST-${Date.now()}`,
                         publishedAt: new Date().toISOString(),
                         content: {
@@ -3213,7 +3213,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                 <Globe className="w-4 h-4 text-emerald-400" /> Social Accounts, Outlets & Custom Broadcast Channels
               </h2>
               <p className="text-xs text-slate-400">
-                Manage connected MADECC Group social accounts with production OAuth 2.0 authentication. All client credentials and access tokens are AES-256 encrypted server-side.
+                Manage connected MADECC GROUP social accounts with production OAuth 2.0 authentication. All client credentials and access tokens are AES-256 encrypted server-side.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
@@ -3302,7 +3302,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
               </div>
             </div>
             <p className="text-xs text-slate-400">
-              Click any platform below to authorize MADECC Group social accounts directly via official provider OAuth flows:
+              Click any platform below to authorize MADECC GROUP social accounts directly via official provider OAuth flows:
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-1">
@@ -3836,7 +3836,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                   <Globe className="w-4 h-4 text-amber-400" /> Connect Social Account / Custom Broadcast Webhook
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Select an official social network or custom webhook broadcast outlet for MADECC Group multi-channel publishing.
+                  Select an official social network or custom webhook broadcast outlet for MADECC GROUP multi-channel publishing.
                 </p>
               </div>
               <button
@@ -3922,7 +3922,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                       </div>
 
                       <p className="text-slate-300 text-[11px] leading-relaxed">
-                        Authorize MADECC Group's official {newChanPlatform.toUpperCase()} line securely. Clicking the button below opens the official provider consent window. Tokens are negotiated server-side and encrypted at rest in PostgreSQL.
+                        Authorize MADECC GROUP's official {newChanPlatform.toUpperCase()} line securely. Clicking the button below opens the official provider consent window. Tokens are negotiated server-side and encrypted at rest in PostgreSQL.
                       </p>
 
                       {/* OAUTH BUTTON */}
@@ -3965,7 +3965,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                           type="text"
                           value={newChanCustomName}
                           onChange={(e) => setNewChanCustomName(e.target.value)}
-                          placeholder="e.g. MADECC Group Official Line"
+                          placeholder="e.g. MADECC GROUP Official Line"
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:border-amber-500 focus:outline-none"
                         />
                       </div>

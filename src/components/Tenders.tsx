@@ -125,7 +125,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
       categoryName: 'Engineering & Geotechnics',
       clientProject: 'Kribi Industrial Corridor Deep Foundation Project',
       location: 'Kribi, South Region',
-      description: 'MADECC Group is seeking certified geotechnical testing laboratories to conduct rotary core drilling to 35-meter depths, Standard Penetration Tests (SPT), dynamic cone penetrometer soundings, and laboratory soil mechanics analysis.',
+      description: 'MADECC GROUP is seeking certified geotechnical testing laboratories to conduct rotary core drilling to 35-meter depths, Standard Penetration Tests (SPT), dynamic cone penetrometer soundings, and laboratory soil mechanics analysis.',
       scopeOfWork: '1. 8 exploratory boreholes to 35m depth with continuous core recovery.\n2. In-situ SPT testing at 1.5m intervals and groundwater level monitoring.\n3. Laboratory Triaxial, Oedometer consolidation, and Atterberg limits testing.\n4. Comprehensive Geotechnical Factual and Interpretative Engineering Report with safe bearing capacity recommendations.',
       eligibility: 'Accredited geotechnical engineering firms with owned drilling rigs and certified soil laboratory.',
       requiredExperience: 'Minimum 5 years of geotechnical investigation in coastal and alluvial geology of Cameroon.',
@@ -178,8 +178,8 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
     schemaScript.text = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'ItemList',
-      'name': 'MADECC Group Tenders & Procurement Opportunities',
-      'description': 'Public procurement, subcontracting, and materials supply tender notices by MADECC Group.',
+      'name': 'MADECC GROUP Tenders & Procurement Opportunities',
+      'description': 'Public procurement, subcontracting, and materials supply tender notices by MADECC GROUP.',
       'itemListElement': defaultTenders.map((t, idx) => ({
         '@type': 'ListItem',
         'position': idx + 1,
@@ -347,7 +347,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
-            MADECC Group Tenders & Procurement Opportunities
+            MADECC GROUP Tenders & Procurement Opportunities
           </h1>
 
           <p className="text-slate-300 text-base max-w-2xl mx-auto mb-8 leading-relaxed">
@@ -504,7 +504,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase">
               <ShieldCheck className="w-4 h-4" />
-              <span>MADECC Group Fair Procurement Policy</span>
+              <span>MADECC GROUP Fair Procurement Policy</span>
             </div>
             <h2 className="text-xl font-bold text-white">Ethical, Transparent & Competitive Tendering</h2>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">

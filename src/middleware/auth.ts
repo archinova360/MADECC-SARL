@@ -125,6 +125,10 @@ export const requireAuth = async (
   const isAdminKey = 
     trimmedToken === 'Adminmadeccgroup' ||
     trimmedToken === 'ADMIN_BYPASS:Adminmadeccgroup' ||
+    trimmedToken === 'MADECC GROUP admin' ||
+    trimmedToken === 'ADMIN_BYPASS:MADECC GROUP admin' ||
+    trimmedToken === 'MADECC_GROUP_admin' ||
+    trimmedToken === 'ADMIN_BYPASS:MADECC_GROUP_admin' ||
     trimmedToken === 'MADECC Group admin' ||
     trimmedToken === 'ADMIN_BYPASS:MADECC Group admin' ||
     trimmedToken === 'MADECC_Group_admin' ||

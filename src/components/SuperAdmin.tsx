@@ -472,7 +472,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                   {tenantsList.filter(t => t.status === 'ACTIVE').length}
                 </div>
                 <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> MADECC Group is Flagship #001
+                  <CheckCircle2 className="w-3 h-3" /> MADECC GROUP is Flagship #001
                 </p>
               </div>
 
@@ -1138,7 +1138,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 </div>
                 <div className="py-2.5 flex items-center justify-between text-slate-300">
                   <span className="text-amber-400">[AI_TAKEOFF_EXECUTED]</span>
-                  <span>MADECC Group executed 12-stage CAD analysis (Drawing: FloorPlan_v2.dwg)</span>
+                  <span>MADECC GROUP executed 12-stage CAD analysis (Drawing: FloorPlan_v2.dwg)</span>
                   <span className="text-slate-500">4 hours ago</span>
                 </div>
                 <div className="py-2.5 flex items-center justify-between text-slate-300">

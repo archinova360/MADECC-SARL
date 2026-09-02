@@ -978,7 +978,7 @@ export async function seedDatabase() {
 
         CREATE TABLE IF NOT EXISTS site_settings (
           id SERIAL PRIMARY KEY,
-          site_name TEXT NOT NULL DEFAULT 'MADECC Group',
+          site_name TEXT NOT NULL DEFAULT 'MADECC GROUP',
           tagline TEXT DEFAULT 'Premier Engineering, Construction & Project Management in Cameroon',
           phone TEXT DEFAULT '+237 670 00 00 00',
           emergency_phone TEXT DEFAULT '+237 690 00 00 00',
@@ -1315,7 +1315,7 @@ export async function seedDatabase() {
     await db.insert(heroBanners).values([
       {
         title: 'Precision Construction. Absolute Integrity.',
-        subtitle: 'MADECC Group is Cameroon’s premier multi-disciplinary construction and engineering firm turning architectural blueprints into iconic structural masterpieces.',
+        subtitle: 'MADECC GROUP is Cameroon’s premier multi-disciplinary construction and engineering firm turning architectural blueprints into iconic structural masterpieces.',
         imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
         displayOrder: 1,
         active: true,
@@ -1343,7 +1343,7 @@ export async function seedDatabase() {
     await db.insert(blogPosts).values([
       {
         title: 'The Rising Trend of Photovoltaic Glass Facades in Cameroon',
-        content: `Commercial buildings consume up to 40% of standard city energy grids. At MADECC Group, we are bypassing traditional solar panels by integrating photovoltaic cells directly into structural glass facades.
+        content: `Commercial buildings consume up to 40% of standard city energy grids. At MADECC GROUP, we are bypassing traditional solar panels by integrating photovoltaic cells directly into structural glass facades.
 
 Our upcoming project, the MADECC Eco-HQ Tower in Douala, uses clear double-glazed solar glass panels. In this post, we explore how building-integrated photovoltaics (BIPV) offset up to 35% of a skyscraper's operational carbon footprint in equatorial climates.`,
         authorId: authorId,
@@ -1353,7 +1353,7 @@ Our upcoming project, the MADECC Eco-HQ Tower in Douala, uses clear double-glaze
       },
       {
         title: 'Pre-Construction Feasibility: The Secret to Under-Budget Delivery',
-        content: `Delays in major civil engineering projects are typically caused by unforeseen geotechnical issues. By utilizing deep soil seismology profiling and full 3D BIM (Building Information Modeling) simulations before a single excavator enters the site, MADECC Group maintains a pristine track record of on-budget handovers in Central Africa.
+        content: `Delays in major civil engineering projects are typically caused by unforeseen geotechnical issues. By utilizing deep soil seismology profiling and full 3D BIM (Building Information Modeling) simulations before a single excavator enters the site, MADECC GROUP maintains a pristine track record of on-budget handovers in Central Africa.
 
 This article reviews our pre-construction workflow used on the Sanaga Bridge project, highlighting risk-mitigation metrics.`,
         authorId: authorId,
@@ -1441,7 +1441,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
     const existingSettings = await db.select().from(siteSettings).limit(1);
     if (existingSettings.length === 0) {
       await db.insert(siteSettings).values({
-        siteName: 'MADECC Group',
+        siteName: 'MADECC GROUP',
         tagline: 'Premier Construction, Civil Engineering & Project Management in Cameroon',
         developerName: 'Kasah Rodrick Reboya',
         phone: '+237 671 063 511',
@@ -1466,10 +1466,10 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         tiktokUrl: 'https://tiktok.com/@madeccgroup',
         logoUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80',
         globalSeo: {
-          seoTitle: 'MADECC Group — Premier Construction & Civil Engineering in Cameroon',
-          metaDescription: 'Official portal of MADECC Group. Structural design, turn-key civil construction, Eurocode compliance, BOQ estimation, and project management in Yaoundé, Douala, and across Cameroon.',
+          seoTitle: 'MADECC GROUP — Premier Construction & Civil Engineering in Cameroon',
+          metaDescription: 'Official portal of MADECC GROUP. Structural design, turn-key civil construction, Eurocode compliance, BOQ estimation, and project management in Yaoundé, Douala, and across Cameroon.',
           canonicalUrl: 'https://madeccgroup.online',
-          ogTitle: 'MADECC Group — Engineering Excellence in Cameroon',
+          ogTitle: 'MADECC GROUP — Engineering Excellence in Cameroon',
           ogDescription: 'Leading construction and civil engineering contractor in Cameroon. Eurocode 2 standards, certified concrete batching, and turnkey execution.',
           ogImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
           robotsIndex: true,
@@ -1488,8 +1488,8 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           { id: 'nav-contact', label: 'Contact', href: 'contact', order: 10, isEnabled: true }
         ],
         footerContent: {
-          aboutText: 'MADECC Group is a premier multi-disciplinary construction, design-build, and civil engineering firm operating across Cameroon. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence.',
-          copyrightText: `© ${new Date().getFullYear()} MADECC Group. All rights reserved. Registered Enterprise with MINTP & ONIGC Compliance in Cameroon.`,
+          aboutText: 'MADECC GROUP is a premier multi-disciplinary construction, design-build, and civil engineering firm operating across Cameroon. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence.',
+          copyrightText: `© ${new Date().getFullYear()} MADECC GROUP. All rights reserved. Registered Enterprise with MINTP & ONIGC Compliance in Cameroon.`,
           accreditationBadges: [
             'Eurocode 2 / BAEL 91 Compliant',
             'Order of Civil Engineers (ONIGC)',
@@ -1516,7 +1516,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         eyebrow: 'Construction & Civil Engineering — Cameroon',
         title: 'Building Cameroon’s Future with Structural Precision & Integrity',
         subtitle: 'From major infrastructure corridors to high-grade commercial and residential complexes in Yaoundé, Douala, and nationwide. Engineered to Eurocode 2 and certified Cameroonian standards.',
-        description: 'MADECC Group delivers turnkey civil engineering, structural calculations, geotechnical soil validation, and fixed-price BOQ execution for private, institutional, and government clients.',
+        description: 'MADECC GROUP delivers turnkey civil engineering, structural calculations, geotechnical soil validation, and fixed-price BOQ execution for private, institutional, and government clients.',
         primaryCta: {
           text: 'Request a Free Quote',
           link: 'request-quote',
@@ -1567,9 +1567,9 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         {
           id: 'sec-about',
           type: 'about' as const,
-          title: 'About MADECC Group',
+          title: 'About MADECC GROUP',
           subtitle: 'A Premier Cameroonian Construction & Engineering Firm',
-          content: 'Founded on bedrock principles of technical rigour, transparent BOQ pricing, and uncompromising site safety, MADECC Group operates as a fully accredited multidisciplinary contractor across Cameroon. Our in-house geotechnical, structural, and quantity surveying teams bridge European engineering benchmarks (Eurocode 2) with local subsoil and climate realities.',
+          content: 'Founded on bedrock principles of technical rigour, transparent BOQ pricing, and uncompromising site safety, MADECC GROUP operates as a fully accredited multidisciplinary contractor across Cameroon. Our in-house geotechnical, structural, and quantity surveying teams bridge European engineering benchmarks (Eurocode 2) with local subsoil and climate realities.',
           mediaUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80',
           layout: 'split' as const,
           enabled: true,
@@ -1600,7 +1600,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         {
           id: 'sec-why-choose-us',
           type: 'why_choose_us' as const,
-          title: 'Why Clients & Institutions Trust MADECC Group',
+          title: 'Why Clients & Institutions Trust MADECC GROUP',
           subtitle: 'Rigorous engineering standards tailored for Cameroon’s terrain',
           enabled: true,
           displayOrder: 5
@@ -1642,10 +1642,10 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
       ];
 
       const homeSeo = {
-        seoTitle: 'MADECC Group — Premier Construction & Civil Engineering in Cameroon',
+        seoTitle: 'MADECC GROUP — Premier Construction & Civil Engineering in Cameroon',
         metaDescription: 'Leading Cameroonian construction and engineering firm. Turnkey commercial and residential building, roadworks, geotechnical soil surveys, and BOQ estimation in Yaoundé and Douala.',
         canonicalUrl: 'https://madeccgroup.com/',
-        ogTitle: 'MADECC Group — Building Cameroon with Structural Precision',
+        ogTitle: 'MADECC GROUP — Building Cameroon with Structural Precision',
         ogDescription: 'Certified civil engineering contractor in Yaoundé & Douala. Eurocode 2 standards, transparent BOQs, and timely execution.',
         ogImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
         keywords: 'construction cameroon, civil engineering yaounde, building contractor douala, madecc group, eurocode concrete, boq estimation cameroon',
@@ -1682,20 +1682,20 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
             ...homeHeroConfig,
             eyebrow: 'Our Heritage & Mission',
             title: 'Engineering Rigour, Local Roots & Enduring Integrity',
-            subtitle: 'Learn about the engineers, values, and technical licenses driving MADECC Group across the 10 regions of Cameroon.',
+            subtitle: 'Learn about the engineers, values, and technical licenses driving MADECC GROUP across the 10 regions of Cameroon.',
             videoUrl: null,
             imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1600&q=80'
           },
           sections: [],
           seo: {
-            seoTitle: 'About MADECC Group — Civil Engineering Company in Cameroon',
-            metaDescription: 'Learn about MADECC Group: management team, ONIGC engineering certifications, equipment fleet, and mission in Cameroon.',
+            seoTitle: 'About MADECC GROUP — Civil Engineering Company in Cameroon',
+            metaDescription: 'Learn about MADECC GROUP: management team, ONIGC engineering certifications, equipment fleet, and mission in Cameroon.',
             robotsIndex: true
           },
           publishedData: {
             heroConfig: homeHeroConfig,
             sections: [],
-            seo: { seoTitle: 'About MADECC Group', metaDescription: 'About our company.', robotsIndex: true }
+            seo: { seoTitle: 'About MADECC GROUP', metaDescription: 'About our company.', robotsIndex: true }
           },
           version: 1,
           lastSavedBy: 'MADECC Executive Admin',
@@ -1714,14 +1714,14 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           },
           sections: [],
           seo: {
-            seoTitle: 'Civil Engineering & Construction Services — MADECC Group Cameroon',
+            seoTitle: 'Civil Engineering & Construction Services — MADECC GROUP Cameroon',
             metaDescription: 'Discover our construction services in Cameroon: structural calculations, building construction, quantity surveying, MEP, and project supervision.',
             robotsIndex: true
           },
           publishedData: {
             heroConfig: homeHeroConfig,
             sections: [],
-            seo: { seoTitle: 'Services — MADECC Group', metaDescription: 'Our services.', robotsIndex: true }
+            seo: { seoTitle: 'Services — MADECC GROUP', metaDescription: 'Our services.', robotsIndex: true }
           },
           version: 1,
           lastSavedBy: 'MADECC Executive Admin',
@@ -1740,14 +1740,14 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           },
           sections: [],
           seo: {
-            seoTitle: 'Contact MADECC Group — Yaoundé & Douala Offices',
-            metaDescription: 'Get in touch with MADECC Group. Yaoundé Mbankolo HQ & Douala Akwa office. Phone: +237 670 00 00 00.',
+            seoTitle: 'Contact MADECC GROUP — Yaoundé & Douala Offices',
+            metaDescription: 'Get in touch with MADECC GROUP. Yaoundé Mbankolo HQ & Douala Akwa office. Phone: +237 670 00 00 00.',
             robotsIndex: true
           },
           publishedData: {
             heroConfig: homeHeroConfig,
             sections: [],
-            seo: { seoTitle: 'Contact — MADECC Group', metaDescription: 'Contact us.', robotsIndex: true }
+            seo: { seoTitle: 'Contact — MADECC GROUP', metaDescription: 'Contact us.', robotsIndex: true }
           },
           version: 1,
           lastSavedBy: 'MADECC Executive Admin',
@@ -1818,14 +1818,14 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           usedIn: ['Why Choose Us', 'Services Page']
         },
         {
-          title: 'MADECC Group Corporate Badge & Logo',
+          title: 'MADECC GROUP Corporate Badge & Logo',
           filename: 'madecc-badge-logo.jpg',
           fileUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80',
           fileType: 'logo',
           mimeType: 'image/jpeg',
           fileSize: 340000,
           dimensions: '600x600',
-          altText: 'MADECC Group official enterprise insignia',
+          altText: 'MADECC GROUP official enterprise insignia',
           caption: 'Corporate branding badge',
           category: 'Logos',
           tags: ['logo', 'brand', 'identity'],

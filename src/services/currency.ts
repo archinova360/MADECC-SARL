@@ -1,5 +1,5 @@
 /**
- * Centralized Currency Service for MADECC Group Application.
+ * Centralized Currency Service for MADECC GROUP Application.
  * Single source of truth for currency formatting, defaults, and currency codes.
  */
 

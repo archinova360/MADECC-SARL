@@ -42,7 +42,7 @@ export async function sendNotificationEmail(
   try {
     const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'kreboya603@gmail.com';
     const mailOpts: any = {
-      from: `"MADECC Group Portal" <${fromAddress}>`,
+      from: `"MADECC GROUP Portal" <${fromAddress}>`,
       to: recipientStr,
       subject,
       text,
@@ -78,7 +78,7 @@ export async function sendEmail(
   try {
     const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@madecc.com';
     const mailOpts: any = {
-      from: `"MADECC Group" <${fromAddress}>`,
+      from: `"MADECC GROUP" <${fromAddress}>`,
       to: recipient,
       subject,
       text,

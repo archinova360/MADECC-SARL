@@ -342,9 +342,9 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
       yPos = Math.max(yPos + 10, 245);
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
-      doc.text('DISCLAIMER: This document is an indicative preliminary budget estimate calculated using MADECC Group standard rate library data.', 14, yPos);
+      doc.text('DISCLAIMER: This document is an indicative preliminary budget estimate calculated using MADECC GROUP standard rate library data.', 14, yPos);
       doc.text('It does not constitute a final binding quotation, architectural drawing, or contractual offer. Final costs are subject to engineering surveys.', 14, yPos + 4);
-      doc.text('Contact MADECC Group: +237 671 063 511 / +237 683 316 486 (WhatsApp) | Email: kreboya603@gmail.com', 14, yPos + 8);
+      doc.text('Contact MADECC GROUP: +237 671 063 511 / +237 683 316 486 (WhatsApp) | Email: kreboya603@gmail.com', 14, yPos + 8);
 
       doc.save(`MADECC-Budget-Estimate-${ref}.pdf`);
       if (showToast) showToast('PDF downloaded successfully.', 'success');
@@ -357,7 +357,7 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
   // WhatsApp Trigger URL
   const getWhatsAppUrl = () => {
     if (!calculationResult) return 'https://wa.me/237683316486';
-    const text = `Hello MADECC Group, I generated a Project Budget Estimate on your website:
+    const text = `Hello MADECC GROUP, I generated a Project Budget Estimate on your website:
 Ref: ${calculationResult.estimateReference}
 Type: ${calculationResult.projectType}
 Area: ${calculationResult.totalFloorAreaM2} m²
@@ -374,7 +374,7 @@ I would like to discuss this project and request a formal BOQ.`;
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs tracking-wider uppercase mb-2">
             <Sparkles className="w-4 h-4" />
-            MADECC Group Estimating System
+            MADECC GROUP Estimating System
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
             Project Budget Calculator
@@ -416,7 +416,7 @@ I would like to discuss this project and request a formal BOQ.`;
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6 backdrop-blur-sm flex items-start gap-3 shadow-sm">
           <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-xs text-slate-700 leading-relaxed">
-            <span className="font-bold text-amber-900">Indicative Preliminary Estimator:</span> This calculator uses live MADECC Group database unit rates to produce a preliminary budget range. It is designed for feasibility planning and does not replace a formal engineering survey or contractual BOQ.
+            <span className="font-bold text-amber-900">Indicative Preliminary Estimator:</span> This calculator uses live MADECC GROUP database unit rates to produce a preliminary budget range. It is designed for feasibility planning and does not replace a formal engineering survey or contractual BOQ.
           </div>
         </div>
 
@@ -1158,7 +1158,7 @@ I would like to discuss this project and request a formal BOQ.`;
                         className="mt-0.5 w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
                       />
                       <label htmlFor="agreeLeadTerms" className="text-xs text-slate-600 leading-tight select-none">
-                        I agree to the <button type="button" onClick={() => onNavigateToTab && onNavigateToTab('terms')} className="text-amber-600 font-semibold hover:underline">Terms and Conditions</button> and consent to being contacted by MADECC Group regarding this project.
+                        I agree to the <button type="button" onClick={() => onNavigateToTab && onNavigateToTab('terms')} className="text-amber-600 font-semibold hover:underline">Terms and Conditions</button> and consent to being contacted by MADECC GROUP regarding this project.
                       </label>
                     </div>
 

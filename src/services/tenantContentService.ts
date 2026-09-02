@@ -115,9 +115,9 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
   1: {
     tenant: {
       id: 1,
-      name: 'MADECC-CONSTRUCTION',
+      name: 'MADECC GROUP',
       slug: 'madecc-construction',
-      legalName: 'MADECC Construction & Civil Engineering Group SARL',
+      legalName: 'MADECC GROUP SARL',
       logoUrl: '/logo.png',
       faviconUrl: '/app_favicon.jpg',
       primaryDomain: 'madecc-construction.madecccloud.com',
@@ -159,7 +159,7 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
     },
     hero: {
       title: 'Engineered Precision & Turnkey Construction in Central Africa',
-      subtitle: 'MADECC Group delivers certified structural engineering, high-end residential estates, commercial complexes, and transparent quantity surveying across Cameroon and CEMAC.',
+      subtitle: 'MADECC GROUP delivers certified structural engineering, high-end residential estates, commercial complexes, and transparent quantity surveying across Cameroon and CEMAC.',
       tagline: 'Mastering Blueprints. Building Legacies.',
       primaryCtaText: 'Request Detailed BOQ Quote',
       primaryCtaTab: 'request-a-quote',
@@ -176,7 +176,7 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
     },
     about: {
       headline: 'A Decadal Legacy of Structural Integrity & Architectural Craftsmanship',
-      story: 'Founded with the mission to bring precision engineering, zero-compromise structural calculations, and transparent cost accounting to African construction, MADECC Group has grown into an elite EPC general contractor. We combine on-site craftsmanship with algorithmic CAD takeoff, Eurocode structural models, and verifiable blockchain-grade contract systems.',
+      story: 'Founded with the mission to bring precision engineering, zero-compromise structural calculations, and transparent cost accounting to African construction, MADECC GROUP has grown into an elite EPC general contractor. We combine on-site craftsmanship with algorithmic CAD takeoff, Eurocode structural models, and verifiable blockchain-grade contract systems.',
       vision: 'To be the benchmark of engineering integrity, resilient urban infrastructure, and sustainable smart buildings across Sub-Saharan Africa.',
       mission: 'Delivering uncompromised structural quality on schedule and within verified budgets through algorithmic quantity surveying and skilled project governance.',
       certifications: [
@@ -294,7 +294,7 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
         authorRole: 'CEO, SOGECAM Properties',
         company: 'SOGECAM Real Estate',
         rating: 5,
-        reviewText: 'MADECC Group delivered our Bonapriso 6-storey complex two weeks ahead of schedule. The BOQ accuracy was within 2% of final accounts, which is unprecedented in Central African construction.',
+        reviewText: 'MADECC GROUP delivered our Bonapriso 6-storey complex two weeks ahead of schedule. The BOQ accuracy was within 2% of final accounts, which is unprecedented in Central African construction.',
         date: '2025-11-14',
         verified: true
       },
@@ -317,7 +317,7 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
       },
       {
         question: 'Do you offer a decennial structural warranty?',
-        answer: 'Yes. All turnkey building projects executed by MADECC Group are backed by full 10-year decennial civil liability coverage and certified structural inspection certificates.',
+        answer: 'Yes. All turnkey building projects executed by MADECC GROUP are backed by full 10-year decennial civil liability coverage and certified structural inspection certificates.',
         category: 'Contracts & Legal'
       }
     ],
@@ -332,9 +332,9 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
       currency: 'XAF'
     },
     seo: {
-      metaTitle: 'MADECC Group | Premier Civil Engineering & Turnkey Construction Firm',
+      metaTitle: 'MADECC GROUP | Premier Civil Engineering & Turnkey Construction Firm',
       metaDescription: 'Cameroon’s premier civil engineering firm. Turnkey commercial towers, luxury villas, Eurocode 2 structural calculations, and transparent BOQ estimation in Douala & Yaoundé.',
-      keywords: 'civil engineering Cameroon, construction company Douala, structural engineer Yaounde, BOQ estimator FCFA, turnkey building contractor, MADECC Group',
+      keywords: 'civil engineering Cameroon, construction company Douala, structural engineer Yaounde, BOQ estimator FCFA, turnkey building contractor, MADECC GROUP',
       ogImage: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80',
       schemaType: 'GeneralContractor'
     }

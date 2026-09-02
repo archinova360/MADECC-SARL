@@ -1,5 +1,5 @@
 /**
- * Safe API Request & Response Handling Utilities for MADECC Group Applications.
+ * Safe API Request & Response Handling Utilities for MADECC GROUP Applications.
  * Validates Content-Type, prevents unexpected HTML parsing crashes, and normalizes API errors.
  */
 

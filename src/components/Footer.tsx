@@ -37,7 +37,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const websiteUrl = 'https://madeccgroup.online';
-  const shareText = 'MADECC Group — Premier Civil Engineering, Structural Design & Construction Firm in Cameroon.';
+  const shareText = 'MADECC GROUP — Premier Civil Engineering, Structural Design & Construction Firm in Cameroon.';
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(websiteUrl);
@@ -112,7 +112,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
                 <img 
                   src={settings?.logoUrl || "/logo.png"} 
-                  alt={`${settings?.siteName || 'MADECC Group'} Logo`} 
+                  alt={`${settings?.siteName || 'MADECC GROUP'} Logo`} 
                   className="h-full w-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -130,7 +130,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
               {settings?.footerContent?.aboutText || 
-                "MADECC Group is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence."}
+                "MADECC GROUP is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence."}
             </p>
             <div className="flex items-center gap-2 pt-1 text-xs font-mono text-slate-500">
               <Clock className="w-4 h-4 text-amber-500" />
@@ -302,7 +302,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <span>
-                  {settings?.officeAddressYaounde || "Yaoundé Mbankolo, Cameroon"}
+                  {settings?.officeAddressYaounde || "Mbankolo, Yaoundé, Cameroon"}
                   <br />
                   <span className="text-xs text-amber-400 font-mono">Operating Nationwide in Cameroon &amp; Across Africa</span>
                 </span>
@@ -425,7 +425,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
         <div className="border-t border-slate-800/60 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4" id="footer-bottom-nav">
           <div className="space-y-1 text-center sm:text-left">
             <p>
-              {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} MADECC Group. All rights reserved.`}
+              {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} MADECC GROUP. All rights reserved.`}
             </p>
             {(settings?.rccmNumber || settings?.niuTaxId) && (
               <p className="text-[10px] font-mono text-slate-600">
@@ -494,7 +494,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               {modalType === 'privacy' && (
                 <>
                   <p className="font-semibold text-amber-500 text-sm">Last Updated: February 2026</p>
-                  <p>MADECC Group ("we", "our", or "us") is dedicated to protecting your privacy in compliance with standard global rules and the Cameroon Law No. 2010/012 on Cybersecurity and Cybercriminality. This Policy explains how we collect, store, and process your data when you visit our portal.</p>
+                  <p>MADECC GROUP ("we", "our", or "us") is dedicated to protecting your privacy in compliance with standard global rules and the Cameroon Law No. 2010/012 on Cybersecurity and Cybercriminality. This Policy explains how we collect, store, and process your data when you visit our portal.</p>
                   
                   <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">1. Information We Collect</h4>
                   <p>We only collect personal information that you voluntarily submit to us via our contact form, newsletter subscriptions, custom consultation appointments, and feedback reviews. This includes your Name, Email address, phone number, project details, and any attachments or files you share.</p>
@@ -510,23 +510,23 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               {modalType === 'terms' && (
                 <>
                   <p className="font-semibold text-amber-500 text-sm">Last Updated: February 2026</p>
-                  <p>By accessing or using the MADECC Group portal, you agree to be bound by these Terms of Service, all applicable laws and regulations in Cameroon, and agree that you are responsible for compliance with any local structural building permits.</p>
+                  <p>By accessing or using the MADECC GROUP portal, you agree to be bound by these Terms of Service, all applicable laws and regulations in Cameroon, and agree that you are responsible for compliance with any local structural building permits.</p>
                   
                   <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">1. Use License & Intellectual Property</h4>
-                  <p>Permission is granted to temporarily download one copy of materials (architectural briefs, project documents, or media) on our website for personal, non-commercial transitory viewing only. All technical designs, renderings, codebases, and structural blueprints are the exclusive intellectual property of MADECC Group and cannot be copied or redistributed without written consent.</p>
+                  <p>Permission is granted to temporarily download one copy of materials (architectural briefs, project documents, or media) on our website for personal, non-commercial transitory viewing only. All technical designs, renderings, codebases, and structural blueprints are the exclusive intellectual property of MADECC GROUP and cannot be copied or redistributed without written consent.</p>
                   
                   <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">2. Accuracy of Project Estimates</h4>
                   <p>The pricing metrics, service price ranges (e.g., in FCFA), and structural valuations presented on our site are provided for preliminary estimation and information purposes only. Formal legally binding quotes are only established through finalized engineering contracts signed by authorized directors at our Douala offices.</p>
 
                   <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">3. External Links & AdSense Disclosures</h4>
-                  <p>MADECC Group has not fully reviewed all third-party sites linked to its website and is not responsible for the contents of any such linked site. The inclusion of any link or banner advertisement does not imply endorsement by MADECC Group. Use of any such linked website is at the user's own risk.</p>
+                  <p>MADECC GROUP has not fully reviewed all third-party sites linked to its website and is not responsible for the contents of any such linked site. The inclusion of any link or banner advertisement does not imply endorsement by MADECC GROUP. Use of any such linked website is at the user's own risk.</p>
                 </>
               )}
 
               {modalType === 'safety' && (
                 <>
                   <p className="font-semibold text-amber-500 text-sm">MADECC Zero-Harm Corporate Directive</p>
-                  <p>At MADECC Group Cameroon, safety is not merely a policy—it is our absolute operational baseline. We are committed to achieving a Zero-Harm workforce environment across all infrastructure, commercial, and residential developments.</p>
+                  <p>At MADECC GROUP Cameroon, safety is not merely a policy—it is our absolute operational baseline. We are committed to achieving a Zero-Harm workforce environment across all infrastructure, commercial, and residential developments.</p>
                   
                   <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">1. Protective Gear & Safety Protocols</h4>
                   <p>Every single construction site we operate in Douala, Kribi, and other regions enforces mandatory personal protective equipment (PPE) protocols, including high-visibility vests, impact-certified hard hats, steel-toed boots, and harness guidelines for height work. Structural frames are certified weekly by certified safety officers.</p>
@@ -565,7 +565,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   <Share2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">Share MADECC Group</h3>
+                  <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">Share MADECC GROUP</h3>
                   <p className="text-[11px] text-slate-400">Recommend our engineering & construction firm</p>
                 </div>
               </div>
@@ -628,7 +628,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
 
               {/* Email Referral */}
               <a
-                href={`mailto:?subject=${encodeURIComponent('MADECC Group — Premier Construction & Engineering Firm')}&body=${encodeURIComponent(shareText + '\n\nVisit: ' + websiteUrl)}`}
+                href={`mailto:?subject=${encodeURIComponent('MADECC GROUP — Premier Construction & Engineering Firm')}&body=${encodeURIComponent(shareText + '\n\nVisit: ' + websiteUrl)}`}
                 className="flex items-center justify-center gap-2 w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold transition-all"
               >
                 <Mail className="w-4 h-4 text-amber-500" />

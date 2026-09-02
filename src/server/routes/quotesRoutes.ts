@@ -157,7 +157,7 @@ Source: ${qr.source || 'Website Direct'}
             </div>
 
             <div style="background-color: #f1f5f9; padding: 18px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b;">
-              MADECC Group &bull; B.P. 15421 Douala &amp; Yaounde, Republic of Cameroon<br/>
+              MADECC GROUP &bull; B.P. 15421 Douala &amp; Yaounde, Republic of Cameroon<br/>
               Civil Engineering, Technical Audits &amp; Construction Management
             </div>
           </div>
@@ -168,8 +168,8 @@ Source: ${qr.source || 'Website Direct'}
   }
 
   function buildQuoteRequestClientHtml(qr: any, servicesList: string, submittedDateStr: string) {
-    const clientSubject = `MADECC Group -- Project Enquiry Received -- ${qr.referenceNumber}`;
-    const clientText = `Dear ${qr.clientName},\n\nThank you for reaching out to MADECC Group. We have successfully received your project inquiry (${qr.referenceNumber}) for "${qr.projectName}".\n\nOur engineering and quantity surveying team is reviewing your specifications and will respond within 24-48 business hours.\n\nWarm regards,\nMADECC Group Engineering & Construction Team`;
+    const clientSubject = `MADECC GROUP -- Project Enquiry Received -- ${qr.referenceNumber}`;
+    const clientText = `Dear ${qr.clientName},\n\nThank you for reaching out to MADECC GROUP. We have successfully received your project inquiry (${qr.referenceNumber}) for "${qr.projectName}".\n\nOur engineering and quantity surveying team is reviewing your specifications and will respond within 24-48 business hours.\n\nWarm regards,\nMADECC GROUP Engineering & Construction Team`;
     const clientHtml = `
       <!DOCTYPE html>
       <html>
@@ -184,7 +184,7 @@ Source: ${qr.source || 'Website Direct'}
           <div style="padding: 32px;">
             <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">Dear <strong>${qr.clientName}</strong>,</p>
             <p style="font-size: 14px; line-height: 1.6; color: #334155;">
-              Thank you for submitting your project requirements to MADECC Group. We have successfully registered your inquiry in our system.
+              Thank you for submitting your project requirements to MADECC GROUP. We have successfully registered your inquiry in our system.
             </p>
             <div style="background-color: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0; margin: 20px 0;">
               <h3 style="font-size: 13px; font-weight: 700; margin: 0 0 10px 0; color: #0f172a; text-transform: uppercase;">Inquiry Summary</h3>
@@ -200,7 +200,7 @@ Source: ${qr.source || 'Website Direct'}
             </p>
             <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 0;">
               Best regards,<br/>
-              <strong>MADECC Group Technical Estimation Team</strong><br/>
+              <strong>MADECC GROUP Technical Estimation Team</strong><br/>
               <span style="font-size: 12px; color: #64748b;">Douala & Yaounde, Republic of Cameroon</span>
             </p>
           </div>
@@ -1055,7 +1055,7 @@ export function setupQuotesRoutes(app: express.Express) {
 
       // Send SMTP email notification to kreboya603@gmail.com
       const ratingStars = '*'.repeat(parseInt(rating)) + '*'.repeat(5 - parseInt(rating));
-      const emailSubject = `[MADECC Group] New Client Review Pending Approval`;
+      const emailSubject = `[MADECC GROUP] New Client Review Pending Approval`;
       const emailText = `A new client review has been submitted on the website:\n\nAuthor: ${authorName}\nRating: ${rating} / 5\nProject: ${projectName || 'General'}\n\nReview:\n"${text}"\n\nPlease log in to the Admin Dashboard to approve this review.`;
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -1068,7 +1068,7 @@ export function setupQuotesRoutes(app: express.Express) {
           </div>
           <p style="font-size: 14px; color: #475569; margin-top: 20px;">Please access the MADECC administrative dashboard to review and approve this testimonial.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC Group Portal Notifications &bull; Cameroon</p>
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
       sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {

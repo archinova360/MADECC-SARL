@@ -306,11 +306,13 @@ export default function FloatingContactHub() {
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                     placeholder="Ask about budgets, estimates, materials..."
+                    aria-label="Ask about budgets, estimates, materials"
                     className="flex-grow bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
                     id="chat-message-input"
                   />
                   <button 
                     type="submit"
+                    aria-label="Send chat message"
                     className="bg-amber-500 hover:bg-amber-400 text-slate-950 p-2 rounded-xl transition-colors shadow"
                     id="send-chat-message"
                   >

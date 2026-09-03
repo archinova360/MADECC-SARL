@@ -359,6 +359,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               <div className="relative">
                 <input
                   type="email"
+                  id="footer-newsletter-email"
+                  aria-label="Email address for construction newsletter"
                   placeholder="Enter email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -383,6 +385,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 <div className="relative">
                   <input
                     type="text"
+                    id="footer-newsletter-captcha"
+                    aria-label="Anti-bot mathematical verification answer"
                     placeholder="Value of x"
                     value={captcha}
                     onChange={(e) => {
@@ -397,7 +401,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     disabled={status === 'loading'}
                     className="absolute right-1.5 top-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 p-1 rounded transition-colors disabled:opacity-50"
                     id="footer-subscribe-btn"
-                    title="Subscribe"
+                    title="Subscribe to Newsletter"
+                    aria-label="Submit newsletter subscription"
                   >
                     <Send className="w-3 h-3" />
                   </button>

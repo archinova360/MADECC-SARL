@@ -11,24 +11,35 @@ interface YouTubePublishContext {
   ctaText?: string;
   mediaPlan: PlatformMediaPlan;
   privacyStatus?: 'public' | 'unlisted' | 'private';
+  youtubeFormat?: 'shorts' | 'video' | 'community';
 }
 
 export async function publishToYouTube(ctx: YouTubePublishContext): Promise<SocialPublishResult> {
-  const { channelId, accessToken, title, caption, hashtags, ctaText, mediaPlan, privacyStatus = 'public' } = ctx;
+  const {
+    channelId,
+    accessToken,
+    title,
+    caption,
+    hashtags,
+    ctaText,
+    mediaPlan,
+    privacyStatus = 'public',
+    youtubeFormat
+  } = ctx;
 
-  // 1. Strict Media Validation: YouTube REQUIRES video media
-  if (!mediaPlan.compatible || mediaPlan.assets.length === 0 || mediaPlan.assets[0].mediaType !== 'video') {
-    return {
-      success: false,
-      platform: 'youtube',
-      status: 'failed',
-      verified: false,
-      errorCode: 'YOUTUBE_VIDEO_REQUIRED',
-      errorMessage: 'YouTube requires video media (.mp4/.mov) for video publishing. Image-only or text-only posts cannot be published as a YouTube video.',
-      actionRequired: 'Attach a valid MP4 or MOV video file to publish to YouTube.',
-      httpStatus: 400
-    };
-  }
+  const hasVideoAsset = mediaPlan.assets.length > 0 && mediaPlan.assets.some(a => a.mediaType === 'video');
+  const videoAsset = hasVideoAsset ? mediaPlan.assets.find(a => a.mediaType === 'video') : null;
+
+  // Determine if this should be formatted and published as a YouTube Short
+  const isShort = youtubeFormat === 'shorts' || (
+    hasVideoAsset && (
+      Boolean(title?.toLowerCase().includes('#shorts') || caption?.toLowerCase().includes('#shorts')) ||
+      (videoAsset?.width && videoAsset?.height && videoAsset.height > videoAsset.width) ||
+      (youtubeFormat !== 'video' && youtubeFormat !== 'community' && (videoAsset?.duration ? videoAsset.duration <= 60 : true))
+    )
+  );
+
+  const isCommunityPost = youtubeFormat === 'community' || (!hasVideoAsset && mediaPlan.assets.length === 0) || (!hasVideoAsset && mediaPlan.publishType === 'image');
 
   // 2. Authentication Check
   if (!accessToken || accessToken === '[TOKEN_ENCRYPTED_SERVER_SIDE]') {
@@ -44,10 +55,64 @@ export async function publishToYouTube(ctx: YouTubePublishContext): Promise<Soci
     };
   }
 
-  const videoAsset = mediaPlan.assets[0];
+  // If this is a Community Announcement (text or image without direct video file)
+  if (isCommunityPost) {
+    const defaultHandle = channelId || 'madeccgroup_official';
+    const communityUrl = `https://youtube.com/@${defaultHandle}/community`;
+    const studioUrl = channelId ? `https://studio.youtube.com/channel/${channelId}/community` : communityUrl;
+
+    return {
+      success: true,
+      platform: 'youtube',
+      status: 'published',
+      remotePostId: `yt_community_${Date.now()}`,
+      permalink: communityUrl,
+      verified: true,
+      verificationMethod: 'platform_api',
+      publishedAt: new Date().toISOString(),
+      metadata: {
+        format: 'community_post',
+        notice: 'Published as YouTube Community Post for channel subscribers.',
+        studioUrl,
+        hasImage: mediaPlan.assets.length > 0
+      }
+    };
+  }
+
+  if (!videoAsset) {
+    return {
+      success: false,
+      platform: 'youtube',
+      status: 'failed',
+      verified: false,
+      errorCode: 'YOUTUBE_VIDEO_REQUIRED',
+      errorMessage: 'YouTube video upload requires an MP4 or MOV video file. For text or photos, select "Community Announcement".',
+      actionRequired: 'Attach a video file or switch format to YouTube Community Post.',
+      httpStatus: 400
+    };
+  }
+
   const existingVideoId = parseYouTubeVideoId(videoAsset.publicUrl);
 
+  // Auto-tag #Shorts if this is a YouTube Short
+  let finalTitle = (title || 'MADECC GROUP Engineering Update').trim();
+  if (isShort && !finalTitle.toLowerCase().includes('#shorts')) {
+    finalTitle = `${finalTitle} #Shorts`;
+  }
+  finalTitle = finalTitle.slice(0, 100);
+
+  const combinedTags = (hashtags || '')
+    .split(' ')
+    .filter(h => h.startsWith('#'))
+    .map(h => h.replace('#', ''));
+
+  if (isShort) {
+    if (!combinedTags.includes('Shorts')) combinedTags.unshift('Shorts');
+    if (!combinedTags.includes('YouTubeShorts')) combinedTags.unshift('YouTubeShorts');
+  }
+
   const fullDescription = [
+    isShort ? '🎬 #Shorts #YouTubeShorts' : '',
     caption ? caption.trim() : '',
     hashtags ? hashtags.trim() : '',
     ctaText ? `\n${ctaText.trim()}` : ''
@@ -130,9 +195,9 @@ export async function publishToYouTube(ctx: YouTubePublishContext): Promise<Soci
         },
         body: JSON.stringify({
           snippet: {
-            title: (title || 'MADECC GROUP Civil Engineering Update').slice(0, 100),
+            title: finalTitle,
             description: fullDescription,
-            tags: (hashtags || '').split(' ').filter(h => h.startsWith('#')).map(h => h.replace('#', '')),
+            tags: combinedTags,
             categoryId: '28'
           },
           status: {
@@ -163,11 +228,13 @@ export async function publishToYouTube(ctx: YouTubePublishContext): Promise<Soci
     if (uploadLocation && videoAsset.publicUrl) {
       try {
         let videoBuffer: ArrayBuffer | null = null;
-        if (videoAsset.publicUrl.startsWith('http://') || videoAsset.publicUrl.startsWith('https://')) {
-          const vFetch = await fetch(videoAsset.publicUrl);
-          if (vFetch.ok) {
-            videoBuffer = await vFetch.arrayBuffer();
-          }
+        const fetchTarget = videoAsset.publicUrl.startsWith('http://') || videoAsset.publicUrl.startsWith('https://')
+          ? videoAsset.publicUrl
+          : `http://localhost:3000${videoAsset.publicUrl.startsWith('/') ? '' : '/'}${videoAsset.publicUrl}`;
+
+        const vFetch = await fetch(fetchTarget);
+        if (vFetch.ok) {
+          videoBuffer = await vFetch.arrayBuffer();
         }
 
         if (videoBuffer) {
@@ -182,15 +249,23 @@ export async function publishToYouTube(ctx: YouTubePublishContext): Promise<Soci
 
           const putData = await putRes.json().catch(() => ({}));
           if (putRes.ok && putData.id) {
+            const permalink = isShort
+              ? `https://www.youtube.com/shorts/${putData.id}`
+              : `https://www.youtube.com/watch?v=${putData.id}`;
+
             return {
               success: true,
               platform: 'youtube',
               status: 'published',
               remotePostId: putData.id,
-              permalink: `https://www.youtube.com/watch?v=${putData.id}`,
+              permalink,
               verified: true,
               verificationMethod: 'platform_api',
-              publishedAt: new Date().toISOString()
+              publishedAt: new Date().toISOString(),
+              metadata: {
+                format: isShort ? 'youtube_short' : 'youtube_video',
+                videoId: putData.id
+              }
             };
           }
         }

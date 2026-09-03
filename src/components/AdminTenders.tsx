@@ -545,7 +545,7 @@ export const AdminTenders: React.FC = () => {
                           key={idx}
                           href={doc.fileUrl || doc.url}
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-[11px] font-mono bg-slate-900 text-emerald-400 px-2 py-0.5 rounded border border-slate-800 hover:border-emerald-500/50"
                         >
                           <FileText className="w-3 h-3 text-amber-400" />
@@ -889,7 +889,7 @@ export const AdminTenders: React.FC = () => {
                         key={idx}
                         href={doc.fileUrl || doc.url}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-emerald-400 hover:border-emerald-500/50"
                       >
                         <div className="flex items-center gap-2 truncate">

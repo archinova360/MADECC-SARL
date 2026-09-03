@@ -2363,10 +2363,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {[
+                        { title: 'Global Site Customizer', desc: 'Identity, Mbankolo HQ, contacts & theme', tab: 'cms-settings', icon: Settings, color: 'text-amber-400' },
+                        { title: 'Page Builder Studio', desc: 'Frontend pages, heroes & custom content', tab: 'cms-pages', icon: Globe, color: 'text-sky-400' },
+                        { title: 'Services CMS', desc: 'Manage civil & construction services', tab: 'services-cms', icon: Layers, color: 'text-emerald-400' },
                         { title: 'QS & BOQ Studio', desc: 'Civil engineering bill of quantities', tab: 'boq-studio', icon: FileSpreadsheet, color: 'text-amber-400' },
                         { title: 'AI Construction Platform', desc: 'Blueprint vision takeoff & estimates', tab: 'ai-construction-intelligence', icon: Sparkles, color: 'text-purple-400' },
-                        { title: 'Enterprise ERP Hub', desc: 'Site operations, inventory & equipment', tab: 'enterprise-erp', icon: Building2, color: 'text-emerald-400' },
-                        { title: 'Quote Requests & Leads', desc: 'Commercial proposals & client pipeline', tab: 'quote-requests', icon: FileSpreadsheet, color: 'text-sky-400' },
+                        { title: 'Enterprise ERP Hub', desc: 'Site operations, inventory & equipment', tab: 'enterprise-erp', icon: Building2, color: 'text-teal-400' },
+                        { title: 'Quote Requests & Leads', desc: 'Commercial proposals & client pipeline', tab: 'quote-requests', icon: FileSpreadsheet, color: 'text-blue-400' },
                         { title: 'Social Media Studio', desc: 'OAuth 2.0 publisher & scheduler', tab: 'social-studio', icon: Megaphone, color: 'text-pink-400' },
                         { title: 'Contract Generator', desc: 'Legal contract agreement builder', tab: 'legal-contracts', icon: Scale, color: 'text-indigo-400' }
                       ].map((hub, idx) => {

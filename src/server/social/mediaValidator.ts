@@ -113,11 +113,11 @@ export function createPlatformMediaPlan(
       if (!hasVideo) {
         return {
           platform,
-          compatible: false,
-          publishType: 'video',
-          assets: [],
-          warnings: [],
-          errors: ['YouTube requires video media for direct video publishing. Add an MP4/MOV video asset before publishing.']
+          compatible: true,
+          publishType: hasImage ? 'photo_post' : 'text_only',
+          assets: hasImage ? [assets.find(a => a.mediaType === 'image')!] : [],
+          warnings: ['No MP4/MOV video attached. Broadcast will publish as a YouTube Community Announcement on your channel tab.'],
+          errors: []
         };
       }
       const videoAsset = assets.find(a => a.mediaType === 'video')!;

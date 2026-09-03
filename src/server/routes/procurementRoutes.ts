@@ -444,7 +444,7 @@ export function setupProcurementRoutes(app: express.Express) {
             const title = doc.title || doc.fileName || `Technical Dossier File ${i + 1}`;
             const url = doc.fileUrl || doc.url || '#';
             const size = doc.fileSize ? ` -- ${(doc.fileSize / 1024).toFixed(1)} KB` : '';
-            return `<li style="margin-bottom: 8px;"><a href="${url}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 600;">[INBOX] ${title}</a> <span style="color: #64748b; font-size: 12px;">(${doc.fileType || 'Document'}${size})</span></li>`;
+            return `<li style="margin-bottom: 8px;"><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-weight: 600;">[INBOX] ${title}</a> <span style="color: #64748b; font-size: 12px;">(${doc.fileType || 'Document'}${size})</span></li>`;
           }).join('')
         : '<li>No separate digital file attachments provided.</li>';
 

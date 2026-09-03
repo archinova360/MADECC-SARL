@@ -44,26 +44,32 @@ export async function publishToWhatsApp(ctx: WhatsAppPublishContext): Promise<So
   try {
     const assets = mediaPlan.assets;
     let messageBody: Record<string, any>;
+    const rawAssetUrl = assets[0]?.publicUrl;
+    const resolvedAssetUrl = rawAssetUrl ? (
+      rawAssetUrl.startsWith('http://') || rawAssetUrl.startsWith('https://')
+        ? rawAssetUrl
+        : `https://madeccgroup.online${rawAssetUrl.startsWith('/') ? '' : '/'}${rawAssetUrl}`
+    ) : '';
 
-    if (mediaPlan.publishType === 'image' && assets.length > 0) {
+    if (mediaPlan.publishType === 'image' && assets.length > 0 && resolvedAssetUrl) {
       messageBody = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: cleanRecipient,
         type: 'image',
         image: {
-          link: assets[0].publicUrl,
+          link: resolvedAssetUrl,
           caption: fullText.slice(0, 1024)
         }
       };
-    } else if (mediaPlan.publishType === 'video' && assets.length > 0) {
+    } else if (mediaPlan.publishType === 'video' && assets.length > 0 && resolvedAssetUrl) {
       messageBody = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: cleanRecipient,
         type: 'video',
         video: {
-          link: assets[0].publicUrl,
+          link: resolvedAssetUrl,
           caption: fullText.slice(0, 1024)
         }
       };

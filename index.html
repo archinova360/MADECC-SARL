@@ -5,22 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MADECC GROUP</title>
     <meta name="description" content="A production-ready full-stack website and administrative platform for MADECC GROUP, a premier construction and project management company." />
+    <meta name="theme-color" content="#0a0a0b" />
+    
+    <!-- Open Graph / Social Media -->
     <meta property="og:title" content="MADECC GROUP" />
     <meta property="og:description" content="A production-ready full-stack website and administrative platform for MADECC GROUP, a premier construction and project management company." />
-    <link rel="icon" type="image/jpeg" href="/app_favicon.jpg" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/app_favicon.jpg" />
-    <link rel="canonical" href="https://madeccgroup.online/" />
     <meta property="og:url" content="https://madeccgroup.online/" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://madeccgroup.online/logo.png" />
+    <meta property="og:site_name" content="MADECC GROUP" />
+
+    <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="MADECC GROUP" />
     <meta name="twitter:description" content="A production-ready full-stack website and administrative platform for MADECC GROUP, a premier construction and project management company." />
     <meta name="twitter:image" content="https://madeccgroup.online/logo.png" />
-    <meta name="google-adsense-account" content="ca-pub-7227721489757915">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915" crossorigin="anonymous"></script>
+
+    <!-- Icons & Canonical -->
+    <link rel="icon" type="image/jpeg" href="/app_favicon.jpg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/app_favicon.jpg" />
+    <link rel="canonical" href="https://madeccgroup.online/" />
+
+    <!-- Performance Preconnections -->
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+
+    <!-- Structured Data (JSON-LD) for LocalBusiness / GeneralContractor -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "GeneralContractor",
+      "name": "MADECC GROUP",
+      "url": "https://madeccgroup.online/",
+      "logo": "https://madeccgroup.online/logo.png",
+      "image": "https://madeccgroup.online/logo.png",
+      "description": "MADECC GROUP is a premier civil engineering, construction management, and architectural enterprise headquartered in Cameroon, delivering world-class infrastructure, commercial complexes, and turn-key residential works.",
+      "telephone": "+237671063511",
+      "email": "contact@madeccgroup.online",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Mbankolo",
+        "addressLocality": "Yaoundé",
+        "addressRegion": "Centre",
+        "addressCountry": "Cameroon"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "3.8833",
+        "longitude": "11.5167"
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        "opens": "07:30",
+        "closes": "18:00"
+      },
+      "priceRange": "$$$$"
+    }
+    </script>
+
+    <!-- Google AdSense Account Config -->
+    <meta name="google-adsense-account" content="ca-pub-7227721489757915" />
     <script>
+      // Load third-party AdSense lazily after initial page render so it never blocks FCP, LCP, or TBT
+      function initAdSense() {
+        if (window.__adsenseLoaded || document.getElementById('adsense-script')) return;
+        window.__adsenseLoaded = true;
+        var s = document.createElement('script');
+        s.id = 'adsense-script';
+        s.async = true;
+        s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915";
+        s.crossOrigin = "anonymous";
+        document.head.appendChild(s);
+      }
+      if (document.readyState === 'complete') {
+        setTimeout(initAdSense, 2500);
+      } else {
+        window.addEventListener('load', function() {
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(initAdSense, { timeout: 3500 });
+          } else {
+            setTimeout(initAdSense, 2500);
+          }
+        });
+      }
+
       // Suppress benign Vite dev server WebSocket disconnect warnings caused by platform HMR disablement
       window.addEventListener('unhandledrejection', function(event) {
         var reason = String(event.reason && (event.reason.message || event.reason) || '');
@@ -69,4 +139,3 @@
     </form>
   </body>
 </html>
-

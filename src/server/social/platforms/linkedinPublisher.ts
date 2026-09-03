@@ -51,6 +51,21 @@ export async function publishToLinkedIn(ctx: LinkedInPublishContext): Promise<So
       isReshareDisabledByAuthor: false
     };
 
+    const firstAsset = mediaPlan.assets[0];
+    if (firstAsset?.publicUrl) {
+      const mediaTargetUrl = firstAsset.publicUrl.startsWith('http://') || firstAsset.publicUrl.startsWith('https://')
+        ? firstAsset.publicUrl
+        : `https://madeccgroup.online${firstAsset.publicUrl.startsWith('/') ? '' : '/'}${firstAsset.publicUrl}`;
+
+      payload.content = {
+        article: {
+          source: mediaTargetUrl,
+          title: title || 'MADECC GROUP Engineering Update',
+          description: (caption || 'MADECC GROUP official corporate update').slice(0, 250)
+        }
+      };
+    }
+
     const res = await fetch('https://api.linkedin.com/rest/posts', {
       method: 'POST',
       headers: {

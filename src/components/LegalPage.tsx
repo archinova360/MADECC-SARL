@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shield, FileText, Lock, CheckCircle2, ArrowLeft, ExternalLink, Building2 } from 'lucide-react';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 interface LegalPageProps {
   type: 'terms' | 'privacy' | 'safety';
@@ -7,6 +8,7 @@ interface LegalPageProps {
 }
 
 export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
+  const { settings } = useSiteSettings();
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       {/* Navigation Breadcrumb */}
@@ -117,9 +119,9 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   For inquiries regarding your personal data, rights to rectification, or data deletion requests, submit an automated request via our <button onClick={() => setCurrentTab('data-deletion')} className="text-amber-400 font-bold hover:underline cursor-pointer">Official Data Deletion Portal (/data-deletion)</button> or contact our Compliance Office:
                 </p>
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-400 space-y-1">
-                  <p><strong>Entity:</strong> MADECC GROUP Compliance & Legal Department</p>
-                  <p><strong>Headquarters:</strong> Yaoundé Mbankolo, Republic of Cameroon (Operating Nationwide &amp; Pan-Africa)</p>
-                  <p><strong>Official Email:</strong> <a href="mailto:kreboya603@gmail.com" className="text-amber-400">kreboya603@gmail.com</a> / <a href="mailto:madecccons@gmail.com" className="text-amber-400">madecccons@gmail.com</a></p>
+                  <p><strong>Entity:</strong> {settings?.siteName || 'MADECC GROUP'} Compliance &amp; Legal Department</p>
+                  <p><strong>Headquarters:</strong> {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'} (Operating Nationwide &amp; Pan-Africa)</p>
+                  <p><strong>Official Email:</strong> <a href={`mailto:${settings?.email || 'Infomadeccconstruction@gmail.com'}`} className="text-amber-400">{settings?.email || 'Infomadeccconstruction@gmail.com'}</a> {settings?.secondaryEmail ? <> / <a href={`mailto:${settings.secondaryEmail}`} className="text-amber-400">{settings.secondaryEmail}</a></> : null}</p>
                 </div>
               </section>
             </>

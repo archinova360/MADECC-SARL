@@ -131,7 +131,7 @@ export default function MediaPreviewImage({
               <a
                 href={currentSrc}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded-lg border border-slate-700 flex items-center gap-1 transition-colors"
               >
                 <ExternalLink className="w-3 h-3 text-blue-400" /> Open Direct URL

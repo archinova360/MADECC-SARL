@@ -529,6 +529,7 @@ export default function FloatingVoiceAssistant() {
                   step="0.05"
                   value={volume}
                   onChange={handleVolumeChange}
+                  aria-label="Speech volume"
                   className="w-full accent-amber-500 bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                   disabled={isMuted}
                 />
@@ -549,6 +550,7 @@ export default function FloatingVoiceAssistant() {
                   step="0.1"
                   value={rate}
                   onChange={handleRateChange}
+                  aria-label="Speech playback speed"
                   className="w-full accent-amber-500 bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                 />
               </div>
@@ -562,6 +564,7 @@ export default function FloatingVoiceAssistant() {
                   type="checkbox"
                   checked={showCaptions}
                   onChange={() => setShowCaptions(!showCaptions)}
+                  aria-label="Toggle voice captions and subtitles"
                   className="rounded bg-slate-900 border-slate-800 accent-amber-500 h-3.5 w-3.5 text-amber-500 focus:ring-0"
                 />
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Subtitles</span>
@@ -573,6 +576,7 @@ export default function FloatingVoiceAssistant() {
                   type="checkbox"
                   checked={autoplayEnabled}
                   onChange={handleAutoplayToggle}
+                  aria-label="Toggle voice narration autoplay"
                   className="rounded bg-slate-900 border-slate-800 accent-amber-500 h-3.5 w-3.5 text-amber-500 focus:ring-0"
                 />
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Autoplay</span>
@@ -582,8 +586,10 @@ export default function FloatingVoiceAssistant() {
             {/* Custom Voice Select */}
             {voices.length > 0 && (
               <div className="space-y-1 pt-1.5">
-                <label className="block text-[10px] font-mono text-slate-500 uppercase">Voice Accent Engine</label>
+                <label htmlFor="voice-accent-select" className="block text-[10px] font-mono text-slate-500 uppercase">Voice Accent Engine</label>
                 <select
+                  id="voice-accent-select"
+                  aria-label="Voice Accent Engine"
                   value={selectedVoiceName}
                   onChange={(e) => {
                     setSelectedVoiceName(e.target.value);

@@ -11,7 +11,7 @@ interface TwitterPublishContext {
 }
 
 export async function publishToTwitter(ctx: TwitterPublishContext): Promise<SocialPublishResult> {
-  const { accessToken, title, caption, hashtags, ctaText } = ctx;
+  const { accessToken, title, caption, hashtags, ctaText, mediaPlan } = ctx;
 
   if (!accessToken || accessToken === '[TOKEN_ENCRYPTED_SERVER_SIDE]') {
     return {
@@ -26,16 +26,32 @@ export async function publishToTwitter(ctx: TwitterPublishContext): Promise<Soci
     };
   }
 
-  // 280 character limit handling
-  const shortText = [
+  const firstAsset = mediaPlan?.assets?.[0];
+  const mediaUrl = firstAsset?.publicUrl ? (
+    firstAsset.publicUrl.startsWith('http://') || firstAsset.publicUrl.startsWith('https://')
+      ? firstAsset.publicUrl
+      : `https://madeccgroup.online${firstAsset.publicUrl.startsWith('/') ? '' : '/'}${firstAsset.publicUrl}`
+  ) : '';
+
+  // 280 character limit handling, ensuring media link is preserved for rich card expansion
+  let shortText = [
     title ? `🏗️ ${title.trim()}` : '',
     caption ? caption.trim() : '',
     hashtags ? hashtags.trim() : '',
     ctaText ? ctaText.trim() : ''
   ]
     .filter(Boolean)
-    .join('\n\n')
-    .slice(0, 280);
+    .join('\n\n');
+
+  if (mediaUrl) {
+    const maxTextLen = Math.max(50, 275 - mediaUrl.length);
+    if (shortText.length > maxTextLen) {
+      shortText = shortText.slice(0, maxTextLen - 3) + '...';
+    }
+    shortText = `${shortText}\n\n${mediaUrl}`.trim();
+  } else if (shortText.length > 280) {
+    shortText = shortText.slice(0, 277) + '...';
+  }
 
   try {
     const res = await fetch('https://api.twitter.com/2/tweets', {

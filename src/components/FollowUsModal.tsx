@@ -377,7 +377,11 @@ export default function FollowUsModal({
                       ? window.location.origin 
                       : (socialChannels.find(c => c.id === selectedNetworkForQr)?.url || window.location.origin)
                   )}&color=0b0f19&bgcolor=ffffff&margin=1`}
-                  alt="MADECC Social QR Code"
+                  alt="MADECC Group Social Hub QR Code"
+                  width={192}
+                  height={192}
+                  loading="lazy"
+                  decoding="async"
                   className="w-48 h-48 rounded-lg"
                 />
                 <span className="text-[10px] font-mono font-bold text-slate-800 mt-2 uppercase tracking-widest">

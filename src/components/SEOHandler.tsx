@@ -149,15 +149,32 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
       el.setAttribute('content', content);
     };
 
-    const origin = window.location.origin;
-    const currentUrl = window.location.href;
-    const shareImage = profile.seo.ogImage || `${origin}/logo.png`;
+    // Helper to set or update canonical link tag
+    const setCanonicalTag = (url: string) => {
+      let el = document.querySelector('link[rel="canonical"]');
+      if (!el) {
+        el = document.createElement('link');
+        el.setAttribute('rel', 'canonical');
+        document.head.appendChild(el);
+      }
+      el.setAttribute('href', url);
+    };
+
+    const PRODUCTION_ORIGIN = 'https://madeccgroup.online';
+    const origin = window.location.hostname.includes('madeccgroup.online') ? 'https://madeccgroup.online' : window.location.origin;
+    const path = currentTab === 'home' ? '' : currentTab;
+    const canonicalUrl = `${PRODUCTION_ORIGIN}/${path}`;
+    const currentUrl = `${origin}/${path}`;
+    const shareImage = profile.seo.ogImage || `${PRODUCTION_ORIGIN}/logo.png`;
+
+    // Always ensure production canonical tag is set correctly
+    setCanonicalTag(canonicalUrl);
 
     // 2. Set Standard Meta Tags
     setMetaTag('name', 'description', description);
     setMetaTag('name', 'keywords', keywords);
     setMetaTag('name', 'author', legalName);
-    setMetaTag('name', 'robots', 'index, follow');
+    setMetaTag('name', 'robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
 
     // 3. Set Open Graph Tags
     setMetaTag('property', 'og:title', title);

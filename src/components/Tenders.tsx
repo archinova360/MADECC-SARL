@@ -775,7 +775,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
                         <div key={i} className="flex items-center justify-between text-xs font-mono bg-slate-950 px-3 py-2 rounded-lg border border-slate-800 text-emerald-400">
                           <div className="flex items-center gap-2 truncate max-w-[80%]">
                             <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="truncate hover:underline text-slate-200">
+                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:underline text-slate-200">
                               {doc.title || doc.fileName}
                             </a>
                           </div>

@@ -4572,7 +4572,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
                             <a
                               href={res.permalink || res.externalUrl}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-lg shadow-sm flex items-center gap-1.5 transition-all"
                             >
                               <ExternalLink className="w-3.5 h-3.5" /> View Post Live →

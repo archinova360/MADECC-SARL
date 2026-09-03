@@ -65,7 +65,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 1,
       question: 'What is MADECC GROUP and where does the company operate?',
-      answer: 'MADECC GROUP is a premier multi-disciplinary construction, civil engineering, and quantity surveying group headquartered in Yaoundé Mbankolo, Cameroon. We operate everywhere across the entire national territory of Cameroon (all 10 regions: Centre, Littoral, West, North-West, South-West, South, East, Adamawa, North, Far North) and across Africa. We deliver custom residential developments, commercial high-rises, industrial complexes, and public infrastructure projects.',
+      answer: 'MADECC GROUP is a premier multi-disciplinary construction, civil engineering, and quantity surveying group headquartered in Mbankolo, Yaoundé, Cameroon. We operate everywhere across the entire national territory of Cameroon (all 10 regions: Centre, Littoral, West, North-West, South-West, South, East, Adamawa, North, Far North) and across Africa. We deliver custom residential developments, commercial high-rises, industrial complexes, and public infrastructure projects.',
       categoryName: 'General',
       tags: ['company', 'location', 'yaounde', 'mbankolo', 'cameroon', 'africa'],
       featured: true
@@ -225,7 +225,7 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     {
       id: 20,
       question: 'How can I reach MADECC GROUP offices directly for project or emergency structural queries?',
-      answer: 'You can contact our central operations desk at:\n• Headquarters: Yaoundé Mbankolo, Cameroon (Operating Everywhere in Cameroon & Across Africa)\n• Telephone / WhatsApp: +237 683 316 486\n• Official Emails: kreboya603@gmail.com / madecccons@gmail.com\n• Operating Hours: Monday to Friday, 08:00 - 18:00 WAT (West Africa Time).',
+      answer: 'You can contact our central operations desk at:\n• Headquarters: Mbankolo, Yaoundé, Cameroon (Operating Everywhere in Cameroon & Across Africa)\n• Telephone / WhatsApp: +237 683 316 486\n• Official Emails: kreboya603@gmail.com / madecccons@gmail.com\n• Operating Hours: Monday to Friday, 08:00 - 18:00 WAT (West Africa Time).',
       categoryName: 'Account & Support',
       tags: ['contact', 'phone', 'whatsapp', 'office', 'yaounde', 'mbankolo', 'cameroon', 'africa'],
       relatedPage: 'contact'

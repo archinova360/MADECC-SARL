@@ -785,11 +785,11 @@ export default function AdminApiPlatform({ onBackToDashboard }: AdminApiPlatform
               {/* Receipt File / Image Preview */}
               {selectedRequest.receiptUrl && (
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-400 block font-medium">Payment Proof / Receipt Document:</label>
+                  <span className="text-xs text-slate-400 block font-medium">Payment Proof / Receipt Document:</span>
                   <a
                     href={selectedRequest.receiptUrl}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-2 p-2 bg-slate-900 rounded-lg border border-slate-700 text-xs text-amber-400 hover:underline"
                   >
                     <FileText className="w-4 h-4" />

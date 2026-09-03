@@ -380,6 +380,8 @@ export default function Navbar({
                     }
                   }}
                   alt={`${currentTenant.name} Logo`} 
+                  width={48}
+                  height={48}
                   className="h-full w-full object-contain"
                   referrerPolicy="no-referrer"
                 />
@@ -632,6 +634,8 @@ export default function Navbar({
               onClick={() => setMenuOpen(!menuOpen)}
               className="text-slate-400 hover:text-white p-2"
               id="mobile-menu-btn"
+              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={menuOpen}
             >
               {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -891,6 +895,7 @@ export default function Navbar({
                           value={reqName}
                           onChange={(e) => setReqName(e.target.value)}
                           placeholder="Your Name / Reviewer ID *"
+                          aria-label="Your Name or Reviewer ID"
                           className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                         />
                         <input
@@ -898,6 +903,7 @@ export default function Navbar({
                           value={reqOrg}
                           onChange={(e) => setReqOrg(e.target.value)}
                           placeholder="Meta / Organization"
+                          aria-label="Organization or Review Agency"
                           className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                         />
                       </div>
@@ -909,6 +915,7 @@ export default function Navbar({
                           value={reqEmail}
                           onChange={(e) => setReqEmail(e.target.value)}
                           placeholder="Official Work Email *"
+                          aria-label="Official Work Email"
                           className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                         />
                         <input
@@ -916,6 +923,7 @@ export default function Navbar({
                           value={reqPhone}
                           onChange={(e) => setReqPhone(e.target.value)}
                           placeholder="WhatsApp Phone Number"
+                          aria-label="WhatsApp Phone Number"
                           className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                         />
                       </div>
@@ -925,6 +933,7 @@ export default function Navbar({
                         value={reqMsg}
                         onChange={(e) => setReqMsg(e.target.value)}
                         placeholder="Additional details (e.g., App Review Case Number)..."
+                        aria-label="Additional verification details or App Review Case Number"
                         className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                       />
 

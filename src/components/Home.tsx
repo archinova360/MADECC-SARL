@@ -35,6 +35,7 @@ import { getOptimizedImageUrl, formatCurrency } from '../lib/utils.ts';
 import { HeroBannerSkeleton, ProjectListSkeleton } from './Skeleton.tsx';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import { TenantContentService } from '../services/tenantContentService.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 import AnimatedCounter from './AnimatedCounter.tsx';
 import { FadeIn, FadeInDirection, ScaleIn, StaggerContainer, StaggerItem, InteractiveCard, FloatElement, PulseBeacon } from './MotionReveal.tsx';
 import { InteractiveQuickEstimator } from './InteractiveQuickEstimator.tsx';
@@ -50,6 +51,7 @@ interface HomeProps {
 
 export default function Home({ setCurrentTab, setSelectedProjectId, currentTenant }: HomeProps) {
   const { t } = useLanguage();
+  const { settings } = useSiteSettings();
   const tenantId = currentTenant?.id || 1;
   const tenantProfile = TenantContentService.getProfile(tenantId);
   const tenant = currentTenant || tenantProfile.tenant;
@@ -322,12 +324,12 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 <Building2 className="w-3.5 h-3.5" /> Construction & Civil Engineering — Cameroon
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md shadow-sm">
-                <MapPin className="w-3 h-3 text-amber-500" /> HQ: Yaoundé (Mbankolo) • Douala (Akwa)
+                <MapPin className="w-3 h-3 text-amber-500" /> HQ: {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'}
               </span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white drop-shadow-md">
-              MADECC GROUP — Building Cameroon’s{' '}
+              {settings?.siteName || 'MADECC GROUP'} — Building Cameroon’s{' '}
               <RotatingMovingText 
                 words={[
                   'Future',
@@ -341,7 +343,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             </h1>
 
             <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
-              Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon. Delivered with Eurocode 2 structural rigor and zero compromise.
+              {settings?.tagline || 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon. Delivered with Eurocode 2 structural rigor and zero compromise.'}
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-3">
@@ -771,6 +773,8 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     <img
                       src={getOptimizedImageUrl(project.image, 800, 80)}
                       alt={project.title}
+                      width={400}
+                      height={224}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
                       referrerPolicy="no-referrer"
                       loading="lazy"
@@ -955,8 +959,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               ) : (
                 <form onSubmit={handleReviewSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Your Full Name</label>
+                    <label htmlFor="review-author" className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Your Full Name</label>
                     <input
+                      id="review-author"
                       type="text"
                       className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-600 outline-none transition-all"
                       placeholder="e.g. Richard Ndip"
@@ -968,8 +973,10 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Rating</label>
+                      <label htmlFor="review-rating" className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Rating</label>
                       <select
+                        id="review-rating"
+                        aria-label="Rating"
                         className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                         value={newRating}
                         onChange={(e) => setNewRating(parseInt(e.target.value))}
@@ -983,8 +990,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Project / Location</label>
+                      <label htmlFor="review-project" className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Project / Location</label>
                       <input
+                        id="review-project"
                         type="text"
                         className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-600 outline-none transition-all"
                         placeholder="e.g. Odza Duplex"
@@ -995,8 +1003,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Your Review</label>
+                    <label htmlFor="review-text" className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1">Your Review</label>
                     <textarea
+                      id="review-text"
                       rows={3}
                       className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-600 outline-none transition-all resize-none"
                       placeholder="Describe your experience with our construction execution..."
@@ -1018,6 +1027,8 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     </div>
                     <input
                       type="text"
+                      id="home-review-captcha"
+                      aria-label="Solve mathematical equation to post review"
                       className={`w-full bg-slate-950 border ${reviewCaptchaError ? 'border-red-500' : 'border-slate-800'} focus:border-amber-500 rounded-xl py-2 px-3 text-xs text-white placeholder-slate-600 outline-none`}
                       placeholder="What is x? (e.g. 5)"
                       value={reviewCaptcha}
@@ -1083,8 +1094,8 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           <div className="space-y-4" id="faq-accordions-group">
             {[
               {
-                q: "Where is MADECC GROUP headquartered and where do you operate in Cameroon?",
-                a: "MADECC GROUP is headquartered in Yaoundé (Mbankolo), Centre Region, Cameroon. We operate across all 10 regions of Cameroon: Centre (Yaoundé), Littoral (Douala), South (Kribi), West (Bafoussam), North-West (Bamenda), South-West (Limbe/Buea), East (Bertoua), and Northern regions (Garoua, Maroua, Ngaoundéré). We deploy resident site supervisors and mobile machinery to urban and peri-urban locations."
+                q: `Where is ${settings?.siteName || 'MADECC GROUP'} headquartered and where do you operate in Cameroon?`,
+                a: `${settings?.siteName || 'MADECC GROUP'} is headquartered in ${settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'}. We operate across all 10 regions of Cameroon: Centre (Yaoundé), Littoral (Douala), South (Kribi), West (Bafoussam), North-West (Bamenda), South-West (Limbe/Buea), East (Bertoua), and Northern regions (Garoua, Maroua, Ngaoundéré). We deploy resident site supervisors and mobile machinery to urban and peri-urban locations.`
               },
               {
                 q: "How does MADECC GROUP ensure accurate construction pricing in FCFA?",

@@ -2986,7 +2986,7 @@ export default function DocumentStudio({
                               <a 
                                 href={`/?verify=${contractVerificationToken}`}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="noopener noreferrer"
                                 className="inline-block text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-500 font-bold px-2.5 py-1 rounded font-mono uppercase tracking-wider transition-colors mt-1"
                               >
                                 Test Verification Page

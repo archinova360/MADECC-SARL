@@ -1324,7 +1324,7 @@ export function setupErpRoutes(app: express.Express) {
             </div>
 
             <div style="text-align: center; margin: 32px 0;">
-              <a href="${reportUrl || '#'}" target="_blank" style="background-color: #f59e0b; color: #0f172a; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; text-transform: uppercase; font-size: 13px;">
+              <a href="${reportUrl || '#'}" target="_blank" rel="noopener noreferrer" style="background-color: #f59e0b; color: #0f172a; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; text-transform: uppercase; font-size: 13px;">
                 Access Construction Document
               </a>
             </div>

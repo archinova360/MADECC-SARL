@@ -1,50 +1,59 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase.ts';
 import { User, Tenant } from './types.ts';
 import { AnimatePresence } from 'motion/react';
 import { PageTransition } from './components/MotionReveal.tsx';
 
-// Layout & Core Global Components
+// Layout & Core Global Components (Critical path for instant paint)
 import Navbar from './components/Navbar.tsx';
 import Footer from './components/Footer.tsx';
 import FloatingContactHub from './components/FloatingContactHub.tsx';
-import FloatingVoiceAssistant from './components/FloatingVoiceAssistant.tsx';
 import SEOHandler from './components/SEOHandler.tsx';
 import LiveTickerMarquee from './components/LiveTickerMarquee.tsx';
-
-// Tab Screens
 import Home from './components/Home.tsx';
-import About from './components/About.tsx';
-import Projects from './components/Projects.tsx';
-import Blog from './components/Blog.tsx';
-import Contact from './components/Contact.tsx';
-import Booking from './components/Booking.tsx';
-import Admin from './components/Admin.tsx';
-import VerifyContract from './components/VerifyContract.tsx';
-import { ProjectBudgetCalculator } from './components/ProjectBudgetCalculator.tsx';
-import { ConstructionCostGuide } from './components/ConstructionCostGuide.tsx';
-import { Services } from './components/Services.tsx';
-import { RequestQuote } from './components/RequestQuote.tsx';
-import { ScheduleConsultation } from './components/ScheduleConsultation.tsx';
-import LegalPage from './components/LegalPage.tsx';
-import DataDeletion from './components/DataDeletion.tsx';
-import FAQ from './components/FAQ.tsx';
-import { Tenders } from './components/Tenders.tsx';
-import DeveloperPortal from './components/DeveloperPortal.tsx';
 
-// SaaS Multi-Tenant Modules
-import { SuperAdmin } from './components/SuperAdmin.tsx';
-import { PublicSaaSMarketing } from './components/PublicSaaSMarketing.tsx';
-import { TenantBillingModal } from './components/TenantBillingModal.tsx';
-import { TenantThankYouModal } from './components/TenantThankYouModal.tsx';
-import { TenantOnboardingModal } from './components/TenantOnboardingModal.tsx';
+// Code-Split Dynamic Route Screens
+const About = lazy(() => import('./components/About.tsx'));
+const Projects = lazy(() => import('./components/Projects.tsx'));
+const Blog = lazy(() => import('./components/Blog.tsx'));
+const Contact = lazy(() => import('./components/Contact.tsx'));
+const Booking = lazy(() => import('./components/Booking.tsx'));
+const Admin = lazy(() => import('./components/Admin.tsx'));
+const VerifyContract = lazy(() => import('./components/VerifyContract.tsx'));
+const ProjectBudgetCalculator = lazy(() => import('./components/ProjectBudgetCalculator.tsx').then(m => ({ default: m.ProjectBudgetCalculator })));
+const ConstructionCostGuide = lazy(() => import('./components/ConstructionCostGuide.tsx').then(m => ({ default: m.ConstructionCostGuide })));
+const Services = lazy(() => import('./components/Services.tsx').then(m => ({ default: m.Services })));
+const RequestQuote = lazy(() => import('./components/RequestQuote.tsx').then(m => ({ default: m.RequestQuote })));
+const ScheduleConsultation = lazy(() => import('./components/ScheduleConsultation.tsx').then(m => ({ default: m.ScheduleConsultation })));
+const LegalPage = lazy(() => import('./components/LegalPage.tsx'));
+const DataDeletion = lazy(() => import('./components/DataDeletion.tsx'));
+const FAQ = lazy(() => import('./components/FAQ.tsx'));
+const Tenders = lazy(() => import('./components/Tenders.tsx').then(m => ({ default: m.Tenders })));
+const DeveloperPortal = lazy(() => import('./components/DeveloperPortal.tsx'));
+
+// Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
+const SuperAdmin = lazy(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
+const PublicSaaSMarketing = lazy(() => import('./components/PublicSaaSMarketing.tsx').then(m => ({ default: m.PublicSaaSMarketing })));
+const TenantBillingModal = lazy(() => import('./components/TenantBillingModal.tsx').then(m => ({ default: m.TenantBillingModal })));
+const TenantThankYouModal = lazy(() => import('./components/TenantThankYouModal.tsx').then(m => ({ default: m.TenantThankYouModal })));
+const TenantOnboardingModal = lazy(() => import('./components/TenantOnboardingModal.tsx').then(m => ({ default: m.TenantOnboardingModal })));
+const FloatingVoiceAssistant = lazy(() => import('./components/FloatingVoiceAssistant.tsx'));
+
 import { TenantService } from './services/tenantService.ts';
-
 import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';
 import { LanguageProvider } from './lib/LanguageContext.tsx';
 import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext.tsx';
 import FollowUsModal from './components/FollowUsModal.tsx';
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3" role="status" aria-live="polite">
+      <div className="w-10 h-10 border-4 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
+      <span className="text-xs font-mono uppercase tracking-widest text-slate-400">Loading module...</span>
+    </div>
+  );
+}
 
 function AppContent({
   currentTab,
@@ -102,28 +111,30 @@ function AppContent({
   // Special Full-Screen Views (Super Admin & SaaS Marketing Showcase)
   if (currentTab === 'super-admin') {
     return (
-      <SuperAdmin
-        onBackToApp={() => setCurrentTab('home')}
-        onImpersonateTenant={(t) => {
-          handleTenantSwitch(t);
-          setCurrentTab('admin');
-        }}
-        onTriggerThankYou={(t, planCode, txRef) => {
-          setThankYouModalState({
-            isOpen: true,
-            tenant: t,
-            planCode: planCode,
-            confirmedBy: 'Super Admin (Manual Direct Verification)',
-            transactionRef: txRef
-          });
-        }}
-      />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <SuperAdmin
+          onBackToApp={() => setCurrentTab('home')}
+          onImpersonateTenant={(t) => {
+            handleTenantSwitch(t);
+            setCurrentTab('admin');
+          }}
+          onTriggerThankYou={(t, planCode, txRef) => {
+            setThankYouModalState({
+              isOpen: true,
+              tenant: t,
+              planCode: planCode,
+              confirmedBy: 'Super Admin (Manual Direct Verification)',
+              transactionRef: txRef
+            });
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (currentTab === 'saas-cloud') {
     return (
-      <>
+      <Suspense fallback={<RouteLoadingFallback />}>
         <PublicSaaSMarketing
           onEnterFlagshipTenant={() => {
             const flagship = TenantService.getTenantById(1) || currentTenant;
@@ -141,7 +152,7 @@ function AppContent({
             setCurrentTab('admin');
           }}
         />
-      </>
+      </Suspense>
     );
   }
 
@@ -259,6 +270,14 @@ function AppContent({
         ? 'bg-slate-50 text-slate-800 selection:bg-amber-200 selection:text-slate-900'
         : 'bg-[#0A0A0B] text-slate-200 selection:bg-amber-500 selection:text-slate-950'
     }`}>
+      {/* Accessible Skip to Main Content Link */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-amber-500 focus:text-slate-950 focus:font-bold focus:rounded-lg focus:shadow-2xl focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Emergency / Site-Wide Broadcast Banner */}
       {settings?.emergencyBanner?.enabled && settings.emergencyBanner.message && (
         <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-between gap-3 shadow-md z-40">
@@ -307,7 +326,7 @@ function AppContent({
       />
 
       {/* Main Content View with transition wrapper */}
-      <main className="flex-grow">
+      <main id="main-content" className="flex-grow">
         {loadingAuth && currentTab === 'admin' ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
             <div className={`w-10 h-10 border-4 rounded-full animate-spin ${theme === 'light' ? 'border-slate-300 border-t-amber-500' : 'border-slate-800 border-t-amber-500'}`} />
@@ -316,7 +335,9 @@ function AppContent({
         ) : (
           <AnimatePresence mode="wait">
             <PageTransition key={currentTab}>
-              {renderActiveScreen()}
+              <Suspense fallback={<RouteLoadingFallback />}>
+                {renderActiveScreen()}
+              </Suspense>
             </PageTransition>
           </AnimatePresence>
         )}
@@ -334,49 +355,53 @@ function AppContent({
       <FloatingContactHub />
 
       {/* Enterprise AI Voice Assistant Narrator */}
-      <FloatingVoiceAssistant />
+      <Suspense fallback={null}>
+        <FloatingVoiceAssistant />
+      </Suspense>
 
       {/* Multi-Tenant SaaS Modals */}
-      <TenantBillingModal
-        isOpen={isBillingOpen}
-        onClose={() => setIsBillingOpen(false)}
-        tenant={currentTenant}
-        onPaymentSubmitted={(details: any) => {
-          setIsBillingOpen(false);
-          // Show celebration / pending verification modal
-          setThankYouModalState({
-            isOpen: true,
-            tenant: currentTenant,
-            planCode: typeof details === 'string' ? details : (details?.planCode || 'ENTERPRISE'),
-            transactionRef: details?.transactionRef || details?.ref || 'TXN-DIRECT',
-            confirmedBy: 'Pending Super Admin Verification'
-          });
-        }}
-      />
+      <Suspense fallback={null}>
+        <TenantBillingModal
+          isOpen={isBillingOpen}
+          onClose={() => setIsBillingOpen(false)}
+          tenant={currentTenant}
+          onPaymentSubmitted={(details: any) => {
+            setIsBillingOpen(false);
+            // Show celebration / pending verification modal
+            setThankYouModalState({
+              isOpen: true,
+              tenant: currentTenant,
+              planCode: typeof details === 'string' ? details : (details?.planCode || 'ENTERPRISE'),
+              transactionRef: details?.transactionRef || details?.ref || 'TXN-DIRECT',
+              confirmedBy: 'Pending Super Admin Verification'
+            });
+          }}
+        />
 
-      <TenantOnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
-        onTenantCreated={(newTenant) => {
-          handleTenantSwitch(newTenant);
-          setCurrentTab('admin');
-        }}
-      />
-
-      {thankYouModalState.isOpen && thankYouModalState.tenant && (
-        <TenantThankYouModal
-          isOpen={thankYouModalState.isOpen}
-          onClose={() => setThankYouModalState({ isOpen: false, tenant: null, planCode: '' })}
-          tenant={thankYouModalState.tenant}
-          planCode={thankYouModalState.planCode}
-          confirmedBy={thankYouModalState.confirmedBy}
-          transactionRef={thankYouModalState.transactionRef}
-          onGoToDashboard={() => {
-            setThankYouModalState({ isOpen: false, tenant: null, planCode: '' });
+        <TenantOnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+          onTenantCreated={(newTenant) => {
+            handleTenantSwitch(newTenant);
             setCurrentTab('admin');
           }}
         />
-      )}
+
+        {thankYouModalState.isOpen && thankYouModalState.tenant && (
+          <TenantThankYouModal
+            isOpen={thankYouModalState.isOpen}
+            onClose={() => setThankYouModalState({ isOpen: false, tenant: null, planCode: '' })}
+            tenant={thankYouModalState.tenant}
+            planCode={thankYouModalState.planCode}
+            confirmedBy={thankYouModalState.confirmedBy}
+            transactionRef={thankYouModalState.transactionRef}
+            onGoToDashboard={() => {
+              setThankYouModalState({ isOpen: false, tenant: null, planCode: '' });
+              setCurrentTab('admin');
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Global Follow Us on Social Media Modal */}
       <FollowUsModal 

@@ -147,11 +147,27 @@ export default function HeroVideoPlayer({
   }, [banners, config]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(() => {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return false;
+    }
+    return true;
+  });
   const [isMuted, setIsMuted] = useState(true);
   const [slideProgress, setSlideProgress] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [canLoadVideo, setCanLoadVideo] = useState(false);
+
+  // Defer heavy video streams to ensure instant LCP paint; on mobile, only load video if user interacts or on high-speed desktop
+  useEffect(() => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    // On desktop, load after FCP; on mobile defer longer to protect cellular data and CPU
+    const timer = setTimeout(() => {
+      setCanLoadVideo(true);
+    }, isMobile ? 3000 : 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
 
@@ -269,6 +285,9 @@ export default function HeroVideoPlayer({
     <div 
       className="relative w-full min-h-[680px] lg:min-h-[740px] overflow-hidden bg-slate-950 flex items-center select-none"
       id="madecc-hero-container"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Featured Infrastructure Engineering Projects"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -290,40 +309,49 @@ export default function HeroVideoPlayer({
               key={item.id} 
               className="relative h-full overflow-hidden flex-shrink-0 bg-slate-950"
               style={{ width: `${100 / slides.length}%` }}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`Slide ${idx + 1} of ${slides.length}: ${item.title}`}
             >
-              {/* Cinematic Background Poster with Ken Burns Zoom on active slide */}
-              <div 
-                className={`absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-[6000ms] ease-out ${
+              {/* Cinematic Background Poster Image - LCP optimized with eager priority for first slide */}
+              <img
+                src={getOptimizedImageUrl(item.posterUrl, 1280, 80)}
+                alt={item.title}
+                width={1280}
+                height={720}
+                decoding="async"
+                loading={idx === 0 ? 'eager' : 'lazy'}
+                // @ts-expect-error - fetchpriority is standard in modern browsers for LCP optimization
+                fetchpriority={idx === 0 ? 'high' : 'auto'}
+                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] ease-out ${
                   isActive ? 'scale-105' : 'scale-100'
                 }`}
-                style={{
-                  backgroundImage: `url(${getOptimizedImageUrl(item.posterUrl, 1920, 85)})`
-                }}
               />
 
-              {/* YouTube Video Player Embed */}
-              {ytId && isActive && (
+              {/* YouTube Video Player Embed - only active slide when deferred */}
+              {ytId && isActive && canLoadVideo && (
                 <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none opacity-80">
                   <iframe
                     className="w-full h-full object-cover scale-125"
                     src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&loop=1&playlist=${ytId}&playsinline=1&enablejsapi=1&rel=0`}
                     title={item.title}
+                    loading="lazy"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   />
                 </div>
               )}
 
-              {/* HTML5 Video Player for MP4 / WebM / Cloud Uploads */}
-              {item.videoUrl && !ytId && (
+              {/* HTML5 Video Player for MP4 / WebM / Cloud Uploads - only mounted for active slide */}
+              {canLoadVideo && isActive && item.videoUrl && !ytId && (
                 <video
                   ref={el => { videoRefs.current[idx] = el; }}
                   className="absolute inset-0 w-full h-full object-cover opacity-80 transition-opacity duration-500"
-                  poster={getOptimizedImageUrl(item.posterUrl, 1920, 85)}
+                  poster={getOptimizedImageUrl(item.posterUrl, 1280, 80)}
                   playsInline
                   autoPlay
                   muted={isMuted}
                   loop
-                  preload="auto"
+                  preload="metadata"
                   crossOrigin="anonymous"
                   onError={(e) => {
                     // Fail gracefully to image poster

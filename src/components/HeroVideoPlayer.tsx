@@ -321,8 +321,8 @@ export default function HeroVideoPlayer({
                 height={720}
                 decoding="async"
                 loading={idx === 0 ? 'eager' : 'lazy'}
-                // @ts-expect-error - fetchpriority is standard in modern browsers for LCP optimization
-                fetchpriority={idx === 0 ? 'high' : 'auto'}
+                // fetchPriority optimizes LCP for the initial hero visual
+                {...({ fetchPriority: idx === 0 ? 'high' : 'auto' } as any)}
                 className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] ease-out ${
                   isActive ? 'scale-105' : 'scale-100'
                 }`}

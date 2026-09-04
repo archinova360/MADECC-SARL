@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 // @ts-ignore
 import logoImg from '../assets/images/app_logo_1788030845756.jpg';
 import { 
@@ -35,7 +35,10 @@ import {
   ExternalLink,
   FileDown,
   Users,
-  Radio
+  Radio,
+  Calculator,
+  HelpCircle,
+  Info
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
@@ -43,6 +46,7 @@ import { TenantService } from '../services/tenantService.ts';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 import { motion, AnimatePresence } from 'motion/react';
+import { MobileNavDrawer } from './MobileNavDrawer.tsx';
 
 interface NavbarProps {
   currentTab: string;
@@ -74,6 +78,39 @@ export default function Navbar({
   const { settings, openFollowModal } = useSiteSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+  const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Close dropdowns on outside click or escape key
+  React.useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('#nav-tools-container')) {
+        setToolsDropdownOpen(false);
+      }
+      if (!target.closest('#nav-company-container')) {
+        setCompanyDropdownOpen(false);
+      }
+      if (!target.closest('#user-menu-btn') && !target.closest('#user-menu-dropdown')) {
+        setUserDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setToolsDropdownOpen(false);
+        setCompanyDropdownOpen(false);
+        setUserDropdownOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleGlobalClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginTab, setLoginTab] = useState<'admin_key' | 'email_login'>('email_login');
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -352,23 +389,35 @@ export default function Navbar({
     { id: 'contact', label: t('nav_contact') },
   ];
 
+  // Core direct desktop links
+  const primaryDesktopNav = [
+    { id: 'home', label: t('nav_home') },
+    { id: 'services', label: 'Services' },
+    { id: 'projects', label: t('nav_projects') },
+    { id: 'schedule-consultation', label: 'Consultation' },
+    { id: 'blog', label: 'Insights' },
+  ];
+
+  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'saas-cloud', 'developers'].includes(currentTab);
+  const isCompanyActive = ['about', 'faq', 'contact'].includes(currentTab);
+
   return (
-    <nav className={`sticky top-0 z-50 border-b transition-colors duration-300 ${
+    <nav className={`sticky top-0 z-50 border-b transition-colors duration-300 w-full max-w-full overflow-x-clip ${
       theme === 'light'
         ? 'bg-white border-slate-200 text-slate-800 shadow-sm'
         : 'bg-slate-900 border-slate-800 text-white'
     }`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex items-center justify-between h-20">
           
           {/* Logo & Tenant Brand */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 max-w-[calc(100%-110px)] xl:max-w-none">
             <div 
-              className="flex items-center gap-3 cursor-pointer" 
+              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0" 
               onClick={() => setCurrentTab('home')}
               id="nav-logo"
             >
-              <div className={`h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden border shadow-inner ${
+              <div className={`h-11 w-11 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center overflow-hidden border shadow-inner shrink-0 ${
                 theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800/80'
               }`}>
                 <img 
@@ -386,13 +435,13 @@ export default function Navbar({
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div>
-                <span className={`font-sans font-extrabold text-xl tracking-tight block ${
+              <div className="min-w-0">
+                <span className={`font-sans font-extrabold text-base sm:text-lg lg:text-xl tracking-tight block truncate ${
                   theme === 'light' ? 'text-slate-900' : 'text-white'
                 }`}>
                   {currentTenant.name.toUpperCase()}
                 </span>
-                <span className={`text-[10px] font-mono tracking-widest block -mt-1 ${
+                <span className={`text-[9px] sm:text-[10px] font-mono tracking-widest block -mt-1 truncate ${
                   theme === 'light' ? 'text-slate-500' : 'text-slate-400'
                 }`}>
                   {currentTenant.isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
@@ -400,8 +449,8 @@ export default function Navbar({
               </div>
             </div>
 
-            {/* Tenant Switcher Dropdown */}
-            <div className="hidden lg:block border-l border-slate-800 pl-3">
+            {/* Tenant Switcher Dropdown (Large desktop only to prevent squeeze) */}
+            <div className="hidden 2xl:block border-l border-slate-800 pl-3">
               <TenantSwitcher 
                 currentTenant={currentTenant}
                 onTenantChange={onTenantChange}
@@ -413,10 +462,10 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4 lg:gap-6">
+          {/* Desktop Navigation (xl: >= 1280px) */}
+          <div className="hidden xl:flex items-center gap-2.5 2xl:gap-5">
             <div className="flex items-center gap-1">
-              {menuItems.map((item) => {
+              {primaryDesktopNav.map((item) => {
                 const isActive = currentTab === item.id;
                 return (
                   <button
@@ -424,8 +473,10 @@ export default function Navbar({
                     onClick={() => {
                       setCurrentTab(item.id);
                       setMenuOpen(false);
+                      setToolsDropdownOpen(false);
+                      setCompanyDropdownOpen(false);
                     }}
-                    className={`relative px-3 lg:px-4 py-2 rounded-md font-sans text-sm font-medium transition-colors cursor-pointer select-none ${
+                    className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors cursor-pointer select-none whitespace-nowrap ${
                       isActive 
                         ? 'text-amber-400 font-bold' 
                         : 'text-slate-300 hover:text-white'
@@ -444,68 +495,285 @@ export default function Navbar({
                 );
               })}
 
-              {/* Cloud SaaS Portal Showcase Button */}
-              <button
-                onClick={() => setCurrentTab('saas-cloud')}
-                className={`px-3 py-2 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border ${
-                  currentTab === 'saas-cloud'
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'text-amber-400 hover:text-amber-300 border-amber-500/20 hover:bg-amber-500/10'
-                }`}
-                title="Explore MADECC Construction Cloud SaaS"
+              {/* Tools Dropdown */}
+              <div 
+                id="nav-tools-container" 
+                className="relative"
+                onMouseEnter={() => setToolsDropdownOpen(true)}
+                onMouseLeave={() => setToolsDropdownOpen(false)}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Cloud SaaS</span>
-              </button>
+                <button
+                  id="nav-tools-menu"
+                  onClick={() => setToolsDropdownOpen(!toolsDropdownOpen)}
+                  className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
+                    isToolsActive 
+                      ? 'text-amber-400 font-bold' 
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                  aria-expanded={toolsDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  {isToolsActive && (
+                    <motion.div
+                      layoutId="nav-active-indicator"
+                      className="absolute inset-0 bg-slate-800/80 rounded-md border border-amber-500/20"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-1">
+                    <span>Tools</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${toolsDropdownOpen ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
+                  </span>
+                </button>
 
-              {/* Developer API Platform Portal Button */}
-              <button
-                onClick={() => setCurrentTab('developers')}
-                className={`px-3 py-2 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border ${
-                  currentTab === 'developers'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : 'text-emerald-400 hover:text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/10'
-                }`}
-                title="Explore Paid Construction & BOQ APIs"
-                id="nav-link-developers"
+                <AnimatePresence>
+                  {toolsDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      id="nav-tools-dropdown"
+                      className={`absolute top-full left-0 mt-1 w-64 rounded-xl shadow-2xl border p-2 z-50 ${
+                        theme === 'light'
+                          ? 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                          : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
+                      }`}
+                    >
+                      <button
+                        onClick={() => {
+                          setCurrentTab('budget-calculator');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'budget-calculator' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Calculator className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">Budget Calculator</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Instant estimate for residential & commercial builds</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('construction-cost-guide');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'construction-cost-guide' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">Cost Guide 2026</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Material rates & regional benchmarks</div>
+                        </div>
+                      </button>
+
+                      <div className="my-1 border-t border-slate-800/60" />
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('saas-cloud');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'saas-cloud' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Cloud SaaS Platform</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded font-bold">PRO</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Multi-tenant construction workspace suite</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('developers');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'developers' 
+                            ? 'bg-emerald-500/10 text-emerald-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Key className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Developer APIs</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-bold">REST</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Endpoints, BOQ calculators & webhooks</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Company Dropdown */}
+              <div 
+                id="nav-company-container" 
+                className="relative"
+                onMouseEnter={() => setCompanyDropdownOpen(true)}
+                onMouseLeave={() => setCompanyDropdownOpen(false)}
               >
-                <Key className="w-3.5 h-3.5" />
-                <span>Developer APIs</span>
-              </button>
+                <button
+                  id="nav-company-menu"
+                  onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
+                  className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
+                    isCompanyActive 
+                      ? 'text-amber-400 font-bold' 
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                  aria-expanded={companyDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  {isCompanyActive && (
+                    <motion.div
+                      layoutId="nav-active-indicator"
+                      className="absolute inset-0 bg-slate-800/80 rounded-md border border-amber-500/20"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-1">
+                    <span>Company</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${companyDropdownOpen ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
+                  </span>
+                </button>
+
+                <AnimatePresence>
+                  {companyDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      id="nav-company-dropdown"
+                      className={`absolute top-full left-0 mt-1 w-56 rounded-xl shadow-2xl border p-2 z-50 ${
+                        theme === 'light'
+                          ? 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                          : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
+                      }`}
+                    >
+                      <button
+                        onClick={() => {
+                          setCurrentTab('about');
+                          setCompanyDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'about' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Building2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">About Us</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">History, certifications & leadership</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('faq');
+                          setCompanyDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'faq' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <HelpCircle className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">FAQ</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Contracts, timelines & warranties</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('contact');
+                          setCompanyDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'contact' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Phone className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">Contact Us</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Yaoundé HQ & 24/7 hotline</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* Admin or Reviewer Studio Button */}
               {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
                 <button
                   onClick={() => setCurrentTab('admin')}
-                  className={`px-4 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border whitespace-nowrap ${
                     currentTab === 'admin'
-                      ? 'text-amber-400 bg-slate-800/60'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/40'
+                      ? 'text-amber-400 bg-amber-500/20 border-amber-500/40 shadow-sm'
+                      : 'text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/60'
                   }`}
                   id="nav-link-admin"
                 >
                   {dbUser.role === 'social_media_reviewer' ? (
                     <>
-                      <Megaphone className="w-4 h-4 text-amber-500" />
-                      <span>Social Media Studio</span>
+                      <Megaphone className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Studio</span>
                     </>
                   ) : (
                     <>
-                      <ShieldCheck className="w-4 h-4 text-amber-500" />
-                      <span>{t('nav_admin')}</span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Admin</span>
                     </>
                   )}
                 </button>
               )}
             </div>
 
-            {/* Auth section */}
-            <div className={`border-l pl-6 flex items-center gap-3 ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
+            {/* Auth and Utility section */}
+            <div className={`border-l pl-3 2xl:pl-5 flex items-center gap-2 shrink-0 ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
               
               {/* Follow Us on Social Media Button */}
               <button
                 onClick={openFollowModal}
-                className="relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0"
+                className="relative px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0 select-none whitespace-nowrap"
                 title="Follow MADECC GROUP on Social Media (LinkedIn, Facebook, YouTube, X, Instagram, TikTok, WhatsApp)"
                 id="nav-btn-follow-us"
               >
@@ -514,13 +782,13 @@ export default function Navbar({
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                 </span>
                 <Radio className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Follow Us</span>
+                <span>Follow</span>
               </button>
 
               {/* Theme Toggle Button */}
               <button
                 onClick={toggleTheme}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-colors shrink-0 ${
                   theme === 'light' 
                     ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-500' 
                     : 'hover:bg-slate-800/60 text-slate-300 hover:text-amber-400'
@@ -529,16 +797,16 @@ export default function Navbar({
                 id="theme-toggle-btn"
               >
                 {theme === 'light' ? (
-                  <Moon className="w-5 h-5 text-indigo-600" />
+                  <Moon className="w-4 h-4 text-indigo-600" />
                 ) : (
-                  <Sun className="w-5 h-5 text-amber-400 animate-pulse" />
+                  <Sun className="w-4 h-4 text-amber-400 animate-pulse" />
                 )}
               </button>
 
               {/* Language Switcher Button */}
               <button
                 onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-                className={`p-2 rounded-lg transition-colors text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1 cursor-pointer select-none ${
+                className={`p-1.5 sm:p-2 rounded-lg transition-colors text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1 cursor-pointer select-none shrink-0 ${
                   theme === 'light' 
                     ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-500 border border-slate-200' 
                     : 'hover:bg-slate-800/60 text-slate-300 hover:text-amber-400 border border-slate-800'
@@ -546,14 +814,14 @@ export default function Navbar({
                 aria-label="Toggle Language"
                 id="language-toggle-btn"
               >
-                <span className="text-[14px]">🌐</span>
+                <span className="text-[13px]">🌐</span>
                 <span>{language === 'en' ? 'FR' : 'EN'}</span>
               </button>
 
               {loadingAuth ? (
-                <div className="w-8 h-8 rounded-full border-2 border-slate-700 border-t-amber-500 animate-spin" />
+                <div className="w-8 h-8 rounded-full border-2 border-slate-700 border-t-amber-500 animate-spin shrink-0" />
               ) : dbUser ? (
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg text-sm border border-slate-700 transition-colors"
@@ -562,12 +830,12 @@ export default function Navbar({
                     <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900 text-xs">
                       {dbUser.name[0]?.toUpperCase() || 'U'}
                     </div>
-                    <span className="font-medium max-w-[120px] truncate">{dbUser.name}</span>
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                    <span className="font-medium max-w-[100px] truncate">{dbUser.name}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </button>
 
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
                       <div className="px-4 py-3 bg-slate-900 border-b border-slate-700">
                         <span className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Signed in as</span>
                         <span className="block font-medium text-sm text-white truncate">{dbUser.email}</span>
@@ -577,6 +845,14 @@ export default function Navbar({
                       </div>
                       
                       <div className="py-1 border-b border-slate-700/50">
+                        <button
+                          onClick={handleDownloadNavigationGuide}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 hover:text-white text-left transition-colors"
+                        >
+                          <Download className="w-4 h-4 text-emerald-400" />
+                          Download Guide PDF
+                        </button>
+
                         {(dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
                           <button
                             onClick={() => {
@@ -618,24 +894,52 @@ export default function Navbar({
                     setLoginError(null);
                     setLoginModalOpen(true);
                   }}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-bold text-sm px-5 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-amber-500/15"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/15 whitespace-nowrap shrink-0"
                   id="login-btn"
                 >
-                  <Key className="w-4 h-4" />
-                  {t('nav_login')}
+                  <Key className="w-3.5 h-3.5" />
+                  <span>{t('nav_login')}</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          {/* Mobile Right Controls: Quick theme toggle & Hamburger Button */}
+          <div className="flex items-center gap-1.5 sm:gap-2 xl:hidden shrink-0">
+            {/* Quick theme toggle */}
             <button
+              onClick={toggleTheme}
+              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${
+                theme === 'light' 
+                  ? 'hover:bg-slate-100 text-slate-600' 
+                  : 'hover:bg-slate-800/60 text-slate-300'
+              }`}
+              aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} theme`}
+              id="mobile-header-theme-toggle"
+            >
+              {theme === 'light' ? (
+                <Moon className="w-5 h-5 text-indigo-600" />
+              ) : (
+                <Sun className="w-5 h-5 text-amber-400" />
+              )}
+            </button>
+
+            {/* Mobile Hamburger Button with ARIA & Hit Target */}
+            <button
+              ref={hamburgerBtnRef}
               onClick={() => setMenuOpen(!menuOpen)}
-              className="text-slate-400 hover:text-white p-2"
+              className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-xl transition-colors border cursor-pointer select-none ${
+                menuOpen
+                  ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md'
+                  : theme === 'light'
+                    ? 'text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-200'
+                    : 'text-slate-200 bg-slate-800/80 hover:bg-slate-800 border-slate-700/80'
+              }`}
               id="mobile-menu-btn"
               aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={menuOpen}
+              aria-controls="mobile-navigation-drawer"
+              aria-haspopup="dialog"
             >
               {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -644,115 +948,32 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* Mobile Navigation Panel */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="md:hidden bg-slate-950 border-t border-slate-800 py-4 px-2 space-y-2 overflow-hidden"
-          >
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentTab(item.id);
-                  setMenuOpen(false);
-                }}
-                className={`w-full text-left px-4 py-3 rounded-md font-sans text-base font-medium block transition-colors ${
-                  currentTab === item.id 
-                    ? 'text-amber-400 bg-slate-900 border-l-4 border-amber-500' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-
-            {/* Follow Us Button in Mobile Drawer */}
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                openFollowModal();
-              }}
-              className="w-full text-left px-4 py-3 rounded-md font-sans text-base font-bold flex items-center justify-between bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-              id="mobile-btn-follow-us"
-            >
-              <div className="flex items-center gap-2.5">
-                <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
-                <span>Follow Us on Social</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-extrabold">
-                8 Networks
-              </span>
-            </button>
-
-            {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
-              <button
-                onClick={() => {
-                  setCurrentTab('admin');
-                  setMenuOpen(false);
-                }}
-                className={`w-full text-left px-4 py-3 rounded-md font-sans text-base font-medium flex items-center gap-2 ${
-                  currentTab === 'admin' 
-                    ? 'text-amber-400 bg-slate-900 border-l-4 border-amber-500' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                {dbUser.role === 'social_media_reviewer' ? (
-                  <>
-                    <Megaphone className="w-5 h-5 text-amber-500" />
-                    Social Media Studio
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-5 h-5 text-amber-500" />
-                    Admin Dashboard
-                  </>
-                )}
-              </button>
-            )}
-
-            <div className="border-t border-slate-800 pt-4 px-4 flex flex-col gap-3">
-              {dbUser ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900">
-                      {dbUser.name[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <span className="block text-sm font-semibold">{dbUser.name}</span>
-                      <span className="block text-xs text-slate-400 truncate">{dbUser.email}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleLogout}
-                    className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border border-red-500/20"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setLoginError(null);
-                    setLoginModalOpen(true);
-                    setMenuOpen(false);
-                  }}
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 shadow"
-                >
-                  <Key className="w-4 h-4" />
-                  Sign In
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile Slide-Out Navigation Drawer */}
+      <MobileNavDrawer
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        currentTab={currentTab}
+        setCurrentTab={setCurrentTab}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        language={language}
+        setLanguage={setLanguage}
+        t={t}
+        currentTenant={currentTenant}
+        onTenantChange={onTenantChange}
+        onOpenBilling={onOpenBilling}
+        onOpenOnboarding={onOpenOnboarding}
+        onOpenSuperAdmin={onOpenSuperAdmin}
+        dbUser={dbUser}
+        handleLogout={handleLogout}
+        openLoginModal={() => {
+          setLoginError(null);
+          setLoginModalOpen(true);
+        }}
+        openFollowModal={openFollowModal}
+        handleDownloadNavigationGuide={handleDownloadNavigationGuide}
+        triggerRef={hamburgerBtnRef}
+      />
 
       {/* Sign In Dialog */}
       {loginModalOpen && (

@@ -265,7 +265,7 @@ function AppContent({
   };
 
   return (
-    <div className={`flex flex-col min-h-screen font-sans transition-colors duration-300 ${
+    <div className={`flex flex-col min-h-screen w-full max-w-full overflow-x-hidden font-sans transition-colors duration-300 ${
       theme === 'light'
         ? 'bg-slate-50 text-slate-800 selection:bg-amber-200 selection:text-slate-900'
         : 'bg-[#0A0A0B] text-slate-200 selection:bg-amber-500 selection:text-slate-950'

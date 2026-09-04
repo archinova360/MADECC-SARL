@@ -8,7 +8,7 @@ import {
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, requireAdmin, requireStaffOrAdmin } from '../../middleware/auth.ts';
 import { logAudit } from '../../lib/audit.ts';
-import { sendNotificationEmail } from '../../lib/email.ts';
+import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 
 export function setupCalculatorRoutes(app: express.Express) {
   // --- PUBLIC PROJECT BUDGET CALCULATOR ENDPOINTS ---
@@ -328,9 +328,64 @@ export function setupCalculatorRoutes(app: express.Express) {
         </div>
       `;
 
-      sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
+      sendNotificationEmail(emailSubject, emailText, emailHtml, { replyTo: clientEmail }).catch(err => {
         console.error('Email notification error (budget lead):', err);
       });
+
+      // Send client confirmation email if email provided
+      if (clientEmail && clientEmail.includes('@')) {
+        const clientSubject = `Your Preliminary Construction Budget Estimate (${estimateReference}) - MADECC GROUP`;
+        const clientText = `Dear ${clientName},\n\nThank you for utilizing the MADECC GROUP Interactive Construction Cost Calculator. Your preliminary estimate reference is ${estimateReference}.\n\nProject: ${record.projectType} (${record.totalFloorAreaM2} m2 in ${record.location})\nCalculated Budget: XAF ${Number(record.estimatedBudgetExpected).toLocaleString()}\nStandard: ${record.constructionStandard}\n\nOur engineering estimation desk will contact you via ${preferredContactMethod} to provide a detailed structural BOQ and material schedule.\n\nWarm regards,\nMADECC GROUP Engineering Directorate`;
+        const clientHtml = `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 24px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px;">
+              <h1 style="color: #0f172a; margin: 0 0 4px 0; font-weight: 800; font-size: 24px; letter-spacing: 0.05em;">MADECC GROUP</h1>
+              <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Construction Estimation &amp; Engineering Directorate</p>
+            </div>
+            <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${clientName}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #334155;">
+              Thank you for using our Interactive Project Budget Calculator. Here is your preliminary civil engineering cost evaluation:
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <span style="color: #64748b; font-size: 13px;">Estimate Reference:</span>
+                <span style="font-family: monospace; font-weight: bold; color: #d97706; font-size: 14px;">${estimateReference}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <span style="color: #64748b; font-size: 13px;">Project Typology:</span>
+                <span style="font-weight: 600; color: #0f172a; font-size: 13px;">${record.projectType}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <span style="color: #64748b; font-size: 13px;">Total Floor Area:</span>
+                <span style="font-weight: 600; color: #0f172a; font-size: 13px;">${record.totalFloorAreaM2} m&sup2;</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <span style="color: #64748b; font-size: 13px;">Regional Site:</span>
+                <span style="font-weight: 600; color: #0f172a; font-size: 13px;">${record.location}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                <span style="color: #64748b; font-size: 13px;">Finishing Standard:</span>
+                <span style="font-weight: 600; color: #0f172a; font-size: 13px;">${record.constructionStandard}</span>
+              </div>
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; text-align: right;">
+                <span style="font-size: 12px; color: #64748b; display: block; margin-bottom: 4px;">Estimated Construction Investment:</span>
+                <span style="font-size: 22px; font-weight: 800; color: #16a34a;">XAF ${Number(record.estimatedBudgetExpected).toLocaleString()}</span>
+              </div>
+            </div>
+            <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+              Our senior quantity surveyor will review your parameters and follow up with you via <strong>${preferredContactMethod}</strong>.
+            </p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+              MADECC GROUP S.A.R.L. &bull; Yaounde Mbankolo &amp; Douala, Cameroon<br />
+              Client Desk: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b; text-decoration: none;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+            </p>
+          </div>
+        `;
+        sendEmail(clientEmail.trim(), clientSubject, clientText, clientHtml).catch(err => {
+          console.error('Failed to send budget estimate confirmation to client:', err);
+        });
+      }
 
       res.json({ success: true, estimate: record });
     } catch (error: any) {
@@ -1869,6 +1924,224 @@ export function setupCalculatorRoutes(app: express.Express) {
       res.json({ success: true, allPassed: true, summary: '100% Database Transaction Tests Passed', report });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message, report });
+    }
+  });
+
+  // ==========================================
+  // --- LABOUR CALCULATOR & QUOTATION ROUTES ---
+  // ==========================================
+
+  // 1. Get all labour calculations
+  app.get('/api/labour/calculations', async (req, res) => {
+    try {
+      const calcs = await db.select().from(labourCalculations).orderBy(desc(labourCalculations.updatedAt));
+      res.json(calcs);
+    } catch (err: any) {
+      console.warn('[DB Error] /api/labour/calculations:', err.message);
+      res.json([]);
+    }
+  });
+
+  // 2. Create new labour calculation
+  app.post('/api/labour/calculations', async (req, res) => {
+    try {
+      const payload = req.body;
+      const inserted = await db.insert(labourCalculations).values({
+        quotationRef: payload.quotationRef || `LAB-${Date.now()}`,
+        projectName: payload.projectName || 'Civil Engineering Labour Project',
+        clientName: payload.clientName || 'Valued Client',
+        clientEmail: payload.clientEmail || null,
+        location: payload.location || 'Douala / Yaounde',
+        projectType: payload.projectType || 'Residential',
+        buildingFloors: Number(payload.buildingFloors) || 1,
+        date: payload.date || new Date().toISOString().split('T')[0],
+        preparedBy: payload.preparedBy || 'MADECC Resident Engineer',
+        approvedBy: payload.approvedBy || null,
+        status: payload.status || 'DRAFT',
+        currency: payload.currency || 'XAF',
+        overheadPercent: String(payload.overheadPercent || '10.00'),
+        contingencyPercent: String(payload.contingencyPercent || '5.00'),
+        profitPercent: String(payload.profitPercent || '15.00'),
+        discountPercent: String(payload.discountPercent || '0.00'),
+        taxPercent: String(payload.taxPercent || '19.25'),
+        baseSubtotal: String(payload.baseSubtotal || '0.00'),
+        overheadAmount: String(payload.overheadAmount || '0.00'),
+        contingencyAmount: String(payload.contingencyAmount || '0.00'),
+        profitAmount: String(payload.profitAmount || '0.00'),
+        discountAmount: String(payload.discountAmount || '0.00'),
+        taxableNet: String(payload.taxableNet || '0.00'),
+        taxAmount: String(payload.taxAmount || '0.00'),
+        grandTotal: String(payload.grandTotal || '0.00'),
+        paidAmount: String(payload.paidAmount || '0.00'),
+        balanceDue: String(payload.balanceDue || '0.00'),
+        revisionNumber: payload.revisionNumber || 'REV-01',
+        sectionsData: payload.sectionsData || [],
+        revisionsHistory: payload.revisionsHistory || [],
+        auditLogsData: payload.auditLogsData || [],
+        notes: payload.notes || ''
+      }).returning();
+
+      res.json(inserted[0]);
+    } catch (err: any) {
+      console.error('Failed to create labour calculation:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Update existing labour calculation
+  app.put('/api/labour/calculations/:id', async (req, res) => {
+    try {
+      const calcId = parseInt(req.params.id);
+      const payload = req.body;
+      const updated = await db.update(labourCalculations).set({
+        quotationRef: payload.quotationRef,
+        projectName: payload.projectName,
+        clientName: payload.clientName,
+        clientEmail: payload.clientEmail,
+        location: payload.location,
+        projectType: payload.projectType,
+        buildingFloors: Number(payload.buildingFloors) || 1,
+        date: payload.date,
+        preparedBy: payload.preparedBy,
+        approvedBy: payload.approvedBy,
+        status: payload.status,
+        currency: payload.currency,
+        overheadPercent: String(payload.overheadPercent),
+        contingencyPercent: String(payload.contingencyPercent),
+        profitPercent: String(payload.profitPercent),
+        discountPercent: String(payload.discountPercent),
+        taxPercent: String(payload.taxPercent),
+        baseSubtotal: String(payload.baseSubtotal),
+        overheadAmount: String(payload.overheadAmount),
+        contingencyAmount: String(payload.contingencyAmount),
+        profitAmount: String(payload.profitAmount),
+        discountAmount: String(payload.discountAmount),
+        taxableNet: String(payload.taxableNet),
+        taxAmount: String(payload.taxAmount),
+        grandTotal: String(payload.grandTotal),
+        paidAmount: String(payload.paidAmount),
+        balanceDue: String(payload.balanceDue),
+        revisionNumber: payload.revisionNumber,
+        sectionsData: payload.sectionsData,
+        revisionsHistory: payload.revisionsHistory,
+        auditLogsData: payload.auditLogsData,
+        notes: payload.notes,
+        updatedAt: new Date()
+      }).where(eq(labourCalculations.id, calcId)).returning();
+
+      if (updated.length === 0) {
+        return res.status(404).json({ error: 'Calculation not found' });
+      }
+      res.json(updated[0]);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. Delete labour calculation
+  app.delete('/api/labour/calculations/:id', async (req, res) => {
+    try {
+      const calcId = parseInt(req.params.id);
+      await db.delete(labourCalculations).where(eq(labourCalculations.id, calcId));
+      res.json({ success: true, message: 'Deleted successfully' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 5. Send Official Labour Quotation via SMTP using kreboya603@gmail.com
+  app.post('/api/labour/send-email', async (req, res) => {
+    try {
+      const {
+        quotationRef,
+        projectName,
+        clientName,
+        clientEmail,
+        ccEmails,
+        bccEmails,
+        grandTotal,
+        currency = 'XAF',
+        preparedBy,
+        notes
+      } = req.body;
+
+      if (!clientEmail || !clientEmail.includes('@')) {
+        return res.status(400).json({ error: 'A valid recipient email address is required.' });
+      }
+
+      const formattedTotal = Number(grandTotal || 0).toLocaleString();
+      const quoteSubject = `Official Labour Quotation: ${quotationRef} - ${projectName} | MADECC GROUP`;
+      const quoteText = `Dear ${clientName},\n\nPlease find attached your official Labour Quotation from MADECC GROUP S.A.R.L.\n\nQuotation Reference: ${quotationRef}\nProject: ${projectName}\nGrand Total: ${currency} ${formattedTotal}\nPrepared By: ${preparedBy || 'MADECC Estimation Desk'}\n\nNotes / Terms:\n${notes || 'Standard MADECC construction engineering and labour rates apply.'}\n\nWarm regards,\nMADECC GROUP S.A.R.L.`;
+      
+      const quoteHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; padding: 32px; border: 1px solid #e2e8f0; border-radius: 14px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 24px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px;">
+            <h1 style="color: #0f172a; margin: 0 0 4px 0; font-weight: 800; font-size: 24px; letter-spacing: 0.05em;">MADECC GROUP</h1>
+            <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Official Construction Labour Quotation</p>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${clientName}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.6; margin: 0 0 18px 0; color: #334155;">
+            Thank you for partnering with <strong>MADECC GROUP S.A.R.L.</strong> Below are the certified financial specifics for your project's labour requirements:
+          </p>
+
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 22px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+              <span style="color: #64748b; font-size: 13px;">Quotation Reference:</span>
+              <span style="font-family: monospace; font-weight: bold; color: #d97706; font-size: 14px;">${quotationRef}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span style="color: #64748b; font-size: 13px;">Project Name:</span>
+              <span style="font-weight: 600; color: #0f172a; font-size: 13px;">${projectName}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span style="color: #64748b; font-size: 13px;">Prepared By:</span>
+              <span style="font-weight: 600; color: #0f172a; font-size: 13px;">${preparedBy || 'Resident Engineer'}</span>
+            </div>
+            ${notes ? `
+              <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1; font-size: 13px; color: #475569;">
+                <strong>Special Terms &amp; Notes:</strong> ${notes}
+              </div>
+            ` : ''}
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 2px solid #e2e8f0; text-align: right;">
+              <span style="font-size: 12px; color: #64748b; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Certified Grand Total:</span>
+              <span style="font-size: 24px; font-weight: 800; color: #16a34a;">${currency} ${formattedTotal}</span>
+            </div>
+          </div>
+
+          <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+            This quotation is valid for 30 calendar days from the date of issue. To approve this quotation and mobilize site crews, please reply to this email or contact your project lead.
+          </p>
+
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Yaounde Mbankolo &amp; Douala, Cameroon<br />
+            Official Inquiries: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b; text-decoration: none;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+          </p>
+        </div>
+      `;
+
+      // Parse CC and BCC if provided
+      const ccList = ccEmails ? ccEmails.split(',').map((e: string) => e.trim()).filter(Boolean) : undefined;
+      const bccList = bccEmails ? bccEmails.split(',').map((e: string) => e.trim()).filter(Boolean) : undefined;
+
+      // 1. Send to client with SMTP
+      await sendEmail(clientEmail.trim(), quoteSubject, quoteText, quoteHtml, {
+        cc: ccList,
+        bcc: bccList
+      });
+
+      // 2. Send notification copy to admin kreboya603@gmail.com
+      const adminNotifSubject = `[MADECC GROUP] Labour Quotation Dispatched: ${quotationRef} for ${clientName}`;
+      const adminNotifText = `A labour quotation has been dispatched to client ${clientName} (${clientEmail}):\n\nRef: ${quotationRef}\nProject: ${projectName}\nTotal: ${currency} ${formattedTotal}\nPrepared By: ${preparedBy}`;
+      sendNotificationEmail(adminNotifSubject, adminNotifText, quoteHtml, { replyTo: clientEmail.trim() }).catch(err => {
+        console.warn('Failed to send admin copy of labour quote:', err);
+      });
+
+      res.json({ success: true, message: `Quotation ${quotationRef} sent to ${clientEmail}` });
+    } catch (err: any) {
+      console.error('Failed to dispatch labour quotation email:', err);
+      res.status(500).json({ error: err.message || 'Failed to dispatch email' });
     }
   });
 

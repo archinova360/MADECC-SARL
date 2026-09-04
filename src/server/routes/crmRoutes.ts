@@ -72,7 +72,7 @@ export function setupCrmRoutes(app: express.Express) {
           <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
-      sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
+      sendNotificationEmail(emailSubject, emailText, emailHtml, { replyTo: clientEmail }).catch(err => {
         console.error('Email notify error (appointments):', err);
       });
 
@@ -288,7 +288,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
           <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
-      sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
+      sendNotificationEmail(emailSubject, emailText, emailHtml, { replyTo: email }).catch(err => {
         console.error('Email notify error (contacts):', err);
       });
 
@@ -426,8 +426,44 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
           <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Portal Notifications &bull; Cameroon</p>
         </div>
       `;
-      sendNotificationEmail(emailSubject, emailText, emailHtml).catch(err => {
+      sendNotificationEmail(emailSubject, emailText, emailHtml, { replyTo: email }).catch(err => {
         console.error('Email notify error (newsletter new):', err);
+      });
+
+      // Send confirmation welcome email to the subscriber from kreboya603@gmail.com
+      const subscriberSubject = 'Welcome to MADECC GROUP Insights & Infrastructure Digest';
+      const subscriberText = `Hello,\n\nThank you for subscribing to MADECC GROUP's newsletter. You will receive our latest civil engineering updates, architectural blueprints, procurement bulletins, and construction market insights.\n\nWarm regards,\nMADECC GROUP Communications`;
+      const subscriberHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 24px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px;">
+            <h1 style="color: #0f172a; margin: 0 0 4px 0; font-weight: 800; font-size: 24px; letter-spacing: 0.05em;">MADECC GROUP</h1>
+            <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Infrastructure &bull; Civil Engineering &bull; Architecture</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Welcome to the <strong>MADECC GROUP</strong> community!</p>
+          <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #334155;">
+            Thank you for subscribing to our official newsletter. You are now connected to Central Africa's premier sustainable engineering and construction network.
+          </p>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 13px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">What You Will Receive:</p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.7; color: #475569;">
+              <li>Monthly technical articles &amp; structural engineering case studies</li>
+              <li>New public and private tender opportunities &amp; EOI alerts</li>
+              <li>Construction material cost index &amp; market price analyses</li>
+              <li>Exclusive project spotlights and sustainable architecture trends</li>
+            </ul>
+          </div>
+          <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin: 0 0 20px 0;">
+            If you ever need custom project consultations, quotations, or engineering expertise, our resident engineers are available to assist you.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Yaounde Mbankolo &amp; Douala, Cameroon<br />
+            Email: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b; text-decoration: none;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+          </p>
+        </div>
+      `;
+      sendEmail(email.trim(), subscriberSubject, subscriberText, subscriberHtml).catch(err => {
+        console.error('Failed to send subscriber welcome email:', err);
       });
 
       res.json(result[0]);

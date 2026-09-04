@@ -158,6 +158,61 @@ export function setupProcurementRoutes(app: express.Express) {
         status: 'SUBMITTED'
       }).returning();
 
+      // Dispatch SMTP Email to Admin (kreboya603@gmail.com)
+      const adminSubject = `[MADECC GROUP] New Supplier Registration: ${data.companyName} (${appNum})`;
+      const adminText = `A new supplier prequalification has been submitted:\n\nApplication Number: ${appNum}\nCompany: ${data.companyName}\nCategory: ${data.supplierCategory || 'General'}\nProducts: ${data.products || 'N/A'}\nContact: ${data.contactPerson} (${data.position})\nEmail: ${data.email}\nPhone: ${data.phone}\nRegion/City: ${data.region || 'Littoral'} - ${data.city || 'Douala'}\nYears in Business: ${data.yearsInBusiness || 1}`;
+      const adminHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 22px;">New Supplier Registration</h2>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Application Reference:</strong> <span style="font-family: monospace; font-weight: bold; color: #d97706;">${appNum}</span></p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Category:</strong> ${data.supplierCategory || 'General Building Materials'}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Products / Supplies:</strong> ${data.products || 'Construction Materials'}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Contact Person:</strong> ${data.contactPerson} (${data.position || 'General Manager'})</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Email:</strong> <a href="mailto:${data.email}" style="color: #f59e0b;">${data.email}</a></p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Phone:</strong> ${data.phone}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Location:</strong> ${data.city || 'Douala'}, ${data.region || 'Littoral'}</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #64748b;">MADECC GROUP Procurement &amp; Supply Chain Management Division</p>
+        </div>
+      `;
+      sendNotificationEmail(adminSubject, adminText, adminHtml, { replyTo: data.email }).catch(err => {
+        console.error('Failed to send supplier registration notification:', err);
+      });
+
+      // Dispatch Confirmation Email to Supplier from kreboya603@gmail.com
+      const supplierSubject = `Supplier Prequalification Received: ${appNum} - MADECC GROUP`;
+      const supplierText = `Dear ${data.contactPerson || data.companyName},\n\nThank you for submitting your supplier prequalification application to MADECC GROUP. Your application reference is ${appNum}.\n\nOur procurement board reviews vendor applications within 3 to 5 business days.\n\nWarm regards,\nMADECC GROUP Procurement Directorate`;
+      const supplierHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 24px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px;">
+            <h1 style="color: #0f172a; margin: 0 0 4px 0; font-weight: 800; font-size: 24px; letter-spacing: 0.05em;">MADECC GROUP</h1>
+            <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Procurement &amp; Supply Chain Directorate</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${data.contactPerson || data.companyName}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #334155;">
+            Thank you for registering <strong>${data.companyName}</strong> in the MADECC GROUP Vendor &amp; Supplier Directory. We have successfully received your prequalification dossier.
+          </p>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">Dossier Reference Number:</p>
+            <p style="margin: 0 0 12px 0; font-family: monospace; font-size: 18px; font-weight: bold; color: #d97706;">${appNum}</p>
+            <p style="margin: 0; font-size: 13px; color: #334155;"><strong>Category:</strong> ${data.supplierCategory || 'General'}</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #334155;"><strong>Status:</strong> Under Review by Prequalification Committee</p>
+          </div>
+          <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+            Our procurement team evaluates suppliers based on quality standards, delivery reliability, compliance credentials, and competitive pricing. You will be notified once your vendor status is approved.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Yaounde &amp; Douala, Cameroon<br />
+            Procurement Desk: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b; text-decoration: none;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+          </p>
+        </div>
+      `;
+      sendEmail(data.email.trim(), supplierSubject, supplierText, supplierHtml).catch(err => {
+        console.error('Failed to send supplier confirmation email:', err);
+      });
+
       res.json({ success: true, applicationNumber: inserted[0].applicationNumber });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -194,7 +249,60 @@ export function setupProcurementRoutes(app: express.Express) {
         status: 'SUBMITTED'
       }).returning();
 
-      res.json({ success: true, applicationNumber: inserted[0].applicationNumber });
+      // Dispatch SMTP Email to Admin (kreboya603@gmail.com)
+      const adminSubject = `[MADECC GROUP] New Subcontractor Registration: ${data.companyName} (${appNum})`;
+      const adminText = `A new subcontractor prequalification has been submitted:\n\nApplication Number: ${appNum}\nCompany: ${data.companyName}\nTrade: ${data.trade || 'General Civil Works'}\nWorkforce Size: ${data.workforceSize || 5}\nContact: ${data.contactPerson} (${data.position})\nEmail: ${data.email}\nPhone: ${data.phone}\nRegion/City: ${data.region || 'Littoral'} - ${data.city || 'Douala'}`;
+      const adminHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 22px;">New Subcontractor Registration</h2>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Application Reference:</strong> <span style="font-family: monospace; font-weight: bold; color: #d97706;">${appNum}</span></p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Trade / Specialty:</strong> ${data.trade || 'General Civil Works'}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Workforce Size:</strong> ${data.workforceSize || 5} workers</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Contact Person:</strong> ${data.contactPerson} (${data.position || 'Director'})</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Email:</strong> <a href="mailto:${data.email}" style="color: #f59e0b;">${data.email}</a></p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Phone:</strong> ${data.phone}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Location:</strong> ${data.city || 'Douala'}, ${data.region || 'Littoral'}</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #64748b;">MADECC GROUP Project Subcontracting &amp; Engineering Operations</p>
+        </div>
+      `;
+      sendNotificationEmail(adminSubject, adminText, adminHtml, { replyTo: data.email }).catch(err => {
+        console.error('Failed to send subcontractor registration notification:', err);
+      });
+
+      // Dispatch Confirmation Email to Subcontractor from kreboya603@gmail.com
+      const subSubject = `Subcontractor Registration Received: ${appNum} - MADECC GROUP`;
+      const subText = `Dear ${data.contactPerson || data.companyName},\n\nThank you for registering ${data.companyName} as a prospective subcontractor with MADECC GROUP. Your application reference is ${appNum}.\n\nOur engineering operations team will review your dossier and reach out for upcoming project tenders.\n\nWarm regards,\nMADECC GROUP Operations Directorate`;
+      const subHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 24px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px;">
+            <h1 style="color: #0f172a; margin: 0 0 4px 0; font-weight: 800; font-size: 24px; letter-spacing: 0.05em;">MADECC GROUP</h1>
+            <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Subcontracting &amp; Works Directorate</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${data.contactPerson || data.companyName}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #334155;">
+            Thank you for registering <strong>${data.companyName}</strong> as a qualified subcontractor for MADECC GROUP projects. We have successfully received your trade profile and qualification dossier.
+          </p>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">Registration Reference Code:</p>
+            <p style="margin: 0 0 12px 0; font-family: monospace; font-size: 18px; font-weight: bold; color: #d97706;">${appNum}</p>
+            <p style="margin: 0; font-size: 13px; color: #334155;"><strong>Specialty Trade:</strong> ${data.trade || 'General Civil Works'}</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #334155;"><strong>Status:</strong> Dossier Logged for Works Assignment</p>
+          </div>
+          <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+            Our site project directors consult our verified subcontractor register when awarding specialized civil, electrical, plumbing, masonry, and finishing subcontract packages.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Yaounde &amp; Douala, Cameroon<br />
+            Subcontracts Desk: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b; text-decoration: none;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+          </p>
+        </div>
+      `;
+      sendEmail(data.email.trim(), subSubject, subText, subHtml).catch(err => {
+        console.error('Failed to send subcontractor confirmation email:', err);
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -537,7 +645,7 @@ Notification sent to: kreboya603@gmail.com, madeccco5@gmail.com
         </div>
       `;
 
-      sendNotificationEmail(adminSubject, adminText, adminHtml).catch(err => {
+      sendNotificationEmail(adminSubject, adminText, adminHtml, { replyTo: data.email }).catch(err => {
         console.error('[SMTP_ADMIN_NOTIFICATION_ERROR]', err);
       });
 

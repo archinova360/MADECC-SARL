@@ -10,6 +10,7 @@ import { requireAuth, requireAdmin, requireStaffOrAdmin } from '../../middleware
 import { logAudit } from '../../lib/audit.ts';
 import { deleteFileFromCloud } from '../storageService.js';
 import { seedDatabase } from '../../db/seed.ts';
+import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 
   async function ensureFaqDefaults() {
     const existingCats = await db.select().from(faqCategories);
@@ -851,6 +852,60 @@ export function setupCmsRoutes(app: express.Express) {
         author: name || email || 'Website Visitor',
         seoDescription: `Submitted by ${name} (${email}, ${phone})`
       }).returning();
+
+      // Dispatch SMTP Notification to Admin (kreboya603@gmail.com)
+      const adminSubject = `[MADECC GROUP] New Technical / General Question Submitted`;
+      const adminText = `A website visitor has submitted a question for the FAQ & Knowledge Base:\n\nName: ${name || 'Anonymous'}\nEmail: ${email || 'Not provided'}\nPhone: ${phone || 'Not provided'}\nCategory: ${category || 'General'}\n\nQuestion:\n"${question}"`;
+      const adminHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 22px;">New Technical / General Question</h2>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Submitter:</strong> ${name || 'Website Visitor'}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Email:</strong> ${email ? `<a href="mailto:${email}" style="color: #f59e0b;">${email}</a>` : 'Not provided'}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Phone:</strong> ${phone || 'Not provided'}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Category:</strong> ${category || 'General'}</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <p style="margin: 0; line-height: 1.6; color: #334155; font-size: 15px;">"${question}"</p>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">Please access the CMS FAQ manager to publish an official answer or respond directly to the visitor.</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Engineering Communications Desk &bull; Cameroon</p>
+        </div>
+      `;
+      sendNotificationEmail(adminSubject, adminText, adminHtml, { replyTo: email || undefined }).catch(err => {
+        console.error('Email notify error (faq question):', err);
+      });
+
+      // Dispatch confirmation to visitor if email provided
+      if (email && email.includes('@')) {
+        const clientSubject = 'We Received Your Question - MADECC GROUP Technical Desk';
+        const clientText = `Dear ${name || 'Valued Visitor'},\n\nThank you for reaching out to MADECC GROUP. We have received your question regarding "${category || 'General'}":\n\n"${question}"\n\nOur engineering and technical communication team will review it and follow up with you directly.\n\nWarm regards,\nMADECC GROUP`;
+        const clientHtml = `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 24px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px;">
+              <h1 style="color: #0f172a; margin: 0 0 4px 0; font-weight: 800; font-size: 24px; letter-spacing: 0.05em;">MADECC GROUP</h1>
+              <p style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin: 0; font-weight: 700;">Technical Communications &bull; Civil Engineering</p>
+            </div>
+            <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${name || 'Valued Visitor'}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #334155;">
+              Thank you for contacting MADECC GROUP. We have safely received your inquiry:
+            </p>
+            <div style="background-color: #f8fafc; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 20px; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; font-style: italic; color: #334155; font-size: 14px; line-height: 1.6;">"${question}"</p>
+            </div>
+            <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin: 0 0 20px 0;">
+              Our technical engineering desk is preparing a comprehensive answer. We will reach out to you shortly.
+            </p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+              MADECC GROUP S.A.R.L. &bull; Yaounde Mbankolo &amp; Douala, Cameroon<br />
+              Desk: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b; text-decoration: none;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+            </p>
+          </div>
+        `;
+        sendEmail(email.trim(), clientSubject, clientText, clientHtml).catch(err => {
+          console.error('Failed to send question confirmation to visitor:', err);
+        });
+      }
 
       res.json({ success: true, id: inserted[0].id, message: 'Question received and pending review' });
     } catch (error: any) {

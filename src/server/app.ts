@@ -4,6 +4,7 @@ import fs from 'fs';
 import cookieParser from 'cookie-parser';
 import { seedDatabase } from '../db/seed.ts';
 import { ensureReviewerCredentialsTable } from '../lib/reviewerAuth.ts';
+import { ensureAuthSessionsTable } from '../lib/sessionService.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
@@ -18,6 +19,7 @@ import { setupErpRoutes } from './routes/erpRoutes.ts';
 import { setupLessonRoutes } from './routes/lessonRoutes.ts';
 import { setupSocialRoutes } from './routes/socialRoutes.ts';
 import { setupSaasRoutes } from './routes/saasRoutes.ts';
+import { setupDocumentRoutes } from './routes/documentRoutes.ts';
 import apiPlatformRoutes from './routes/apiPlatformRoutes.ts';
 
 let isDatabaseSeeded = false;
@@ -27,6 +29,7 @@ export async function getApp(): Promise<express.Express> {
     try {
       await seedDatabase();
       await ensureReviewerCredentialsTable();
+      await ensureAuthSessionsTable();
       isDatabaseSeeded = true;
     } catch (seedErr) {
       console.error('[SEED_INITIALIZATION_ERROR] Failed to run database seeding:', seedErr);
@@ -81,6 +84,8 @@ export async function getApp(): Promise<express.Express> {
       req.path.startsWith('/saas') ||
       req.path.startsWith('/compliance') ||
       req.path.startsWith('/data-deletion') ||
+      req.path.startsWith('/contracts') ||
+      req.path.startsWith('/receipts') ||
       req.path.startsWith('/health') ||
       req.headers['x-api-key']
     ) {
@@ -128,6 +133,7 @@ export async function getApp(): Promise<express.Express> {
   setupLessonRoutes(app);
   setupSocialRoutes(app);
   setupSaasRoutes(app);
+  setupDocumentRoutes(app);
   app.use('/api/v1', apiPlatformRoutes);
   app.use('/api', apiPlatformRoutes);
 

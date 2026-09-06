@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAuthToken } from '../lib/firebase.ts';
 import { 
   FileText, 
   Search, 
@@ -65,8 +66,12 @@ export const AdminQuoteRequests: React.FC = () => {
       if (regionFilter !== 'ALL') url.searchParams.append('region', regionFilter);
       if (searchQuery) url.searchParams.append('search', searchQuery);
 
+      const token = await getAuthToken();
       const res = await fetch(url.toString(), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
 
       if (!res.ok) throw new Error('Failed to fetch quote requests');
@@ -93,8 +98,12 @@ export const AdminQuoteRequests: React.FC = () => {
     setEmailSuccessMsg(null);
     setEmailErrorMsg(null);
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/quote-requests/${reqId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (res.ok) {
         const data = await res.json();
@@ -114,11 +123,13 @@ export const AdminQuoteRequests: React.FC = () => {
     setEmailErrorMsg(null);
 
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/quote-requests/${selectedRequest.id}/resend-email`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ target })
       });
@@ -150,8 +161,12 @@ export const AdminQuoteRequests: React.FC = () => {
     if (!selectedRequest) return;
     setPreviewLoading(true);
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/quote-requests/${selectedRequest.id}/email-preview`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (!res.ok) throw new Error('Failed to load email preview template.');
       const data = await res.json();
@@ -168,11 +183,13 @@ export const AdminQuoteRequests: React.FC = () => {
     if (!selectedRequest) return;
     setIsUpdatingStatus(true);
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/quote-requests/${selectedRequest.id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           status: newStatus,
@@ -204,11 +221,13 @@ export const AdminQuoteRequests: React.FC = () => {
 
     setConverting(true);
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/quote-requests/${selectedRequest.id}/convert-to-project`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
 

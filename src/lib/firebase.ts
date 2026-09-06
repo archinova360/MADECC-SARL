@@ -1,33 +1,56 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signOut } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleAuthProvider = new GoogleAuthProvider();
+export { signOut };
+
+export async function logoutUser(userEmail?: string, userUid?: string): Promise<void> {
+  // 1. Notify backend for audit tracking & clear server-side session cookies
+  try {
+    const token = await getAuthToken();
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ email: userEmail, uid: userUid })
+    }).catch(() => {});
+  } catch {
+    // Non-blocking
+  }
+
+  // 2. Firebase sign out
+  try {
+    if (auth) {
+      await signOut(auth);
+    }
+  } catch (err) {
+    console.warn('Firebase signOut notice:', err);
+  }
+
+  // 3. Clear any legacy residual keys to ensure complete cleanup
+  try {
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('reviewer_token');
+    sessionStorage.removeItem('token');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('reviewer_token');
+    localStorage.removeItem('token');
+  } catch (_) {}
+}
 
 export async function getAuthToken(): Promise<string | null> {
-  // Check reviewer session tokens
-  const reviewerToken = sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
-  if (reviewerToken) {
-    return reviewerToken;
-  }
-  // Check admin tokens
-  const bypass = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-  if (bypass === 'Adminmadeccgroup' || bypass === 'ADMIN_BYPASS:Adminmadeccgroup') {
-    return 'ADMIN_BYPASS:Adminmadeccgroup';
-  }
-  if (bypass === 'MADECC GROUP admin' || bypass === 'ADMIN_BYPASS:MADECC GROUP admin' || bypass === 'MADECC_GROUP_admin' || bypass === 'MADECC Group admin' || bypass === 'ADMIN_BYPASS:MADECC Group admin' || bypass === 'MADECC_Group_admin') {
-    return 'ADMIN_BYPASS:MADECC GROUP admin';
-  }
-  const genericToken = localStorage.getItem('token') || sessionStorage.getItem('token');
-  if (genericToken) {
-    return genericToken;
-  }
   try {
-    return (await auth.currentUser?.getIdToken()) || null;
+    if (auth?.currentUser) {
+      return (await auth.currentUser.getIdToken()) || null;
+    }
   } catch (err) {
-    console.warn('Could not retrieve Firebase getIdToken (offline or network partitioned):', err);
-    return null;
+    console.warn('Could not retrieve Firebase getIdToken:', err);
   }
+  return null;
 }

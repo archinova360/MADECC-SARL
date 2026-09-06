@@ -3,7 +3,8 @@ import { useToast } from './Toast.tsx';
 import { 
   auth, 
   googleAuthProvider,
-  getAuthToken
+  getAuthToken,
+  logoutUser
 } from '../lib/firebase.ts';
 import { signInWithPopup } from 'firebase/auth';
 import { 
@@ -752,14 +753,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       
       const response = await fetch('/api/auth/admin-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secretKey: key })
       });
       const data = await response.json();
       
       if (response.ok && data.success && data.user) {
-        sessionStorage.setItem('admin_token', data.token || key);
-        localStorage.setItem('admin_token', data.token || key);
         setDbUser(data.user);
         showToast(`Successfully logged in as ${data.user.name || 'MADECC Administrator'}`, 'success');
       } else {
@@ -779,14 +779,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     try {
       const response = await fetch('/api/auth/admin-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secretKey: key })
       });
       const data = await response.json();
 
       if (response.ok && data.success && data.user) {
-        sessionStorage.setItem('admin_token', data.token || key);
-        localStorage.setItem('admin_token', data.token || key);
         setDbUser(data.user);
         showToast(`Successfully logged in as ${data.user.name || 'MADECC Administrator'}`, 'success');
       } else {
@@ -806,6 +805,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     try {
       const response = await fetch('/api/auth/reviewer-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'meta-reviewer@madeccgroup.online',
@@ -815,9 +815,6 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       const data = await response.json();
 
       if (response.ok && data.success && data.user) {
-        sessionStorage.setItem('reviewer_token', data.token);
-        localStorage.setItem('reviewer_token', data.token);
-        (window as any).firebaseUserToken = data.token;
         setDbUser(data.user);
         setActiveAdminTab('social-studio');
         showToast('Successfully logged in as Meta App Reviewer (Social Media Studio)', 'success');
@@ -829,6 +826,28 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       setLoginError(error?.message || 'Reviewer login failed. Please check credentials.');
     } finally {
       setSigningIn(false);
+    }
+  };
+
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleAdminLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logoutUser(dbUser?.email, dbUser?.uid);
+      setDbUser(null);
+      if (setVerificationToken) setVerificationToken('');
+      showToast('Administrator logged out successfully.', 'info');
+      setCurrentTab('home');
+    } catch (err: any) {
+      console.warn('Admin logout notice:', err);
+      setDbUser(null);
+      setCurrentTab('home');
+      showToast('Logged out.', 'info');
+    } finally {
+      setIsLoggingOut(false);
+      setProfileDropdownOpen(false);
     }
   };
 
@@ -850,9 +869,24 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             {dbUser ? (
-              <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl text-xs space-y-2.5">
-                <p className="text-red-400 font-bold uppercase tracking-wider text-[10px]">Access Blocked (Role: {dbUser.role})</p>
-                <p className="text-slate-300">Your currently authenticated email is not authorized as staff or admin.</p>
+              <div className="bg-slate-900 border border-slate-700 p-5 rounded-2xl text-xs space-y-3">
+                <div className="flex items-center gap-2 text-red-400 font-bold uppercase tracking-wider text-[11px]">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>Access Blocked (Role: {dbUser.role})</span>
+                </div>
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  Your authenticated account (<span className="text-amber-400 font-mono font-semibold">{dbUser.email}</span>) does not have staff or administrator privileges.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAdminLogout}
+                  disabled={isLoggingOut}
+                  id="admin-blocked-logout-btn"
+                  className="w-full bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-xs disabled:opacity-50"
+                >
+                  <LogOut className={`w-4 h-4 text-red-400 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                  <span>{isLoggingOut ? 'Signing out...' : 'Sign Out & Switch Account'}</span>
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSecretKeyLogin} className="pt-4 space-y-4 text-left">
@@ -1983,6 +2017,18 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             )}
           </button>
 
+          {/* Quick Direct Logout Button */}
+          <button
+            onClick={handleAdminLogout}
+            disabled={isLoggingOut}
+            id="admin-topbar-direct-logout-btn"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 disabled:opacity-50"
+            title="Log Out & Terminate Admin Session"
+          >
+            <LogOut className={`w-3.5 h-3.5 text-red-400 ${isLoggingOut ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isLoggingOut ? 'Logging out...' : 'Log Out'}</span>
+          </button>
+
           {/* User Profile Pill */}
           <div className="relative">
             <button
@@ -2022,10 +2068,22 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   <History className="w-4 h-4 text-sky-400" /> Security Audit Logs
                 </button>
                 <button
-                  onClick={() => setCurrentTab('home')}
-                  className="w-full text-left px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl flex items-center gap-2 transition-colors mt-1 border-t border-slate-900"
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    setCurrentTab('home');
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-slate-300 hover:bg-slate-900 rounded-xl flex items-center gap-2 transition-colors mt-1 border-t border-slate-900"
                 >
-                  <LogOut className="w-4 h-4 text-red-400" /> Exit to Public Site
+                  <Globe className="w-4 h-4 text-amber-500" /> View Public Site
+                </button>
+                <button
+                  onClick={handleAdminLogout}
+                  disabled={isLoggingOut}
+                  id="admin-profile-dropdown-logout-btn"
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl flex items-center gap-2 transition-colors mt-1 border-t border-slate-900 disabled:opacity-50"
+                >
+                  <LogOut className={`w-4 h-4 text-red-400 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                  <span>{isLoggingOut ? 'Logging out...' : 'Log Out (Déconnexion)'}</span>
                 </button>
               </div>
             )}
@@ -2156,13 +2214,26 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 <span className="block truncate font-mono text-[9px] text-slate-400">{dbUser.email}</span>
               </div>
             )}
-            <button
-              onClick={() => setCurrentTab('home')}
-              className="w-full text-center bg-slate-900 hover:bg-slate-800 text-slate-300 py-2 rounded-xl text-xs font-bold border border-slate-800 flex items-center justify-center gap-2"
-            >
-              <LogOut className="w-3.5 h-3.5 text-amber-500" />
-              {!sidebarCollapsed && <span>Exit to Public Site</span>}
-            </button>
+            <div className="flex flex-col gap-1.5">
+              <button
+                onClick={() => setCurrentTab('home')}
+                className="w-full text-center bg-slate-900 hover:bg-slate-800 text-slate-300 py-2 rounded-xl text-xs font-bold border border-slate-800 flex items-center justify-center gap-2 transition-colors"
+                title="Return to Public Website"
+              >
+                <Globe className="w-3.5 h-3.5 text-amber-500" />
+                {!sidebarCollapsed && <span>View Public Site</span>}
+              </button>
+              <button
+                onClick={handleAdminLogout}
+                disabled={isLoggingOut}
+                id="admin-sidebar-logout-btn"
+                className="w-full text-center bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 py-2 rounded-xl text-xs font-bold border border-red-500/25 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                title="Log Out & End Admin Session"
+              >
+                <LogOut className={`w-3.5 h-3.5 text-red-400 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                {!sidebarCollapsed && <span>{isLoggingOut ? 'Logging out...' : 'Log Out Admin'}</span>}
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -5906,6 +5977,48 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   </div>
                 );
               })}
+
+              {/* System & Session Controls */}
+              {('logout'.includes(commandSearch.toLowerCase()) ||
+                'sign out'.includes(commandSearch.toLowerCase()) ||
+                'exit'.includes(commandSearch.toLowerCase()) ||
+                'public'.includes(commandSearch.toLowerCase()) ||
+                'site'.includes(commandSearch.toLowerCase()) ||
+                commandSearch === '') && (
+                <div className="space-y-1 pt-2 border-t border-slate-850">
+                  <span className="text-[10px] font-mono font-bold text-slate-500 px-3 uppercase tracking-wider block">
+                    Session & Navigation
+                  </span>
+                  <button
+                    onClick={() => {
+                      setShowCommandPalette(false);
+                      setCommandSearch('');
+                      setCurrentTab('home');
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 transition-colors text-left group"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Globe className="w-4 h-4 text-amber-500 group-hover:text-amber-400 transition-colors" />
+                      <span>View Public Website</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 group-hover:text-amber-500">Jump To →</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCommandPalette(false);
+                      setCommandSearch('');
+                      handleAdminLogout();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left group"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <LogOut className="w-4 h-4 text-red-400 group-hover:text-red-300 transition-colors" />
+                      <span>Log Out Admin (End Session)</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-red-400">Exit Session ↵</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}

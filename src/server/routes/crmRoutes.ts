@@ -224,7 +224,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
                   <li><strong>Current Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase;">${status}</span></li>
                 </ul>
               </div>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">If you need to make changes or have questions, please reach out to us at <a href="mailto:contact@madecc.com" style="color: #d97706; text-decoration: none; font-weight: 600;">contact@madecc.com</a>.</p>
+              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">If you need to make changes or have questions, please reach out to us at <a href="mailto:kreboya603@gmail.com" style="color: #d97706; text-decoration: none; font-weight: 600;">kreboya603@gmail.com</a>.</p>
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
               <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP &bull; Douala, Cameroon</p>
             </div>
@@ -623,7 +623,7 @@ Do NOT write any email subject lines or metadata. Output ONLY the clean HTML ema
             <a href="https://madeccgroup.online/data-deletion?tracking=${trackingCode}" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Check Live Deletion Status &rarr;</a>
           </div>
           <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
-            If you have questions or did not authorize this request, please immediately contact our Legal &amp; Compliance team at <a href="mailto:madecccons@gmail.com" style="color: #d97706; font-weight: 600;">madecccons@gmail.com</a>.
+            If you have questions or did not authorize this request, please immediately contact our Legal &amp; Compliance team at <a href="mailto:kreboya603@gmail.com" style="color: #d97706; font-weight: 600;">kreboya603@gmail.com</a>.
           </p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
           <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Civil Engineering &bull; Yaounde Mbankolo, Cameroon</p>

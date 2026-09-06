@@ -311,7 +311,7 @@ export default function DocumentStudio({
 
   const [contractHeadOffice, setContractHeadOffice] = useState('Yaoundé, Cameroon');
   const [contractTel, setContractTel] = useState('+237 683 31 64 86');
-  const [contractEmail, setContractEmail] = useState('contact@madecc.com');
+  const [contractEmail, setContractEmail] = useState('kreboya603@gmail.com');
   const [contractNo, setContractNo] = useState('MADECC-2026-LA-089');
   const [contractProjectLocation, setContractProjectLocation] = useState('Yaoundé, Cameroon');
   const [contractDate, setContractDate] = useState('July 5, 2026');
@@ -2369,7 +2369,7 @@ export default function DocumentStudio({
                         <label className="text-xs text-slate-500 font-bold uppercase block">Contractor Email</label>
                         <input
                           type="email"
-                          placeholder="e.g. contact@madecc.com"
+                          placeholder="e.g. kreboya603@gmail.com"
                           className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-amber-500"
                           value={contractEmail}
                           onChange={(e) => setContractEmail(e.target.value)}

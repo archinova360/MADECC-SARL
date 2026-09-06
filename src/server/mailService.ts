@@ -17,15 +17,27 @@ export function getTransporter() {
     return null;
   }
 
-  cachedTransporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: {
-      user,
-      pass,
-    },
-  });
+  // Gmail-optimized transport with service: 'gmail' for maximum connection reliability
+  const isGmail = host.includes('gmail') || user.endsWith('@gmail.com');
+  if (isGmail) {
+    cachedTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user,
+        pass,
+      },
+    });
+  } else {
+    cachedTransporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: {
+        user,
+        pass,
+      },
+    });
+  }
 
   return cachedTransporter;
 }

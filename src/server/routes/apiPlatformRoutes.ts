@@ -15,6 +15,7 @@ import {
 } from '../../db/schema.ts';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, requireAdmin } from '../../middleware/auth.ts';
+import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 
 const router = express.Router();
 
@@ -171,8 +172,8 @@ router.get('/company-payment-config', async (req: Request, res: Response) => {
       developer: settings?.developerName || 'Kasah Rodrick Reboya',
       location: settings?.officeAddressYaounde || 'Yaoundé, Cameroon',
       emails: {
-        primary: settings?.email || 'madecccons@gmail.com',
-        secondary: settings?.secondaryEmail || 'Infomadeccconstruction@gmail.com'
+        primary: settings?.email || 'kreboya603@gmail.com',
+        secondary: settings?.secondaryEmail || 'kreboya603@gmail.com'
       },
       phones: {
         primary: settings?.phone || '+237 671 063 511',
@@ -335,6 +336,55 @@ router.post('/checkout/request-access', async (req: Request, res: Response) => {
       });
     }
 
+    // Dispatch SMTP Email Notification to Admin (kreboya603@gmail.com)
+    const adminSubject = `[MADECC API Platform] New Developer Access Request (${requestId}) - ${plan.name}`;
+    const adminText = `A new API Platform access request has been submitted:\n\nDeveloper: ${developerName}\nEmail: ${contactEmail}\nPhone: ${contactPhone || 'N/A'}\nPlan: ${plan.name} (${plan.code})\nStatus: ${accessRequest.status}\nPayment Method: ${paymentMethod || 'Free'}\nTxn Ref: ${transactionReference || 'N/A'}`;
+    const adminHtml = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 20px;">New Developer API Access Request</h2>
+        <p style="font-size: 14px;"><strong>Request ID:</strong> <span style="font-family: monospace; font-weight: bold; color: #d97706;">${requestId}</span></p>
+        <p style="font-size: 14px;"><strong>Developer:</strong> ${developerName}</p>
+        <p style="font-size: 14px;"><strong>Email:</strong> <a href="mailto:${contactEmail}" style="color: #f59e0b;">${contactEmail}</a></p>
+        <p style="font-size: 14px;"><strong>Phone:</strong> ${contactPhone || 'Not provided'}</p>
+        <p style="font-size: 14px;"><strong>Plan:</strong> ${plan.name} (${plan.code})</p>
+        <p style="font-size: 14px;"><strong>Status:</strong> ${accessRequest.status}</p>
+        <p style="font-size: 14px;"><strong>Payment Method:</strong> ${paymentMethod || 'Free'}</p>
+        <p style="font-size: 14px;"><strong>Transaction Reference:</strong> ${transactionReference || 'N/A'}</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Developer Services &bull; Cameroon</p>
+      </div>
+    `;
+    sendNotificationEmail(adminSubject, adminText, adminHtml, { replyTo: contactEmail }).catch(err => {
+      console.error('Failed to send admin API request notification:', err);
+    });
+
+    // Send confirmation to Developer
+    if (contactEmail && contactEmail.includes('@')) {
+      const devSubject = `MADECC API Access Request Received: ${requestId}`;
+      const devText = `Dear ${developerName},\n\nThank you for requesting access to the MADECC Engineering API Platform. Your request reference is ${requestId}.\n\nPlan: ${plan.name}\nStatus: ${accessRequest.status}\n\nOur API governance team is processing your request.\n\nWarm regards,\nMADECC API Engineering Team`;
+      const devHtml = `
+        <div style="font-family: Arial, sans-serif; color: #0f172a; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #0f172a; margin-top: 0; font-size: 22px; border-bottom: 2px solid #f59e0b; padding-bottom: 10px;">MADECC API Platform</h2>
+          <p style="font-size: 15px;">Dear <strong>${developerName}</strong>,</p>
+          <p style="font-size: 14px; color: #334155; line-height: 1.6;">Thank you for registering on the MADECC Civil Engineering API Platform. We have safely logged your access application.</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 13px;"><strong>Request Reference:</strong> <span style="font-family: monospace; color: #d97706; font-weight: bold;">${requestId}</span></p>
+            <p style="margin: 0 0 6px 0; font-size: 13px;"><strong>Plan:</strong> ${plan.name} (${plan.code})</p>
+            <p style="margin: 0; font-size: 13px;"><strong>Status:</strong> ${accessRequest.status}</p>
+          </div>
+          <p style="font-size: 13px; color: #64748b; line-height: 1.5;">If you selected a paid tier, our billing team will verify your transaction reference and provision production credentials within 24 hours.</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Developer Platform<br/>
+            Support: <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b;">kreboya603@gmail.com</a> | Tel: +237 683 316 486
+          </p>
+        </div>
+      `;
+      sendEmail(contactEmail, devSubject, devText, devHtml).catch(err => {
+        console.error('Failed to send developer confirmation email:', err);
+      });
+    }
+
     return res.status(201).json({
       success: true,
       message: isFreeSandbox 
@@ -345,7 +395,7 @@ router.post('/checkout/request-access', async (req: Request, res: Response) => {
       generatedKey,
       contactSupport: {
         whatsapp: '+237 683 316 486',
-        email: 'madecccons@gmail.com'
+        email: 'kreboya603@gmail.com'
       }
     });
   } catch (err: any) {

@@ -474,117 +474,31 @@ export default function App() {
     }
   }, []);
 
-  // Sync Firebase authentication or Reviewer / Admin session tokens with our PostgreSQL user roles
+  // Sync backend session (via secure cookies) and Firebase authentication with our database user roles
   useEffect(() => {
-    const reviewerToken = sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
-    if (reviewerToken) {
-      setLoadingAuth(true);
-      (window as any).firebaseUserToken = reviewerToken;
+    setLoadingAuth(true);
 
-      const fetchReviewerWithRetry = (retries = 3, delay = 1000): Promise<any> => {
-        return fetch('/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${reviewerToken}` }
-        })
-          .then(res => {
-            if (res.ok) return res.json();
-            if (res.status === 401 || res.status === 403) {
-              throw new Error('Reviewer verification failed');
-            }
-            throw new Error(`Server returned ${res.status}`);
-          })
-          .catch(err => {
-            if (retries > 0 && err.message !== 'Reviewer verification failed') {
-              console.warn(`Reviewer verification fetch failed, retrying in ${delay}ms... (${retries} retries left)`);
-              return new Promise(resolve => setTimeout(resolve, delay))
-                .then(() => fetchReviewerWithRetry(retries - 1, delay * 1.5));
-            }
-            throw err;
-          });
-      };
-
-      fetchReviewerWithRetry()
-        .then(data => {
-          if (data.user) {
-            setDbUser(data.user);
-          }
-          setLoadingAuth(false);
-        })
-        .catch(err => {
-          console.error('Reviewer login restore notice:', err);
-          if (err.message === 'Reviewer verification failed') {
-            sessionStorage.removeItem('reviewer_token');
-            localStorage.removeItem('reviewer_token');
-            setDbUser(null);
-          }
-          setLoadingAuth(false);
-        });
-      return;
-    }
-
-    const bypassToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-    if (bypassToken === 'Adminmadeccgroup' || bypassToken === 'MADECC GROUP admin' || bypassToken === 'MADECC Group admin') {
-      setLoadingAuth(true);
-
-      const fetchWithRetry = (retries = 3, delay = 1000): Promise<any> => {
-        return fetch('/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${bypassToken}` }
-        })
-          .then(res => {
-            if (res.ok) return res.json();
-            throw new Error('Verification failed');
-          })
-          .catch(err => {
-            if (retries > 0 && err.message !== 'Verification failed') {
-              console.warn(`Bypass login fetch failed, retrying in ${delay}ms... (${retries} retries left)`);
-              return new Promise(resolve => setTimeout(resolve, delay))
-                .then(() => fetchWithRetry(retries - 1, delay * 1.5));
-            }
-            throw err;
-          });
-      };
-
-      fetchWithRetry()
-        .then(data => {
-          if (data.user) {
-            setDbUser(data.user);
-          }
-          setLoadingAuth(false);
-        })
-        .catch(err => {
-          console.error('Bypass login restore failed:', err);
-          if (err.message === 'Verification failed' || err.message.includes('Unauthorized')) {
-            sessionStorage.removeItem('admin_token');
-          }
-          setDbUser(null);
-          setLoadingAuth(false);
-        });
-      return;
-    }
-
-    // Check for stored admin token or reviewer session on app initialization
-    const storedAdminToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-    const storedReviewerToken = sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
-    const initialToken = storedAdminToken || storedReviewerToken;
-
-    if (initialToken) {
-      fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${initialToken}` }
+    // 1. First check if a valid server session exists via HTTP-only cookie
+    fetch('/api/auth/me', {
+      credentials: 'include'
+    })
+      .then(res => {
+        if (res.ok) return res.json();
+        return null;
       })
-        .then(res => res.json())
-        .then(data => {
-          if (data?.user) {
-            setDbUser(data.user);
-          }
-        })
-        .catch(err => {
-          console.warn('Initial token validation error:', err);
-        })
-        .finally(() => {
-          setLoadingAuth(false);
-        });
-    }
+      .then(data => {
+        if (data?.user) {
+          setDbUser(data.user);
+        }
+      })
+      .catch(err => {
+        console.warn('Session check notice:', err);
+      })
+      .finally(() => {
+        setLoadingAuth(false);
+      });
 
-    // Fallback safety timer: ensure loadingAuth resolves within 1.5s even if Firebase is partitioned or slow in iframe
+    // Fallback safety timer: ensure loadingAuth resolves within 1.5s even if network is slow
     const fallbackTimer = setTimeout(() => {
       setLoadingAuth(false);
     }, 1500);
@@ -597,9 +511,8 @@ export default function App() {
           if (firebaseUser) {
             try {
               const token = await firebaseUser.getIdToken();
-              (window as any).firebaseUserToken = token;
-
               const response = await fetch('/api/auth/me', {
+                credentials: 'include',
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               if (response.ok) {
@@ -611,19 +524,11 @@ export default function App() {
             } catch (error) {
               console.warn('Error synchronizing authenticated profile:', error);
             }
-          } else {
-            // If no Firebase user, check if we have a valid admin or reviewer token before clearing
-            const activeBypass = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token') || sessionStorage.getItem('reviewer_token') || localStorage.getItem('reviewer_token');
-            if (!activeBypass) {
-              setDbUser(null);
-              (window as any).firebaseUserToken = undefined;
-            }
           }
           setLoadingAuth(false);
           clearTimeout(fallbackTimer);
         },
         (error) => {
-          // Gracefully capture network request errors (e.g. auth/network-request-failed or offline iframe)
           console.warn('Firebase onAuthStateChanged network notice:', error?.message || error);
           setLoadingAuth(false);
           clearTimeout(fallbackTimer);

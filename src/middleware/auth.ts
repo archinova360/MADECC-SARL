@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { adminAuth } from '../lib/firebase-admin.ts';
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { db } from '../db/index.ts';
-import { users, reviewerCredentials } from '../db/schema.ts';
-import { eq } from 'drizzle-orm';
+import { users, reviewerCredentials, authSessions } from '../db/schema.ts';
+import { eq, and } from 'drizzle-orm';
 import { verifyReviewerToken } from '../lib/reviewerAuth.ts';
+import { validateDatabaseSession } from '../lib/sessionService.ts';
 
 export interface AuthRequest extends Request {
   user?: DecodedIdToken | any;
@@ -111,8 +112,10 @@ export const requireAuth = async (
 ) => {
   let token: string | null = null;
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split('Bearer ')[1];
+  if (authHeader && authHeader.startsWith('Bearer ') && authHeader.split('Bearer ')[1].trim()) {
+    token = authHeader.split('Bearer ')[1].trim();
+  } else if ((req as any).cookies?.madecc_auth_session) {
+    token = (req as any).cookies.madecc_auth_session;
   } else if ((req as any).cookies?.madecc_reviewer_session) {
     token = (req as any).cookies.madecc_reviewer_session;
   }

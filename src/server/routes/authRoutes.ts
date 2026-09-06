@@ -6,6 +6,7 @@ import { eq, desc, and } from 'drizzle-orm';
 import { verifyPassword, signReviewerToken, ensureReviewerCredentialsTable } from '../../lib/reviewerAuth.ts';
 import { reviewerCredentials } from '../../db/schema.ts';
 import { logAudit } from '../../lib/audit.ts';
+import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 
 export function setupAuthRoutes(app: express.Express) {
   // --- AUTH ENDPOINTS ---
@@ -39,6 +40,14 @@ export function setupAuthRoutes(app: express.Express) {
 
       await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_KEY_LOGIN', 'Administrator authenticated via Secret Key');
 
+      res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+
       return res.json({
         success: true,
         token: 'ADMIN_BYPASS:Adminmadeccgroup',
@@ -47,6 +56,25 @@ export function setupAuthRoutes(app: express.Express) {
     } catch (err: any) {
       console.error('[ADMIN_LOGIN_ERROR]', err);
       return res.status(500).json({ success: false, error: err.message || 'Authentication failed' });
+    }
+  });
+
+  // Dedicated Logout Endpoint for Session Invalidation & Audit Logging
+  app.post('/api/auth/logout', async (req, res) => {
+    try {
+      res.clearCookie('madecc_auth_session', { path: '/' });
+      res.clearCookie('madecc_reviewer_session', { path: '/' });
+      const email = req.body?.email || 'kreboya603@gmail.com';
+      const uid = req.body?.uid || 'admin-madecc-uid';
+      try {
+        await logAudit(uid, email, 'ADMIN_LOGOUT', `User ${email} ended administrative session.`);
+      } catch (auditErr) {
+        console.warn('[LOGOUT_AUDIT_WARN]', auditErr);
+      }
+      return res.json({ success: true, message: 'Administrative session terminated successfully.' });
+    } catch (err: any) {
+      console.warn('[LOGOUT_ERROR_NOTICE]', err);
+      return res.json({ success: true, message: 'Local session cleared.' });
     }
   });
 
@@ -68,6 +96,13 @@ export function setupAuthRoutes(app: express.Express) {
       ) {
         const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
         await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_LOGIN', 'Administrator authenticated via credentials');
+        res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
         return res.json({
           success: true,
           token: 'ADMIN_BYPASS:Adminmadeccgroup',
@@ -164,6 +199,21 @@ export function setupAuthRoutes(app: express.Express) {
 
         await logAudit('meta-reviewer-uid', effectiveEmail, 'REVIEWER_LOGIN', 'Meta App Reviewer authenticated successfully');
 
+        res.cookie('madecc_reviewer_session', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+        res.cookie('madecc_auth_session', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
         return res.json({
           success: true,
           token,
@@ -190,6 +240,56 @@ export function setupAuthRoutes(app: express.Express) {
         'REVIEWER_ACCESS_REQUEST',
         `Reviewer access requested by ${name || 'Anonymous'} (${organization || 'Meta App Review Team'}) - Email: ${email || 'N/A'}, Phone: ${phone || 'N/A'}. Note: ${message || 'Standard Request'}. IP: ${clientIp}`
       );
+
+      // 1. Dispatch SMTP notification to Administrator (kreboya603@gmail.com)
+      const adminSubject = `[MADECC GROUP] Reviewer / Meta Credentials Access Request: ${name || 'Anonymous'}`;
+      const adminText = `A reviewer or app auditor has requested system credentials:\n\nName: ${name || 'N/A'}\nOrganization: ${organization || 'Meta App Review'}\nEmail: ${email || 'N/A'}\nPhone: ${phone || 'N/A'}\nIP: ${clientIp}\n\nMessage / Request:\n"${message || 'Standard access request'}"\n\nPlease verify in the admin panel or contact the reviewer.`;
+      const adminHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 20px;">Reviewer Credentials Access Request</h2>
+          <p style="font-size: 14px; margin: 8px 0;"><strong>Name:</strong> ${name || 'N/A'}</p>
+          <p style="font-size: 14px; margin: 8px 0;"><strong>Organization:</strong> ${organization || 'Meta App Review'}</p>
+          <p style="font-size: 14px; margin: 8px 0;"><strong>Email:</strong> <a href="mailto:${email}" style="color: #f59e0b;">${email || 'N/A'}</a></p>
+          <p style="font-size: 14px; margin: 8px 0;"><strong>Phone:</strong> ${phone || 'N/A'}</p>
+          <p style="font-size: 14px; margin: 8px 0;"><strong>Client IP:</strong> ${clientIp}</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 4px; margin: 18px 0;">
+            <p style="margin: 0; line-height: 1.6; color: #334155;"><strong>Message:</strong><br/>${message || 'Standard access request'}</p>
+          </div>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP Security &bull; Credentials Dispatch Channel</p>
+        </div>
+      `;
+      sendNotificationEmail(adminSubject, adminText, adminHtml, { replyTo: email || undefined }).catch(err => {
+        console.error('Failed to dispatch reviewer request notification:', err);
+      });
+
+      // 2. Dispatch confirmation to requester if valid email provided
+      if (email && email.includes('@')) {
+        const clientSubject = `MADECC GROUP - Reviewer Access Request Received`;
+        const clientText = `Dear ${name || 'Reviewer'},\n\nWe have received your access credentials request for MADECC GROUP Social Media Studio and App Review testing.\n\nOur administration desk has received your request. For immediate manual verification, you may also reach out via WhatsApp at +237 671 063 511 or by replying to this email.\n\nWarm regards,\nMADECC GROUP Security Administration`;
+        const clientHtml = `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+            <h2 style="color: #0f172a; border-bottom: 2px solid #f59e0b; padding-bottom: 12px; margin-top: 0; font-size: 20px;">MADECC GROUP Reviewer Access</h2>
+            <p style="font-size: 14px; line-height: 1.6;">Dear <strong>${name || 'Reviewer'}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #334155;">
+              Thank you for contacting MADECC GROUP. We have received your request for testing credentials.
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+              <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">Direct Administrator Contacts:</p>
+              <p style="margin: 0 0 4px 0; font-size: 13px;"><strong>Email:</strong> <a href="mailto:kreboya603@gmail.com" style="color: #f59e0b;">kreboya603@gmail.com</a></p>
+              <p style="margin: 0; font-size: 13px;"><strong>WhatsApp:</strong> +237 671 063 511 / +237 640 194 505</p>
+            </div>
+            <p style="font-size: 13px; line-height: 1.6; color: #475569;">
+              You will receive your authorized session parameters promptly.
+            </p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">MADECC GROUP S.A.R.L. &bull; Yaounde &amp; Douala, Cameroon</p>
+          </div>
+        `;
+        sendEmail(email.trim(), clientSubject, clientText, clientHtml).catch(err => {
+          console.error('Failed to send reviewer confirmation email:', err);
+        });
+      }
 
       return res.json({
         success: true,
@@ -229,6 +329,13 @@ export function setupAuthRoutes(app: express.Express) {
         if (validAdminKeys.includes(key) || key.startsWith('ADMIN_BYPASS:')) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
           await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_LOGIN', 'Administrator authenticated via secret key');
+          res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+          });
           return res.json({
             success: true,
             token: 'ADMIN_BYPASS:Adminmadeccgroup',
@@ -248,6 +355,13 @@ export function setupAuthRoutes(app: express.Express) {
           rawPassword === 'MADECC GROUP admin'
         ) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
+          res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+          });
           return res.json({
             success: true,
             token: 'ADMIN_BYPASS:Adminmadeccgroup',
@@ -281,6 +395,20 @@ export function setupAuthRoutes(app: express.Express) {
               email: reviewerEmail,
               role: 'social_media_reviewer',
               name: 'Meta App Review Tester'
+            });
+            res.cookie('madecc_reviewer_session', token, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              path: '/',
+              maxAge: 7 * 24 * 60 * 60 * 1000
+            });
+            res.cookie('madecc_auth_session', token, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              path: '/',
+              maxAge: 7 * 24 * 60 * 60 * 1000
             });
             return res.json({
               success: true,

@@ -3,7 +3,8 @@ import React, { useState, useRef } from 'react';
 import logoImg from '../assets/images/app_logo_1788030845756.jpg';
 import { 
   auth, 
-  googleAuthProvider 
+  googleAuthProvider,
+  logoutUser
 } from '../lib/firebase.ts';
 import { signInWithPopup, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useTheme } from '../lib/ThemeContext.tsx';
@@ -200,13 +201,12 @@ export default function Navbar({
     try {
       const response = await fetch('/api/auth/admin-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secretKey: key })
       });
       const data = await response.json();
       if (response.ok && data.success && data.user) {
-        sessionStorage.setItem('admin_token', data.token || key);
-        localStorage.setItem('admin_token', data.token || key);
         setDbUser(data.user);
         setLoginModalOpen(false);
         setAdminSecretKey('');
@@ -217,7 +217,6 @@ export default function Navbar({
     } catch (error: any) {
       console.error('Admin key login failed:', error);
       setLoginError(error?.message || 'Access Denied. Please verify the admin secret key.');
-      sessionStorage.removeItem('admin_token');
     } finally {
       setSigningIn(false);
     }
@@ -239,14 +238,12 @@ export default function Navbar({
     try {
       const response = await fetch('/api/auth/reviewer-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       const data = await response.json();
-      if (response.ok && data.success && data.token) {
-        sessionStorage.setItem('reviewer_token', data.token);
-        localStorage.setItem('reviewer_token', data.token);
-        (window as any).firebaseUserToken = data.token;
+      if (response.ok && data.success) {
         setDbUser(data.user);
         setLoginModalOpen(false);
         setEmailInput('');
@@ -264,6 +261,7 @@ export default function Navbar({
       const token = await userCredential.user.getIdToken();
       
       const response = await fetch('/api/auth/me', {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -288,14 +286,12 @@ export default function Navbar({
       try {
         const uniRes = await fetch('/api/auth/login', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
         const uniData = await uniRes.json();
-        if (uniRes.ok && uniData.success && uniData.token) {
-          sessionStorage.setItem('reviewer_token', uniData.token);
-          localStorage.setItem('reviewer_token', uniData.token);
-          (window as any).firebaseUserToken = uniData.token;
+        if (uniRes.ok && uniData.success) {
           setDbUser(uniData.user);
           setLoginModalOpen(false);
           setEmailInput('');
@@ -333,6 +329,7 @@ export default function Navbar({
     try {
       const response = await fetch('/api/auth/reviewer-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'meta-reviewer@madeccgroup.online',
@@ -340,10 +337,7 @@ export default function Navbar({
         })
       });
       const data = await response.json();
-      if (response.ok && data.success && data.token) {
-        sessionStorage.setItem('reviewer_token', data.token);
-        localStorage.setItem('reviewer_token', data.token);
-        (window as any).firebaseUserToken = data.token;
+      if (response.ok && data.success) {
         setDbUser(data.user);
         setLoginModalOpen(false);
         setEmailInput('');
@@ -362,14 +356,10 @@ export default function Navbar({
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logoutUser(dbUser?.email, dbUser?.uid);
     } catch (error) {
-      console.warn('Firebase signOut notice (clearing local session regardless):', error);
+      console.warn('Logout notice:', error);
     } finally {
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('reviewer_token');
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('reviewer_token');
       setDbUser(null);
       setUserDropdownOpen(false);
       setCurrentTab('home');

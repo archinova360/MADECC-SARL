@@ -1948,6 +1948,22 @@ export const apiPlatformAuditLogs = pgTable('api_platform_audit_logs', {
   timestamp: timestamp('timestamp').defaultNow().notNull(),
 });
 
+// =========================================================================
+// 88. AUTHENTICATED SESSIONS (Neon Database Live Session Authority)
+// =========================================================================
+export const authSessions = pgTable('auth_sessions', {
+  id: serial('id').primaryKey(),
+  sessionToken: text('session_token').notNull().unique(),
+  userId: text('user_id').notNull(),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('admin'),
+  isActive: boolean('is_active').notNull().default(true),
+  expiresAt: timestamp('expires_at').notNull(),
+  revokedAt: timestamp('revoked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+
 
 
 

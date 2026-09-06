@@ -1,20 +1,13 @@
-import { auth } from './firebase.ts';
+import { getAuthToken } from './firebase.ts';
 
-// Helper to retrieve correct headers for both standard and administrative bypass authentication
+// Helper to retrieve correct headers for database authentication
 async function getAuthHeaders() {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  const bypassToken = sessionStorage.getItem('admin_token');
-  if (bypassToken) {
-    headers['Authorization'] = `Bearer ${bypassToken}`;
-  } else if (auth.currentUser) {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch (e) {
-      console.error('Failed to get Firebase token during sync headers acquisition:', e);
-    }
+  const token = await getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
 }
@@ -27,11 +20,10 @@ const memoryCache: Record<string, any> = {};
 export async function fetchUserSyncData(): Promise<Record<string, any>> {
   try {
     const headers = await getAuthHeaders();
-    if (!headers['Authorization']) {
-      return memoryCache;
-    }
-
-    const res = await fetch('/api/user-sync', { headers });
+    const res = await fetch('/api/user-sync', {
+      headers,
+      credentials: 'include'
+    });
     if (res.ok) {
       const { data } = await res.json();
       const parsed: Record<string, any> = {};
@@ -57,12 +49,9 @@ export async function saveUserSyncData(key: string, value: any): Promise<boolean
   try {
     memoryCache[key] = value;
     const headers = await getAuthHeaders();
-    if (!headers['Authorization']) {
-      return false;
-    }
-
     const res = await fetch('/api/user-sync', {
       method: 'POST',
+      credentials: 'include',
       headers,
       body: JSON.stringify({ key, value })
     });

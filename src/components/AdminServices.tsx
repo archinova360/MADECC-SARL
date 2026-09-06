@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAuthToken } from '../lib/firebase.ts';
 import { 
   Layers, 
   Plus, 
@@ -123,8 +124,12 @@ export const AdminServices: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      const token = await getAuthToken();
       const res = await fetch('/api/services?admin=true', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (!res.ok) throw new Error('Failed to fetch services.');
       const data = await res.json();
@@ -261,11 +266,13 @@ export const AdminServices: React.FC = () => {
         slug
       };
 
+      const token = await getAuthToken();
       const res = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(payload)
       });
@@ -287,11 +294,13 @@ export const AdminServices: React.FC = () => {
 
   const handleToggleStatus = async (service: ServiceCMS, newStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') => {
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/services/${service.id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ ...service, status: newStatus })
       });
@@ -318,11 +327,13 @@ export const AdminServices: React.FC = () => {
         displayOrder: totalCount + 1
       };
 
+      const token = await getAuthToken();
       const res = await fetch('/api/services', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(copyPayload)
       });
@@ -338,9 +349,13 @@ export const AdminServices: React.FC = () => {
     if (!confirm(`Are you sure you want to delete service "${name}"? This action removes it from database records.`)) return;
 
     try {
+      const token = await getAuthToken();
       const res = await fetch(`/api/services/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
 
       if (!res.ok) throw new Error('Delete failed');
@@ -355,6 +370,7 @@ export const AdminServices: React.FC = () => {
     if (!confirm(`Apply bulk ${action} action on ${selectedIds.length} selected services?`)) return;
 
     try {
+      const token = await getAuthToken();
       for (const id of selectedIds) {
         const target = services.find(s => s.id === id);
         if (!target) continue;
@@ -362,15 +378,19 @@ export const AdminServices: React.FC = () => {
         if (action === 'DELETE') {
           await fetch(`/api/services/${id}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+            credentials: 'include',
+            headers: {
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
           });
         } else {
           const newStatus = action === 'PUBLISH' ? 'PUBLISHED' : action === 'UNPUBLISH' ? 'DRAFT' : 'ARCHIVED';
           await fetch(`/api/services/${id}`, {
             method: 'PUT',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
             body: JSON.stringify({ ...target, status: newStatus })
           });

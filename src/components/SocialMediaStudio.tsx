@@ -687,9 +687,12 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     if (currentUser?.role !== 'admin') return;
     try {
       setLoadingMetaReviewer(true);
-      const token = sessionStorage.getItem('admin_token') ? 'ADMIN_BYPASS:Adminmadeccgroup' : (sessionStorage.getItem('reviewer_token') || '');
+      const token = await getAuthToken();
       const res = await fetch('/api/admin/meta-reviewer', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (res.ok) {
         const data = await res.json();
@@ -704,12 +707,13 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
 
   const handleGenerateReviewerPassword = async (customPass?: string) => {
     try {
-      const token = sessionStorage.getItem('admin_token') ? 'ADMIN_BYPASS:Adminmadeccgroup' : (sessionStorage.getItem('reviewer_token') || '');
+      const token = await getAuthToken();
       const res = await fetch('/api/admin/meta-reviewer/reset-password', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ customPassword: customPass || undefined })
       });
@@ -729,11 +733,12 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
 
   const handleToggleReviewerStatus = async () => {
     try {
-      const token = sessionStorage.getItem('admin_token') ? 'ADMIN_BYPASS:Adminmadeccgroup' : (sessionStorage.getItem('reviewer_token') || '');
+      const token = await getAuthToken();
       const res = await fetch('/api/admin/meta-reviewer/toggle-status', {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
       const data = await res.json();

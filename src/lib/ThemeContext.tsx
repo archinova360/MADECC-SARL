@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth } from './firebase.ts';
+import { getAuthToken } from './firebase.ts';
 
 export type Theme = 'light' | 'dark';
 
@@ -39,24 +39,18 @@ export function ThemeProvider({ children, dbUser }: { children: React.ReactNode;
     // If authenticated, persist to Neon database
     if (dbUser) {
       try {
-        const bypassToken = sessionStorage.getItem('admin_token');
+        const token = await getAuthToken();
         const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
-        if (bypassToken) {
-          headers['Authorization'] = `Bearer ${bypassToken}`;
-        } else if (auth.currentUser) {
-          const token = await auth.currentUser.getIdToken();
-          headers['Authorization'] = `Bearer ${token}`;
-        }
 
-        if (headers['Authorization']) {
-          await fetch('/api/user-theme', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ theme: newTheme })
-          });
-        }
+        await fetch('/api/user-theme', {
+          method: 'POST',
+          credentials: 'include',
+          headers,
+          body: JSON.stringify({ theme: newTheme })
+        });
       } catch (err) {
         console.warn('Non-fatal: Error saving theme preference to Neon DB:', err);
       }

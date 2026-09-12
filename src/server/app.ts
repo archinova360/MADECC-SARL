@@ -20,6 +20,7 @@ import { setupLessonRoutes } from './routes/lessonRoutes.ts';
 import { setupSocialRoutes } from './routes/socialRoutes.ts';
 import { setupSaasRoutes } from './routes/saasRoutes.ts';
 import { setupDocumentRoutes } from './routes/documentRoutes.ts';
+import { setupOptimizerRoutes } from './routes/optimizerRoutes.ts';
 import apiPlatformRoutes from './routes/apiPlatformRoutes.ts';
 
 let isDatabaseSeeded = false;
@@ -77,6 +78,7 @@ export async function getApp(): Promise<express.Express> {
     if (
       req.path === '/csrf-token' ||
       req.path.startsWith('/auth') ||
+      req.path.startsWith('/optimizer') ||
       req.path.startsWith('/v1') ||
       req.path.startsWith('/webhooks') ||
       req.path.startsWith('/social') ||
@@ -134,6 +136,7 @@ export async function getApp(): Promise<express.Express> {
   setupSocialRoutes(app);
   setupSaasRoutes(app);
   setupDocumentRoutes(app);
+  setupOptimizerRoutes(app);
   app.use('/api/v1', apiPlatformRoutes);
   app.use('/api', apiPlatformRoutes);
 

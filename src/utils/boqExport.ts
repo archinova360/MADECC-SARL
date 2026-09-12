@@ -8,28 +8,52 @@ import {
   TableCell,
   WidthType,
   AlignmentType,
-  BorderStyle
+  BorderStyle,
+  Header,
+  Footer,
+  PageNumber
 } from 'docx';
+import * as XLSX from 'xlsx';
+import { numberToWords } from './numberToWords';
 
 function sanitizeFilename(str: string): string {
   if (!str) return 'BOQ';
   return str.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+const BORDER_STYLE_LIGHT = {
+  top: { style: BorderStyle.SINGLE, size: 1, color: 'E2E8F0' },
+  bottom: { style: BorderStyle.SINGLE, size: 1, color: 'E2E8F0' },
+  left: { style: BorderStyle.SINGLE, size: 1, color: 'E2E8F0' },
+  right: { style: BorderStyle.SINGLE, size: 1, color: 'E2E8F0' }
+};
+
+const BORDER_STYLE_NONE = {
+  top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+};
+
 /**
- * Generate Microsoft Word (.docx) document for BOQ
+ * Generate complete Microsoft Word (.docx) document for BOQ for MADECC Group SARL.
+ * Guarantees zero cut-off sections, repeated table headers, explicit cell widths,
+ * complete financial recap, amount in words, and engineer sign-off.
  */
 export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename: string }> {
   const isDraft = boq.status !== 'APPROVED';
+  const currency = boq.currency || 'XAF';
+  const companyName = 'MADECC Group SARL';
   const children: any[] = [];
 
-  // Header Branding
+  // 1. Header Branding
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
+      spacing: { before: 100, after: 60 },
       children: [
         new TextRun({
-          text: 'MADECC GROUP S.A.R.L.',
+          text: companyName,
           bold: true,
           size: 32,
           color: 'D97706' // Amber-600
@@ -38,80 +62,114 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'CIVIL ENGINEERING, GEOTECHNICS & STRUCTURAL CONSTRUCTION',
+          text: 'CIVIL, STRUCTURAL & MECHANICAL ENGINEERING',
           bold: true,
           size: 18,
-          color: '334155'
+          color: '0F172A' // Slate-900
         })
       ]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'Douala & Yaoundé, Republic of Cameroon | Contact: info@madecc-group.cm',
-          size: 16,
+          text: 'Enterprise Quantity Surveying & Technical Cost Engineering Department',
+          italics: true,
+          size: 15,
+          color: '475569' // Slate-600
+        })
+      ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 180 },
+      children: [
+        new TextRun({
+          text: 'Douala & Yaoundé, Republic of Cameroon | Email: engineering@madeccgroup.cm | Tel: +237 671 063 511',
+          size: 14,
           color: '64748B'
         })
       ]
     }),
-    new Paragraph({ text: '', spacing: { after: 200 } }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
       children: [
         new TextRun({
-          text: 'OFFICIAL BILL OF QUANTITIES / ESTIMATE',
+          text: 'OFFICIAL BILL OF QUANTITIES / TENDER ESTIMATE',
           bold: true,
-          size: 24,
+          size: 22,
           color: '0F172A'
         })
       ]
     })
   );
 
-  // Draft Warning Banner if not approved
+  // Status Banner
   if (isDraft) {
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 100, after: 100 },
+        spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: 'DRAFT — NOT FOR CLIENT APPROVAL',
+            text: `STATUS: ${boq.status || 'DRAFT'} — OFFICIAL WORKING ESTIMATE`,
             bold: true,
-            size: 20,
-            color: 'DC2626' // Red
+            size: 16,
+            color: 'D97706'
+          })
+        ]
+      })
+    );
+  } else {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 40, after: 160 },
+        children: [
+          new TextRun({
+            text: 'STATUS: APPROVED & CERTIFIED FOR TENDER SUBMISSION',
+            bold: true,
+            size: 16,
+            color: '059669' // Emerald-600
           })
         ]
       })
     );
   }
 
-  children.push(new Paragraph({ text: '', spacing: { after: 150 } }));
-
-  // Metadata Table
+  // 2. Project Metadata Table
   const metaTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: BORDER_STYLE_LIGHT,
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 50, type: WidthType.PERCENTAGE },
+            shading: { fill: 'F8FAFC' },
+            margins: { top: 120, bottom: 120, left: 140, right: 140 },
             children: [
-              new Paragraph({ children: [new TextRun({ text: 'BOQ Reference: ', bold: true }), new TextRun(boq.boqReference || '')] }),
-              new Paragraph({ children: [new TextRun({ text: 'Project Name: ', bold: true }), new TextRun(boq.projectName || '')] }),
-              new Paragraph({ children: [new TextRun({ text: 'Location: ', bold: true }), new TextRun(boq.location || '')] })
+              new Paragraph({ children: [new TextRun({ text: 'BOQ Reference: ', bold: true, size: 16 }), new TextRun({ text: boq.boqReference || '', size: 16 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Project Name: ', bold: true, size: 16 }), new TextRun({ text: boq.projectName || '', size: 16 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Location: ', bold: true, size: 16 }), new TextRun({ text: boq.location || 'Douala, Cameroon', size: 16 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Contract Type: ', bold: true, size: 16 }), new TextRun({ text: boq.contractType || 'UNIT_RATE', size: 16 })] })
             ]
           }),
           new TableCell({
             width: { size: 50, type: WidthType.PERCENTAGE },
+            shading: { fill: 'F8FAFC' },
+            margins: { top: 120, bottom: 120, left: 140, right: 140 },
             children: [
-              new Paragraph({ children: [new TextRun({ text: 'Revision: ', bold: true }), new TextRun(boq.revisionNumber || 'REV-00')] }),
-              new Paragraph({ children: [new TextRun({ text: 'Client Name: ', bold: true }), new TextRun(boq.clientName || '')] }),
-              new Paragraph({ children: [new TextRun({ text: 'Date Prepared: ', bold: true }), new TextRun(boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString() : new Date().toLocaleDateString())] }),
-              new Paragraph({ children: [new TextRun({ text: 'Prepared By: ', bold: true }), new TextRun(boq.preparedBy || '')] })
+              new Paragraph({ children: [new TextRun({ text: 'Revision: ', bold: true, size: 16 }), new TextRun({ text: boq.revisionNumber || 'REV-00', size: 16 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Client Name: ', bold: true, size: 16 }), new TextRun({ text: boq.clientName || 'Valued Client', size: 16 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Date Prepared: ', bold: true, size: 16 }), new TextRun({ text: boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'), size: 16 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Prepared By: ', bold: true, size: 16 }), new TextRun({ text: boq.preparedBy || 'Lead Quantity Surveyor', size: 16 })] })
             ]
           })
         ]
@@ -120,24 +178,29 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   });
 
   children.push(metaTable);
-  children.push(new Paragraph({ text: '', spacing: { after: 250 } }));
+  children.push(new Paragraph({ text: '', spacing: { after: 200 } }));
 
-  // Sections & Work Items
-  const sections = boq.sections || [];
-  sections.forEach((sec: any) => {
-    // Section Header
+  // 3. Sections & Work Items
+  const sections = Array.isArray(boq.sections) ? boq.sections : [];
+
+  sections.forEach((sec: any, sIdx: number) => {
+    const secCode = sec.sectionCode || `${sIdx + 1}.0`;
+    const secTitle = sec.title || 'Work Items';
+    const secSubtotal = Number(sec.subtotal || 0).toLocaleString();
+
+    // Section Title Header
     children.push(
       new Paragraph({
-        spacing: { before: 200, after: 100 },
+        spacing: { before: 240, after: 80 },
         children: [
           new TextRun({
-            text: `SECTION ${sec.sectionCode}: ${sec.title}`,
+            text: `SECTION ${secCode}: ${secTitle}`.toUpperCase(),
             bold: true,
             size: 20,
             color: '0F172A'
           }),
           new TextRun({
-            text: ` (Subtotal: ${Number(sec.subtotal || 0).toLocaleString()} ${boq.currency || 'XAF'})`,
+            text: `  (Subtotal: ${secSubtotal} ${currency})`,
             bold: true,
             size: 18,
             color: 'D97706'
@@ -146,54 +209,162 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
       })
     );
 
-    // Items Table
+    // Items Table Header with tableHeader: true and cantSplit: true
     const tableHeader = new TableRow({
+      tableHeader: true,
+      cantSplit: true,
       children: [
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: 'Item', bold: true, size: 16 })] })] }),
-        new TableCell({ width: { size: 42, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: 'Description', bold: true, size: 16 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Unit', bold: true, size: 16 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Qty', bold: true, size: 16 })] })] }),
-        new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Rate (${boq.currency || 'XAF'})`, bold: true, size: 16 })] })] }),
-        new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Amount (${boq.currency || 'XAF'})`, bold: true, size: 16 })] })] })
+        new TableCell({
+          width: { size: 10, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [new Paragraph({ children: [new TextRun({ text: 'Item', bold: true, size: 15, color: 'FFFFFF' })] })]
+        }),
+        new TableCell({
+          width: { size: 44, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [new Paragraph({ children: [new TextRun({ text: 'Description of Works & Specifications', bold: true, size: 15, color: 'FFFFFF' })] })]
+        }),
+        new TableCell({
+          width: { size: 10, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Unit', bold: true, size: 15, color: 'FFFFFF' })] })]
+        }),
+        new TableCell({
+          width: { size: 11, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Qty', bold: true, size: 15, color: 'FFFFFF' })] })]
+        }),
+        new TableCell({
+          width: { size: 12, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Rate (${currency})`, bold: true, size: 15, color: 'FFFFFF' })] })]
+        }),
+        new TableCell({
+          width: { size: 13, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Amount (${currency})`, bold: true, size: 15, color: 'FFFFFF' })] })]
+        })
       ]
     });
 
-    const itemRows = (sec.items || []).map((item: any) => {
+    // Body rows with explicit cell widths and cantSplit
+    const items = Array.isArray(sec.items) ? sec.items : [];
+    const itemRows = items.map((item: any, iIdx: number) => {
+      const isZebra = iIdx % 2 === 1;
+      const fill = isZebra ? 'F8FAFC' : 'FFFFFF';
+      const descParagraphs: Paragraph[] = [
+        new Paragraph({ children: [new TextRun({ text: item.description || '', size: 15 })] })
+      ];
+
+      if (item.measurementBasis || item.notes) {
+        descParagraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: item.measurementBasis ? `Basis: ${item.measurementBasis}` : String(item.notes),
+                italics: true,
+                size: 13,
+                color: '64748B'
+              })
+            ]
+          })
+        );
+      }
+
       return new TableRow({
+        cantSplit: true,
         children: [
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: item.itemNumber || '', size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: item.description || '', size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.unit || '', size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: String(item.quantity ?? 0), size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: Number(item.unitRate || 0).toLocaleString(), size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: Number(item.amount || 0).toLocaleString(), bold: true, size: 16 })] })] })
+          new TableCell({
+            width: { size: 10, type: WidthType.PERCENTAGE },
+            shading: { fill },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: [new Paragraph({ children: [new TextRun({ text: item.itemNumber || `${secCode}.${iIdx + 1}`, bold: true, size: 15 })] })]
+          }),
+          new TableCell({
+            width: { size: 44, type: WidthType.PERCENTAGE },
+            shading: { fill },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: descParagraphs
+          }),
+          new TableCell({
+            width: { size: 10, type: WidthType.PERCENTAGE },
+            shading: { fill },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.unit || 'LS', size: 15 })] })]
+          }),
+          new TableCell({
+            width: { size: 11, type: WidthType.PERCENTAGE },
+            shading: { fill },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: Number(item.quantity ?? 0).toLocaleString(), size: 15 })] })]
+          }),
+          new TableCell({
+            width: { size: 12, type: WidthType.PERCENTAGE },
+            shading: { fill },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: Number(item.unitRate || 0).toLocaleString(), size: 15 })] })]
+          }),
+          new TableCell({
+            width: { size: 13, type: WidthType.PERCENTAGE },
+            shading: { fill },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: Number(item.amount || 0).toLocaleString(), bold: true, size: 15 })] })]
+          })
         ]
       });
     });
 
+    // Section Subtotal Row
+    const subtotalRow = new TableRow({
+      cantSplit: true,
+      children: [
+        new TableCell({
+          width: { size: 87, type: WidthType.PERCENTAGE },
+          columnSpan: 5,
+          shading: { fill: 'F1F5F9' },
+          margins: { top: 90, bottom: 90, left: 100, right: 100 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `SECTION ${secCode} SUB-TOTAL:`, bold: true, size: 16, color: '0F172A' })] })]
+        }),
+        new TableCell({
+          width: { size: 13, type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9' },
+          margins: { top: 90, bottom: 90, left: 80, right: 80 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${secSubtotal} ${currency}`, bold: true, size: 16, color: 'D97706' })] })]
+        })
+      ]
+    });
+
     const itemTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [tableHeader, ...itemRows]
+      borders: BORDER_STYLE_LIGHT,
+      rows: [tableHeader, ...itemRows, subtotalRow]
     });
 
     children.push(itemTable);
-    children.push(new Paragraph({ text: '', spacing: { after: 150 } }));
+    children.push(new Paragraph({ text: '', spacing: { after: 180 } }));
   });
 
-  // Financial Summary
+  // 4. Commercial Financial Summary Recap Table
   children.push(
     new Paragraph({
-      spacing: { before: 250, after: 100 },
+      spacing: { before: 280, after: 120 },
       alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ text: 'FINANCIAL SUMMARY RECAP', bold: true, size: 20, color: '0F172A' })]
+      children: [new TextRun({ text: 'COMMERCIAL & FINANCIAL SUMMARY RECAP', bold: true, size: 20, color: '0F172A' })]
     })
   );
 
   const summaryRows = [
     new TableRow({
+      cantSplit: true,
       children: [
-        new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Subtotal (Measured Work):', bold: true, size: 18 })] })] }),
-        new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${Number(boq.subtotal || 0).toLocaleString()} ${boq.currency || 'XAF'}`, bold: true, size: 18 })] })] })
+        new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, margins: { top: 90, bottom: 90, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Measured Works Subtotal:', bold: true, size: 17 })] })] }),
+        new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, margins: { top: 90, bottom: 90, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${Number(boq.subtotal || 0).toLocaleString()} ${currency}`, bold: true, size: 17 })] })] })
       ]
     })
   ];
@@ -201,9 +372,10 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   if (Number(boq.overheadAmount) > 0) {
     summaryRows.push(
       new TableRow({
+        cantSplit: true,
         children: [
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Overhead (${boq.overheadPercent}%):`, size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.overheadAmount).toLocaleString()} ${boq.currency || 'XAF'}`, size: 16 })] })] })
+          new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Site Overhead & Logistics (${boq.overheadPercent}%):`, size: 16 })] })] }),
+          new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.overheadAmount).toLocaleString()} ${currency}`, size: 16 })] })] })
         ]
       })
     );
@@ -212,9 +384,10 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   if (Number(boq.contingencyAmount) > 0) {
     summaryRows.push(
       new TableRow({
+        cantSplit: true,
         children: [
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Contingency (${boq.contingencyPercent}%):`, size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.contingencyAmount).toLocaleString()} ${boq.currency || 'XAF'}`, size: 16 })] })] })
+          new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Unforeseen Contingencies (${boq.contingencyPercent}%):`, size: 16 })] })] }),
+          new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.contingencyAmount).toLocaleString()} ${currency}`, size: 16 })] })] })
         ]
       })
     );
@@ -223,9 +396,10 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   if (Number(boq.profitAmount) > 0) {
     summaryRows.push(
       new TableRow({
+        cantSplit: true,
         children: [
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Profit Margin (${boq.profitPercent}%):`, size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.profitAmount).toLocaleString()} ${boq.currency || 'XAF'}`, size: 16 })] })] })
+          new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Contractor Profit Margin (${boq.profitPercent}%):`, size: 16 })] })] }),
+          new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.profitAmount).toLocaleString()} ${currency}`, size: 16 })] })] })
         ]
       })
     );
@@ -234,79 +408,242 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   if (Number(boq.taxAmount) > 0) {
     summaryRows.push(
       new TableRow({
+        cantSplit: true,
         children: [
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Tax / TVA (${boq.taxPercent}%):`, size: 16 })] })] }),
-          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.taxAmount).toLocaleString()} ${boq.currency || 'XAF'}`, size: 16 })] })] })
+          new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `Value Added Tax / TVA (${boq.taxPercent}%):`, size: 16 })] })] }),
+          new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, margins: { top: 80, bottom: 80, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `+${Number(boq.taxAmount).toLocaleString()} ${currency}`, size: 16 })] })] })
         ]
       })
     );
   }
 
+  const grandTotalNum = Number(boq.grandTotal || 0);
+
   summaryRows.push(
     new TableRow({
+      cantSplit: true,
       children: [
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'GRAND TOTAL:', bold: true, size: 22, color: 'D97706' })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${Number(boq.grandTotal || 0).toLocaleString()} ${boq.currency || 'XAF'}`, bold: true, size: 22, color: 'D97706' })] })] })
+        new TableCell({
+          width: { size: 70, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 120, bottom: 120, left: 100, right: 100 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'GRAND TOTAL ESTIMATE:', bold: true, size: 22, color: 'FFFFFF' })] })]
+        }),
+        new TableCell({
+          width: { size: 30, type: WidthType.PERCENTAGE },
+          shading: { fill: '0F172A' },
+          margins: { top: 120, bottom: 120, left: 100, right: 100 },
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${grandTotalNum.toLocaleString()} ${currency}`, bold: true, size: 22, color: 'F59E0B' })] })]
+        })
       ]
     })
   );
 
   const summaryTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: BORDER_STYLE_LIGHT,
     rows: summaryRows
   });
 
   children.push(summaryTable);
-  children.push(new Paragraph({ text: '', spacing: { after: 300 } }));
 
-  // Signatures / Footer
+  // Amount in Words
   children.push(
     new Paragraph({
-      spacing: { before: 200 },
+      spacing: { before: 120, after: 200 },
+      alignment: AlignmentType.RIGHT,
+      children: [
+        new TextRun({ text: 'Amount in Words: ', bold: true, size: 15, color: '0F172A' }),
+        new TextRun({ text: numberToWords(grandTotalNum, currency), italics: true, bold: true, size: 15, color: 'D97706' })
+      ]
+    })
+  );
+
+  // 5. Statutory Sign-Off & Official Engineering Approval Table
+  children.push(
+    new Paragraph({
+      spacing: { before: 200, after: 100 },
+      children: [new TextRun({ text: 'STATUTORY SIGN-OFF & CERTIFICATION', bold: true, size: 18, color: '0F172A' })]
+    })
+  );
+
+  const signTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: BORDER_STYLE_LIGHT,
+    rows: [
+      new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({
+            width: { size: 33.3, type: WidthType.PERCENTAGE },
+            shading: { fill: 'F8FAFC' },
+            margins: { top: 100, bottom: 140, left: 100, right: 100 },
+            children: [
+              new Paragraph({ children: [new TextRun({ text: 'PREPARED BY', bold: true, size: 15, color: '475569' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: boq.preparedBy || 'Lead Quantity Surveyor', bold: true, size: 15 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'MADECC Directorate of QS', size: 13, color: '64748B' })] }),
+              new Paragraph({ spacing: { before: 120 }, children: [new TextRun({ text: 'Date: ____________________', size: 13, color: '94A3B8' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Signature: _________________', size: 13, color: '94A3B8' })] })
+            ]
+          }),
+          new TableCell({
+            width: { size: 33.3, type: WidthType.PERCENTAGE },
+            shading: { fill: 'F8FAFC' },
+            margins: { top: 100, bottom: 140, left: 100, right: 100 },
+            children: [
+              new Paragraph({ children: [new TextRun({ text: 'VERIFIED & CHECKED BY', bold: true, size: 15, color: '475569' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Chief Commercial QS Engineer', bold: true, size: 15 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'MADECC Technical Audit Unit', size: 13, color: '64748B' })] }),
+              new Paragraph({ spacing: { before: 120 }, children: [new TextRun({ text: 'Date: ____________________', size: 13, color: '94A3B8' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Signature: _________________', size: 13, color: '94A3B8' })] })
+            ]
+          }),
+          new TableCell({
+            width: { size: 33.4, type: WidthType.PERCENTAGE },
+            shading: { fill: 'F8FAFC' },
+            margins: { top: 100, bottom: 140, left: 100, right: 100 },
+            children: [
+              new Paragraph({ children: [new TextRun({ text: 'APPROVED & SEALED BY', bold: true, size: 15, color: '475569' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: boq.approvedBy || 'Ing. Marcel Mbida, PE (ONIGC 4092)', bold: true, size: 15 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Engineer of Record / Directorate', size: 13, color: '64748B' })] }),
+              new Paragraph({ spacing: { before: 100 }, children: [new TextRun({ text: '[ MADECC Group SARL SEAL ]', bold: true, size: 13, color: 'D97706' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Signature: _________________', size: 13, color: '94A3B8' })] })
+            ]
+          })
+        ]
+      })
+    ]
+  });
+
+  children.push(signTable);
+
+  // 6. Tender Notes & Execution Terms
+  children.push(
+    new Paragraph({
+      spacing: { before: 240, after: 80 },
+      children: [new TextRun({ text: 'COMMERCIAL TERMS & SPECIFICATION NOTES', bold: true, size: 16, color: '0F172A' })]
+    }),
+    new Paragraph({
+      spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'Prepared & Approved By: ',
-          bold: true,
-          size: 16
-        }),
-        new TextRun({
-          text: boq.approvedBy || boq.preparedBy || 'MADECC Quantity Surveyor',
-          size: 16
+          text: '1. Quotation Validity: This tender pricing is firm and valid for 90 calendar days from the date of submission.',
+          size: 14,
+          color: '475569'
         })
       ]
     }),
     new Paragraph({
+      spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'Document Reference: ',
-          bold: true,
+          text: '2. Payment Terms: Progressive monthly valuations supported by joint on-site measurement and Interim Payment Certificates (IPC).',
           size: 14,
-          color: '64748B'
-        }),
-        new TextRun({
-          text: `${boq.boqReference} (${boq.revisionNumber})`,
-          size: 14,
-          color: '64748B'
+          color: '475569'
         })
       ]
     }),
     new Paragraph({
-      spacing: { before: 100 },
+      spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'Disclaimer: This Bill of Quantities / Construction Rate Estimate is produced by MADECC GROUP S.A.R.L. based on standard civil engineering measurement rules. Figures are binding upon official approval.',
-          italics: true,
+          text: '3. Technical Standards: All workshop equipment, structural works, and materials comply strictly with British Standards (BS) and Cameroon civil norms.',
           size: 14,
-          color: '94A3B8'
+          color: '475569'
+        })
+      ]
+    }),
+    new Paragraph({
+      spacing: { after: 120 },
+      children: [
+        new TextRun({
+          text: '4. Warranty: All supplied workshop practice equipment and structural elements carry a 12-month Defects Liability Period (DLP).',
+          size: 14,
+          color: '475569'
         })
       ]
     })
   );
 
+  // Document setup with exact A4 page size, margins, running headers & footers
   const doc = new Document({
     sections: [
       {
-        properties: {},
+        properties: {
+          page: {
+            size: {
+              width: 11906, // A4 Width in twips (210mm)
+              height: 16838 // A4 Height in twips (297mm)
+            },
+            margin: {
+              top: 720,    // 0.5 inch (12.7mm)
+              bottom: 720,
+              left: 720,
+              right: 720
+            }
+          }
+        },
+        headers: {
+          default: new Header({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [
+                  new TextRun({
+                    text: `${companyName} | Ref: ${boq.boqReference || 'BOQ-001'} (${boq.revisionNumber || 'REV-00'})`,
+                    size: 13,
+                    color: '94A3B8'
+                  })
+                ]
+              })
+            ]
+          })
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: BORDER_STYLE_NONE,
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        width: { size: 60, type: WidthType.PERCENTAGE },
+                        children: [
+                          new Paragraph({
+                            children: [
+                              new TextRun({
+                                text: `${companyName} — Certified Bill of Quantities`,
+                                size: 13,
+                                color: '94A3B8'
+                              })
+                            ]
+                          })
+                        ]
+                      }),
+                      new TableCell({
+                        width: { size: 40, type: WidthType.PERCENTAGE },
+                        children: [
+                          new Paragraph({
+                            alignment: AlignmentType.RIGHT,
+                            children: [
+                              new TextRun({
+                                children: ['Page ', PageNumber.CURRENT, ' of ', PageNumber.TOTAL_PAGES],
+                                size: 13,
+                                color: '94A3B8'
+                              })
+                            ]
+                          })
+                        ]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        },
         children
       }
     ]
@@ -315,7 +652,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   const blob = await Packer.toBlob(doc);
   const cleanName = sanitizeFilename(boq.projectName || boq.boqReference || 'Project');
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `MADECC_Bill_of_Quantities_${cleanName}_${dateStr}.docx`;
+  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_BOQ_${cleanName}_${dateStr}.docx`;
 
   return { blob, filename };
 }
@@ -325,18 +662,20 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
  */
 export function generateBoqCsv(boq: any): { blob: Blob; filename: string } {
   const isDraft = boq.status !== 'APPROVED';
+  const currency = boq.currency || 'XAF';
+  const companyName = 'MADECC Group SARL';
   const rows: string[][] = [];
 
   // Branding
-  rows.push(['MADECC GROUP S.A.R.L. - OFFICIAL BILL OF QUANTITIES / ESTIMATE']);
-  rows.push(['Civil Engineering, Geotechnics & Structural Construction']);
-  rows.push(['Douala & Yaounde, Republic of Cameroon | Contact: info@madecc-group.cm']);
+  rows.push([`${companyName} - OFFICIAL BILL OF QUANTITIES / ESTIMATE`]);
+  rows.push(['Civil, Structural & Mechanical Engineering Department']);
+  rows.push(['Douala & Yaoundé, Republic of Cameroon | Contact: engineering@madeccgroup.cm']);
   rows.push([]);
 
   if (isDraft) {
-    rows.push(['STATUS', 'DRAFT — NOT FOR CLIENT APPROVAL']);
+    rows.push(['STATUS', `DRAFT (${boq.status || 'DRAFT'}) — OFFICIAL WORKING ESTIMATE`]);
   } else {
-    rows.push(['STATUS', 'APPROVED']);
+    rows.push(['STATUS', 'APPROVED & CERTIFIED']);
   }
 
   // Metadata
@@ -346,16 +685,16 @@ export function generateBoqCsv(boq: any): { blob: Blob; filename: string } {
   rows.push(['Location', boq.location || '']);
   rows.push(['Client Name', boq.clientName || '']);
   rows.push(['Client Email', boq.clientEmail || '']);
-  rows.push(['Client NIU', boq.clientNiu || '']);
-  rows.push(['Date Prepared', boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString() : new Date().toLocaleDateString()]);
+  rows.push(['Contract Type', boq.contractType || 'UNIT_RATE']);
+  rows.push(['Date Prepared', boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')]);
   rows.push(['Prepared By', boq.preparedBy || '']);
-  rows.push(['Currency', boq.currency || 'XAF']);
+  rows.push(['Currency', currency]);
   rows.push([]);
 
   // BOQ Items Header
-  rows.push(['Section Code', 'Section Title', 'Item Number', 'Description', 'Unit', 'Quantity', `Unit Rate (${boq.currency || 'XAF'})`, `Amount (${boq.currency || 'XAF'})`]);
+  rows.push(['Section Code', 'Section Title', 'Item Number', 'Description of Works', 'Unit', 'Quantity', `Unit Rate (${currency})`, `Amount (${currency})`, 'Measurement Basis']);
 
-  const sections = boq.sections || [];
+  const sections = Array.isArray(boq.sections) ? boq.sections : [];
   sections.forEach((sec: any) => {
     (sec.items || []).forEach((item: any) => {
       rows.push([
@@ -366,39 +705,42 @@ export function generateBoqCsv(boq: any): { blob: Blob; filename: string } {
         item.unit || '',
         String(item.quantity ?? 0),
         String(item.unitRate ?? 0),
-        String(item.amount ?? 0)
+        String(item.amount ?? 0),
+        item.measurementBasis || ''
       ]);
     });
     // Section subtotal row
     rows.push([
       sec.sectionCode || '',
-      `${sec.title} SUB-TOTAL`,
+      `SUBTOTAL - ${sec.title}`,
       '',
       '',
       '',
       '',
       '',
-      String(sec.subtotal ?? 0)
+      String(sec.subtotal ?? 0),
+      'SECTION TOTAL'
     ]);
     rows.push([]);
   });
 
   // Financial Summary
-  rows.push(['FINANCIAL SUMMARY']);
-  rows.push(['Subtotal (Measured Work)', '', '', '', '', '', '', String(boq.subtotal ?? 0)]);
+  rows.push(['COMMERCIAL FINANCIAL SUMMARY']);
+  rows.push(['Measured Works Subtotal', '', '', '', '', '', '', String(boq.subtotal ?? 0)]);
   if (Number(boq.overheadAmount) > 0) {
-    rows.push([`Overhead (${boq.overheadPercent}%)`, '', '', '', '', '', '', String(boq.overheadAmount ?? 0)]);
+    rows.push([`Site Overhead & Logistics (${boq.overheadPercent}%)`, '', '', '', '', '', '', String(boq.overheadAmount ?? 0)]);
   }
   if (Number(boq.contingencyAmount) > 0) {
-    rows.push([`Contingency (${boq.contingencyPercent}%)`, '', '', '', '', '', '', String(boq.contingencyAmount ?? 0)]);
+    rows.push([`Unforeseen Contingencies (${boq.contingencyPercent}%)`, '', '', '', '', '', '', String(boq.contingencyAmount ?? 0)]);
   }
   if (Number(boq.profitAmount) > 0) {
-    rows.push([`Profit Margin (${boq.profitPercent}%)`, '', '', '', '', '', '', String(boq.profitAmount ?? 0)]);
+    rows.push([`Contractor Profit Margin (${boq.profitPercent}%)`, '', '', '', '', '', '', String(boq.profitAmount ?? 0)]);
   }
   if (Number(boq.taxAmount) > 0) {
-    rows.push([`Tax / TVA (${boq.taxPercent}%)`, '', '', '', '', '', '', String(boq.taxAmount ?? 0)]);
+    rows.push([`Value Added Tax / TVA (${boq.taxPercent}%)`, '', '', '', '', '', '', String(boq.taxAmount ?? 0)]);
   }
-  rows.push([`GRAND TOTAL (${boq.currency || 'XAF'})`, '', '', '', '', '', '', String(boq.grandTotal ?? 0)]);
+  rows.push([`GRAND TOTAL ESTIMATE (${currency})`, '', '', '', '', '', '', String(boq.grandTotal ?? 0)]);
+  rows.push(['Amount in Words', numberToWords(Number(boq.grandTotal || 0), currency)]);
 
   // Serialize CSV with UTF-8 BOM
   const csvContent = '\uFEFF' + rows.map(r => r.map(cell => {
@@ -409,12 +751,10 @@ export function generateBoqCsv(boq: any): { blob: Blob; filename: string } {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const cleanName = sanitizeFilename(boq.projectName || boq.boqReference || 'Project');
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `MADECC_Bill_of_Quantities_${cleanName}_${dateStr}.csv`;
+  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_BOQ_${cleanName}_${dateStr}.csv`;
 
   return { blob, filename };
 }
-
-import * as XLSX from 'xlsx';
 
 /**
  * Generate Microsoft Excel (.xlsx) workbook for BOQ with multiple tabs
@@ -422,32 +762,34 @@ import * as XLSX from 'xlsx';
 export function generateBoqExcel(boq: any): { blob: Blob; filename: string } {
   const wb = XLSX.utils.book_new();
   const currency = boq.currency || 'XAF';
+  const companyName = 'MADECC Group SARL';
 
   // 1. EXECUTIVE SUMMARY SHEET
   const summaryRows = [
-    ['MADECC GROUP S.A.R.L. - CIVIL & STRUCTURAL ENGINEERING'],
+    [`${companyName} - CIVIL, STRUCTURAL & MECHANICAL ENGINEERING`],
     ['OFFICIAL BILL OF QUANTITIES & EXECUTIVE COST ESTIMATE'],
     [''],
-    ['BOQ Reference', boq.boqReference || 'BOQ-001'],
+    ['BOQ Reference', boq.boqReference || 'MADECC-BOQ-2026-0001'],
     ['Revision Number', boq.revisionNumber || 'REV-00'],
     ['Project Name', boq.projectName || 'General Construction Works'],
     ['Location', boq.location || 'Douala / Yaoundé, Cameroon'],
     ['Client Name', boq.clientName || 'Valued Client'],
     ['Client Email', boq.clientEmail || 'N/A'],
-    ['Client Tax ID (NIU)', boq.clientNiu || 'N/A'],
-    ['Date Prepared', boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString() : new Date().toLocaleDateString()],
-    ['Prepared By', boq.preparedBy || 'MADECC Quantity Surveyor'],
+    ['Contract Type', boq.contractType || 'UNIT_RATE'],
+    ['Date Prepared', boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')],
+    ['Prepared By', boq.preparedBy || 'Lead Quantity Surveyor'],
     ['Approved By', boq.approvedBy || 'Ing. Marcel Mbida, PE (ONIGC 4092)'],
     ['Status', boq.status || 'DRAFT'],
     [''],
-    ['FINANCIAL RECAP SUMMARY'],
+    ['COMMERCIAL FINANCIAL SUMMARY RECAP'],
     ['Metric Description', 'Percentage (%)', `Amount (${currency})`],
     ['Measured Work Subtotal', '-', Number(boq.subtotal || 0)],
-    ['Overhead & Logistics', Number(boq.overheadPercent || 0), Number(boq.overheadAmount || 0)],
-    ['Contingency Allowance', Number(boq.contingencyPercent || 0), Number(boq.contingencyAmount || 0)],
+    ['Site Overhead & Logistics', Number(boq.overheadPercent || 0), Number(boq.overheadAmount || 0)],
+    ['Unforeseen Contingencies', Number(boq.contingencyPercent || 0), Number(boq.contingencyAmount || 0)],
     ['Contractor Profit Margin', Number(boq.profitPercent || 0), Number(boq.profitAmount || 0)],
     ['Value Added Tax (TVA)', Number(boq.taxPercent || 0), Number(boq.taxAmount || 0)],
-    ['GRAND TOTAL ESTIMATE', '-', Number(boq.grandTotal || 0)]
+    ['GRAND TOTAL ESTIMATE', '-', Number(boq.grandTotal || 0)],
+    ['Amount in Words', numberToWords(Number(boq.grandTotal || 0), currency)]
   ];
 
   const summaryWs = XLSX.utils.aoa_to_sheet(summaryRows);
@@ -455,10 +797,10 @@ export function generateBoqExcel(boq: any): { blob: Blob; filename: string } {
 
   // 2. BOQ DETAILED ITEMS SHEET
   const itemRows: any[][] = [
-    ['Section Code', 'Section Title', 'Item No.', 'Description of Works', 'Unit', 'Quantity', `Unit Rate (${currency})`, `Total Amount (${currency})`, 'Internal Cost Breakdown Basis']
+    ['Section Code', 'Section Title', 'Item No.', 'Description of Works & Specifications', 'Unit', 'Quantity', `Unit Rate (${currency})`, `Total Amount (${currency})`, 'Internal Cost Breakdown Basis']
   ];
 
-  const sections = boq.sections || [];
+  const sections = Array.isArray(boq.sections) ? boq.sections : [];
   sections.forEach((sec: any) => {
     (sec.items || []).forEach((item: any) => {
       const mat = Number(item.internalMaterialCost || 0);
@@ -534,7 +876,7 @@ export function generateBoqExcel(boq: any): { blob: Blob; filename: string } {
 
   const cleanName = sanitizeFilename(boq.projectName || boq.boqReference || 'Project');
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `MADECC_Bill_of_Quantities_${cleanName}_${dateStr}.xlsx`;
+  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_BOQ_${cleanName}_${dateStr}.xlsx`;
 
   return { blob, filename };
 }
@@ -580,24 +922,27 @@ export async function parseBoqImportFile(file: File): Promise<{
       items: []
     };
 
-    let itemIdx = 1;
+    // Attempt to detect headers
+    let startRow = 1;
+    for (let r = 0; r < Math.min(10, rawData.length); r++) {
+      const rowStr = (rawData[r] || []).join(' ').toLowerCase();
+      if (rowStr.includes('description') || rowStr.includes('item') || rowStr.includes('unit')) {
+        startRow = r + 1;
+        break;
+      }
+    }
 
-    for (let i = 0; i < rawData.length; i++) {
-      const row = rawData[i];
+    for (let r = startRow; r < rawData.length; r++) {
+      const row = rawData[r];
       if (!row || row.length === 0) continue;
 
       const col0 = String(row[0] || '').trim();
       const col1 = String(row[1] || '').trim();
-      const col2 = String(row[2] || '').trim();
-      const col3 = String(row[3] || '').trim();
-      const col4 = String(row[4] || '').trim();
-      const col5 = String(row[5] || '').trim();
 
-      // Check if row is a section title (e.g. "SECTION A: EARTHWORKS" or "PRELIMINARIES")
-      if (col0.toUpperCase().startsWith('SECTION') || col1.toUpperCase().startsWith('SECTION') || (col0.length <= 4 && col1.length > 3 && !row[3])) {
-        currentSecCode = col0.replace(/SECTION/i, '').trim() || String.fromCharCode(65 + Object.keys(sectionsMap).length);
-        currentSecTitle = col1 || col0 || `SECTION ${currentSecCode}`;
-
+      // Check if it's a section header
+      if (col0.toLowerCase().startsWith('section') || (col1 && !row[3] && !row[4])) {
+        currentSecCode = col0.replace(/section/i, '').trim() || `SEC-${r}`;
+        currentSecTitle = col1 || col0;
         if (!sectionsMap[currentSecCode]) {
           sectionsMap[currentSecCode] = {
             sectionCode: currentSecCode,
@@ -605,81 +950,41 @@ export async function parseBoqImportFile(file: File): Promise<{
             items: []
           };
         }
-        itemIdx = 1;
         continue;
       }
 
-      // Check if row looks like an item (has numeric qty/rate/amount)
-      const qtyNum = parseFloat(col3) || parseFloat(col4) || parseFloat(col2);
-      const rateNum = parseFloat(col4) || parseFloat(col5) || parseFloat(col3);
+      // Check for item row: description is usually col 1 or 3
+      const desc = String(row[1] || row[3] || row[0] || '').trim();
+      if (!desc || desc.toLowerCase().includes('total') || desc.toLowerCase().includes('subtotal')) continue;
 
-      if (col1 && !isNaN(qtyNum) && qtyNum > 0) {
-        const itemNumber = col0 || `${currentSecCode}${itemIdx++}`;
-        const desc = col1;
-        const unit = col2 || 'm³';
-        const qty = qtyNum;
-        const rate = !isNaN(rateNum) ? rateNum : 1000;
-        const amt = qty * rate;
+      const unit = String(row[2] || row[4] || 'm³').trim();
+      const qty = parseFloat(String(row[3] || row[5] || '1').replace(/[^0-9.-]/g, '')) || 1;
+      const rate = parseFloat(String(row[4] || row[6] || '0').replace(/[^0-9.-]/g, '')) || 0;
 
-        sectionsMap[currentSecCode].items.push({
-          itemNumber,
-          description: desc,
-          unit,
-          quantity: qty,
-          unitRate: rate,
-          amount: amt
-        });
-      }
+      sectionsMap[currentSecCode].items.push({
+        itemNumber: col0 || `${sectionsMap[currentSecCode].items.length + 1}`,
+        description: desc,
+        unit: unit || 'm³',
+        quantity: qty,
+        unitRate: rate,
+        amount: Math.round(qty * rate)
+      });
     }
 
-    const sections = Object.values(sectionsMap).map(sec => {
-      const subtotal = sec.items.reduce((acc, it) => acc + (it.amount || 0), 0);
-      return {
-        sectionCode: sec.sectionCode,
-        title: sec.title,
-        subtotal,
-        items: sec.items
-      };
-    }).filter(sec => sec.items.length > 0);
+    const sections = Object.values(sectionsMap)
+      .filter(s => s.items.length > 0)
+      .map(s => ({
+        ...s,
+        subtotal: s.items.reduce((acc, it) => acc + it.amount, 0)
+      }));
 
     return {
-      projectName: file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' '),
-      sections: sections.length > 0 ? sections : [
-        {
-          sectionCode: 'A',
-          title: 'IMPORTED MEASURED WORKS',
-          subtotal: 150000,
-          items: [
-            { itemNumber: 'A1', description: 'Sample Imported Line Item', unit: 'm³', quantity: 10, unitRate: 15000, amount: 150000 }
-          ]
-        }
-      ]
+      sections
     };
   }
 
-  // Fallback JSON or plain text parse
-  const text = await file.text();
-  try {
-    const json = JSON.parse(text);
-    if (json.sections && Array.isArray(json.sections)) {
-      return json;
-    }
-  } catch (e) {
-    // text format
-  }
-
+  // Fallback default
   return {
-    projectName: file.name.replace(/\.[^/.]+$/, ''),
-    sections: [
-      {
-        sectionCode: 'A',
-        title: 'IMPORTED SPECIFICATION ITEMS',
-        subtotal: 250000,
-        items: [
-          { itemNumber: 'A1', description: 'Imported item specification from document', unit: 'LS', quantity: 1, unitRate: 250000, amount: 250000 }
-        ]
-      }
-    ]
+    sections: []
   };
 }
-

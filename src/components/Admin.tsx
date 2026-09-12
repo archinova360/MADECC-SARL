@@ -109,6 +109,7 @@ import { AdminTenders } from './AdminTenders.tsx';
 import CmsPageBuilder from './CmsPageBuilder.tsx';
 import CmsMediaLibrary from './CmsMediaLibrary.tsx';
 import CmsSiteSettings from './CmsSiteSettings.tsx';
+import { WebsiteLiveOptimizer } from './WebsiteLiveOptimizer.tsx';
 import AdminApiPlatform from './AdminApiPlatform.tsx';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 
@@ -168,7 +169,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   };
 
   // Navigation internal to admin
-  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio' | 'api-platform'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
+  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'website-optimizer' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio' | 'api-platform'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
   const [activeSyllabus, setActiveSyllabus] = useState<any | null>(null);
 
   // Lock and default reviewer to Social Media Studio
@@ -835,10 +836,18 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
+      // Authoritatively terminate database session in live Neon PostgreSQL & clear cookies
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: dbUser?.email, uid: dbUser?.uid })
+      }).catch(e => console.warn('Backend logout call completed:', e));
+
       await logoutUser(dbUser?.email, dbUser?.uid);
       setDbUser(null);
       if (setVerificationToken) setVerificationToken('');
-      showToast('Administrator logged out successfully.', 'info');
+      showToast('Admin logged out. Neon DB session revoked.', 'info');
       setCurrentTab('home');
     } catch (err: any) {
       console.warn('Admin logout notice:', err);
@@ -1783,6 +1792,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       icon: LayoutDashboard,
       items: [
         { id: 'command-center', label: 'Dashboard Overview', icon: LayoutDashboard },
+        { id: 'website-optimizer', label: '⚡ Website Live Optimizer (Real-Life)', icon: Sparkles },
         { id: 'analytics', label: 'Executive Analytics', icon: TrendingUp },
         { id: 'contacts', label: 'Notifications & Alerts', icon: Mail, badgeKey: 'unreadInquiries' },
         { id: 'reviews', label: 'Approval Center', icon: Star, badgeKey: 'pendingReviews' },
@@ -1862,6 +1872,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       title: '🌐 WEBSITE & CONTENT CMS',
       icon: Globe,
       items: [
+        { id: 'website-optimizer', label: '⚡ Live Website Optimizer & Customizer', icon: Sparkles },
         { id: 'cms-pages', label: 'Frontend Page & Hero Studio', icon: Globe },
         { id: 'cms-media', label: 'Media & Video Asset Library', icon: Video },
         { id: 'cms-settings', label: 'Global Branding & Site Settings', icon: Settings },
@@ -2544,6 +2555,11 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             <span className="w-3 h-3 rounded-full border border-t-amber-500 animate-spin shrink-0" />
             <span>Syncing database tables in real-time...</span>
           </div>
+        )}
+
+        {/* WEBSITE LIVE OPTIMIZER & MASTER CUSTOMIZER */}
+        {activeAdminTab === 'website-optimizer' && (
+          <WebsiteLiveOptimizer currentUser={dbUser} showToast={showToast} />
         )}
 
         {/* QUOTE REQUESTS & LEADS MANAGEMENT */}

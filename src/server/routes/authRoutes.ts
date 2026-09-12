@@ -7,6 +7,7 @@ import { verifyPassword, signReviewerToken, ensureReviewerCredentialsTable } fro
 import { reviewerCredentials } from '../../db/schema.ts';
 import { logAudit } from '../../lib/audit.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
+import { createDatabaseSession, revokeDatabaseSession } from '../../lib/sessionService.ts';
 
 export function setupAuthRoutes(app: express.Express) {
   // --- AUTH ENDPOINTS ---
@@ -38,9 +39,16 @@ export function setupAuthRoutes(app: express.Express) {
         'MADECC Admin'
       );
 
+      // Create authoritative database session in Neon PostgreSQL
+      const { sessionToken } = await createDatabaseSession(
+        'admin-madecc-uid',
+        'kreboya603@gmail.com',
+        'admin'
+      );
+
       await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_KEY_LOGIN', 'Administrator authenticated via Secret Key');
 
-      res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+      res.cookie('madecc_auth_session', sessionToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -50,7 +58,7 @@ export function setupAuthRoutes(app: express.Express) {
 
       return res.json({
         success: true,
-        token: 'ADMIN_BYPASS:Adminmadeccgroup',
+        token: sessionToken,
         user: adminUser
       });
     } catch (err: any) {
@@ -62,16 +70,44 @@ export function setupAuthRoutes(app: express.Express) {
   // Dedicated Logout Endpoint for Session Invalidation & Audit Logging
   app.post('/api/auth/logout', async (req, res) => {
     try {
-      res.clearCookie('madecc_auth_session', { path: '/' });
-      res.clearCookie('madecc_reviewer_session', { path: '/' });
-      const email = req.body?.email || 'kreboya603@gmail.com';
-      const uid = req.body?.uid || 'admin-madecc-uid';
+      let token: string | undefined;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split('Bearer ')[1].trim();
+      } else if ((req as any).cookies?.madecc_auth_session) {
+        token = (req as any).cookies.madecc_auth_session;
+      } else if ((req as any).cookies?.madecc_reviewer_session) {
+        token = (req as any).cookies.madecc_reviewer_session;
+      } else if (req.body?.token) {
+        token = req.body.token;
+      }
+
+      const email = req.body?.email || (req as any).user?.email || 'kreboya603@gmail.com';
+      const uid = req.body?.uid || (req as any).user?.uid || 'admin-madecc-uid';
+
+      // 1. Authoritatively revoke active sessions in Neon PostgreSQL database
+      await revokeDatabaseSession(token, email, uid);
+
+      // 2. Clear all authentication cookies with strict matching parameters
+      res.clearCookie('madecc_auth_session', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+      });
+      res.clearCookie('madecc_reviewer_session', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+      });
+
       try {
-        await logAudit(uid, email, 'ADMIN_LOGOUT', `User ${email} ended administrative session.`);
+        await logAudit(uid, email, 'ADMIN_LOGOUT', `User ${email} ended administrative session. Database session invalidated.`);
       } catch (auditErr) {
         console.warn('[LOGOUT_AUDIT_WARN]', auditErr);
       }
-      return res.json({ success: true, message: 'Administrative session terminated successfully.' });
+      return res.json({ success: true, message: 'Administrative session terminated and database authority revoked successfully.' });
     } catch (err: any) {
       console.warn('[LOGOUT_ERROR_NOTICE]', err);
       return res.json({ success: true, message: 'Local session cleared.' });
@@ -96,7 +132,8 @@ export function setupAuthRoutes(app: express.Express) {
       ) {
         const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
         await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_LOGIN', 'Administrator authenticated via credentials');
-        res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+        const { sessionToken } = await createDatabaseSession('admin-madecc-uid', 'kreboya603@gmail.com', 'admin');
+        res.cookie('madecc_auth_session', sessionToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
@@ -105,7 +142,7 @@ export function setupAuthRoutes(app: express.Express) {
         });
         return res.json({
           success: true,
-          token: 'ADMIN_BYPASS:Adminmadeccgroup',
+          token: sessionToken,
           user: adminUser
         });
       }
@@ -329,7 +366,8 @@ export function setupAuthRoutes(app: express.Express) {
         if (validAdminKeys.includes(key) || key.startsWith('ADMIN_BYPASS:')) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
           await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_LOGIN', 'Administrator authenticated via secret key');
-          res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+          const { sessionToken } = await createDatabaseSession('admin-madecc-uid', 'kreboya603@gmail.com', 'admin');
+          res.cookie('madecc_auth_session', sessionToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -338,7 +376,7 @@ export function setupAuthRoutes(app: express.Express) {
           });
           return res.json({
             success: true,
-            token: 'ADMIN_BYPASS:Adminmadeccgroup',
+            token: sessionToken,
             user: adminUser
           });
         }
@@ -355,7 +393,8 @@ export function setupAuthRoutes(app: express.Express) {
           rawPassword === 'MADECC GROUP admin'
         ) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
-          res.cookie('madecc_auth_session', 'ADMIN_BYPASS:Adminmadeccgroup', {
+          const { sessionToken } = await createDatabaseSession('admin-madecc-uid', 'kreboya603@gmail.com', 'admin');
+          res.cookie('madecc_auth_session', sessionToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -364,7 +403,7 @@ export function setupAuthRoutes(app: express.Express) {
           });
           return res.json({
             success: true,
-            token: 'ADMIN_BYPASS:Adminmadeccgroup',
+            token: sessionToken,
             user: adminUser
           });
         }

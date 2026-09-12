@@ -125,6 +125,34 @@ export const requireAuth = async (
   }
   
   const trimmedToken = token.trim();
+
+  // 1. Authoritative Neon PostgreSQL Database Session Check (Primary Authority)
+  const dbSession = await validateDatabaseSession(trimmedToken);
+  if (dbSession) {
+    try {
+      const dbUser = await getOrCreateUser(
+        dbSession.userId,
+        dbSession.email,
+        dbSession.role === 'admin' ? 'MADECC Admin' : (dbSession.email.split('@')[0] || 'User')
+      );
+      req.user = {
+        uid: dbSession.userId,
+        email: dbSession.email,
+        name: dbUser.displayName || 'MADECC Admin',
+      } as any;
+      req.dbUser = dbUser;
+      return next();
+    } catch (dbErr) {
+      console.error('Error fetching/creating session user from Neon DB:', dbErr);
+      return res.status(500).json({ error: 'Internal database error during session verification' });
+    }
+  }
+
+  // 2. If token is a database session token (e.g. MADECC_AUTH_...) that has expired or been revoked, reject immediately
+  if (trimmedToken.startsWith('MADECC_AUTH_')) {
+    return res.status(401).json({ error: 'Unauthorized: Session has expired or been terminated upon logout. Please sign in again.' });
+  }
+
   const isAdminKey = 
     trimmedToken === 'Adminmadeccgroup' ||
     trimmedToken === 'ADMIN_BYPASS:Adminmadeccgroup' ||
@@ -141,6 +169,28 @@ export const requireAuth = async (
     trimmedToken.startsWith('ADMIN_BYPASS:');
 
   if (isAdminKey) {
+    // If the database has an active admin session, permit; if admin logged out, reject!
+    if (db) {
+      try {
+        const activeAdminSession = await db
+          .select()
+          .from(authSessions)
+          .where(
+            and(
+              eq(authSessions.email, 'kreboya603@gmail.com'),
+              eq(authSessions.isActive, true)
+            )
+          )
+          .limit(1);
+
+        if (activeAdminSession.length === 0) {
+          return res.status(401).json({ error: 'Unauthorized: Admin session terminated upon logout. Please sign in again.' });
+        }
+      } catch (err) {
+        console.warn('Could not verify auth_sessions table:', err);
+      }
+    }
+
     try {
       const adminUser = await getOrCreateUser(
         'admin-madecc-uid',

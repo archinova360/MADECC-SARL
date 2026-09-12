@@ -1346,26 +1346,53 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
   };
 
   // -------------------------------------------------------------
-  // CERTIFIED EXPORT HANDLERS (PDF, EXCEL, WORD, CSV)
+  // CERTIFIED EXPORT HANDLERS (A4 PDF & WORD DOCX FOR MADECC Group SARL)
   // -------------------------------------------------------------
-  const getExportTargetBoq = () => {
-    if (currentBoq.sections && currentBoq.sections.length > 0) {
-      return currentBoq;
+  const [exportingDocx, setExportingDocx] = useState(false);
+
+  const getExportTargetBoq = async (specificBoq?: any): Promise<any> => {
+    let candidate = specificBoq;
+    if (!candidate) {
+      if (currentBoq && currentBoq.sections && currentBoq.sections.length > 0) {
+        candidate = currentBoq;
+      } else if (boqList && boqList.length > 0) {
+        candidate = boqList[0];
+      } else {
+        candidate = currentBoq;
+      }
     }
-    if (boqList && boqList.length > 0 && boqList[0].sections && boqList[0].sections.length > 0) {
-      return boqList[0];
+
+    // If candidate has an ID but sections are missing or incomplete, fetch full record from backend
+    if (candidate && candidate.id && (!candidate.sections || candidate.sections.length === 0)) {
+      try {
+        const token = await getAuthToken();
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(`/api/boqs/${candidate.id}`, { headers });
+        if (res.ok) {
+          const full = await res.json();
+          return full;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch full candidate boq:', err);
+      }
     }
-    return currentBoq;
+
+    return candidate;
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (specificBoq?: any) => {
     try {
       setGeneratingPdf(true);
-      if (showToast) showToast('Generating Certified Client Tender BOQ PDF...', 'info');
-      const targetBoq = getExportTargetBoq();
-      const { pdf, filename } = await generateBoqPdf(targetBoq);
+      if (showToast) showToast('Compiling A4 PDF without section cut-offs for MADECC Group SARL...', 'info');
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      const { pdf, filename } = await generateBoqPdf(targetBoq, {
+        companyName: 'MADECC Group SARL',
+        orientation: 'portrait',
+        showTerms: true
+      });
       pdf.save(filename);
-      if (showToast) showToast(`Client Tender BOQ PDF (${filename}) downloaded successfully!`, 'success');
+      if (showToast) showToast(`A4 PDF (${filename}) downloaded successfully!`, 'success');
     } catch (err: any) {
       console.error('Failed to export PDF report:', err);
       if (showToast) showToast(`PDF Generation failed: ${err.message || 'Unknown error'}`, 'error');
@@ -1374,10 +1401,33 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportDocx = async (specificBoq?: any) => {
+    try {
+      setExportingDocx(true);
+      if (showToast) showToast('Compiling Word document (.docx) for MADECC Group SARL...', 'info');
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      const { blob, filename } = await generateBoqDocx(targetBoq);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (showToast) showToast(`Word document (${filename}) exported successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Failed to export Word document:', err);
+      if (showToast) showToast(`Word Document Generation failed: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      setExportingDocx(false);
+    }
+  };
+
+  const handleExportExcel = async (specificBoq?: any) => {
     try {
       if (showToast) showToast('Generating Abstract of Cost Excel workbook...', 'info');
-      const targetBoq = getExportTargetBoq();
+      const targetBoq = await getExportTargetBoq(specificBoq);
       const { blob, filename } = generateBoqExcel(targetBoq);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1394,30 +1444,10 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
     }
   };
 
-  const handleExportDocx = async () => {
-    try {
-      if (showToast) showToast('Generating Material Take-Off Word document...', 'info');
-      const targetBoq = getExportTargetBoq();
-      const { blob, filename } = await generateBoqDocx(targetBoq);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      if (showToast) showToast(`Material Take-Off Word document (${filename}) downloaded successfully!`, 'success');
-    } catch (err: any) {
-      console.error('Failed to export Word document:', err);
-      if (showToast) showToast(`Word Document Generation failed: ${err.message || 'Unknown error'}`, 'error');
-    }
-  };
-
-  const handleExportCsv = () => {
+  const handleExportCsv = async (specificBoq?: any) => {
     try {
       if (showToast) showToast('Generating Master Data CSV file...', 'info');
-      const targetBoq = getExportTargetBoq();
+      const targetBoq = await getExportTargetBoq(specificBoq);
       const { blob, filename } = generateBoqCsv(targetBoq);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1641,6 +1671,26 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
           {/* Action Controls */}
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => handleExportPdf()}
+              disabled={generatingPdf}
+              title="Download official A4 PDF for MADECC Group SARL without section cut-offs"
+              className="px-3 py-2 text-xs font-semibold bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-lg transition shadow-sm flex items-center space-x-1.5 disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5 text-red-400" />
+              <span>{generatingPdf ? 'PDF...' : 'A4 PDF'}</span>
+            </button>
+
+            <button
+              onClick={() => handleExportDocx()}
+              disabled={exportingDocx}
+              title="Export official Word (.docx) document for MADECC Group SARL"
+              className="px-3 py-2 text-xs font-semibold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-lg transition shadow-sm flex items-center space-x-1.5 disabled:opacity-50"
+            >
+              <FileText className="w-3.5 h-3.5 text-blue-400" />
+              <span>{exportingDocx ? 'Word...' : 'Word'}</span>
+            </button>
+
+            <button
               onClick={handleSaveBoq}
               disabled={saving}
               className="px-3.5 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition shadow-lg flex items-center space-x-1.5 disabled:opacity-50"
@@ -1845,13 +1895,31 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                                 {b.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right space-x-2">
-                              <button
-                                onClick={() => handleOpenBoq(b.id!)}
-                                className="px-2.5 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition"
-                              >
-                                Edit BOQ
-                              </button>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                <button
+                                  onClick={() => handleExportPdf(b)}
+                                  title="Download Official A4 PDF (MADECC Group SARL)"
+                                  className="px-2 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg transition flex items-center space-x-1"
+                                >
+                                  <Download className="w-3 h-3 text-red-400" />
+                                  <span>A4 PDF</span>
+                                </button>
+                                <button
+                                  onClick={() => handleExportDocx(b)}
+                                  title="Download Official Word DOCX (MADECC Group SARL)"
+                                  className="px-2 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-lg transition flex items-center space-x-1"
+                                >
+                                  <FileText className="w-3 h-3 text-blue-400" />
+                                  <span>Word</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenBoq(b.id!)}
+                                  className="px-2.5 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition font-medium"
+                                >
+                                  Edit BOQ
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -3004,58 +3072,77 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* 1. Client Tender BOQ PDF */}
-              <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-3 flex flex-col justify-between">
+              {/* 1. Official A4 PDF (MADECC Group SARL) */}
+              <div className="p-4 bg-slate-900 rounded-xl border border-red-500/30 space-y-3 flex flex-col justify-between shadow-lg">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-xs font-bold text-amber-400">1. Client Tender BOQ</h3>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">PDF</span>
+                    <h3 className="text-xs font-bold text-white flex items-center space-x-1.5">
+                      <Download className="w-3.5 h-3.5 text-red-400" />
+                      <span>Official A4 BOQ PDF</span>
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-mono font-bold border border-red-500/30">A4 PDF</span>
                   </div>
-                  <p className="text-[11px] text-slate-300">Official bill presentation with items, quantities, selling rates and grand total.</p>
+                  <p className="text-[11px] text-slate-300">
+                    MADECC Group SARL certified A4 tender document. Multi-page pagination engine with continuous table headers, amount in words, and statutory engineering sign-off seal.
+                  </p>
+                  <div className="mt-2 text-[10px] text-emerald-400 font-medium flex items-center space-x-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Zero section cut-offs guaranteed</span>
+                  </div>
                 </div>
                 <button
-                  onClick={handleExportPdf}
+                  onClick={() => handleExportPdf()}
                   disabled={generatingPdf}
-                  className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow"
+                  className="w-full py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{generatingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
+                  <span>{generatingPdf ? 'Generating A4 PDF...' : 'Download A4 PDF'}</span>
                 </button>
               </div>
 
-              {/* 2. Abstract of Cost Excel */}
+              {/* 2. Official Word (.docx) (MADECC Group SARL) */}
+              <div className="p-4 bg-slate-900 rounded-xl border border-blue-500/30 space-y-3 flex flex-col justify-between shadow-lg">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-bold text-white flex items-center space-x-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Official Tender BOQ Word</span>
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono font-bold border border-blue-500/30">DOCX</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Full Microsoft Word (.docx) export for MADECC Group SARL. Features formatted tables, repeated headers across pages, complete financial recap, and engineer approval blocks.
+                  </p>
+                  <div className="mt-2 text-[10px] text-emerald-400 font-medium flex items-center space-x-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>All sections preserved without truncation</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleExportDocx()}
+                  disabled={exportingDocx}
+                  className="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{exportingDocx ? 'Exporting Word...' : 'Export Word (.docx)'}</span>
+                </button>
+              </div>
+
+              {/* 3. Abstract of Cost Excel */}
               <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-3 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-xs font-bold text-amber-400">2. Abstract of Cost (Bill Summaries)</h3>
+                    <h3 className="text-xs font-bold text-amber-400">3. Abstract of Cost (Bill Summaries)</h3>
                     <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">XLSX</span>
                   </div>
                   <p className="text-[11px] text-slate-300">High-level summary of subtotals per section and trade bill with financial recap sheets.</p>
                 </div>
                 <button
-                  onClick={handleExportExcel}
+                  onClick={() => handleExportExcel()}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export Excel (.xlsx)</span>
-                </button>
-              </div>
-
-              {/* 3. Material Take-Off Word */}
-              <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-3 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-xs font-bold text-amber-400">3. Material Take-Off Summary</h3>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono font-bold">DOCX</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300">Calculated totals for cement bags, sand m³, steel tons, and block count formatted for Word.</p>
-                </div>
-                <button
-                  onClick={handleExportDocx}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export Word (.docx)</span>
                 </button>
               </div>
 
@@ -3069,7 +3156,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                   <p className="text-[11px] text-slate-300">Complete itemized dataset export ready for import into ERP and estimation software.</p>
                 </div>
                 <button
-                  onClick={handleExportCsv}
+                  onClick={() => handleExportCsv()}
                   className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow"
                 >
                   <Download className="w-4 h-4" />

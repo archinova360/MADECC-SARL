@@ -993,8 +993,8 @@ I would like to discuss this project and request a formal BOQ.`;
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left text-xs border-collapse min-w-[550px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
                       <th className="py-3 px-4">Work Scope / Section</th>

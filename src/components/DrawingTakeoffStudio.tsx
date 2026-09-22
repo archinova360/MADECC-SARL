@@ -1119,8 +1119,8 @@ export function DrawingTakeoffStudio({ showToast, currentUser, onNavigateToLabou
           </div>
 
           {/* BOQ Items Table */}
-          <div className="border border-slate-800 rounded-xl overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="border border-slate-800 rounded-xl overflow-x-auto min-w-0">
+            <table className="w-full text-left text-xs min-w-[650px]">
               <thead className="bg-slate-950 text-slate-400 font-mono text-[11px]">
                 <tr>
                   <th className="p-3">Item Code</th>

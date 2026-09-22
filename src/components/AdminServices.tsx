@@ -556,8 +556,8 @@ export const AdminServices: React.FC = () => {
             <p className="text-xs text-slate-400">Click "Add New Service" above to publish a service.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="overflow-x-auto min-w-0">
+            <table className="w-full text-left border-collapse text-xs min-w-[850px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase tracking-wider text-[11px]">
                   <th className="p-4 w-10">

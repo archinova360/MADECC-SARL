@@ -422,7 +422,7 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(6.2);
   doc.setTextColor(71, 85, 105);
-  const wordsStr = numberToWords(grandTotalNum, currency);
+  const wordsStr = boq?.amountInWords || boq?.metadata?.amountInWords || numberToWords(grandTotalNum, currency);
   const wordsLines = doc.splitTextToSize(wordsStr, recapW - 8);
   doc.text(wordsLines, recapX + 4, sy);
 
@@ -454,10 +454,11 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  const revDate = boq?.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+  const revDate = boq?.revisionDate || boq?.metadata?.revisionDate || (boq?.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : '31/07/2026');
+  const revDesc = boq?.revisionDescription || boq?.metadata?.revisionDescription || 'Certified Engineering Cost Plan';
   doc.text(revNum, margin + 4, currentY + 16);
   doc.text(revDate, margin + 20, currentY + 16);
-  doc.text('Certified Engineering Cost Plan', margin + 42, currentY + 16);
+  doc.text(revDesc, margin + 42, currentY + 16);
 
   if (boq?.revisions && boq.revisions.length > 0) {
     const rev2 = boq.revisions[0];
@@ -484,17 +485,20 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.setTextColor(71, 85, 105);
   doc.text('Prepared by:', appX + 4, currentY + 11);
   doc.setFont('helvetica', 'bold');
-  doc.text(String(boq?.preparedBy || 'Lead Quantity Surveyor'), appX + 24, currentY + 11);
+  const preparedByName = boq?.preparedBy || 'Lead Quantity Surveyor & Workshop Engineer';
+  doc.text(String(preparedByName), appX + 24, currentY + 11);
 
   doc.setFont('helvetica', 'normal');
   doc.text('QS Verification:', appX + 4, currentY + 17);
   doc.setFont('helvetica', 'bold');
-  doc.text('MADECC Directorate of Cost Engineering', appX + 24, currentY + 17);
+  const qsVerificationName = boq?.qsVerification || boq?.metadata?.qsVerification || 'MADECC Directorate of Cost Engineering';
+  doc.text(String(qsVerificationName), appX + 24, currentY + 17);
 
   doc.setFont('helvetica', 'normal');
   doc.text('Chief Engineer:', appX + 4, currentY + 23);
   doc.setFont('helvetica', 'bold');
-  doc.text(String(boq?.approvedBy || 'Ing. Marcel Mbida, PE (ONIGC 4092)'), appX + 24, currentY + 23);
+  const chiefEngName = boq?.approvedBy || boq?.chiefEngineer || boq?.metadata?.chiefEngineer || 'Ing. Marcel Mbida, PE (ONIGC 4092)';
+  doc.text(String(chiefEngName), appX + 24, currentY + 23);
 
   // Circular Seal Stamp
   const sealCenterX = appX + halfWidth - 14;
@@ -504,11 +508,13 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.circle(sealCenterX, sealCenterY, 7);
   doc.circle(sealCenterX, sealCenterY, 5.8);
 
+  const sealCompany = boq?.sealText || boq?.metadata?.sealText || 'MADECC GROUP';
+  const sealSub = boq?.sealSubtext || boq?.metadata?.sealSubtext || 'SARL';
   doc.setFontSize(4.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(180, 83, 9);
-  doc.text('MADECC GROUP', sealCenterX, sealCenterY - 1.5, { align: 'center' });
-  doc.text('SARL', sealCenterX, sealCenterY + 0.8, { align: 'center' });
+  doc.text(sealCompany, sealCenterX, sealCenterY - 1.5, { align: 'center' });
+  doc.text(sealSub, sealCenterX, sealCenterY + 0.8, { align: 'center' });
   doc.text('CERTIFIED SEAL', sealCenterX, sealCenterY + 3.2, { align: 'center' });
 
   currentY += 38;

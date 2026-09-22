@@ -69,6 +69,7 @@ import { jsPDF } from 'jspdf';
 import { generateBoqDocx, generateBoqCsv, generateBoqExcel, parseBoqImportFile } from '../utils/boqExport';
 import { generateBoqPdf } from '../utils/boqPdfExport';
 import { getAuthToken } from '../lib/firebase';
+import { BoqRecapEditor } from './BoqRecapEditor';
 
 export interface RateBreakdown {
   materialCost: number;
@@ -212,6 +213,15 @@ export interface BoqData {
   sections?: BoqSection[];
   revisions?: any[];
   auditLogs?: any[];
+  amountInWords?: string;
+  qsVerification?: string;
+  chiefEngineer?: string;
+  sealText?: string;
+  sealSubtext?: string;
+  companyName?: string;
+  revisionDate?: string;
+  revisionDescription?: string;
+  metadata?: any;
 }
 
 export interface ResourceItem {
@@ -520,6 +530,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
   const pdfContentRef = useRef<HTMLDivElement>(null);
   const [generatingPdf, setGeneratingPdf] = useState<boolean>(false);
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [isRecapModalOpen, setIsRecapModalOpen] = useState<boolean>(false);
 
   // Email Modal
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
@@ -782,7 +793,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
   };
 
   // Open existing BOQ
-  const handleOpenBoq = async (id: number, targetView?: 'editor' | 'qs_dashboard' | 'approved_view') => {
+  const handleOpenBoq = async (id: number, targetView?: 'editor' | 'qs_dashboard' | 'approved_view' | 'reports') => {
     setLoading(true);
     try {
       const token = await getAuthToken();
@@ -805,6 +816,12 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Open Recap & Statutory Sign-off modal for a specific BOQ
+  const handleOpenRecapForBoq = async (id: number) => {
+    await handleOpenBoq(id, 'reports');
+    setIsRecapModalOpen(true);
   };
 
   // Recalculate BOQ Amounts Client-side
@@ -1671,6 +1688,15 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
           {/* Action Controls */}
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => setIsRecapModalOpen(true)}
+              title="Edit Commercial & Financial Recap, Revision Audit, and Statutory Sign-off"
+              className="px-3 py-2 text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg transition shadow-sm flex items-center space-x-1.5"
+            >
+              <Sliders className="w-3.5 h-3.5 text-amber-400" />
+              <span>Edit Recap</span>
+            </button>
+
+            <button
               onClick={() => handleExportPdf()}
               disabled={generatingPdf}
               title="Download official A4 PDF for MADECC Group SARL without section cut-offs"
@@ -1841,8 +1867,8 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
 
             {/* BOQ Table */}
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[750px]">
                   <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Reference</th>
@@ -1912,6 +1938,14 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                                 >
                                   <FileText className="w-3 h-3 text-blue-400" />
                                   <span>Word</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenRecapForBoq(b.id!)}
+                                  title="Edit Commercial & Financial Recap, Revision Audit, and Sign-off"
+                                  className="px-2 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg transition flex items-center space-x-1"
+                                >
+                                  <Sliders className="w-3 h-3 text-amber-400" />
+                                  <span>Recap</span>
                                 </button>
                                 <button
                                   onClick={() => handleOpenBoq(b.id!)}
@@ -2463,8 +2497,8 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
 
                         {/* Section Items Table */}
                         {isExpanded && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-slate-300">
+                          <div className="overflow-x-auto min-w-0">
+                            <table className="w-full text-left text-xs text-slate-300 min-w-[750px]">
                               <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                                 <tr>
                                   <th className="px-3 py-2">Item No</th>
@@ -2668,8 +2702,8 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                     </div>
 
                     {/* Dimension Table */}
-                    <div className="overflow-x-auto border border-slate-700 rounded-xl">
-                      <table className="w-full text-left text-xs text-slate-300">
+                    <div className="overflow-x-auto min-w-0 border border-slate-700 rounded-xl">
+                      <table className="w-full text-left text-xs text-slate-300 min-w-[650px]">
                         <thead className="bg-slate-950 text-slate-400 uppercase text-[10px]">
                           <tr>
                             <th className="px-3 py-2">Location / Element</th>
@@ -2900,6 +2934,20 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                     </div>
                   ))}
                 </div>
+
+                {/* Embed Full Interactive Commercial Recap & Statutory Sign-off Editor */}
+                <div className="pt-4 border-t border-slate-700">
+                  <BoqRecapEditor
+                    boq={currentBoq}
+                    onUpdateBoq={setCurrentBoq}
+                    onSave={handleSaveBoq}
+                    onExportPdf={() => handleExportPdf()}
+                    onExportDocx={() => handleExportDocx()}
+                    isSaving={saving}
+                    generatingPdf={generatingPdf}
+                    exportingDocx={exportingDocx}
+                  />
+                </div>
               </div>
             )}
 
@@ -3021,8 +3069,8 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-700 rounded-xl">
-              <table className="w-full text-left text-xs text-slate-300">
+            <div className="overflow-x-auto min-w-0 border border-slate-700 rounded-xl">
+              <table className="w-full text-left text-xs text-slate-300 min-w-[650px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px]">
                   <tr>
                     <th className="px-3 py-2">Code</th>
@@ -3069,6 +3117,26 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                   Generate official QS documents, executive summaries, material take-offs, and spreadsheets formatted for tender submission.
                 </p>
               </div>
+            </div>
+
+            {/* Editable Commercial Recap, Revision Audit & Statutory Sign-off */}
+            <div className="pt-2">
+              <BoqRecapEditor
+                boq={currentBoq}
+                onUpdateBoq={setCurrentBoq}
+                onSave={handleSaveBoq}
+                onExportPdf={() => handleExportPdf()}
+                onExportDocx={() => handleExportDocx()}
+                isSaving={saving}
+                generatingPdf={generatingPdf}
+                exportingDocx={exportingDocx}
+              />
+            </div>
+
+            <div className="pt-4 border-t border-slate-700">
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                All Tender Export Formats
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -3653,6 +3721,26 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                   Save Unit to Library
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 8. Full Interactive Commercial Recap & Statutory Sign-off Modal */}
+        {isRecapModalOpen && (
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-5xl w-full p-4 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[95vh] overflow-y-auto">
+              <BoqRecapEditor
+                boq={currentBoq}
+                onUpdateBoq={setCurrentBoq}
+                onSave={handleSaveBoq}
+                onExportPdf={() => handleExportPdf()}
+                onExportDocx={() => handleExportDocx()}
+                isSaving={saving}
+                generatingPdf={generatingPdf}
+                exportingDocx={exportingDocx}
+                isModal={true}
+                onClose={() => setIsRecapModalOpen(false)}
+              />
             </div>
           </div>
         )}

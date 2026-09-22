@@ -98,8 +98,8 @@ export const ExportHistoryPanel: React.FC<{ showToast?: (m: string, t: 'success'
 
       {/* History Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="overflow-x-auto min-w-0">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[750px]">
             <thead className="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="p-3">Module</th>

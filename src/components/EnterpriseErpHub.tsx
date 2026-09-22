@@ -570,48 +570,50 @@ export default function EnterpriseErpHub({ currentBoq, onSelectBoq, userRole = '
                 <span className="text-xs text-slate-400 font-mono">Total Library Items: {costItems.length}</span>
               </div>
 
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3.5">Code</th>
-                    <th className="p-3.5">Category</th>
-                    <th className="p-3.5">Item Specification</th>
-                    <th className="p-3.5">Unit</th>
-                    <th className="p-3.5">Douala Price</th>
-                    <th className="p-3.5">Yaoundé Price</th>
-                    <th className="p-3.5">Garoua Price</th>
-                    <th className="p-3.5">Preferred Supplier</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono">
-                  {costItems.length === 0 ? (
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[850px]">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-500 font-sans">
-                        No master cost items added yet. Click 'Add Master Cost Item' to seed the library.
-                      </td>
+                      <th className="p-3.5">Code</th>
+                      <th className="p-3.5">Category</th>
+                      <th className="p-3.5">Item Specification</th>
+                      <th className="p-3.5">Unit</th>
+                      <th className="p-3.5">Douala Price</th>
+                      <th className="p-3.5">Yaoundé Price</th>
+                      <th className="p-3.5">Garoua Price</th>
+                      <th className="p-3.5">Preferred Supplier</th>
                     </tr>
-                  ) : (
-                    costItems
-                      .filter(it => !searchQuery || it.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map(item => (
-                        <tr key={item.id} className="hover:bg-slate-800/40 transition">
-                          <td className="p-3.5 font-bold text-amber-400">{item.itemCode}</td>
-                          <td className="p-3.5">
-                            <span className="px-2 py-0.5 bg-slate-800 text-slate-200 text-[10px] font-bold rounded-md font-sans">
-                              {item.category}
-                            </span>
-                          </td>
-                          <td className="p-3.5 font-sans font-semibold text-white">{item.name}</td>
-                          <td className="p-3.5 text-slate-400">{item.unit}</td>
-                          <td className="p-3.5 font-bold text-emerald-400">{Number(item.basePriceXaf || item.doualaPrice || 0).toLocaleString()} XAF</td>
-                          <td className="p-3.5 font-bold text-blue-400">{Number(item.yaoundePrice || (Number(item.basePriceXaf) * 1.05)).toLocaleString()} XAF</td>
-                          <td className="p-3.5 font-bold text-purple-400">{Number(item.garouaPrice || (Number(item.basePriceXaf) * 1.15)).toLocaleString()} XAF</td>
-                          <td className="p-3.5 font-sans text-slate-300">{item.supplierName || 'Direct Import'}</td>
-                        </tr>
-                      ))
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {costItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-8 text-center text-slate-500 font-sans">
+                          No master cost items added yet. Click 'Add Master Cost Item' to seed the library.
+                        </td>
+                      </tr>
+                    ) : (
+                      costItems
+                        .filter(it => !searchQuery || it.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .map(item => (
+                          <tr key={item.id} className="hover:bg-slate-800/40 transition">
+                            <td className="p-3.5 font-bold text-amber-400">{item.itemCode}</td>
+                            <td className="p-3.5">
+                              <span className="px-2 py-0.5 bg-slate-800 text-slate-200 text-[10px] font-bold rounded-md font-sans">
+                                {item.category}
+                              </span>
+                            </td>
+                            <td className="p-3.5 font-sans font-semibold text-white">{item.name}</td>
+                            <td className="p-3.5 text-slate-400">{item.unit}</td>
+                            <td className="p-3.5 font-bold text-emerald-400">{Number(item.basePriceXaf || item.doualaPrice || 0).toLocaleString()} XAF</td>
+                            <td className="p-3.5 font-bold text-blue-400">{Number(item.yaoundePrice || (Number(item.basePriceXaf) * 1.05)).toLocaleString()} XAF</td>
+                            <td className="p-3.5 font-bold text-purple-400">{Number(item.garouaPrice || (Number(item.basePriceXaf) * 1.15)).toLocaleString()} XAF</td>
+                            <td className="p-3.5 font-sans text-slate-300">{item.supplierName || 'Direct Import'}</td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -738,44 +740,46 @@ export default function EnterpriseErpHub({ currentBoq, onSelectBoq, userRole = '
             </div>
 
             <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3.5">IPC Ref</th>
-                    <th className="p-3.5">Claim Period</th>
-                    <th className="p-3.5">Gross Work Done</th>
-                    <th className="p-3.5">Retention (5%)</th>
-                    <th className="p-3.5">Net Amount Payable</th>
-                    <th className="p-3.5">Certified Date</th>
-                    <th className="p-3.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono">
-                  {paymentCerts.length === 0 ? (
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[750px]">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-500 font-sans">
-                        No Payment Certificates drafted yet.
-                      </td>
+                      <th className="p-3.5">IPC Ref</th>
+                      <th className="p-3.5">Claim Period</th>
+                      <th className="p-3.5">Gross Work Done</th>
+                      <th className="p-3.5">Retention (5%)</th>
+                      <th className="p-3.5">Net Amount Payable</th>
+                      <th className="p-3.5">Certified Date</th>
+                      <th className="p-3.5">Status</th>
                     </tr>
-                  ) : (
-                    paymentCerts.map((ipc: any) => (
-                      <tr key={ipc.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-3.5 font-bold text-blue-400">{ipc.ipcNumber}</td>
-                        <td className="p-3.5 font-sans font-semibold text-white">{ipc.periodName}</td>
-                        <td className="p-3.5 font-bold text-slate-200">{Number(ipc.grossWorkDone).toLocaleString()} XAF</td>
-                        <td className="p-3.5 font-bold text-rose-400">-{Number(ipc.retentionDeduction).toLocaleString()} XAF</td>
-                        <td className="p-3.5 font-black text-emerald-400">{Number(ipc.netAmountPayable).toLocaleString()} XAF</td>
-                        <td className="p-3.5 text-slate-400">{ipc.certifiedDate}</td>
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-md font-sans uppercase">
-                            {ipc.status || 'DRAFT'}
-                          </span>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {paymentCerts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-slate-500 font-sans">
+                          No Payment Certificates drafted yet.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      paymentCerts.map((ipc: any) => (
+                        <tr key={ipc.id} className="hover:bg-slate-800/40 transition">
+                          <td className="p-3.5 font-bold text-blue-400">{ipc.ipcNumber}</td>
+                          <td className="p-3.5 font-sans font-semibold text-white">{ipc.periodName}</td>
+                          <td className="p-3.5 font-bold text-slate-200">{Number(ipc.grossWorkDone).toLocaleString()} XAF</td>
+                          <td className="p-3.5 font-bold text-rose-400">-{Number(ipc.retentionDeduction).toLocaleString()} XAF</td>
+                          <td className="p-3.5 font-black text-emerald-400">{Number(ipc.netAmountPayable).toLocaleString()} XAF</td>
+                          <td className="p-3.5 text-slate-400">{ipc.certifiedDate}</td>
+                          <td className="p-3.5">
+                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-md font-sans uppercase">
+                              {ipc.status || 'DRAFT'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

@@ -342,8 +342,8 @@ export const AdminQuoteRequests: React.FC = () => {
             <p className="text-xs text-slate-400">Try adjusting your search query or filters.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="overflow-x-auto min-w-0">
+            <table className="w-full text-left border-collapse text-xs min-w-[850px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase tracking-wider text-[11px]">
                   <th className="p-4">Reference</th>

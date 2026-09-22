@@ -450,20 +450,120 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   // Amount in Words
   children.push(
     new Paragraph({
-      spacing: { before: 120, after: 200 },
+      spacing: { before: 120, after: 180 },
       alignment: AlignmentType.RIGHT,
       children: [
-        new TextRun({ text: 'Amount in Words: ', bold: true, size: 15, color: '0F172A' }),
-        new TextRun({ text: numberToWords(grandTotalNum, currency), italics: true, bold: true, size: 15, color: 'D97706' })
+        new TextRun({ text: 'AMOUNT IN WORDS: ', bold: true, size: 15, color: '0F172A' }),
+        new TextRun({ text: boq.amountInWords || boq.metadata?.amountInWords || numberToWords(grandTotalNum, currency), italics: true, bold: true, size: 15, color: 'D97706' })
       ]
     })
   );
 
+  // 4.5 REVISION & AUDIT HISTORY
+  const revNum = boq.revisionNumber || 'REV-00';
+  const revDate = boq.revisionDate || boq.metadata?.revisionDate || (boq.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : '31/07/2026');
+  const revDesc = boq.revisionDescription || boq.metadata?.revisionDescription || 'Certified Engineering Cost Plan';
+
+  children.push(
+    new Paragraph({
+      spacing: { before: 160, after: 80 },
+      children: [new TextRun({ text: 'REVISION & AUDIT HISTORY', bold: true, size: 17, color: '0F172A' })]
+    })
+  );
+
+  const revRows: TableRow[] = [
+    new TableRow({
+      tableHeader: true,
+      cantSplit: true,
+      children: [
+        new TableCell({
+          width: { size: 20, type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9' },
+          margins: { top: 70, bottom: 70, left: 100, right: 100 },
+          children: [new Paragraph({ children: [new TextRun({ text: 'REV', bold: true, size: 14, color: '475569' })] })]
+        }),
+        new TableCell({
+          width: { size: 25, type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9' },
+          margins: { top: 70, bottom: 70, left: 100, right: 100 },
+          children: [new Paragraph({ children: [new TextRun({ text: 'DATE', bold: true, size: 14, color: '475569' })] })]
+        }),
+        new TableCell({
+          width: { size: 55, type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9' },
+          margins: { top: 70, bottom: 70, left: 100, right: 100 },
+          children: [new Paragraph({ children: [new TextRun({ text: 'DESCRIPTION / REMARKS', bold: true, size: 14, color: '475569' })] })]
+        })
+      ]
+    }),
+    new TableRow({
+      cantSplit: true,
+      children: [
+        new TableCell({
+          width: { size: 20, type: WidthType.PERCENTAGE },
+          margins: { top: 70, bottom: 70, left: 100, right: 100 },
+          children: [new Paragraph({ children: [new TextRun({ text: revNum, bold: true, size: 14, color: '0F172A' })] })]
+        }),
+        new TableCell({
+          width: { size: 25, type: WidthType.PERCENTAGE },
+          margins: { top: 70, bottom: 70, left: 100, right: 100 },
+          children: [new Paragraph({ children: [new TextRun({ text: revDate, size: 14, color: '334155' })] })]
+        }),
+        new TableCell({
+          width: { size: 55, type: WidthType.PERCENTAGE },
+          margins: { top: 70, bottom: 70, left: 100, right: 100 },
+          children: [new Paragraph({ children: [new TextRun({ text: revDesc, size: 14, color: '334155' })] })]
+        })
+      ]
+    })
+  ];
+
+  if (boq.revisions && boq.revisions.length > 0) {
+    boq.revisions.forEach((r: any) => {
+      revRows.push(
+        new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({
+              width: { size: 20, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 100, right: 100 },
+              children: [new Paragraph({ children: [new TextRun({ text: String(r.revisionNumber || 'REV'), bold: true, size: 13 })] })]
+            }),
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 100, right: 100 },
+              children: [new Paragraph({ children: [new TextRun({ text: new Date(r.approvedAt || Date.now()).toLocaleDateString('en-GB'), size: 13 })] })]
+            }),
+            new TableCell({
+              width: { size: 55, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 100, right: 100 },
+              children: [new Paragraph({ children: [new TextRun({ text: String(r.notes || 'Rate & Scope Calibration'), size: 13 })] })]
+            })
+          ]
+        })
+      );
+    });
+  }
+
+  children.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: BORDER_STYLE_LIGHT,
+      rows: revRows
+    })
+  );
+
   // 5. Statutory Sign-Off & Official Engineering Approval Table
+  const preparedByName = boq.preparedBy || 'Lead Quantity Surveyor & Workshop Engineer';
+  const qsVerificationName = boq.qsVerification || boq.metadata?.qsVerification || 'MADECC Directorate of Cost Engineering';
+  const chiefEngName = boq.approvedBy || boq.chiefEngineer || boq.metadata?.chiefEngineer || 'Ing. Marcel Mbida, PE (ONIGC 4092)';
+  const sealCompany = boq.sealText || boq.metadata?.sealText || 'MADECC GROUP';
+  const sealSub = boq.sealSubtext || boq.metadata?.sealSubtext || 'SARL';
+
   children.push(
     new Paragraph({
       spacing: { before: 200, after: 100 },
-      children: [new TextRun({ text: 'STATUTORY SIGN-OFF & CERTIFICATION', bold: true, size: 18, color: '0F172A' })]
+      children: [new TextRun({ text: 'ENGINEER OF RECORD & STATUTORY SIGN-OFF', bold: true, size: 18, color: '0F172A' })]
     })
   );
 
@@ -480,7 +580,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
             margins: { top: 100, bottom: 140, left: 100, right: 100 },
             children: [
               new Paragraph({ children: [new TextRun({ text: 'PREPARED BY', bold: true, size: 15, color: '475569' })] }),
-              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: boq.preparedBy || 'Lead Quantity Surveyor', bold: true, size: 15 })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: preparedByName, bold: true, size: 15 })] }),
               new Paragraph({ children: [new TextRun({ text: 'MADECC Directorate of QS', size: 13, color: '64748B' })] }),
               new Paragraph({ spacing: { before: 120 }, children: [new TextRun({ text: 'Date: ____________________', size: 13, color: '94A3B8' })] }),
               new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Signature: _________________', size: 13, color: '94A3B8' })] })
@@ -491,9 +591,9 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
             shading: { fill: 'F8FAFC' },
             margins: { top: 100, bottom: 140, left: 100, right: 100 },
             children: [
-              new Paragraph({ children: [new TextRun({ text: 'VERIFIED & CHECKED BY', bold: true, size: 15, color: '475569' })] }),
-              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Chief Commercial QS Engineer', bold: true, size: 15 })] }),
-              new Paragraph({ children: [new TextRun({ text: 'MADECC Technical Audit Unit', size: 13, color: '64748B' })] }),
+              new Paragraph({ children: [new TextRun({ text: 'QS VERIFICATION', bold: true, size: 15, color: '475569' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: qsVerificationName, bold: true, size: 15 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'Cost Engineering Directorate', size: 13, color: '64748B' })] }),
               new Paragraph({ spacing: { before: 120 }, children: [new TextRun({ text: 'Date: ____________________', size: 13, color: '94A3B8' })] }),
               new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Signature: _________________', size: 13, color: '94A3B8' })] })
             ]
@@ -503,10 +603,10 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
             shading: { fill: 'F8FAFC' },
             margins: { top: 100, bottom: 140, left: 100, right: 100 },
             children: [
-              new Paragraph({ children: [new TextRun({ text: 'APPROVED & SEALED BY', bold: true, size: 15, color: '475569' })] }),
-              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: boq.approvedBy || 'Ing. Marcel Mbida, PE (ONIGC 4092)', bold: true, size: 15 })] }),
+              new Paragraph({ children: [new TextRun({ text: 'CHIEF ENGINEER', bold: true, size: 15, color: '475569' })] }),
+              new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: chiefEngName, bold: true, size: 15 })] }),
               new Paragraph({ children: [new TextRun({ text: 'Engineer of Record / Directorate', size: 13, color: '64748B' })] }),
-              new Paragraph({ spacing: { before: 100 }, children: [new TextRun({ text: '[ MADECC Group SARL SEAL ]', bold: true, size: 13, color: 'D97706' })] }),
+              new Paragraph({ spacing: { before: 100 }, children: [new TextRun({ text: `[ ${sealCompany} ${sealSub} SEAL ]`, bold: true, size: 13, color: 'D97706' })] }),
               new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: 'Signature: _________________', size: 13, color: '94A3B8' })] })
             ]
           })

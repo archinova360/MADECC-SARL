@@ -2219,8 +2219,8 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
                               const headerRow = lines[0].split('|').map(s => s.trim()).filter(s => s !== '');
                               const dataRows = lines.slice(2).map(line => line.split('|').map(s => s.trim()).filter(s => s !== ''));
                               return (
-                                <div key={idx} className="overflow-x-auto my-4 border border-slate-800 rounded-xl">
-                                  <table className="w-full text-xs text-left text-slate-300">
+                                <div key={idx} className="overflow-x-auto min-w-0 my-4 border border-slate-800 rounded-xl">
+                                  <table className="w-full text-xs text-left text-slate-300 min-w-[500px]">
                                     <thead className="bg-slate-900 text-amber-500 font-bold uppercase tracking-wider text-[10px]">
                                       <tr>
                                         {headerRow.map((head, idy) => (
@@ -3033,9 +3033,10 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
 
             <div className="border border-black p-3 mb-4 bg-slate-50 text-[8.5pt]">
               <div className="font-bold uppercase text-center mb-1">CBA MARKS ALLOCATION & COMPLIANCE MATRIX</div>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-black">
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full border-collapse min-w-[340px]">
+                  <thead>
+                    <tr className="border-b border-black">
                     <th className="text-left py-0.5">Section</th>
                     <th className="text-left py-0.5">Evaluation Criteria</th>
                     <th className="text-right py-0.5">Max Marks</th>
@@ -3064,6 +3065,7 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
 
             <div className="flex-1">

@@ -1415,8 +1415,8 @@ _Prepared by ${preparedBy} (Civil Engineering Dept)_`;
                     </div>
 
                     {/* ITEMS TABLE */}
-                    <div className="overflow-x-auto rounded-xl border border-slate-850 bg-slate-950">
-                      <table className="w-full text-left text-xs">
+                    <div className="overflow-x-auto min-w-0 rounded-xl border border-slate-850 bg-slate-950">
+                      <table className="w-full text-left text-xs min-w-[700px]">
                         <thead className="bg-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-slate-800">
                           <tr>
                             <th className="py-2.5 px-3 w-14 text-center">Code</th>
@@ -1688,8 +1688,8 @@ _Prepared by ${preparedBy} (Civil Engineering Dept)_`;
             </div>
 
             {/* LIST TABLE */}
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto min-w-0 rounded-xl border border-slate-800 bg-slate-950">
+              <table className="w-full text-left text-xs min-w-[700px]">
                 <thead className="bg-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Ref Code</th>

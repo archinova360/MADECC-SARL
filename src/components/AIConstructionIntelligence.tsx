@@ -6692,8 +6692,8 @@ export default function AIConstructionIntelligence({
               </button>
             </div>
 
-            <div className="overflow-y-auto max-h-80">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-y-auto overflow-x-auto min-w-0 max-h-80">
+              <table className="w-full text-left text-xs min-w-[500px]">
                 <thead>
                   <tr className="bg-slate-950 text-slate-400 uppercase font-bold text-[10px]">
                     <th className="p-2.5">Time</th>

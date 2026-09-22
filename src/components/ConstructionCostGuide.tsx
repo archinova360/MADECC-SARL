@@ -437,8 +437,8 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
               {error}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto min-w-0">
+              <table className="w-full text-left text-xs border-collapse min-w-[750px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
                     <th className="py-3 px-4">Code</th>

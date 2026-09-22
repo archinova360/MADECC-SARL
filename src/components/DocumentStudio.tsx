@@ -3908,8 +3908,8 @@ export default function DocumentStudio({
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-900">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto min-w-0 rounded-xl border border-slate-900">
+              <table className="w-full text-left border-collapse text-xs min-w-[700px]">
                 <thead>
                   <tr className="bg-slate-900 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-900">
                     <th className="py-3.5 px-4 font-bold">Contract No / Date</th>
@@ -4035,8 +4035,8 @@ export default function DocumentStudio({
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-900">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto min-w-0 rounded-xl border border-slate-900">
+              <table className="w-full text-left border-collapse text-xs min-w-[700px]">
                 <thead>
                   <tr className="bg-slate-900 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-900">
                     <th className="py-3.5 px-4 font-bold">Receipt No / Date</th>

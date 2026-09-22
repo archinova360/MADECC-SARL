@@ -421,8 +421,8 @@ export default function AdminApiPlatform({ onBackToDashboard }: AdminApiPlatform
 
           {/* Table */}
           <div className="bg-slate-800/90 border border-slate-700 rounded-xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto min-w-0">
+              <table className="w-full text-left text-sm text-slate-300 min-w-[800px]">
                 <thead className="bg-slate-900/80 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-700">
                   <tr>
                     <th className="px-4 py-3">Customer & Org</th>
@@ -552,8 +552,8 @@ export default function AdminApiPlatform({ onBackToDashboard }: AdminApiPlatform
       {activeSubTab === 'keys' && (
         <div className="space-y-4">
           <div className="bg-slate-800/90 border border-slate-700 rounded-xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto min-w-0">
+              <table className="w-full text-left text-sm text-slate-300 min-w-[800px]">
                 <thead className="bg-slate-900/80 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-700">
                   <tr>
                     <th className="px-4 py-3">Key ID / Prefix</th>
@@ -634,8 +634,8 @@ export default function AdminApiPlatform({ onBackToDashboard }: AdminApiPlatform
               </h3>
               <span className="text-xs text-slate-400">Showing last 50 requests</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto min-w-0">
+              <table className="w-full text-left text-sm text-slate-300 min-w-[650px]">
                 <thead className="bg-slate-900/80 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-700 font-sans">
                   <tr>
                     <th className="px-4 py-3">Timestamp</th>
@@ -695,8 +695,8 @@ export default function AdminApiPlatform({ onBackToDashboard }: AdminApiPlatform
                 Administrative Platform Action Log
               </h3>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto min-w-0">
+              <table className="w-full text-left text-sm text-slate-300 min-w-[650px]">
                 <thead className="bg-slate-900/80 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-700">
                   <tr>
                     <th className="px-4 py-3">Timestamp</th>

@@ -1970,8 +1970,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 text-slate-400 hover:text-white bg-slate-900 border border-slate-800 rounded-lg"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
-            <Menu className="w-5 h-5" />
+            {mobileMenuOpen ? <X className="w-5 h-5 text-amber-400" /> : <Menu className="w-5 h-5" />}
           </button>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -2105,22 +2106,45 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       {/* BODY CONTENT WRAPPER */}
       <div className="flex-grow flex flex-col md:flex-row overflow-hidden relative">
 
+        {/* Mobile Backdrop Overlay */}
+        {mobileMenuOpen && (
+          <div 
+            className="fixed inset-0 top-[57px] bg-slate-950/75 backdrop-blur-xs z-40 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* ENTERPRISE SIDEBAR NAVIGATION */}
         <aside 
           className={`${
             sidebarCollapsed ? 'md:w-20' : 'md:w-72'
           } ${
-            mobileMenuOpen ? 'block' : 'hidden md:block'
-          } bg-slate-950 border-r border-slate-800 flex flex-col justify-between shrink-0 overflow-y-auto max-h-[calc(100vh-57px)] transition-all duration-300 z-20`}
+            mobileMenuOpen 
+              ? 'fixed inset-y-0 left-0 top-[57px] w-72 z-50 shadow-2xl flex bg-slate-950 border-r border-slate-800' 
+              : 'hidden md:flex'
+          } bg-slate-950 border-r border-slate-800 flex-col justify-between shrink-0 overflow-y-auto max-h-[calc(100vh-57px)] transition-all duration-300 z-20`}
         >
           <div className="p-3 space-y-4">
             
             {/* Sidebar Branding Header */}
             {!sidebarCollapsed && (
-              <div className="px-3 py-2 bg-slate-900/60 border border-slate-800 rounded-2xl mb-2">
-                <span className="text-[10px] font-mono tracking-widest text-amber-500 uppercase font-bold block">NAVIGATION PORTAL</span>
-                <span className="text-white font-extrabold text-sm block">MADECC ADMIN</span>
-                <span className="text-[10px] text-slate-400 font-mono block">14 Collapsible Enterprise Modules</span>
+              <div className="px-3 py-2 bg-slate-900/60 border border-slate-800 rounded-2xl mb-2 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-mono tracking-widest text-amber-500 uppercase font-bold block">NAVIGATION PORTAL</span>
+                  <span className="text-white font-extrabold text-sm block">MADECC ADMIN</span>
+                  <span className="text-[10px] text-slate-400 font-mono block">14 Collapsible Enterprise Modules</span>
+                </div>
+                {mobileMenuOpen && (
+                  <button 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="md:hidden p-1.5 text-slate-400 hover:text-white bg-slate-800/80 rounded-lg shrink-0 ml-2"
+                    title="Close navigation"
+                    aria-label="Close navigation"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
 
@@ -2249,7 +2273,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         </aside>
 
         {/* MAIN DISPLAY AREA */}
-        <main className="flex-grow p-6 md:p-10 overflow-y-auto max-h-[calc(100vh-57px)] w-full">
+        <main className="flex-grow p-3 sm:p-6 md:p-8 lg:p-10 overflow-y-auto max-h-[calc(100vh-57px)] w-full min-w-0">
           
           {loadingData && (
             <div className="flex items-center gap-2 mb-6 bg-slate-800/40 border border-slate-700 p-3 rounded-xl text-xs text-amber-500 font-mono animate-pulse">
@@ -2385,7 +2409,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
 
                     <div className="space-y-3">
                       {appointments.filter(a => a.status === 'pending').slice(0, 3).map((appt) => (
-                        <div key={appt.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex items-center justify-between gap-4">
+                        <div key={appt.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] bg-sky-500/10 text-sky-400 font-mono font-bold px-2 py-0.5 rounded border border-sky-500/20 uppercase">Consultation</span>
@@ -2393,7 +2417,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                             </div>
                             <p className="text-xs text-slate-400">{appt.clientEmail} • {appt.appointmentDate}</p>
                           </div>
-                          <div className="flex gap-2 shrink-0">
+                          <div className="flex gap-2 shrink-0 self-start sm:self-auto">
                             <button
                               onClick={() => handleUpdateAppointmentStatus(appt.id, 'confirmed')}
                               className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-xl text-xs font-bold border border-emerald-500/30 transition-colors"
@@ -2411,7 +2435,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       ))}
 
                       {reviews.filter(r => !r.approved).slice(0, 3).map((rev) => (
-                        <div key={rev.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex items-center justify-between gap-4">
+                        <div key={rev.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] bg-amber-500/10 text-amber-400 font-mono font-bold px-2 py-0.5 rounded border border-amber-500/20 uppercase">Review</span>
@@ -2421,7 +2445,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                           </div>
                           <button
                             onClick={() => setActiveAdminTab('reviews')}
-                            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-xl text-xs font-bold border border-amber-500/30 transition-colors shrink-0"
+                            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-xl text-xs font-bold border border-amber-500/30 transition-colors shrink-0 self-start sm:self-auto"
                           >
                             Review
                           </button>
@@ -2443,7 +2467,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
                       <Wrench className="w-5 h-5 text-amber-500" /> Enterprise Module Quick Launch
                     </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                       {[
                         { title: 'Global Site Customizer', desc: 'Identity, Mbankolo HQ, contacts & theme', tab: 'cms-settings', icon: Settings, color: 'text-amber-400' },
                         { title: 'Page Builder Studio', desc: 'Frontend pages, heroes & custom content', tab: 'cms-pages', icon: Globe, color: 'text-sky-400' },
@@ -2939,60 +2963,62 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
 
                 {/* Table list */}
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                        <th className="p-4">Title & Details</th>
-                        <th className="p-4">Location</th>
-                        <th className="p-4">Budget Value</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4 text-right">Actions Operations</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-850">
-                      {projects.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-900/30 transition-colors">
-                          <td className="p-4">
-                            <span className="font-bold text-white block text-sm">{p.title}</span>
-                            <span className="block text-[10px] text-slate-500 font-mono mt-0.5">ID: {p.id} | Start: {formatDateTime(p.startDate || '')}</span>
-                          </td>
-                          <td className="p-4 font-medium text-slate-300">{p.location}</td>
-                          <td className="p-4 font-mono font-bold text-white">
-                            {p.budget ? `£${Number(p.budget).toLocaleString()}` : 'TBA'}
-                          </td>
-                          <td className="p-4">
-                            <span className={`inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider text-white ${
-                              p.status === 'completed' ? 'bg-emerald-600' :
-                              p.status === 'in-progress' ? 'bg-amber-500 text-slate-950' :
-                              'bg-indigo-600'
-                            }`}>
-                              {p.status}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right space-x-2">
-                            <button
-                              onClick={() => fetchMilestonesForSelectedProject(p.id)}
-                              className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
-                            >
-                              Timeline Milestones
-                            </button>
-                            <button
-                              onClick={() => handleEditProjectClick(p)}
-                              className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 inline-flex items-center"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProject(p.id)}
-                              className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                  <div className="overflow-x-auto min-w-0">
+                    <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+                      <thead>
+                        <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                          <th className="p-4">Title & Details</th>
+                          <th className="p-4">Location</th>
+                          <th className="p-4">Budget Value</th>
+                          <th className="p-4">Status</th>
+                          <th className="p-4 text-right">Actions Operations</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850">
+                        {projects.map((p) => (
+                          <tr key={p.id} className="hover:bg-slate-900/30 transition-colors">
+                            <td className="p-4">
+                              <span className="font-bold text-white block text-sm">{p.title}</span>
+                              <span className="block text-[10px] text-slate-500 font-mono mt-0.5">ID: {p.id} | Start: {formatDateTime(p.startDate || '')}</span>
+                            </td>
+                            <td className="p-4 font-medium text-slate-300">{p.location}</td>
+                            <td className="p-4 font-mono font-bold text-white">
+                              {p.budget ? `£${Number(p.budget).toLocaleString()}` : 'TBA'}
+                            </td>
+                            <td className="p-4">
+                              <span className={`inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider text-white ${
+                                p.status === 'completed' ? 'bg-emerald-600' :
+                                p.status === 'in-progress' ? 'bg-amber-500 text-slate-950' :
+                                'bg-indigo-600'
+                              }`}>
+                                {p.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right space-x-2">
+                              <button
+                                onClick={() => fetchMilestonesForSelectedProject(p.id)}
+                                className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
+                              >
+                                Timeline Milestones
+                              </button>
+                              <button
+                                onClick={() => handleEditProjectClick(p)}
+                                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 inline-flex items-center"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProject(p.id)}
+                                className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -3295,54 +3321,56 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Author Name</th>
-                    <th className="p-4">Project Refer.</th>
-                    <th className="p-4">Rating Score</th>
-                    <th className="p-4">Inquiry Text</th>
-                    <th className="p-4">Approval Status</th>
-                    <th className="p-4 text-right">Delete Operations</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {reviews.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-900/30 transition-colors">
-                      <td className="p-4 font-bold text-white">{r.authorName}</td>
-                      <td className="p-4 text-slate-400 font-mono text-[10px]">{r.projectName || 'General Contracting'}</td>
-                      <td className="p-4">
-                        <div className="flex text-amber-500 gap-0.5">
-                          {Array.from({ length: r.rating }).map((_, i) => (
-                            <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-4 text-slate-300 max-w-xs truncate italic">"{r.text}"</td>
-                      <td className="p-4">
-                        <button
-                          onClick={() => handleToggleReviewApproval(r.id, r.approved)}
-                          className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wide transition-all ${
-                            r.approved 
-                              ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                              : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20'
-                          }`}
-                        >
-                          {r.approved ? 'Approved ✓' : 'Approve Feedback'}
-                        </button>
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={() => handleDeleteReview(r.id)}
-                          className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Author Name</th>
+                      <th className="p-4">Project Refer.</th>
+                      <th className="p-4">Rating Score</th>
+                      <th className="p-4">Inquiry Text</th>
+                      <th className="p-4">Approval Status</th>
+                      <th className="p-4 text-right">Delete Operations</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {reviews.map((r) => (
+                      <tr key={r.id} className="hover:bg-slate-900/30 transition-colors">
+                        <td className="p-4 font-bold text-white">{r.authorName}</td>
+                        <td className="p-4 text-slate-400 font-mono text-[10px]">{r.projectName || 'General Contracting'}</td>
+                        <td className="p-4">
+                          <div className="flex text-amber-500 gap-0.5">
+                            {Array.from({ length: r.rating }).map((_, i) => (
+                              <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-4 text-slate-300 max-w-xs truncate italic">"{r.text}"</td>
+                        <td className="p-4">
+                          <button
+                            onClick={() => handleToggleReviewApproval(r.id, r.approved)}
+                            className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wide transition-all ${
+                              r.approved 
+                                ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' 
+                                : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20'
+                            }`}
+                          >
+                            {r.approved ? 'Approved ✓' : 'Approve Feedback'}
+                          </button>
+                        </td>
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => handleDeleteReview(r.id)}
+                            className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -3644,73 +3672,75 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Client Name & Details</th>
-                    <th className="p-4">Targeted Service</th>
-                    <th className="p-4">Scheduled Date & Time</th>
-                    <th className="p-4">Inquiry Notes</th>
-                    <th className="p-4">Current Status</th>
-                    <th className="p-4 text-right">Status Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {appointments.map((appt) => (
-                    <tr key={appt.id} className="hover:bg-slate-900/30 transition-colors" id={`admin-appt-${appt.id}`}>
-                      <td className="p-4">
-                        <span className="font-bold text-white block text-sm">{appt.clientName}</span>
-                        <span className="block text-[10px] text-slate-500 font-mono mt-0.5">{appt.clientEmail}</span>
-                      </td>
-                      <td className="p-4 font-medium text-slate-300">{appt.serviceName}</td>
-                      <td className="p-4 font-mono font-bold text-amber-500">{formatDateTime(appt.appointmentDate)}</td>
-                      <td className="p-4 text-slate-400 max-w-xs truncate italic">"{appt.notes || 'No notes specified.'}"</td>
-                      <td className="p-4">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          appt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                          appt.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                          appt.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                          'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
-                        }`}>
-                          {appt.status === 'confirmed' ? 'Approved' : appt.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
-                        {appt.status === 'pending' && (
-                          <button
-                            onClick={() => handleUpdateAppointmentStatus(appt.id, 'confirmed')}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase px-2 py-1 rounded transition-colors"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {appt.status === 'confirmed' && (
-                          <button
-                            onClick={() => handleUpdateAppointmentStatus(appt.id, 'completed')}
-                            className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase px-2 py-1 rounded transition-colors"
-                          >
-                            Complete
-                          </button>
-                        )}
-                        {appt.status !== 'cancelled' && appt.status !== 'completed' && (
-                          <button
-                            onClick={() => handleUpdateAppointmentStatus(appt.id, 'cancelled')}
-                            className="bg-slate-800 hover:bg-slate-750 text-red-400 border border-slate-700 text-[10px] font-bold uppercase px-2 py-1 rounded transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteAppointment(appt.id)}
-                          className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[750px]">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Client Name & Details</th>
+                      <th className="p-4">Targeted Service</th>
+                      <th className="p-4">Scheduled Date & Time</th>
+                      <th className="p-4">Inquiry Notes</th>
+                      <th className="p-4">Current Status</th>
+                      <th className="p-4 text-right">Status Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {appointments.map((appt) => (
+                      <tr key={appt.id} className="hover:bg-slate-900/30 transition-colors" id={`admin-appt-${appt.id}`}>
+                        <td className="p-4">
+                          <span className="font-bold text-white block text-sm">{appt.clientName}</span>
+                          <span className="block text-[10px] text-slate-500 font-mono mt-0.5">{appt.clientEmail}</span>
+                        </td>
+                        <td className="p-4 font-medium text-slate-300">{appt.serviceName}</td>
+                        <td className="p-4 font-mono font-bold text-amber-500">{formatDateTime(appt.appointmentDate)}</td>
+                        <td className="p-4 text-slate-400 max-w-xs truncate italic">"{appt.notes || 'No notes specified.'}"</td>
+                        <td className="p-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            appt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                            appt.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                            appt.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                            'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
+                          }`}>
+                            {appt.status === 'confirmed' ? 'Approved' : appt.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                          {appt.status === 'pending' && (
+                            <button
+                              onClick={() => handleUpdateAppointmentStatus(appt.id, 'confirmed')}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase px-2 py-1 rounded transition-colors"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {appt.status === 'confirmed' && (
+                            <button
+                              onClick={() => handleUpdateAppointmentStatus(appt.id, 'completed')}
+                              className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase px-2 py-1 rounded transition-colors"
+                            >
+                              Complete
+                            </button>
+                          )}
+                          {appt.status !== 'cancelled' && appt.status !== 'completed' && (
+                            <button
+                              onClick={() => handleUpdateAppointmentStatus(appt.id, 'cancelled')}
+                              className="bg-slate-800 hover:bg-slate-750 text-red-400 border border-slate-700 text-[10px] font-bold uppercase px-2 py-1 rounded transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteAppointment(appt.id)}
+                            className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -3746,62 +3776,64 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Sender Details</th>
-                    <th className="p-4">Subject Line</th>
-                    <th className="p-4">Message Body</th>
-                    <th className="p-4">Status Flag</th>
-                    <th className="p-4 text-right">Inquiry Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {contacts.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-900/30 transition-colors">
-                      <td className="p-4">
-                        <span className="font-bold text-white block text-sm">{c.name}</span>
-                        <span className="block text-[10px] text-slate-500 font-mono mt-0.5">{c.email} | Recd: {formatDateTime(c.createdAt)}</span>
-                      </td>
-                      <td className="p-4 font-bold text-slate-300">{c.subject}</td>
-                      <td className="p-4 text-slate-400 max-w-sm whitespace-pre-wrap">{c.message}</td>
-                      <td className="p-4">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
-                          c.status === 'replied' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                          c.status === 'read' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                          'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
-                        }`}>
-                          {c.status === 'replied' ? 'Approved & Replied' : c.status === 'read' ? 'Approved & Read' : 'New'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
-                        {c.status === 'new' && (
-                          <button
-                            onClick={() => handleMarkContactStatus(c.id, 'read')}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase px-2.5 py-1.5 rounded transition-colors"
-                          >
-                            Approve Inquiry
-                          </button>
-                        )}
-                        {c.status !== 'replied' && (
-                          <button
-                            onClick={() => handleMarkContactStatus(c.id, 'replied')}
-                            className="bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-bold uppercase px-2.5 py-1.5 rounded transition-colors"
-                          >
-                            Approve & Reply
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteContact(c.id)}
-                          className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[750px]">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Sender Details</th>
+                      <th className="p-4">Subject Line</th>
+                      <th className="p-4">Message Body</th>
+                      <th className="p-4">Status Flag</th>
+                      <th className="p-4 text-right">Inquiry Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {contacts.map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-900/30 transition-colors">
+                        <td className="p-4">
+                          <span className="font-bold text-white block text-sm">{c.name}</span>
+                          <span className="block text-[10px] text-slate-500 font-mono mt-0.5">{c.email} | Recd: {formatDateTime(c.createdAt)}</span>
+                        </td>
+                        <td className="p-4 font-bold text-slate-300">{c.subject}</td>
+                        <td className="p-4 text-slate-400 max-w-sm whitespace-pre-wrap">{c.message}</td>
+                        <td className="p-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                            c.status === 'replied' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                            c.status === 'read' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                            'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
+                          }`}>
+                            {c.status === 'replied' ? 'Approved & Replied' : c.status === 'read' ? 'Approved & Read' : 'New'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                          {c.status === 'new' && (
+                            <button
+                              onClick={() => handleMarkContactStatus(c.id, 'read')}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase px-2.5 py-1.5 rounded transition-colors"
+                            >
+                              Approve Inquiry
+                            </button>
+                          )}
+                          {c.status !== 'replied' && (
+                            <button
+                              onClick={() => handleMarkContactStatus(c.id, 'replied')}
+                              className="bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-bold uppercase px-2.5 py-1.5 rounded transition-colors"
+                            >
+                              Approve & Reply
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteContact(c.id)}
+                            className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-slate-800 inline-flex items-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -4253,50 +4285,52 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Document Title</th>
-                    <th className="p-4">Compliance Type</th>
-                    <th className="p-4">System Version</th>
-                    <th className="p-4">Direct File URL</th>
-                    <th className="p-4 text-right">Registry Operations</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {documents.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-900/30 transition-colors">
-                      <td className="p-4 font-bold text-white">{doc.title}</td>
-                      <td className="p-4 text-slate-300 font-medium">{doc.docType.toUpperCase()}</td>
-                      <td className="p-4 font-mono font-bold text-amber-500">V{doc.version}</td>
-                      <td className="p-4 font-mono text-slate-500 max-w-xs truncate">{doc.fileUrl}</td>
-                      <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
-                        <button
-                          onClick={() => handleEditDocumentClick(doc)}
-                          className="text-slate-400 hover:text-amber-400 p-1.5 rounded hover:bg-slate-800 transition-colors inline-flex items-center"
-                          title="Edit Document"
-                        >
-                          <Edit className="w-4.5 h-4.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicateDocument(doc)}
-                          className="text-slate-400 hover:text-blue-400 p-1.5 rounded hover:bg-slate-800 transition-colors inline-flex items-center"
-                          title="Duplicate Document"
-                        >
-                          <Copy className="w-4.5 h-4.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDocument(doc.id)}
-                          className="text-red-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-800 inline-flex items-center"
-                          title="Delete Document"
-                        >
-                          <Trash2 className="w-4.5 h-4.5" />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[650px]">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Document Title</th>
+                      <th className="p-4">Compliance Type</th>
+                      <th className="p-4">System Version</th>
+                      <th className="p-4">Direct File URL</th>
+                      <th className="p-4 text-right">Registry Operations</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {documents.map((doc) => (
+                      <tr key={doc.id} className="hover:bg-slate-900/30 transition-colors">
+                        <td className="p-4 font-bold text-white">{doc.title}</td>
+                        <td className="p-4 text-slate-300 font-medium">{doc.docType.toUpperCase()}</td>
+                        <td className="p-4 font-mono font-bold text-amber-500">V{doc.version}</td>
+                        <td className="p-4 font-mono text-slate-500 max-w-xs truncate">{doc.fileUrl}</td>
+                        <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => handleEditDocumentClick(doc)}
+                            className="text-slate-400 hover:text-amber-400 p-1.5 rounded hover:bg-slate-800 transition-colors inline-flex items-center"
+                            title="Edit Document"
+                          >
+                            <Edit className="w-4.5 h-4.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDuplicateDocument(doc)}
+                            className="text-slate-400 hover:text-blue-400 p-1.5 rounded hover:bg-slate-800 transition-colors inline-flex items-center"
+                            title="Duplicate Document"
+                          >
+                            <Copy className="w-4.5 h-4.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            className="text-red-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-800 inline-flex items-center"
+                            title="Delete Document"
+                          >
+                            <Trash2 className="w-4.5 h-4.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* CREATE DOCUMENT MODAL */}
@@ -4454,66 +4488,68 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Media Preview</th>
-                    <th className="p-4">Update Title</th>
-                    <th className="p-4">Category</th>
-                    <th className="p-4">Media Type</th>
-                    <th className="p-4 text-right">Operations</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {galleryItems.length > 0 ? (
-                    galleryItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-900/30 transition-colors">
-                        <td className="p-4">
-                          <div className="w-16 h-10 rounded overflow-hidden border border-slate-800 bg-black flex items-center justify-center">
-                            {item.videoUrl ? (
-                              <div className="text-[9px] font-mono text-amber-500 flex items-center gap-0.5">
-                                <Video className="w-3.5 h-3.5 shrink-0" />
-                                <span>Video</span>
-                              </div>
-                            ) : (
-                              <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4 font-bold text-white">{item.title}</td>
-                        <td className="p-4">
-                          <span className="bg-slate-900 border border-slate-800 text-slate-300 font-bold px-2 py-1 rounded text-[10px] uppercase font-mono">
-                            {item.category}
-                          </span>
-                        </td>
-                        <td className="p-4 font-mono font-bold text-amber-500">
-                          {item.videoUrl ? '150MB SEO Video' : 'Standard Photo'}
-                        </td>
-                        <td className="p-4 text-right space-x-2">
-                          <button
-                            onClick={() => handleEditGallery(item)}
-                            className="text-amber-500 hover:text-amber-400 p-1.5 rounded hover:bg-slate-800 inline-flex items-center gap-1 font-bold"
-                          >
-                            <Edit className="w-3.5 h-3.5" /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteGallery(item.id)}
-                            className="text-red-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-800 inline-flex items-center gap-1 font-bold"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                          </button>
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[650px]">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Media Preview</th>
+                      <th className="p-4">Update Title</th>
+                      <th className="p-4">Category</th>
+                      <th className="p-4">Media Type</th>
+                      <th className="p-4 text-right">Operations</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {galleryItems.length > 0 ? (
+                      galleryItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-900/30 transition-colors">
+                          <td className="p-4">
+                            <div className="w-16 h-10 rounded overflow-hidden border border-slate-800 bg-black flex items-center justify-center">
+                              {item.videoUrl ? (
+                                <div className="text-[9px] font-mono text-amber-500 flex items-center gap-0.5">
+                                  <Video className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Video</span>
+                                </div>
+                              ) : (
+                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4 font-bold text-white">{item.title}</td>
+                          <td className="p-4">
+                            <span className="bg-slate-900 border border-slate-800 text-slate-300 font-bold px-2 py-1 rounded text-[10px] uppercase font-mono">
+                              {item.category}
+                            </span>
+                          </td>
+                          <td className="p-4 font-mono font-bold text-amber-500">
+                            {item.videoUrl ? '150MB SEO Video' : 'Standard Photo'}
+                          </td>
+                          <td className="p-4 text-right space-x-2">
+                            <button
+                              onClick={() => handleEditGallery(item)}
+                              className="text-amber-500 hover:text-amber-400 p-1.5 rounded hover:bg-slate-800 inline-flex items-center gap-1 font-bold"
+                            >
+                              <Edit className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteGallery(item.id)}
+                              className="text-red-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-800 inline-flex items-center gap-1 font-bold"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-slate-500">
+                          No live media updates published yet. Click "Publish New Update" to begin.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-500">
-                        No live media updates published yet. Click "Publish New Update" to begin.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* CREATE / EDIT GALLERY ITEM MODAL */}
@@ -4809,30 +4845,32 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Timestamp Log</th>
-                    <th className="p-4">Action Flag</th>
-                    <th className="p-4">Operator Email</th>
-                    <th className="p-4">Detailed Modification Metrics</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {filterAuditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-900/30 transition-colors">
-                      <td className="p-4 font-mono text-slate-400">{formatDateTime(log.timestamp)}</td>
-                      <td className="p-4">
-                        <span className="font-mono font-bold text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/10 text-[10px] uppercase">
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="p-4 font-bold text-white">{log.userEmail || 'system'}</td>
-                      <td className="p-4 text-slate-300 font-sans">{log.details}</td>
+              <div className="overflow-x-auto min-w-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[650px]">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Timestamp Log</th>
+                      <th className="p-4">Action Flag</th>
+                      <th className="p-4">Operator Email</th>
+                      <th className="p-4">Detailed Modification Metrics</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {filterAuditLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-900/30 transition-colors">
+                        <td className="p-4 font-mono text-slate-400">{formatDateTime(log.timestamp)}</td>
+                        <td className="p-4">
+                          <span className="font-mono font-bold text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/10 text-[10px] uppercase">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-4 font-bold text-white">{log.userEmail || 'system'}</td>
+                        <td className="p-4 text-slate-300 font-sans">{log.details}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -5247,7 +5285,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
 
               {/* Ledger Table Container */}
               <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                <table className="w-full text-left border-collapse text-xs">
+                <div className="overflow-x-auto min-w-0">
+                  <table className="w-full text-left border-collapse text-xs min-w-[850px]">
                   <thead>
                     <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
                       <th className="p-4 w-20 text-center">Type</th>
@@ -5360,6 +5399,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           );
@@ -5538,8 +5578,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     <span className="text-xs font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded font-black">users</span>
                     <span className="text-[10px] text-slate-500 font-mono">Primary Authenticated Accounts</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left font-mono text-[11px] text-slate-400">
+                  <div className="overflow-x-auto min-w-0">
+                    <table className="w-full text-left font-mono text-[11px] text-slate-400 min-w-[420px]">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-500">
                           <th className="pb-1.5 font-bold">Column</th>
@@ -5589,8 +5629,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     <span className="text-xs font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded font-black">projects</span>
                     <span className="text-[10px] text-slate-500 font-mono">Infrastructure Civil Works</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left font-mono text-[11px] text-slate-400">
+                  <div className="overflow-x-auto min-w-0">
+                    <table className="w-full text-left font-mono text-[11px] text-slate-400 min-w-[420px]">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-500">
                           <th className="pb-1.5 font-bold">Column</th>
@@ -5645,8 +5685,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     <span className="text-xs font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded font-black">appointments</span>
                     <span className="text-[10px] text-slate-500 font-mono">Technical Consultations</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left font-mono text-[11px] text-slate-400">
+                  <div className="overflow-x-auto min-w-0">
+                    <table className="w-full text-left font-mono text-[11px] text-slate-400 min-w-[420px]">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-500">
                           <th className="pb-1.5 font-bold">Column</th>
@@ -5706,8 +5746,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     <span className="text-xs font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded font-black">audit_logs</span>
                     <span className="text-[10px] text-slate-500 font-mono">System Security Tracking</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left font-mono text-[11px] text-slate-400">
+                  <div className="overflow-x-auto min-w-0">
+                    <table className="w-full text-left font-mono text-[11px] text-slate-400 min-w-[420px]">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-500">
                           <th className="pb-1.5 font-bold">Column</th>

@@ -895,8 +895,17 @@ export function setupCalculatorRoutes(app: express.Express) {
     const revisions = await db.select().from(boqRevisions).where(eq(boqRevisions.boqId, id)).orderBy(desc(boqRevisions.approvedAt));
     const logs = await db.select().from(boqAuditLogs).where(eq(boqAuditLogs.boqId, id)).orderBy(desc(boqAuditLogs.timestamp));
 
+    const meta = (boq.metadata as any) || {};
+
     return {
       ...boq,
+      amountInWords: meta.amountInWords || undefined,
+      qsVerification: meta.qsVerification || undefined,
+      chiefEngineer: meta.chiefEngineer || boq.approvedBy || undefined,
+      sealText: meta.sealText || undefined,
+      companyName: meta.companyName || undefined,
+      revisionDate: meta.revisionDate || undefined,
+      revisionDescription: meta.revisionDescription || undefined,
       sections: sectionsWithItems,
       revisions,
       auditLogs: logs
@@ -1069,7 +1078,17 @@ export function setupCalculatorRoutes(app: express.Express) {
           notes: notes || '',
           attachments: attachments || [],
           aiResults: aiResults || {},
-          metadata: metadata || {},
+          metadata: {
+            ...((metadata as any) || {}),
+            ...(req.body.amountInWords ? { amountInWords: req.body.amountInWords } : {}),
+            ...(req.body.qsVerification ? { qsVerification: req.body.qsVerification } : {}),
+            ...(req.body.chiefEngineer ? { chiefEngineer: req.body.chiefEngineer } : {}),
+            ...(req.body.sealText ? { sealText: req.body.sealText } : {}),
+            ...(req.body.sealSubtext ? { sealSubtext: req.body.sealSubtext } : {}),
+            ...(req.body.revisionDate ? { revisionDate: req.body.revisionDate } : {}),
+            ...(req.body.revisionDescription ? { revisionDescription: req.body.revisionDescription } : {}),
+            companyName: 'MADECC Group SARL'
+          },
           consultantName: consultantName || '',
           consultantEmail: consultantEmail || '',
           contractType: contractType || 'UNIT_RATE',
@@ -1161,6 +1180,9 @@ export function setupCalculatorRoutes(app: express.Express) {
         location,
         description,
         preparedBy,
+        approvedBy,
+        revisionNumber,
+        datePrepared,
         currency,
         status,
         overheadPercent,
@@ -1168,6 +1190,12 @@ export function setupCalculatorRoutes(app: express.Express) {
         profitPercent,
         taxPercent,
         discountPercent,
+        subtotal,
+        overheadAmount,
+        contingencyAmount,
+        profitAmount,
+        taxAmount,
+        grandTotal,
         transportAmount,
         supervisionAmount,
         notes,
@@ -1213,6 +1241,9 @@ export function setupCalculatorRoutes(app: express.Express) {
           location: location || currentBoq.location,
           description: description ?? currentBoq.description,
           preparedBy: preparedBy || currentBoq.preparedBy,
+          approvedBy: approvedBy !== undefined ? approvedBy : currentBoq.approvedBy,
+          revisionNumber: revisionNumber || currentBoq.revisionNumber,
+          datePrepared: datePrepared ? new Date(datePrepared) : currentBoq.datePrepared,
           updatedBy: req.dbUser?.email || currentBoq.updatedBy || 'Admin',
           currency: currency || currentBoq.currency,
           status: status || currentBoq.status,
@@ -1224,7 +1255,18 @@ export function setupCalculatorRoutes(app: express.Express) {
           notes: notes ?? currentBoq.notes,
           attachments: attachments ?? currentBoq.attachments,
           aiResults: aiResults ?? currentBoq.aiResults,
-          metadata: metadata ?? currentBoq.metadata,
+          metadata: {
+            ...((currentBoq.metadata as any) || {}),
+            ...((metadata as any) || {}),
+            ...(req.body.amountInWords ? { amountInWords: req.body.amountInWords } : {}),
+            ...(req.body.qsVerification ? { qsVerification: req.body.qsVerification } : {}),
+            ...(req.body.chiefEngineer ? { chiefEngineer: req.body.chiefEngineer } : {}),
+            ...(req.body.sealText ? { sealText: req.body.sealText } : {}),
+            ...(req.body.sealSubtext ? { sealSubtext: req.body.sealSubtext } : {}),
+            ...(req.body.revisionDate ? { revisionDate: req.body.revisionDate } : {}),
+            ...(req.body.revisionDescription ? { revisionDescription: req.body.revisionDescription } : {}),
+            companyName: 'MADECC Group SARL'
+          },
           consultantName: consultantName ?? currentBoq.consultantName,
           consultantEmail: consultantEmail ?? currentBoq.consultantEmail,
           contractType: contractType ?? currentBoq.contractType,
@@ -1238,15 +1280,39 @@ export function setupCalculatorRoutes(app: express.Express) {
           updatedAt: new Date()
         };
 
-        if (totals) {
+        if (subtotal !== undefined) {
+          updateData.subtotal = String(subtotal);
+        } else if (totals) {
           updateData.subtotal = totals.subtotal;
+        }
+
+        if (overheadAmount !== undefined) {
+          updateData.overheadAmount = String(overheadAmount);
+        } else if (totals) {
           updateData.overheadAmount = totals.overheadAmount;
+        }
+
+        if (contingencyAmount !== undefined) {
+          updateData.contingencyAmount = String(contingencyAmount);
+        } else if (totals) {
           updateData.contingencyAmount = totals.contingencyAmount;
+        }
+
+        if (profitAmount !== undefined) {
+          updateData.profitAmount = String(profitAmount);
+        } else if (totals) {
           updateData.profitAmount = totals.profitAmount;
-          updateData.discountAmount = totals.discountAmount;
-          updateData.transportAmount = totals.transportAmount;
-          updateData.supervisionAmount = totals.supervisionAmount;
+        }
+
+        if (taxAmount !== undefined) {
+          updateData.taxAmount = String(taxAmount);
+        } else if (totals) {
           updateData.taxAmount = totals.taxAmount;
+        }
+
+        if (grandTotal !== undefined) {
+          updateData.grandTotal = String(grandTotal);
+        } else if (totals) {
           updateData.grandTotal = totals.grandTotal;
         }
 

@@ -1746,8 +1746,8 @@ export default function ProposalDashboard({
                 /* ==========================================
                    COMPLIANCE LEDGER DATA TABLE SUB-SECTION
                    ========================================== */
-                <div className="mt-6 overflow-x-auto border border-slate-800/80 rounded-2xl bg-[#08080a]">
-                  <table className="w-full text-left border-collapse">
+                <div className="mt-6 overflow-x-auto min-w-0 border border-slate-800/80 rounded-2xl bg-[#08080a]">
+                  <table className="w-full text-left border-collapse min-w-[750px]">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-950/80 text-[10px] text-slate-400 font-black uppercase tracking-wider">
                         <th className="py-4 px-4 font-black">Registry ID</th>
@@ -2072,8 +2072,8 @@ export default function ProposalDashboard({
             </div>
 
             {/* Shareholders list data table */}
-            <div className="mt-5 overflow-x-auto border border-slate-900 rounded-xl bg-slate-950">
-              <table className="w-full text-left border-collapse">
+            <div className="mt-5 overflow-x-auto min-w-0 border border-slate-900 rounded-xl bg-slate-950">
+              <table className="w-full text-left border-collapse min-w-[750px]">
                 <thead>
                   <tr className="border-b border-slate-900 bg-slate-950/40 text-[9px] text-slate-400 font-black uppercase tracking-wider">
                     <th className="py-3 px-4">Officer Name</th>
@@ -2197,8 +2197,8 @@ export default function ProposalDashboard({
               </div>
 
               {/* Table of parameters */}
-              <div className="border border-slate-900 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-[11px] border-collapse bg-slate-950/40">
+              <div className="border border-slate-900 rounded-xl overflow-x-auto min-w-0">
+                <table className="w-full text-left text-[11px] border-collapse bg-slate-950/40 min-w-[300px]">
                   <tbody className="divide-y divide-slate-900">
                     <tr>
                       <td className="py-2.5 px-4 font-black text-slate-400 w-1/3">Corporate Denomination</td>

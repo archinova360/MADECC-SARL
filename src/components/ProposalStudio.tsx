@@ -1139,8 +1139,8 @@ export default function ProposalStudio({
                       </button>
                     </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
+                    <div className="overflow-x-auto min-w-0">
+                      <table className="w-full text-left border-collapse text-xs min-w-[650px]">
                         <thead>
                           <tr className="border-b border-slate-800 text-slate-500 text-[10px] uppercase font-bold tracking-wider">
                             <th className="pb-2 w-12">Item</th>
@@ -1237,8 +1237,8 @@ export default function ProposalStudio({
                       </button>
                     </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
+                    <div className="overflow-x-auto min-w-0">
+                      <table className="w-full text-left border-collapse text-xs min-w-[550px]">
                         <thead>
                           <tr className="border-b border-slate-800 text-slate-500 text-[10px] uppercase font-bold tracking-wider">
                             <th className="pb-2">Milestone / Phase</th>

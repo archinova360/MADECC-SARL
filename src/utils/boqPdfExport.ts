@@ -1,18 +1,21 @@
 import { jsPDF } from 'jspdf';
-import { numberToWords } from './numberToWords';
+import { numberToWords, numberToWordsFr } from './numberToWords';
 
 export interface ExportPdfOptions {
   orientation?: 'portrait' | 'landscape';
   companyName?: string;
   showTerms?: boolean;
+  language?: 'en' | 'fr';
 }
 
 /**
- * Enterprise A4 BOQ PDF Generator for MADECC Group SARL.
+ * Enterprise A4 BOQ / DQE PDF Generator for MADECC Group SARL.
  * Guarantees zero section cut-offs, clean pagination, continuous table headers on multi-page breaks,
  * complete financial breakdown, amount in words, engineer approval seal, and contract terms.
+ * Fully supports English BOQ and French DQE (Devis Quantitatif et Estimatif).
  */
 export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): Promise<{ pdf: jsPDF; filename: string }> {
+  const isFrench = options.language === 'fr' || boq?.language === 'fr' || boq?.isFrenchVersion === true;
   const orientation = options.orientation || 'portrait';
   const isLandscape = orientation === 'landscape';
 
@@ -28,12 +31,12 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   const contentWidth = pageWidth - (margin * 2);
 
   const companyName = options.companyName || 'MADECC Group SARL';
-  const boqRef = boq?.boqReference || 'MADECC-BOQ-2026-0001';
+  const boqRef = boq?.boqReference || (isFrench ? 'MADECC-DQE-2026-0001' : 'MADECC-BOQ-2026-0001');
   const revNum = boq?.revisionNumber || 'REV-00';
   const currency = boq?.currency || 'XAF';
   const projClean = String(boq?.projectName || boqRef).replace(/[^a-zA-Z0-9_-]/g, '_');
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_BOQ_${projClean}_${dateStr}.pdf`;
+  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${isFrench ? 'DQE_FR' : 'BOQ'}_${projClean}_${dateStr}.pdf`;
 
   let currentY = margin;
   let pageNum = 1;
@@ -77,7 +80,13 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(251, 191, 36); // Amber-400
-      doc.text('Civil, Structural & Mechanical Engineering Department', margin + 24, currentY + 14);
+      doc.text(
+        isFrench
+          ? 'Département du Génie Civil, Structures & Économie de la Construction'
+          : 'Civil, Structural & Mechanical Engineering Department',
+        margin + 24,
+        currentY + 14
+      );
 
       doc.setTextColor(203, 213, 225);
       doc.setFontSize(6.5);
@@ -85,7 +94,7 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
       doc.text('Douala & Yaoundé, Republic of Cameroon | Email: engineering@madeccgroup.cm | Tel: +237 671 063 511', margin + 24, currentY + 19);
 
       // Official BOQ Badge on Right
-      const badgeW = 56;
+      const badgeW = 58;
       const badgeX = pageWidth - margin - badgeW - 4;
       doc.setFillColor(30, 41, 59); // Slate-800
       doc.setDrawColor(217, 119, 6);
@@ -93,8 +102,8 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
 
       doc.setTextColor(251, 191, 36);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.text('OFFICIAL BOQ ESTIMATE', badgeX + (badgeW / 2), currentY + 9, { align: 'center' });
+      doc.setFontSize(7.2);
+      doc.text(isFrench ? 'DEVIS ESTIMATIF (DQE)' : 'OFFICIAL BOQ ESTIMATE', badgeX + (badgeW / 2), currentY + 9, { align: 'center' });
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');
@@ -112,39 +121,39 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
       doc.setTextColor(15, 23, 42);
 
       // Col 1
-      doc.text('PROJECT:', margin + 4, currentY + 5.5);
+      doc.text(isFrench ? 'PROJET :' : 'PROJECT:', margin + 4, currentY + 5.5);
       doc.setFont('helvetica', 'normal');
-      const projName = String(boq?.projectName || 'Workshop Practice Materials Command');
-      doc.text(projName.length > 46 ? projName.slice(0, 44) + '...' : projName, margin + 22, currentY + 5.5);
+      const projName = String(boq?.projectName || (isFrench ? 'Projet de Construction Résidentielle' : 'Workshop Practice Materials Command'));
+      doc.text(projName.length > 44 ? projName.slice(0, 42) + '...' : projName, margin + 22, currentY + 5.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('LOCATION:', margin + 4, currentY + 11.5);
+      doc.text(isFrench ? 'LIEU :' : 'LOCATION:', margin + 4, currentY + 11.5);
       doc.setFont('helvetica', 'normal');
-      doc.text(String(boq?.location || 'Douala, Littoral Region, Cameroon').slice(0, 42), margin + 22, currentY + 11.5);
+      doc.text(String(boq?.location || (isFrench ? 'Douala, Région du Littoral, Cameroun' : 'Douala, Littoral Region, Cameroon')).slice(0, 42), margin + 22, currentY + 11.5);
 
       doc.setFont('helvetica', 'bold');
       doc.text('DATE:', margin + 4, currentY + 17.5);
       doc.setFont('helvetica', 'normal');
-      const dt = boq?.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+      const dt = boq?.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR');
       doc.text(dt, margin + 22, currentY + 17.5);
 
       // Col 2
       const midX = margin + (contentWidth / 2);
       doc.setFont('helvetica', 'bold');
-      doc.text('CLIENT:', midX, currentY + 5.5);
+      doc.text(isFrench ? 'CLIENT :' : 'CLIENT:', midX, currentY + 5.5);
       doc.setFont('helvetica', 'normal');
       const clName = String(boq?.clientName || 'ELOHIM ACADEMIC COMPLEX');
       doc.text(clName.length > 40 ? clName.slice(0, 38) + '...' : clName, midX + 18, currentY + 5.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('CONTRACT:', midX, currentY + 11.5);
+      doc.text(isFrench ? 'CONTRAT :' : 'CONTRACT:', midX, currentY + 11.5);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${boq?.contractType || 'UNIT_RATE'} | ${boq?.status || 'DRAFT'}`, midX + 22, currentY + 11.5);
+      doc.text(`${boq?.contractType || (isFrench ? 'BPU' : 'UNIT_RATE')} | ${boq?.status || (isFrench ? 'BROUILLON' : 'DRAFT')}`, midX + 22, currentY + 11.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('PREPARED BY:', midX, currentY + 17.5);
+      doc.text(isFrench ? 'ÉTABLI PAR :' : 'PREPARED BY:', midX, currentY + 17.5);
       doc.setFont('helvetica', 'normal');
-      doc.text(String(boq?.preparedBy || 'Lead Quantity Surveyor').slice(0, 36), midX + 26, currentY + 17.5);
+      doc.text(String(boq?.preparedBy || (isFrench ? 'Ingénieur Métreur Vérificateur' : 'Lead Quantity Surveyor')).slice(0, 36), midX + 26, currentY + 17.5);
 
       currentY += 28;
     } else {
@@ -162,7 +171,11 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(203, 213, 225);
-      doc.text('Enterprise Quantity Surveying BOQ Studio', margin + 46, currentY + 7);
+      doc.text(
+        isFrench ? 'Studio Métreur Vérificateur & DQE Officiel' : 'Enterprise Quantity Surveying BOQ Studio',
+        margin + 46,
+        currentY + 7
+      );
 
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(251, 191, 36);
@@ -182,12 +195,12 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
     doc.setTextColor(255, 255, 255);
 
     let x = margin;
-    doc.text('ITEM', x + 2, y + 4.5); x += colW.item;
-    doc.text('DESCRIPTION OF WORKS & SPECIFICATIONS', x + 2, y + 4.5); x += colW.desc;
-    doc.text('UNIT', x + (colW.unit / 2), y + 4.5, { align: 'center' }); x += colW.unit;
-    doc.text('QTY', x + colW.qty - 2, y + 4.5, { align: 'right' }); x += colW.qty;
-    doc.text(`UNIT RATE (${currency})`, x + colW.rate - 2, y + 4.5, { align: 'right' }); x += colW.rate;
-    doc.text(`AMOUNT (${currency})`, x + colW.amount - 2, y + 4.5, { align: 'right' });
+    doc.text(isFrench ? 'RÉF' : 'ITEM', x + 2, y + 4.5); x += colW.item;
+    doc.text(isFrench ? 'DÉSIGNATION DES TRAVAUX & SPÉCIFICATIONS' : 'DESCRIPTION OF WORKS & SPECIFICATIONS', x + 2, y + 4.5); x += colW.desc;
+    doc.text(isFrench ? 'UNITÉ' : 'UNIT', x + (colW.unit / 2), y + 4.5, { align: 'center' }); x += colW.unit;
+    doc.text(isFrench ? 'QTÉ' : 'QTY', x + colW.qty - 2, y + 4.5, { align: 'right' }); x += colW.qty;
+    doc.text(isFrench ? `P.U (${currency})` : `UNIT RATE (${currency})`, x + colW.rate - 2, y + 4.5, { align: 'right' }); x += colW.rate;
+    doc.text(isFrench ? `MONTANT (${currency})` : `AMOUNT (${currency})`, x + colW.amount - 2, y + 4.5, { align: 'right' });
   }
 
   // 3. Draw Section Continuation Banner on page break
@@ -198,7 +211,8 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(251, 191, 36); // Amber-400
-    const contText = `SECTION ${secCode}: ${secTitle} (CONTINUED)`.toUpperCase();
+    const contPrefix = isFrench ? `LOT ${secCode}: ${secTitle} (SUITE)` : `SECTION ${secCode}: ${secTitle} (CONTINUED)`;
+    const contText = contPrefix.toUpperCase();
     doc.text(contText, margin + 3, currentY + 4.2);
 
     currentY += 6.5;
@@ -230,7 +244,7 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   for (let sIdx = 0; sIdx < sections.length; sIdx++) {
     const sec = sections[sIdx];
     const secCode = String(sec.sectionCode || `${sIdx + 1}.0`);
-    const secTitle = String(sec.title || 'Work Items');
+    const secTitle = String(sec.title || (isFrench ? `Lot Technique ${sIdx + 1}` : 'Work Items'));
     activeSectionCode = secCode;
     activeSectionTitle = secTitle;
     isInTable = true;
@@ -245,108 +259,97 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
-    const secHeaderTitle = `SECTION ${secCode}: ${secTitle}`.toUpperCase();
+    const secPrefix = isFrench ? `LOT ${secCode}: ${secTitle}` : `SECTION ${secCode}: ${secTitle}`;
+    const secHeaderTitle = secPrefix.toUpperCase();
     doc.text(secHeaderTitle, margin + 3, currentY + 5.2);
 
-    const secSubtotal = `${Number(sec.subtotal || 0).toLocaleString()} ${currency}`;
-    doc.setTextColor(251, 191, 36); // Amber-400
-    doc.text(secSubtotal, pageWidth - margin - 3, currentY + 5.2, { align: 'right' });
+    currentY += 7.5;
 
-    currentY += 8;
-
-    // Table Column Header Row
+    // Draw Column Headers
     drawTableHeaderRow(currentY);
-    currentY += 7;
+    currentY += 6.5;
 
-    // Render Items
+    // Line items
     const items = Array.isArray(sec.items) ? sec.items : [];
+    let secSubtotalNum = 0;
+
     for (let iIdx = 0; iIdx < items.length; iIdx++) {
       const item = items[iIdx];
-      const descText = String(item.description || 'Work item specification');
-      const descLines = doc.splitTextToSize(descText, colW.desc - 4);
+      const itemNum = String(item.itemNumber || `${secCode}.${iIdx + 1}`);
+      const desc = String(item.description || 'General Item Description');
+      const unit = String(item.unit || (isFrench ? 'U' : 'Item'));
+      const qty = Number(item.quantity || 0);
+      const rate = Number(item.unitRate || 0);
+      const amt = Number(item.amount || (qty * rate));
+      secSubtotalNum += amt;
 
-      const hasNote = Boolean(item.measurementBasis || item.notes);
-      const noteText = item.measurementBasis ? `Basis: ${item.measurementBasis}` : (item.notes || '');
-      const noteLines = hasNote ? doc.splitTextToSize(noteText, colW.desc - 4) : [];
+      // Wrap description text
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.8);
+      const splitDesc = doc.splitTextToSize(desc, colW.desc - 4);
+      const lineCount = Math.max(splitDesc.length, 1);
+      const rowHeight = Math.max(lineCount * 3.8 + 2.5, 6);
 
-      const totalTextLines = descLines.length + (hasNote ? noteLines.length : 0);
-      const rowHeight = Math.max(6.5, totalTextLines * 3.4 + 2.5);
-
+      // Check space for this row
       ensureSpace(rowHeight, false, secCode, secTitle);
 
-      // Zebra striping
+      // Alternating row background
       if (iIdx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
+        doc.setFillColor(248, 250, 252); // Slate-50
         doc.rect(margin, currentY, contentWidth, rowHeight, 'F');
       }
 
-      // Border lines
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, currentY + rowHeight, pageWidth - margin, currentY + rowHeight);
+      // Bottom subtle border
+      doc.setDrawColor(226, 232, 240); // Slate-200
+      doc.line(margin, currentY + rowHeight, margin + contentWidth, currentY + rowHeight);
 
       // Cell texts
+      doc.setTextColor(15, 23, 42);
+      let curX = margin;
+
+      // Col 1: Item
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(30, 41, 59);
+      doc.text(itemNum, curX + 2, currentY + 4);
+      curX += colW.item;
 
-      let rx = margin;
-      // Item Ref
-      const itNumber = String(item.itemNumber || `${secCode}.${iIdx + 1}`);
-      doc.text(itNumber, rx + 2, currentY + 4);
-      rx += colW.item;
-
-      // Description
+      // Col 2: Desc
       doc.setFont('helvetica', 'normal');
-      doc.text(descLines, rx + 2, currentY + 4);
+      doc.text(splitDesc, curX + 2, currentY + 3.8);
+      curX += colW.desc;
 
-      if (hasNote) {
-        const noteY = currentY + 4 + (descLines.length * 3.4);
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(6);
-        doc.setTextColor(100, 116, 139);
-        doc.text(noteLines, rx + 2, noteY);
-      }
+      // Col 3: Unit
+      doc.text(unit, curX + (colW.unit / 2), currentY + 4, { align: 'center' });
+      curX += colW.unit;
 
-      rx += colW.desc;
+      // Col 4: Qty
+      doc.text(qty.toLocaleString(), curX + colW.qty - 2, currentY + 4, { align: 'right' });
+      curX += colW.qty;
 
-      // Unit
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(30, 41, 59);
-      doc.text(String(item.unit || 'LS'), rx + (colW.unit / 2), currentY + 4, { align: 'center' });
-      rx += colW.unit;
+      // Col 5: Unit Rate
+      doc.text(rate.toLocaleString(), curX + colW.rate - 2, currentY + 4, { align: 'right' });
+      curX += colW.rate;
 
-      // Quantity
-      const qtyFormatted = Number(item.quantity || 0).toLocaleString();
-      doc.text(qtyFormatted, rx + colW.qty - 2, currentY + 4, { align: 'right' });
-      rx += colW.qty;
-
-      // Unit Rate
-      const rateFormatted = Number(item.unitRate || 0).toLocaleString();
-      doc.text(rateFormatted, rx + colW.rate - 2, currentY + 4, { align: 'right' });
-      rx += colW.rate;
-
-      // Amount
+      // Col 6: Amount
       doc.setFont('helvetica', 'bold');
-      const amtFormatted = Number(item.amount || 0).toLocaleString();
-      doc.text(amtFormatted, rx + colW.amount - 2, currentY + 4, { align: 'right' });
+      doc.text(amt.toLocaleString(), curX + colW.amount - 2, currentY + 4, { align: 'right' });
 
       currentY += rowHeight;
     }
 
-    // Section Subtotal Summary Row
-    ensureSpace(7.5, false, secCode, secTitle);
-    doc.setFillColor(241, 245, 249);
+    // Section Subtotal Bar
+    ensureSpace(10, false, secCode, secTitle);
+    doc.setFillColor(241, 245, 249); // Slate-100
     doc.rect(margin, currentY, contentWidth, 7, 'F');
     doc.setDrawColor(203, 213, 225);
-    doc.line(margin, currentY + 7, pageWidth - margin, currentY + 7);
+    doc.line(margin, currentY + 7, margin + contentWidth, currentY + 7);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.2);
     doc.setTextColor(15, 23, 42);
-    doc.text(`SECTION ${secCode} SUB-TOTAL:`, margin + 4, currentY + 4.8);
+    const subtotalLabel = isFrench ? `SOUS-TOTAL LOT ${secCode} (${secTitle}) :` : `SUBTOTAL SECTION ${secCode} (${secTitle}):`;
+    doc.text(subtotalLabel, margin + 4, currentY + 4.8);
 
-    doc.setTextColor(217, 119, 6);
+    const secSubtotal = `${secSubtotalNum.toLocaleString()} ${currency}`;
     doc.text(`${secSubtotal}`, pageWidth - margin - 3, currentY + 4.8, { align: 'right' });
 
     currentY += 9;
@@ -377,7 +380,12 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('COMMERCIAL & FINANCIAL SUMMARY RECAP', recapX + (recapW / 2), currentY + 4.8, { align: 'center' });
+  doc.text(
+    isFrench ? 'RÉCAPITULATIF FINANCIER & COMMERCIAL (DQE)' : 'COMMERCIAL & FINANCIAL SUMMARY RECAP',
+    recapX + (recapW / 2),
+    currentY + 4.8,
+    { align: 'center' }
+  );
 
   let sy = currentY + 12;
 
@@ -390,39 +398,62 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
     sy += 5.2;
   };
 
-  drawRecapLine('MEASURED WORKS SUBTOTAL:', `${Number(boq?.subtotal || 0).toLocaleString()} ${currency}`, true);
+  drawRecapLine(
+    isFrench ? 'SOUS-TOTAL DES TRAVAUX (HT) :' : 'MEASURED WORKS SUBTOTAL:',
+    `${Number(boq?.subtotal || 0).toLocaleString()} ${currency}`,
+    true
+  );
 
   if (Number(boq?.overheadAmount || 0) > 0) {
-    drawRecapLine(`Site Overhead & Logistics (${boq?.overheadPercent || 0}%):`, `+${Number(boq.overheadAmount).toLocaleString()} ${currency}`);
+    drawRecapLine(
+      isFrench ? `Frais Généraux & Logistique (${boq?.overheadPercent || 0}%) :` : `Site Overhead & Logistics (${boq?.overheadPercent || 0}%):`,
+      `+${Number(boq.overheadAmount).toLocaleString()} ${currency}`
+    );
   }
   if (Number(boq?.contingencyAmount || 0) > 0) {
-    drawRecapLine(`Unforeseen Contingencies (${boq?.contingencyPercent || 0}%):`, `+${Number(boq.contingencyAmount).toLocaleString()} ${currency}`);
+    drawRecapLine(
+      isFrench ? `Imprévus & Aléas Techniques (${boq?.contingencyPercent || 0}%) :` : `Unforeseen Contingencies (${boq?.contingencyPercent || 0}%):`,
+      `+${Number(boq.contingencyAmount).toLocaleString()} ${currency}`
+    );
   }
   if (Number(boq?.profitAmount || 0) > 0) {
-    drawRecapLine(`Contractor Profit Margin (${boq?.profitPercent || 0}%):`, `+${Number(boq.profitAmount).toLocaleString()} ${currency}`);
+    drawRecapLine(
+      isFrench ? `Bénéfice Entreprise (${boq?.profitPercent || 0}%) :` : `Contractor Profit Margin (${boq?.profitPercent || 0}%):`,
+      `+${Number(boq.profitAmount).toLocaleString()} ${currency}`
+    );
   }
   if (Number(boq?.taxAmount || 0) > 0) {
-    drawRecapLine(`Value Added Tax / TVA (${boq?.taxPercent || 0}%):`, `+${Number(boq.taxAmount).toLocaleString()} ${currency}`);
+    drawRecapLine(
+      isFrench ? `Taxe sur la Valeur Ajoutée / TVA (${boq?.taxPercent || 0}%) :` : `Value Added Tax / TVA (${boq?.taxPercent || 0}%):`,
+      `+${Number(boq.taxAmount).toLocaleString()} ${currency}`
+    );
   }
 
   doc.setDrawColor(217, 119, 6);
   doc.line(recapX + 4, sy - 1, recapX + recapW - 4, sy - 1);
 
   const grandTotalNum = Number(boq?.grandTotal || 0);
-  drawRecapLine('GRAND TOTAL ESTIMATE:', `${grandTotalNum.toLocaleString()} ${currency}`, true, true);
+  drawRecapLine(
+    isFrench ? 'MONTANT TOTAL ESTIMÉ (TTC) :' : 'GRAND TOTAL ESTIMATE:',
+    `${grandTotalNum.toLocaleString()} ${currency}`,
+    true,
+    true
+  );
 
   // Amount in Words
   sy += 2;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('AMOUNT IN WORDS:', recapX + 4, sy);
+  doc.text(isFrench ? 'MONTANT EN TOUTES LETTRES :' : 'AMOUNT IN WORDS:', recapX + 4, sy);
   sy += 3.8;
 
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(6.2);
   doc.setTextColor(71, 85, 105);
-  const wordsStr = boq?.amountInWords || boq?.metadata?.amountInWords || numberToWords(grandTotalNum, currency);
+  const wordsStr = isFrench
+    ? (boq?.amountInWords || numberToWordsFr(grandTotalNum, currency))
+    : (boq?.amountInWords || boq?.metadata?.amountInWords || numberToWords(grandTotalNum, currency));
   const wordsLines = doc.splitTextToSize(wordsStr, recapW - 8);
   doc.text(wordsLines, recapX + 4, sy);
 
@@ -443,19 +474,19 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(15, 23, 42);
-  doc.text('REVISION & AUDIT HISTORY', margin + 4, currentY + 4.2);
+  doc.text(isFrench ? 'HISTORIQUE DES RÉVISIONS & AUDIT TECHNIQUE' : 'REVISION & AUDIT HISTORY', margin + 4, currentY + 4.2);
 
   doc.setFontSize(6.2);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(100, 116, 139);
-  doc.text('REV', margin + 4, currentY + 10);
+  doc.text(isFrench ? 'RÉV' : 'REV', margin + 4, currentY + 10);
   doc.text('DATE', margin + 20, currentY + 10);
-  doc.text('DESCRIPTION / REMARKS', margin + 42, currentY + 10);
+  doc.text(isFrench ? 'DÉSIGNATION / REMARQUES' : 'DESCRIPTION / REMARKS', margin + 42, currentY + 10);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  const revDate = boq?.revisionDate || boq?.metadata?.revisionDate || (boq?.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('en-GB') : '31/07/2026');
-  const revDesc = boq?.revisionDescription || boq?.metadata?.revisionDescription || 'Certified Engineering Cost Plan';
+  const revDate = boq?.revisionDate || boq?.metadata?.revisionDate || (boq?.datePrepared ? new Date(boq.datePrepared).toLocaleDateString('fr-FR') : '31/07/2026');
+  const revDesc = boq?.revisionDescription || boq?.metadata?.revisionDescription || (isFrench ? 'Devis Quantitatif et Estimatif Certifié' : 'Certified Engineering Cost Plan');
   doc.text(revNum, margin + 4, currentY + 16);
   doc.text(revDate, margin + 20, currentY + 16);
   doc.text(revDesc, margin + 42, currentY + 16);
@@ -463,8 +494,8 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   if (boq?.revisions && boq.revisions.length > 0) {
     const rev2 = boq.revisions[0];
     doc.text(String(rev2.revisionNumber || 'REV-01'), margin + 4, currentY + 22);
-    doc.text(new Date(rev2.approvedAt || Date.now()).toLocaleDateString('en-GB'), margin + 20, currentY + 22);
-    doc.text(String(rev2.notes || 'Rate & Scope Calibration').slice(0, 24), margin + 42, currentY + 22);
+    doc.text(new Date(rev2.approvedAt || Date.now()).toLocaleDateString('fr-FR'), margin + 20, currentY + 22);
+    doc.text(String(rev2.notes || (isFrench ? 'Calibration des Prix & Quantités' : 'Rate & Scope Calibration')).slice(0, 24), margin + 42, currentY + 22);
   }
 
   // Right Box: Official Approval & Security Stamp
@@ -478,24 +509,24 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(15, 23, 42);
-  doc.text('ENGINEER OF RECORD & STATUTORY SIGN-OFF', appX + 4, currentY + 4.2);
+  doc.text(isFrench ? 'VISA DE L\'INGÉNIEUR & APPROBATION LÉGALE' : 'ENGINEER OF RECORD & STATUTORY SIGN-OFF', appX + 4, currentY + 4.2);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(71, 85, 105);
-  doc.text('Prepared by:', appX + 4, currentY + 11);
+  doc.text(isFrench ? 'Établi par :' : 'Prepared by:', appX + 4, currentY + 11);
   doc.setFont('helvetica', 'bold');
-  const preparedByName = boq?.preparedBy || 'Lead Quantity Surveyor & Workshop Engineer';
+  const preparedByName = boq?.preparedBy || (isFrench ? 'Ingénieur Métreur Vérificateur BTP' : 'Lead Quantity Surveyor & Workshop Engineer');
   doc.text(String(preparedByName), appX + 24, currentY + 11);
 
   doc.setFont('helvetica', 'normal');
-  doc.text('QS Verification:', appX + 4, currentY + 17);
+  doc.text(isFrench ? 'Vérification Métreur :' : 'QS Verification:', appX + 4, currentY + 17);
   doc.setFont('helvetica', 'bold');
-  const qsVerificationName = boq?.qsVerification || boq?.metadata?.qsVerification || 'MADECC Directorate of Cost Engineering';
+  const qsVerificationName = boq?.qsVerification || boq?.metadata?.qsVerification || (isFrench ? 'Direction Économie de la Construction MADECC' : 'MADECC Directorate of Cost Engineering');
   doc.text(String(qsVerificationName), appX + 24, currentY + 17);
 
   doc.setFont('helvetica', 'normal');
-  doc.text('Chief Engineer:', appX + 4, currentY + 23);
+  doc.text(isFrench ? 'Ingénieur en Chef :' : 'Chief Engineer:', appX + 4, currentY + 23);
   doc.setFont('helvetica', 'bold');
   const chiefEngName = boq?.approvedBy || boq?.chiefEngineer || boq?.metadata?.chiefEngineer || 'Ing. Marcel Mbida, PE (ONIGC 4092)';
   doc.text(String(chiefEngName), appX + 24, currentY + 23);
@@ -515,7 +546,7 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
   doc.setTextColor(180, 83, 9);
   doc.text(sealCompany, sealCenterX, sealCenterY - 1.5, { align: 'center' });
   doc.text(sealSub, sealCenterX, sealCenterY + 0.8, { align: 'center' });
-  doc.text('CERTIFIED SEAL', sealCenterX, sealCenterY + 3.2, { align: 'center' });
+  doc.text(isFrench ? 'SCEAU CERTIFIÉ' : 'CERTIFIED SEAL', sealCenterX, sealCenterY + 3.2, { align: 'center' });
 
   currentY += 38;
 
@@ -530,18 +561,29 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.8);
     doc.setTextColor(15, 23, 42);
-    doc.text('COMMERCIAL TENDER NOTES & CONDITIONS OF EXECUTION', margin + 4, currentY + 4.5);
+    doc.text(
+      isFrench ? 'CONDITIONS CONTRACTUELLES GÉNÉRALES & EXÉCUTION DU MARCHÉ' : 'COMMERCIAL TENDER NOTES & CONDITIONS OF EXECUTION',
+      margin + 4,
+      currentY + 4.5
+    );
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(71, 85, 105);
 
-    const terms = [
-      '1. Pricing Validity: This Bill of Quantities constitutes a binding commercial quotation valid for 90 calendar days from issue date.',
-      '2. Payment Terms: Progressive monthly valuations certified via Interim Payment Certificates (IPC) payable within 21 days of approval.',
-      '3. Quality Assurance: All materials, tools, and equipment conform strictly to British Standards (BS) and Cameroon technical norms.',
-      '4. Warranty & Guarantee: Works and equipment carry a mandatory 12-month Defects Liability Period (DLP) supported by 5% retention.'
-    ];
+    const terms = isFrench
+      ? [
+          '1. Validité de l\'Offre : Le présent Devis Quantitatif et Estimatif (DQE) est ferme et valable pour une durée de 90 jours calendaires.',
+          '2. Conditions de Paiement : Règlements progressifs sur situations de travaux validées par PV et Décomptes Provisoires (IPC).',
+          '3. Assurance Qualité : Matériaux et équipements strictement conformes aux normes techniques en vigueur au Cameroun (DTU/Eurocodes).',
+          '4. Garantie & Retenue : Garantie décennale et période de parfait achèvement de 12 mois adossée à une retenue de garantie de 5%.'
+        ]
+      : [
+          '1. Pricing Validity: This Bill of Quantities constitutes a binding commercial quotation valid for 90 calendar days from issue date.',
+          '2. Payment Terms: Progressive monthly valuations certified via Interim Payment Certificates (IPC) payable within 21 days of approval.',
+          '3. Quality Assurance: All materials, tools, and equipment conform strictly to British Standards (BS) and Cameroon technical norms.',
+          '4. Warranty & Guarantee: Works and equipment carry a mandatory 12-month Defects Liability Period (DLP) supported by 5% retention.'
+        ];
 
     terms.forEach((t, tIdx) => {
       doc.text(t, margin + 4, currentY + 8.5 + (tIdx * 3.6));
@@ -562,8 +604,17 @@ export async function generateBoqPdf(boq: any, options: ExportPdfOptions = {}): 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.2);
     doc.setTextColor(100, 116, 139);
-    doc.text(`${companyName} — Official Certified Bill of Quantities | Ref: ${boqRef} (${revNum})`, margin, footerY + 2);
-    doc.text(`Page ${p} of ${totalPages} | Issued: ${dateStr}`, pageWidth - margin, footerY + 2, { align: 'right' });
+    doc.text(
+      `${companyName} — ${isFrench ? 'Devis Quantitatif et Estimatif Officiel (DQE)' : 'Official Certified Bill of Quantities'} | Ref: ${boqRef} (${revNum})`,
+      margin,
+      footerY + 2
+    );
+    doc.text(
+      `${isFrench ? 'Page ' + p + ' sur ' + totalPages : 'Page ' + p + ' of ' + totalPages} | ${isFrench ? 'Émis le :' : 'Issued:'} ${dateStr}`,
+      pageWidth - margin,
+      footerY + 2,
+      { align: 'right' }
+    );
   }
 
   return { pdf: doc, filename };

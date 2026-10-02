@@ -14,7 +14,7 @@ import {
   PageNumber
 } from 'docx';
 import * as XLSX from 'xlsx';
-import { numberToWords } from './numberToWords';
+import { numberToWords, numberToWordsFr } from './numberToWords';
 
 function sanitizeFilename(str: string): string {
   if (!str) return 'BOQ';
@@ -39,8 +39,10 @@ const BORDER_STYLE_NONE = {
  * Generate complete Microsoft Word (.docx) document for BOQ for MADECC Group SARL.
  * Guarantees zero cut-off sections, repeated table headers, explicit cell widths,
  * complete financial recap, amount in words, and engineer sign-off.
+ * Fully supports English BOQ and French DQE (Devis Quantitatif et Estimatif).
  */
-export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename: string }> {
+export async function generateBoqDocx(boq: any, options: { language?: 'en' | 'fr' } = {}): Promise<{ blob: Blob; filename: string }> {
+  const isFrench = options.language === 'fr' || boq?.language === 'fr' || boq?.isFrenchVersion === true;
   const isDraft = boq.status !== 'APPROVED';
   const currency = boq.currency || 'XAF';
   const companyName = 'MADECC Group SARL';
@@ -65,7 +67,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
       spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'CIVIL, STRUCTURAL & MECHANICAL ENGINEERING',
+          text: isFrench ? 'DÉPARTEMENT DU GÉNIE CIVIL, STRUCTURES & MÉCANIQUE' : 'CIVIL, STRUCTURAL & MECHANICAL ENGINEERING',
           bold: true,
           size: 18,
           color: '0F172A' // Slate-900
@@ -77,7 +79,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
       spacing: { after: 40 },
       children: [
         new TextRun({
-          text: 'Enterprise Quantity Surveying & Technical Cost Engineering Department',
+          text: isFrench ? 'Studio Métreur Vérificateur & Ingénierie des Coûts' : 'Enterprise Quantity Surveying & Technical Cost Engineering Department',
           italics: true,
           size: 15,
           color: '475569' // Slate-600
@@ -100,7 +102,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
       spacing: { after: 120 },
       children: [
         new TextRun({
-          text: 'OFFICIAL BILL OF QUANTITIES / TENDER ESTIMATE',
+          text: isFrench ? 'DEVIS QUANTITATIF ET ESTIMATIF (DQE) OFFICIEL' : 'OFFICIAL BILL OF QUANTITIES / TENDER ESTIMATE',
           bold: true,
           size: 22,
           color: '0F172A'
@@ -117,7 +119,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: `STATUS: ${boq.status || 'DRAFT'} — OFFICIAL WORKING ESTIMATE`,
+            text: isFrench ? `STATUT : ${boq.status || 'BROUILLON'} — ESTIMATION OFFICIELLE EN COURS` : `STATUS: ${boq.status || 'DRAFT'} — OFFICIAL WORKING ESTIMATE`,
             bold: true,
             size: 16,
             color: 'D97706'
@@ -132,7 +134,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: 'STATUS: APPROVED & CERTIFIED FOR TENDER SUBMISSION',
+            text: isFrench ? 'STATUT : APPROUVÉ & CERTIFIÉ POUR SOUMISSION DU MARCHÉ' : 'STATUS: APPROVED & CERTIFIED FOR TENDER SUBMISSION',
             bold: true,
             size: 16,
             color: '059669' // Emerald-600
@@ -453,8 +455,16 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
       spacing: { before: 120, after: 180 },
       alignment: AlignmentType.RIGHT,
       children: [
-        new TextRun({ text: 'AMOUNT IN WORDS: ', bold: true, size: 15, color: '0F172A' }),
-        new TextRun({ text: boq.amountInWords || boq.metadata?.amountInWords || numberToWords(grandTotalNum, currency), italics: true, bold: true, size: 15, color: 'D97706' })
+        new TextRun({ text: isFrench ? 'MONTANT EN TOUTES LETTRES : ' : 'AMOUNT IN WORDS: ', bold: true, size: 15, color: '0F172A' }),
+        new TextRun({
+          text: isFrench
+            ? (boq.amountInWords || numberToWordsFr(grandTotalNum, currency))
+            : (boq.amountInWords || boq.metadata?.amountInWords || numberToWords(grandTotalNum, currency)),
+          italics: true,
+          bold: true,
+          size: 15,
+          color: 'D97706'
+        })
       ]
     })
   );
@@ -752,7 +762,7 @@ export async function generateBoqDocx(boq: any): Promise<{ blob: Blob; filename:
   const blob = await Packer.toBlob(doc);
   const cleanName = sanitizeFilename(boq.projectName || boq.boqReference || 'Project');
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_BOQ_${cleanName}_${dateStr}.docx`;
+  const filename = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${isFrench ? 'DQE_FR' : 'BOQ'}_${cleanName}_${dateStr}.docx`;
 
   return { blob, filename };
 }

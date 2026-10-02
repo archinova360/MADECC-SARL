@@ -62,3 +62,128 @@ export function numberToWords(amount: number | string, currency: string = 'XAF')
 
   return `${words.join(' ')} ${currency.toUpperCase()} Only`;
 }
+
+// -------------------------------------------------------------
+// FRENCH NUMBER TO WORDS ENGINE (Standards OHADA / CEMAC / BTP)
+// -------------------------------------------------------------
+const FR_UNITS = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf'];
+const FR_TEENS = ['dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+const FR_TENS = ['', 'dix', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix'];
+
+function convertUnderHundredFr(n: number): string {
+  if (n < 10) return FR_UNITS[n];
+  if (n >= 10 && n < 20) return FR_TEENS[n - 10];
+
+  const tens = Math.floor(n / 10);
+  const units = n % 10;
+
+  if (tens === 7) {
+    if (units === 1) return 'soixante et onze';
+    return `soixante-${FR_TEENS[units]}`;
+  }
+
+  if (tens === 8) {
+    if (units === 0) return 'quatre-vingts';
+    return `quatre-vingt-${FR_UNITS[units]}`;
+  }
+
+  if (tens === 9) {
+    return `quatre-vingt-${FR_TEENS[units]}`;
+  }
+
+  if (units === 1) {
+    return `${FR_TENS[tens]} et un`;
+  }
+
+  if (units > 1) {
+    return `${FR_TENS[tens]}-${FR_UNITS[units]}`;
+  }
+
+  return FR_TENS[tens];
+}
+
+function convertThreeDigitsFr(n: number): string {
+  let str = '';
+  const hundreds = Math.floor(n / 100);
+  const rem = n % 100;
+
+  if (hundreds > 0) {
+    if (hundreds === 1) {
+      str += 'cent';
+    } else {
+      str += `${FR_UNITS[hundreds]} cent${rem === 0 ? 's' : ''}`;
+    }
+    if (rem > 0) str += ' ';
+  }
+
+  if (rem > 0) {
+    str += convertUnderHundredFr(rem);
+  }
+
+  return str.trim();
+}
+
+export function numberToWordsFr(amount: number | string, currency: string = 'XAF'): string {
+  const num = Math.round(Math.abs(Number(amount) || 0));
+  if (num === 0) {
+    const curLabel = currency.toUpperCase() === 'XAF' ? 'Francs CFA (XAF)' : currency.toUpperCase();
+    return `Zéro ${curLabel}`;
+  }
+
+  let n = num;
+  const billions = Math.floor(n / 1000000000);
+  n %= 1000000000;
+  const millions = Math.floor(n / 1000000);
+  n %= 1000000;
+  const thousands = Math.floor(n / 1000);
+  const units = n % 1000;
+
+  const parts: string[] = [];
+
+  if (billions > 0) {
+    if (billions === 1) {
+      parts.push('un milliard');
+    } else {
+      parts.push(`${convertThreeDigitsFr(billions)} milliards`);
+    }
+  }
+
+  if (millions > 0) {
+    if (millions === 1) {
+      parts.push('un million');
+    } else {
+      parts.push(`${convertThreeDigitsFr(millions)} millions`);
+    }
+  }
+
+  if (thousands > 0) {
+    if (thousands === 1) {
+      parts.push('mille');
+    } else {
+      parts.push(`${convertThreeDigitsFr(thousands)} mille`);
+    }
+  }
+
+  if (units > 0) {
+    parts.push(convertThreeDigitsFr(units));
+  }
+
+  const rawWords = parts.join(' ');
+  // Capitalize first letter of each major word for formal contract presentation
+  const capitalized = rawWords
+    .split(' ')
+    .map(w => (w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1) : ''))
+    .join(' ');
+
+  let currencyName = currency.toUpperCase();
+  if (currencyName === 'XAF') {
+    currencyName = 'Francs CFA (XAF)';
+  } else if (currencyName === 'EUR') {
+    currencyName = 'Euros';
+  } else if (currencyName === 'USD') {
+    currencyName = 'Dollars Américains';
+  }
+
+  return `${capitalized} ${currencyName}`;
+}
+

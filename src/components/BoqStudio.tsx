@@ -62,14 +62,19 @@ import {
   X,
   MoreVertical,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Languages,
+  Globe,
+  Receipt
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { generateBoqDocx, generateBoqCsv, generateBoqExcel, parseBoqImportFile } from '../utils/boqExport';
 import { generateBoqPdf } from '../utils/boqPdfExport';
+import { convertBoqToFrench } from '../utils/boqFrenchConverter';
 import { getAuthToken } from '../lib/firebase';
 import { BoqRecapEditor } from './BoqRecapEditor';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal';
 
 export interface RateBreakdown {
   materialCost: number;
@@ -163,7 +168,7 @@ export interface BoqSection {
 }
 
 export interface BoqData {
-  id?: number;
+  id?: number | string;
   boqReference: string;
   projectId?: number | null;
   projectName: string;
@@ -178,7 +183,7 @@ export interface BoqData {
   preparedBy: string;
   revisionNumber: string;
   currency: string;
-  status: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+  status: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED' | string;
   overheadPercent: string | number;
   contingencyPercent: string | number;
   profitPercent: string | number;
@@ -222,6 +227,10 @@ export interface BoqData {
   revisionDate?: string;
   revisionDescription?: string;
   metadata?: any;
+  language?: 'en' | 'fr';
+  isFrenchVersion?: boolean;
+  terms?: string;
+  notes?: string;
 }
 
 export interface ResourceItem {
@@ -532,6 +541,17 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [isRecapModalOpen, setIsRecapModalOpen] = useState<boolean>(false);
 
+  // French Translation & DQE Export
+  const [isFrenchModalOpen, setIsFrenchModalOpen] = useState<boolean>(false);
+  const [frenchTargetBoq, setFrenchTargetBoq] = useState<any>(null);
+  const [frenchPreviewBoq, setFrenchPreviewBoq] = useState<any>(null);
+  const [generatingPdfFr, setGeneratingPdfFr] = useState<boolean>(false);
+  const [exportingDocxFr, setExportingDocxFr] = useState<boolean>(false);
+
+  // Pay-Before-Download Certified BOQ Receipt Modal
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
+  const [receiptTargetBoq, setReceiptTargetBoq] = useState<any>(null);
+
   // Email Modal
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
   const [emailRecipient, setEmailRecipient] = useState<string>('');
@@ -793,7 +813,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
   };
 
   // Open existing BOQ
-  const handleOpenBoq = async (id: number, targetView?: 'editor' | 'qs_dashboard' | 'approved_view' | 'reports') => {
+  const handleOpenBoq = async (id: number | string, targetView?: 'editor' | 'qs_dashboard' | 'approved_view' | 'reports') => {
     setLoading(true);
     try {
       const token = await getAuthToken();
@@ -819,7 +839,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
   };
 
   // Open Recap & Statutory Sign-off modal for a specific BOQ
-  const handleOpenRecapForBoq = async (id: number) => {
+  const handleOpenRecapForBoq = async (id: number | string) => {
     await handleOpenBoq(id, 'reports');
     setIsRecapModalOpen(true);
   };
@@ -1481,6 +1501,115 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
     }
   };
 
+  // -------------------------------------------------------------
+  // FRENCH LOCALIZATION & DQE EXPORT HANDLERS (MADECC Group SARL)
+  // -------------------------------------------------------------
+  const handleExportPdfFr = async (specificBoq?: any) => {
+    try {
+      setGeneratingPdfFr(true);
+      if (showToast) showToast('Génération du DQE Officiel A4 PDF en Français pour MADECC Group SARL...', 'info');
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      const frenchBoq = convertBoqToFrench(targetBoq);
+      const { pdf, filename } = await generateBoqPdf(frenchBoq, {
+        companyName: 'MADECC Group SARL',
+        orientation: 'portrait',
+        showTerms: true,
+        language: 'fr'
+      });
+      pdf.save(filename);
+      if (showToast) showToast(`DQE Français A4 PDF (${filename}) téléchargé avec succès !`, 'success');
+    } catch (err: any) {
+      console.error('Failed to export French PDF report:', err);
+      if (showToast) showToast(`Échec génération PDF Français: ${err.message || 'Erreur inconnue'}`, 'error');
+    } finally {
+      setGeneratingPdfFr(false);
+    }
+  };
+
+  const handleExportDocxFr = async (specificBoq?: any) => {
+    try {
+      setExportingDocxFr(true);
+      if (showToast) showToast('Génération du document Word DQE (.docx) en Français...', 'info');
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      const frenchBoq = convertBoqToFrench(targetBoq);
+      const { blob, filename } = await generateBoqDocx(frenchBoq, { language: 'fr' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (showToast) showToast(`Document Word DQE Français (${filename}) téléchargé avec succès !`, 'success');
+    } catch (err: any) {
+      console.error('Failed to export French Word document:', err);
+      if (showToast) showToast(`Échec export Word Français: ${err.message || 'Erreur inconnue'}`, 'error');
+    } finally {
+      setExportingDocxFr(false);
+    }
+  };
+
+  const handleConvertAndOpenFr = async (specificBoq?: any) => {
+    try {
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      const frenchBoq = convertBoqToFrench(targetBoq);
+      setCurrentBoq(frenchBoq as unknown as BoqData);
+      setViewMode('editor');
+      setIsFrenchModalOpen(false);
+      if (showToast) showToast(`BOQ converti en Devis Quantitatif et Estimatif (DQE) Français et ouvert dans l'Éditeur !`, 'success');
+    } catch (err: any) {
+      console.error('Failed to convert BOQ to French:', err);
+      if (showToast) showToast(`Erreur conversion: ${err.message || 'Erreur'}`, 'error');
+    }
+  };
+
+  const handleDuplicateAsFrenchBoq = async (specificBoq?: any) => {
+    try {
+      setSaving(true);
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      const frenchBoq = convertBoqToFrench(targetBoq);
+      frenchBoq.id = `boq-${Date.now()}`;
+      frenchBoq.status = 'DRAFT';
+      
+      const updatedList = [frenchBoq as unknown as BoqData, ...boqList];
+      setBoqList(updatedList);
+      setCurrentBoq(frenchBoq as unknown as BoqData);
+      setViewMode('editor');
+      setIsFrenchModalOpen(false);
+      if (showToast) showToast(`Nouveau DQE Français (${frenchBoq.boqReference}) créé et enregistré dans le registre !`, 'success');
+    } catch (err: any) {
+      console.error('Failed to duplicate French BOQ:', err);
+      if (showToast) showToast(`Erreur duplication: ${err.message || 'Erreur'}`, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenFrenchModalForBoq = async (specificBoq?: any) => {
+    try {
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      setFrenchTargetBoq(targetBoq);
+      const converted = convertBoqToFrench(targetBoq);
+      setFrenchPreviewBoq(converted);
+      setIsFrenchModalOpen(true);
+    } catch (err: any) {
+      console.error('Error preparing French preview:', err);
+      if (showToast) showToast('Échec préparation aperçu français', 'error');
+    }
+  };
+
+  const handleOpenReceiptModalForBoq = async (specificBoq?: any) => {
+    try {
+      const targetBoq = await getExportTargetBoq(specificBoq);
+      setReceiptTargetBoq(targetBoq);
+      setIsReceiptModalOpen(true);
+    } catch (err: any) {
+      console.error('Error opening receipt modal:', err);
+      if (showToast) showToast('Failed to prepare receipt modal', 'error');
+    }
+  };
+
   // Run quality check automatically when entering Quality/Dashboard tab
   useEffect(() => {
     if (viewMode === 'qs_dashboard' || editorStage === 'STAGE6_APPROVAL') {
@@ -1716,6 +1845,48 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
               <span>{exportingDocx ? 'Word...' : 'Word'}</span>
             </button>
 
+            {/* French Conversion & Download Suite */}
+            <div className="flex items-center space-x-1.5 pl-1 border-l border-slate-700/60">
+              <button
+                onClick={() => handleExportPdfFr()}
+                disabled={generatingPdfFr || generatingPdf}
+                title="Télécharger le DQE Officiel A4 PDF en Français (MADECC Group SARL)"
+                className="px-2.5 py-2 text-xs font-semibold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg transition shadow-sm flex items-center space-x-1 disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5 text-rose-400" />
+                <span>{generatingPdfFr ? 'PDF FR...' : 'FR PDF'}</span>
+              </button>
+
+              <button
+                onClick={() => handleExportDocxFr()}
+                disabled={exportingDocxFr || exportingDocx}
+                title="Télécharger le DQE Officiel Word (.docx) en Français (MADECC Group SARL)"
+                className="px-2.5 py-2 text-xs font-semibold bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 rounded-lg transition shadow-sm flex items-center space-x-1 disabled:opacity-50"
+              >
+                <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{exportingDocxFr ? 'Word FR...' : 'FR Word'}</span>
+              </button>
+
+              <button
+                onClick={() => handleOpenFrenchModalForBoq()}
+                title="Convertir automatiquement ce BOQ en Français (DQE) pour clients francophones"
+                className="px-3 py-2 text-xs font-semibold bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/50 rounded-lg transition shadow-sm flex items-center space-x-1.5"
+              >
+                <Languages className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Convert to French (DQE)</span>
+              </button>
+            </div>
+
+            {/* Pay-Before-Download Certified Receipt Gateway */}
+            <button
+              onClick={() => handleOpenReceiptModalForBoq()}
+              title="Official Certified Receipt Voucher — Clients pay before downloading at https://madeccgroup.online or auto-detected domain"
+              className="px-3 py-2 text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-lg transition shadow-sm flex items-center space-x-1.5"
+            >
+              <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Receipt & Payment</span>
+            </button>
+
             <button
               onClick={handleSaveBoq}
               disabled={saving}
@@ -1868,7 +2039,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
             {/* BOQ Table */}
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto min-w-0">
-                <table className="w-full text-left text-xs text-slate-300 min-w-[750px]">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[920px]">
                   <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Reference</th>
@@ -1922,7 +2093,7 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end space-x-1.5">
+                              <div className="flex items-center justify-end space-x-1.5 flex-nowrap">
                                 <button
                                   onClick={() => handleExportPdf(b)}
                                   title="Download Official A4 PDF (MADECC Group SARL)"
@@ -1940,12 +2111,44 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                                   <span>Word</span>
                                 </button>
                                 <button
+                                  onClick={() => handleExportPdfFr(b)}
+                                  title="Télécharger le DQE Officiel A4 PDF en Français (MADECC Group SARL)"
+                                  className="px-2 py-1 text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg transition flex items-center space-x-1"
+                                >
+                                  <Download className="w-3 h-3 text-rose-400" />
+                                  <span>FR PDF</span>
+                                </button>
+                                <button
+                                  onClick={() => handleExportDocxFr(b)}
+                                  title="Télécharger le DQE Officiel Word DOCX en Français (MADECC Group SARL)"
+                                  className="px-2 py-1 text-xs bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg transition flex items-center space-x-1"
+                                >
+                                  <FileText className="w-3 h-3 text-cyan-400" />
+                                  <span>FR Word</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenFrenchModalForBoq(b)}
+                                  title="Convertir automatiquement ce BOQ en Français (DQE) & Télécharger"
+                                  className="px-2 py-1 text-xs bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 rounded-lg transition flex items-center space-x-1 font-semibold"
+                                >
+                                  <Languages className="w-3 h-3 text-indigo-400" />
+                                  <span>FR (DQE)</span>
+                                </button>
+                                <button
                                   onClick={() => handleOpenRecapForBoq(b.id!)}
                                   title="Edit Commercial & Financial Recap, Revision Audit, and Sign-off"
                                   className="px-2 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg transition flex items-center space-x-1"
                                 >
                                   <Sliders className="w-3 h-3 text-amber-400" />
                                   <span>Recap</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenReceiptModalForBoq(b)}
+                                  title="Official Receipt Voucher — Clients pay before downloading via https://madeccgroup.online or auto-detected domain"
+                                  className="px-2 py-1 text-xs bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 rounded-lg transition flex items-center space-x-1 font-semibold"
+                                >
+                                  <Receipt className="w-3 h-3 text-emerald-400" />
+                                  <span>Receipt</span>
                                 </button>
                                 <button
                                   onClick={() => handleOpenBoq(b.id!)}
@@ -2077,6 +2280,58 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
         {/* ------------------------------------------------------------- */}
         {viewMode === 'editor' && (
           <div className="space-y-6">
+
+            {/* Quick Bilingual DQE Translation & Export Helper Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-indigo-950/70 via-slate-900 to-indigo-950/70 border border-indigo-500/40 p-3.5 rounded-2xl shadow-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                  <Languages className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center space-x-2">
+                    <span>Devis Quantitatif et Estimatif (DQE) — French Client Tools</span>
+                    {currentBoq.language === 'fr' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+                        FR ACTIVE
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Automatically convert work descriptions, trades, technical units (ml, m², m³, U, Fft) and currency in words to official Cameroon / CEMAC BTP French standards.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleExportPdfFr()}
+                  disabled={generatingPdfFr || generatingPdf}
+                  title="Télécharger le DQE Officiel A4 PDF en Français"
+                  className="px-2.5 py-1.5 text-xs bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg transition flex items-center space-x-1 disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{generatingPdfFr ? 'PDF FR...' : 'FR PDF'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportDocxFr()}
+                  disabled={exportingDocxFr || exportingDocx}
+                  title="Télécharger le DQE Officiel Word DOCX en Français"
+                  className="px-2.5 py-1.5 text-xs bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 rounded-lg transition flex items-center space-x-1 disabled:opacity-50"
+                >
+                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{exportingDocxFr ? 'Word FR...' : 'FR Word'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenFrenchModalForBoq()}
+                  className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition font-semibold flex items-center space-x-1.5 shadow"
+                >
+                  <Languages className="w-3.5 h-3.5" />
+                  <span>Convert to French (DQE)</span>
+                </button>
+              </div>
+            </div>
 
             {/* STAGE 1: TENDER SETUP */}
             {editorStage === 'STAGE1_SETUP' && (
@@ -3196,6 +3451,62 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                 </button>
               </div>
 
+              {/* French DQE A4 PDF (MADECC Group SARL) */}
+              <div className="p-4 bg-slate-900 rounded-xl border border-rose-500/40 space-y-3 flex flex-col justify-between shadow-lg">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-bold text-white flex items-center space-x-1.5">
+                      <Download className="w-3.5 h-3.5 text-rose-400" />
+                      <span>DQE Officiel A4 PDF (Français)</span>
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30">FR PDF</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Devis Quantitatif et Estimatif (DQE) certifié pour le Cameroun et la zone CEMAC. Montant en toutes lettres en Francs CFA, désignation technique des lots et visa officiel de l'ingénieur.
+                  </p>
+                  <div className="mt-2 text-[10px] text-rose-400 font-medium flex items-center space-x-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Conforme CCTP & Code des Marchés Publics</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleExportPdfFr()}
+                  disabled={generatingPdfFr || generatingPdf}
+                  className="w-full py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{generatingPdfFr ? 'Génération DQE PDF...' : 'Télécharger DQE A4 PDF (FR)'}</span>
+                </button>
+              </div>
+
+              {/* French DQE Word (.docx) (MADECC Group SARL) */}
+              <div className="p-4 bg-slate-900 rounded-xl border border-cyan-500/40 space-y-3 flex flex-col justify-between shadow-lg">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-bold text-white flex items-center space-x-1.5">
+                      <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>DQE Officiel Word DOCX (Français)</span>
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold border border-cyan-500/30">FR DOCX</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Document Word (.docx) complet traduit en Français avec tableaux de métrés éditables, bordereau de prix unitaires (BPU) et récapitulatif financier conforme BTP.
+                  </p>
+                  <div className="mt-2 text-[10px] text-cyan-400 font-medium flex items-center space-x-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Tableaux éditables & en-têtes répétées</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleExportDocxFr()}
+                  disabled={exportingDocxFr || exportingDocx}
+                  className="w-full py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{exportingDocxFr ? 'Génération Word FR...' : 'Télécharger DQE Word (FR)'}</span>
+                </button>
+              </div>
+
               {/* 3. Abstract of Cost Excel */}
               <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-3 flex flex-col justify-between">
                 <div>
@@ -3247,6 +3558,33 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
                 >
                   <Download className="w-4 h-4" />
                   <span>Export Rate Justification</span>
+                </button>
+              </div>
+
+              {/* 6. Official BOQ Statutory Receipt & Pay-Before-Download Voucher */}
+              <div className="p-4 bg-slate-900 rounded-xl border border-emerald-500/50 space-y-3 flex flex-col justify-between shadow-xl ring-1 ring-emerald-500/20">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-bold text-white flex items-center space-x-1.5">
+                      <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Official Receipt & Fiscal Voucher</span>
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/40">PAY & DOWNLOAD</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Statutory financial receipt voucher for this BOQ tender. Clients pay before downloading the signed & QR-verified receipt voucher via <strong className="text-amber-400">https://madeccgroup.online</strong> or the auto-detected live domain (MTN MoMo, Orange Money, Card, Bank).
+                  </p>
+                  <div className="mt-2 text-[10px] text-emerald-400 font-medium flex items-center space-x-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Includes 2D Verification QR & Barcode</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenReceiptModalForBoq()}
+                  className="w-full py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-lg transition flex items-center justify-center space-x-1.5 shadow-lg cursor-pointer"
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>Pay & Download Receipt (PDF / DOCX)</span>
                 </button>
               </div>
 
@@ -3743,6 +4081,240 @@ export default function BoqStudio({ showToast, currentUser }: BoqStudioProps) {
               />
             </div>
           </div>
+        )}
+
+        {/* 9. Interactive French DQE Conversion & Export Modal */}
+        {isFrenchModalOpen && frenchPreviewBoq && (
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[95vh] overflow-y-auto">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-indigo-600/20 border border-indigo-500/40 rounded-xl text-indigo-400">
+                    <Languages className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-base font-bold text-white">
+                        Conversion & Export DQE en Français
+                      </h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono font-semibold border border-indigo-500/30">
+                        CEMAC / Cameroun BTP
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Conversion automatique aux normes de Devis Quantitatif et Estimatif (DQE) pour clients francophones.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsFrenchModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Converted Metadata Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Réf. Devis Français :</span>
+                  <span className="font-mono font-bold text-amber-400">{frenchPreviewBoq.boqReference}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Intitulé du Projet :</span>
+                  <span className="font-semibold text-white truncate block">{frenchPreviewBoq.projectName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Maître d'Ouvrage (Client) :</span>
+                  <span className="font-medium text-slate-200 truncate block">{frenchPreviewBoq.clientName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Type de Marché :</span>
+                  <span className="text-slate-300">{frenchPreviewBoq.contractType}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Montant Total TTC :</span>
+                  <span className="font-mono font-bold text-emerald-400 text-sm">
+                    {formatCurrency(frenchPreviewBoq.grandTotal, frenchPreviewBoq.currency)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Lots Techniques Traduits :</span>
+                  <span className="text-slate-300 font-medium">
+                    {frenchPreviewBoq.sections?.length || 0} Lots ({frenchPreviewBoq.sections?.reduce((acc: number, s: any) => acc + (s.items?.length || 0), 0) || 0} Postes)
+                  </span>
+                </div>
+              </div>
+
+              {/* Amount in words banner */}
+              <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 text-xs">
+                <span className="text-indigo-300 font-bold block mb-1">Montant en toutes lettres (Arrêté officiel) :</span>
+                <p className="text-slate-200 italic font-medium">
+                  {frenchPreviewBoq.amountInWords}
+                </p>
+              </div>
+
+              {/* Action Buttons Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* 1. Download French PDF */}
+                <button
+                  onClick={() => handleExportPdfFr(frenchTargetBoq)}
+                  disabled={generatingPdfFr || generatingPdf}
+                  className="p-3 bg-gradient-to-r from-red-600/30 via-rose-600/20 to-red-600/30 hover:from-red-600/40 hover:to-rose-600/30 border border-red-500/40 rounded-xl transition text-left group flex items-start space-x-3 disabled:opacity-50"
+                >
+                  <div className="p-2 rounded-lg bg-red-600 text-white mt-0.5">
+                    <Download className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white group-hover:text-red-200 flex items-center space-x-1.5">
+                      <span>Télécharger DQE A4 PDF (Français)</span>
+                      <span className="text-[10px] px-1.5 py-0.2 bg-red-500/30 text-red-300 rounded font-mono">A4</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      Document officiel A4 avec pagination continue, en-têtes répétés et visa technique certifié.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 2. Download French Word */}
+                <button
+                  onClick={() => handleExportDocxFr(frenchTargetBoq)}
+                  disabled={exportingDocxFr || exportingDocx}
+                  className="p-3 bg-gradient-to-r from-blue-600/30 via-cyan-600/20 to-blue-600/30 hover:from-blue-600/40 hover:to-cyan-600/30 border border-cyan-500/40 rounded-xl transition text-left group flex items-start space-x-3 disabled:opacity-50"
+                >
+                  <div className="p-2 rounded-lg bg-cyan-600 text-white mt-0.5">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white group-hover:text-cyan-200 flex items-center space-x-1.5">
+                      <span>Télécharger DQE Word DOCX (Français)</span>
+                      <span className="text-[10px] px-1.5 py-0.2 bg-cyan-500/30 text-cyan-300 rounded font-mono">DOCX</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      Fichier Word officiel modifiable avec mise en page tabulaire complète et récapitulatif financier.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 3. Convert & Open in Editor */}
+                <button
+                  onClick={() => handleConvertAndOpenFr(frenchTargetBoq)}
+                  className="p-3 bg-gradient-to-r from-amber-600/25 to-amber-700/20 hover:from-amber-600/35 hover:to-amber-700/30 border border-amber-500/40 rounded-xl transition text-left group flex items-start space-x-3"
+                >
+                  <div className="p-2 rounded-lg bg-amber-500 text-slate-950 mt-0.5">
+                    <Edit3 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white group-hover:text-amber-200">
+                      Convertir et Ouvrir dans l'Éditeur BOQ
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      Remplace le devis actif par sa version française dans l'éditeur pour ajuster et personnaliser les postes.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 4. Duplicate as French BOQ */}
+                <button
+                  onClick={() => handleDuplicateAsFrenchBoq(frenchTargetBoq)}
+                  disabled={saving}
+                  className="p-3 bg-gradient-to-r from-emerald-600/25 to-emerald-700/20 hover:from-emerald-600/35 hover:to-emerald-700/30 border border-emerald-500/40 rounded-xl transition text-left group flex items-start space-x-3 disabled:opacity-50"
+                >
+                  <div className="p-2 rounded-lg bg-emerald-500 text-slate-950 mt-0.5">
+                    <Copy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white group-hover:text-emerald-200">
+                      Dupliquer comme Nouveau DQE Français
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      Conserve le BOQ original en anglais et crée une copie distincte (-FR) dans votre registre.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Converted Technical Lots Preview */}
+              <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+                <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300">
+                    Aperçu des Lots Techniques et Unités Converties (ml, m², m³, U, Fft)
+                  </span>
+                  <span className="text-[11px] text-amber-400 font-mono">
+                    Total : {formatCurrency(frenchPreviewBoq.grandTotal, frenchPreviewBoq.currency)}
+                  </span>
+                </div>
+                <div className="max-h-56 overflow-y-auto divide-y divide-slate-800 text-xs">
+                  {(frenchPreviewBoq.sections || []).map((sec: any, idx: number) => (
+                    <div key={sec.id || idx} className="p-3 hover:bg-slate-900/60 transition">
+                      <div className="flex items-center justify-between font-semibold text-white mb-1.5">
+                        <span className="text-amber-400">Lot {sec.sectionCode} : {sec.title}</span>
+                        <span className="font-mono text-emerald-400">
+                          {formatCurrency(sec.items?.reduce((sum: number, it: any) => sum + (Number(it.amount) || (Number(it.quantity) * Number(it.unitRate)) || 0), 0) || 0, frenchPreviewBoq.currency)}
+                        </span>
+                      </div>
+                      <div className="space-y-1 pl-3 text-[11px] text-slate-300 border-l border-slate-700">
+                        {(sec.items || []).slice(0, 3).map((it: any, iIdx: number) => (
+                          <div key={it.id || iIdx} className="flex items-center justify-between">
+                            <span className="truncate pr-2">• {it.itemNumber} - {it.description}</span>
+                            <span className="text-slate-400 font-mono flex-shrink-0">
+                              {it.quantity} {it.unit} × {Number(it.unitRate).toLocaleString()} = {Number(it.amount || (it.quantity * it.unitRate)).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                        {(sec.items || []).length > 3 && (
+                          <div className="text-slate-500 italic text-[10px]">
+                            + {(sec.items || []).length - 3} autres postes traduits...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer Close */}
+              <div className="flex justify-end pt-2 border-t border-slate-800">
+                <button
+                  onClick={() => setIsFrenchModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition"
+                >
+                  Fermer
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Pay-Before-Download Certified BOQ Receipt Modal */}
+        {isReceiptModalOpen && (
+          <ReceiptPaymentGateModal
+            isOpen={isReceiptModalOpen}
+            onClose={() => setIsReceiptModalOpen(false)}
+            isAdmin={true}
+            receiptDetails={{
+              receiptNo: `RCP-${(receiptTargetBoq || currentBoq).boqReference ? String((receiptTargetBoq || currentBoq).boqReference).replace(/^MADECC-BOQ-/, '').replace(/[^a-zA-Z0-9]/g, '') : '2026-0001'}`,
+              projectName: (receiptTargetBoq || currentBoq).projectName || 'Civil Engineering Tender',
+              clientName: (receiptTargetBoq || currentBoq).clientName || 'Valued Client',
+              clientEmail: (receiptTargetBoq || currentBoq).clientEmail || 'finance@madeccgroup.online',
+              location: (receiptTargetBoq || currentBoq).location || 'Douala / Yaoundé, Cameroon',
+              totalAmount: Number((receiptTargetBoq || currentBoq).grandTotal) || 0,
+              currency: (receiptTargetBoq || currentBoq).currency || 'XAF',
+              boqReference: (receiptTargetBoq || currentBoq).boqReference || 'MADECC-BOQ-2026-0001',
+              contractType: (receiptTargetBoq || currentBoq).contractType || 'UNIT_RATE',
+              language: (receiptTargetBoq || currentBoq).language || 'en',
+              docType: 'boq_receipt'
+            }}
+            onPaymentSuccess={(rec) => {
+              if (showToast) {
+                showToast(`Payment successful (${rec.transactionId})! Statutory receipt verified.`, 'success');
+              }
+            }}
+            showToast={showToast}
+          />
         )}
 
       </main>

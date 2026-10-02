@@ -10,10 +10,11 @@ import {
   Edit3, Check, Search, Filter, Shield, User, Clock, Building2, HardHat, DollarSign, 
   Calendar, Eye, Sparkles, AlertTriangle, FileSpreadsheet, RefreshCw, Send, CheckCircle2, 
   XCircle, Sliders, Settings, Award, Layers, Globe, Mail, ChevronRight, DownloadCloud,
-  ArrowRight, FileType
+  ArrowRight, FileType, Receipt as ReceiptIcon, Lock
 } from 'lucide-react';
 import ProposalDashboard from './ProposalDashboard.tsx';
 import { fetchUserSyncData, saveUserSyncData } from '../lib/syncService.ts';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
 
 // =========================================================================
 // TYPES & SCHEMAS
@@ -341,6 +342,9 @@ export default function ProposalStudio({
 
   // Audit Logs
   const [auditLogs, setAuditLogs] = useState<{ id: string; action: string; timestamp: string; user: string }[]>([]);
+
+  // Pay-Before-Download Certified Proposal Receipt Modal
+  const [isReceiptPaymentModalOpen, setIsReceiptPaymentModalOpen] = useState(false);
 
   // --- SYNC DATABASE ON INITIAL LOAD ---
   useEffect(() => {
@@ -1474,6 +1478,14 @@ export default function ProposalStudio({
                 {/* Exporters and Document Actions */}
                 <div className="flex items-center gap-1.5">
                   <button 
+                    onClick={() => setIsReceiptPaymentModalOpen(true)}
+                    className="bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-semibold py-2 px-3 rounded-xl text-[11px] flex items-center gap-1.5 cursor-pointer transition-all"
+                    title="Pay Before Download Proposal Receipt at https://madeccgroup.online or auto-detected domain"
+                  >
+                    <ReceiptIcon className="w-3.5 h-3.5 text-emerald-400" /> Pay & Download Receipt
+                  </button>
+
+                  <button 
                     onClick={handleExportToPDF}
                     className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white font-semibold py-2 px-3 rounded-xl text-[11px] flex items-center gap-1.5 cursor-pointer transition-all"
                     title="Export as official A4 PDF document"
@@ -1642,6 +1654,30 @@ export default function ProposalStudio({
 
           </div>
         </>
+      )}
+
+      {/* Pay-Before-Download Certified Proposal Receipt Modal */}
+      {isReceiptPaymentModalOpen && selectedProposal && (
+        <ReceiptPaymentGateModal
+          isOpen={isReceiptPaymentModalOpen}
+          onClose={() => setIsReceiptPaymentModalOpen(false)}
+          isAdmin={true}
+          receiptDetails={{
+            receiptNo: `RCP-PROP-${selectedProposal.id ? String(selectedProposal.id).replace(/^prop-madecc-/, '').slice(-6) : '2026-001'}`,
+            projectName: selectedProposal.title || 'Construction Tender Proposal',
+            clientName: selectedProposal.clientName || 'Valued Client Profile',
+            clientEmail: selectedProposal.clientContact || '',
+            location: selectedProposal.location || 'Douala / Yaounde, Cameroon',
+            totalAmount: Number(selectedProposal.projectValue) || 15000000,
+            currency: selectedProposal.currency === 'FCFA' ? 'XAF' : (selectedProposal.currency || 'XAF'),
+            docType: 'proposal_receipt',
+            language: 'en'
+          }}
+          onPaymentSuccess={(rec) => {
+            showToast(`Proposal receipt ${rec.receiptNo} settled! Unlocked via ${rec.domainUsed}.`, 'success');
+          }}
+          showToast={showToast}
+        />
       )}
 
     </div>

@@ -50,6 +50,7 @@ import {
   validateReceiptDocument 
 } from '../types/receiptTypes.ts';
 import { ReceiptExporter } from '../services/exporters/ReceiptExporter.ts';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
 
 // =========================================================================
 // 1. EXECUTIVE ANALYTICS REPORT PDF GENERATOR
@@ -268,6 +269,7 @@ export default function DocumentStudio({
   // Centralized Export Modal State
   const [activeStudioSubTab, setActiveStudioSubTab] = useState<'studio' | 'audit_history'>('studio');
   const [isExportPreviewModalOpen, setIsExportPreviewModalOpen] = useState(false);
+  const [isReceiptPaymentModalOpen, setIsReceiptPaymentModalOpen] = useState(false);
   const [exportModalModuleType, setExportModalModuleType] = useState<ExportModuleType>('civil_works');
   const [exportModalRecordId, setExportModalRecordId] = useState<string | number>('CW-2026-001');
   const [exportModalDocumentTitle, setExportModalDocumentTitle] = useState<string>('Civil Works Report');
@@ -3012,6 +3014,14 @@ export default function DocumentStudio({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => setIsReceiptPaymentModalOpen(true)}
+                    className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 font-mono text-[11px] font-bold uppercase px-2.5 py-1 rounded-lg cursor-pointer transition-colors flex items-center gap-1"
+                    title="Pay Before Download at https://madeccgroup.online or auto-detected live domain"
+                  >
+                    <Lock className="w-3 h-3" /> Pay & Download
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleCreateNewReceipt}
                     className="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-mono text-[11px] font-bold uppercase px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
                   >
@@ -3287,6 +3297,16 @@ export default function DocumentStudio({
             </span>
 
             <div className="flex flex-wrap gap-2.5">
+              {mode === 'receipts' && (
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptPaymentModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-3.5 rounded-xl text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-600/10 transition-colors"
+                  title="Client Pay Before Download at https://madeccgroup.online or auto-detected live domain"
+                >
+                  <Lock className="w-3.5 h-3.5 text-white" /> Pay & Download Receipt
+                </button>
+              )}
               <button
                 type="button"
                 onClick={openExportModalForActiveSubMode}
@@ -4357,6 +4377,32 @@ export default function DocumentStudio({
         initialRecord={exportModalRecordData}
         showToast={showToast}
       />
+
+      {/* Pay-Before-Download Certified Document Receipt Modal */}
+      {isReceiptPaymentModalOpen && (
+        <ReceiptPaymentGateModal
+          isOpen={isReceiptPaymentModalOpen}
+          onClose={() => setIsReceiptPaymentModalOpen(false)}
+          isAdmin={true}
+          receiptDetails={{
+            receiptNo: selectedReceipt.receiptNo || 'RCP-2026-001',
+            projectName: selectedReceipt.receiptProject || 'General Construction Services',
+            clientName: selectedReceipt.clientName || 'Valued Client Profile',
+            clientEmail: selectedReceipt.clientEmail || '',
+            location: 'Douala / Yaounde, Cameroon',
+            totalAmount: Number(selectedReceipt.invoiceTotalAmount || selectedReceipt.receiptAmount || 0),
+            currency: selectedReceipt.currency || 'XAF',
+            docType: 'document_receipt',
+            language: 'en'
+          }}
+          onPaymentSuccess={(rec) => {
+            if (showToast) {
+              showToast(`Receipt ${rec.receiptNo} settled successfully! Payment recorded via ${rec.domainUsed}.`, 'success');
+            }
+          }}
+          showToast={showToast}
+        />
+      )}
 
     </div>
   );

@@ -45,6 +45,8 @@ import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';
 import { LanguageProvider } from './lib/LanguageContext.tsx';
 import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext.tsx';
 import FollowUsModal from './components/FollowUsModal.tsx';
+import { ReceiptPaymentGateModal } from './components/ReceiptPaymentGateModal.tsx';
+import { parsePaymentUrlParams, PaymentLinkParams } from './utils/paymentDomain.ts';
 
 function RouteLoadingFallback() {
   return (
@@ -95,6 +97,14 @@ function AppContent({
   const { theme } = useTheme();
   const { settings, isFollowModalOpen, closeFollowModal } = useSiteSettings();
   const [preselectedService, setPreselectedService] = useState<string>('');
+  const [clientPaymentRequest, setClientPaymentRequest] = useState<PaymentLinkParams | null>(() => parsePaymentUrlParams());
+
+  useEffect(() => {
+    const payParams = parsePaymentUrlParams();
+    if (payParams) {
+      setClientPaymentRequest(payParams);
+    }
+  }, []);
 
   const handleNavigateWithState = (tab: string, extraState?: any) => {
     if (extraState?.selectedService) {
@@ -410,6 +420,34 @@ function AppContent({
         isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
         onNavigateToAdminCms={() => setCurrentTab('admin')}
       />
+
+      {/* Global Client Pay-Before-Download Modal (via https://madeccgroup.online or auto-detected domain) */}
+      {clientPaymentRequest && (
+        <ReceiptPaymentGateModal
+          isOpen={Boolean(clientPaymentRequest)}
+          isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
+          onClose={() => {
+            setClientPaymentRequest(null);
+            // Clean URL query parameter without full reload
+            if (window.history && window.history.replaceState) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('pay');
+              url.searchParams.delete('checkout');
+              url.searchParams.delete('receipt');
+              window.history.replaceState({}, '', url.toString());
+            }
+          }}
+          receiptDetails={{
+            receiptNo: clientPaymentRequest.receiptNo,
+            projectName: clientPaymentRequest.projectName || 'Tender & Infrastructure Project',
+            clientName: clientPaymentRequest.clientName || 'Valued Client',
+            totalAmount: Number(clientPaymentRequest.amount) || 15000,
+            currency: clientPaymentRequest.currency || 'XAF',
+            docType: clientPaymentRequest.docType || 'boq_receipt',
+            language: 'en'
+          }}
+        />
+      )}
     </div>
   );
 }

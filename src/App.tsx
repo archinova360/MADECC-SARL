@@ -31,6 +31,7 @@ const DataDeletion = lazy(() => import('./components/DataDeletion.tsx'));
 const FAQ = lazy(() => import('./components/FAQ.tsx'));
 const Tenders = lazy(() => import('./components/Tenders.tsx').then(m => ({ default: m.Tenders })));
 const DeveloperPortal = lazy(() => import('./components/DeveloperPortal.tsx'));
+const VisitorWalkthroughGuide = lazy(() => import('./components/VisitorWalkthroughGuide.tsx').then(m => ({ default: m.VisitorWalkthroughGuide })));
 
 // Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
 const SuperAdmin = lazy(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
@@ -46,6 +47,7 @@ import { LanguageProvider } from './lib/LanguageContext.tsx';
 import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext.tsx';
 import FollowUsModal from './components/FollowUsModal.tsx';
 import { ReceiptPaymentGateModal } from './components/ReceiptPaymentGateModal.tsx';
+import { VisitorMaintenanceNotice } from './components/VisitorMaintenanceNotice.tsx';
 import { parsePaymentUrlParams, PaymentLinkParams } from './utils/paymentDomain.ts';
 
 function RouteLoadingFallback() {
@@ -226,6 +228,13 @@ function AppContent({
             onNavigateToTab={handleNavigateWithState}
           />
         );
+      case 'walkthrough-guide':
+      case 'visitor-guide':
+        return (
+          <VisitorWalkthroughGuide 
+            onNavigateToTab={handleNavigateWithState}
+          />
+        );
       case 'terms':
         return <LegalPage type="terms" setCurrentTab={setCurrentTab} />;
       case 'privacy':
@@ -309,6 +318,9 @@ function AppContent({
       )}
 
       <SEOHandler currentTab={currentTab} selectedProjectId={selectedProjectId} currentTenant={currentTenant} />
+
+      {/* Non-Intrusive Website Maintenance Notification (Triggered from Admin Dashboard + SMTP kreboya603@gmail.com) */}
+      <VisitorMaintenanceNotice />
       
       {/* Header Navigation Section */}
       <Navbar 
@@ -441,7 +453,8 @@ function AppContent({
             receiptNo: clientPaymentRequest.receiptNo,
             projectName: clientPaymentRequest.projectName || 'Tender & Infrastructure Project',
             clientName: clientPaymentRequest.clientName || 'Valued Client',
-            totalAmount: Number(clientPaymentRequest.amount) || 15000,
+            totalAmount: Number(clientPaymentRequest.amount) || 2199,
+            customFeeAmount: 2199,
             currency: clientPaymentRequest.currency || 'XAF',
             docType: clientPaymentRequest.docType || 'boq_receipt',
             language: 'en'

@@ -79,6 +79,12 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         keywords: `construction cost guide ${country}, cement prices, steel rates, labor cost, ${brandName}`,
         ogType: 'article'
       },
+      'walkthrough-guide': {
+        title: `Complete Visitor & Client Walkthrough Guide | ${brandName}`,
+        description: `Step-by-step interactive guide for visitors and clients using ${brandName}'s construction budget calculators, 2026 cost guides, quote requests, and 2,199 XAF certified document downloads.`,
+        keywords: `visitor guide ${brandName}, how to use ${brandName}, construction calculator guide, 2199 XAF receipt download, ${country}`,
+        ogType: 'article'
+      },
       faq: {
         title: `Frequently Asked Questions & Technical Help | ${brandName}`,
         description: `Verified answers to technical questions about building permits, construction costs, soil testing, and project guarantees from ${brandName}.`,

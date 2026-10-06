@@ -14,13 +14,17 @@ import {
   Scan,
   RefreshCw,
   X,
-  PenTool
+  PenTool,
+  Download,
+  Lock
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { formatCurrency } from '../lib/utils.ts';
 import { generateBarcodeBase64 } from '../utils/codeGenerator.ts';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
+import { STANDARD_RECEIPT_FEE_XAF, isReceiptPaid } from '../utils/paymentDomain.ts';
 
 interface VerifyContractProps {
   token: string;
@@ -40,6 +44,7 @@ export default function VerifyContract({ token, onBackToHome }: VerifyContractPr
   const [showClientSignaturePad, setShowClientSignaturePad] = useState(false);
   const [isSavingSignature, setIsSavingSignature] = useState(false);
   const [typedSignName, setTypedSignName] = useState('');
+  const [isVerifyPaymentModalOpen, setIsVerifyPaymentModalOpen] = useState(false);
 
   // Sub-tabs for the empty token screen
   const [portalSubTab, setPortalSubTab] = useState<'verify' | 'submit'>('verify');
@@ -1001,6 +1006,20 @@ export default function VerifyContract({ token, onBackToHome }: VerifyContractPr
                   <div className="text-center text-[10px] text-slate-500 font-mono pt-2">
                     Registered On: {new Date(contract.signedAt).toLocaleString()}
                   </div>
+                  <div className="pt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsVerifyPaymentModalOpen(true)}
+                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-2 transition cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>
+                        {isReceiptPaid(contract.receiptNo || activeToken)
+                          ? 'Download Unlocked Receipt (PDF / Word)'
+                          : `Pay ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF & Download Certified Receipt (Unlocks on Admin OK)`}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1225,9 +1244,42 @@ export default function VerifyContract({ token, onBackToHome }: VerifyContractPr
                   <div className="text-center text-[10px] text-slate-500 font-mono pt-2">
                     Sealed On: {new Date(contract.signedAt).toLocaleString()}
                   </div>
+                  <div className="pt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsVerifyPaymentModalOpen(true)}
+                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-2 transition cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>
+                        {isReceiptPaid(contract.contractNo || activeToken)
+                          ? 'Download Unlocked Contract Receipt (PDF / Word)'
+                          : `Pay ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF & Download Certified Document (Unlocks on Admin OK)`}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+          )}
+
+          {isVerifyPaymentModalOpen && contract && (
+            <ReceiptPaymentGateModal
+              isOpen={isVerifyPaymentModalOpen}
+              onClose={() => setIsVerifyPaymentModalOpen(false)}
+              isAdmin={false}
+              receiptDetails={{
+                receiptNo: contract.receiptNo || contract.contractNo || activeToken || 'RCP-VERIFY-001',
+                projectName: contract.receiptProject || contract.contractProject || 'MADECC Certified Project',
+                clientName: contract.clientName || 'Valued Client',
+                clientEmail: contract.clientEmail || '',
+                totalAmount: Number(contract.receiptAmount || contract.contractValue) || STANDARD_RECEIPT_FEE_XAF,
+                customFeeAmount: STANDARD_RECEIPT_FEE_XAF,
+                currency: contract.currency || 'XAF',
+                docType: activeToken.startsWith('REC-') ? 'document_receipt' : 'contract_receipt',
+                language: 'en'
+              }}
+            />
           )}
         </motion.div>
       )}

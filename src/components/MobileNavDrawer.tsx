@@ -149,6 +149,13 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
   const toolsLinks = [
     { 
+      id: 'walkthrough-guide', 
+      label: 'Visitor Walkthrough Guide', 
+      desc: 'Step-by-step tour for visitors, clients & 2,199 XAF downloads',
+      icon: Compass,
+      badge: 'Guide'
+    },
+    { 
       id: 'budget-calculator', 
       label: 'Budget Calculator', 
       desc: 'Instant estimation for villas, offices & residential projects',

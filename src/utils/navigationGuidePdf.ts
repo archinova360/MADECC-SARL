@@ -74,13 +74,13 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
 
   doc.setFontSize(11);
   doc.setTextColor(245, 158, 11);
-  doc.text('OFFICIAL PLATFORM NAVIGATION & OPERATIONAL MANUAL', margin + 8, 29);
+  doc.text('COMPLETE VISITOR, CLIENT & PLATFORM WALKTHROUGH MANUAL', margin + 8, 29);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(203, 213, 225);
-  doc.text('Complete user guide for Engineering Services, ERP, Technical Studios, and Social Media Review.', margin + 8, 36);
-  doc.text(`Version 2.4 | Classification: Official Guide | Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin + 8, 42);
+  doc.text('Step-by-step guide for Website Visitors, Clients, Cost Calculators, 2,199 XAF Document Unlock & Studios.', margin + 8, 36);
+  doc.text(`Version 3.0 | Classification: Public Visitor & Client Guide | Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin + 8, 42);
 
   let y = 55;
 
@@ -88,17 +88,17 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('1. Executive Architecture & Mission', margin, y);
+  doc.text('1. Welcome Visitors & Clients — Platform Overview', margin, y);
   y += 5;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
   const introText = 
-    'The MADECC GROUP digital platform is an enterprise-grade web application uniting multi-disciplinary ' +
-    'civil & structural engineering, renewable energy modeling, construction project management, and automated ' +
-    'document intelligence. Built for public clients, enterprise contractors, and authenticated auditors, ' +
-    'this document outlines full navigation pathways across every module.';
+    'Welcome to the official MADECC GROUP S.A.R.L digital platform (https://madeccgroup.online). Whether you are a ' +
+    'homeowner planning a villa, a corporate developer estimating a commercial complex, a contractor bidding on tenders, ' +
+    'or a client downloading certified engineering receipts and contracts, this complete walkthrough guide walks you ' +
+    'step-by-step through every tool, calculator, payment verification, and service on our website.';
   const splitIntro = doc.splitTextToSize(introText, contentWidth);
   doc.text(splitIntro, margin, y);
   y += splitIntro.length * 4.5 + 4;
@@ -107,7 +107,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('2. Primary Navigation Hierarchy & Modules', margin, y);
+  doc.text('2. Website Directory & Visitor Navigation Map', margin, y);
   y += 3;
 
   autoTable(doc, {
@@ -126,21 +126,24 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 32, fontStyle: 'bold' },
-      1: { cellWidth: 38 },
+      0: { cellWidth: 34, fontStyle: 'bold' },
+      1: { cellWidth: 36 },
       2: { cellWidth: 'auto' },
-      3: { cellWidth: 30 }
+      3: { cellWidth: 28 }
     },
-    head: [['Navigation Tab', 'URL / Target', 'Core Functionality & Interactive Tools', 'Access Level']],
+    head: [['Website Section', 'Tab / Target', 'What Visitors & Clients Can Do Here', 'Access Level']],
     body: [
-      ['Home (Acceuil)', '#home', 'Brand identity, engineering portfolio highlights, stats, and client reviews', 'Public (All)'],
-      ['Services', '#services', 'Civil works, road design, geotechnical studies, structural integrity & green energy', 'Public (All)'],
-      ['Projects & Portfolio', '#projects', 'Live filterable project gallery with CAD blueprints, status, and specs', 'Public (All)'],
-      ['Sustainability & Solar', '#sustainability', 'Solar power ROI estimator, carbon mitigation modeling, ESG compliance', 'Public (All)'],
-      ['Cost Calculator', '#calculator', 'Interactive construction budget calculator, m² cost estimations, and quote engine', 'Public (All)'],
-      ['Tenders & Procurement', '#tenders', 'Active construction tenders, RFPs, contractor bidding guidelines', 'Public (All)'],
-      ['Contact & Booking', '#contact', 'Consultation scheduler, direct quotation submissions, emergency dispatch', 'Public (All)'],
-      ['Client Portal / Admin', '#admin', 'Enterprise ERP, BoQ Studio, Structural Calculator, Social Media Studio', 'Protected / Role-Based']
+      ['Home Page', '#home', 'Overview of MADECC Group, quick m² cost estimator, live project stats, and client testimonials', 'Public (Free)'],
+      ['Walkthrough Guide', '#walkthrough-guide', 'Interactive step-by-step visitor & client guide with 1-click module launchers & FAQ', 'Public (Free)'],
+      ['Engineering Services', '#services', 'Explore structural design, civil works, road construction, geotechnical & solar services', 'Public (Free)'],
+      ['Projects Portfolio', '#projects', 'Filter completed & ongoing projects across Cameroon with CAD blueprints & specs', 'Public (Free)'],
+      ['Budget Calculator', '#budget-calculator', '5-Step Quick Estimator & Full Engineering Calculator for villas, apartments & offices', 'Public (Free)'],
+      ['Cost Guide 2026', '#construction-cost-guide', '2026 regional material prices (cement, iron rods, sand) & labour rates across 10 regions', 'Public (Free)'],
+      ['Request a Quote', '#request-a-quote', 'Submit project specs or architectural drawings for a custom fixed-price BoQ proposal', 'Public (Free)'],
+      ['Book Consultation', '#schedule-consultation', 'Schedule an in-person (Yaoundé HQ) or virtual video consultation with senior engineers', 'Public (Free)'],
+      ['Tenders & Bidding', '#tenders', 'View open procurement tenders, supplier pre-qualification, and bidding documents', 'Public (Free)'],
+      ['Verify Document', '#verify', 'Scan QR codes or enter receipt/contract tokens to verify authentic MADECC documents', 'Public (Free)'],
+      ['Admin & Studios', '#admin', '8 Technical Studios (BoQ, Structural, Labour, Blueprint, Contracts, Receipts) & ERP', 'Admin / Staff']
     ]
   });
 
@@ -259,37 +262,41 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('4. Step-by-Step Navigation Workflows', margin, y);
+  doc.text('4. Visitor & Client Step-by-Step Walkthrough (Including 2,199 XAF Document Unlock)', margin, y);
   y += 5;
 
   const workflows = [
     {
-      step: 'Step 1: Generating a Client Bill of Quantities (BoQ)',
-      desc: '1. Navigate to Client Portal / Admin > Enter workspace.\n2. Select "BoQ Studio" from the Command Center sidebar.\n3. Click "+ Create New BoQ" > Enter Project Name (e.g. Douala Commercial Complex).\n4. Add items: Earthworks, Reinforced Concrete, Masonry, Roofing, Finishes.\n5. Click "Export PDF" for instant A4 client-ready quotation.'
+      step: 'Step 1: Instant Budget Estimation & 2026 Regional Cost Guide',
+      desc: '1. Click "Tools > Budget Calculator" or "Cost Guide 2026" in the top navigation bar.\n2. Choose your building type (Villa, Apartment Block, Commercial Complex, Warehouse), floor area (m²), and region.\n3. Review instant FCFA material quantities (cement bags, rebar tons, sand/gravel trucks) & phased costs.'
     },
     {
-      step: 'Step 2: Performing Structural Calculations',
-      desc: '1. Select "Structural Calculator" from the Engineering Suite.\n2. Input Span length (m), Characteristic Dead Load Gk (kN/m²), and Live Load Qk (kN/m²).\n3. Choose concrete strength class (e.g., C25/30) and steel grade (B500B).\n4. View bending moment diagrams and reinforcement steel bar area (As_req).'
+      step: 'Step 2: Official Document & Receipt Payment (2,199 XAF) + Admin OK Unlock Workflow',
+      desc: '1. Clients pay only 2,199 XAF via MTN MoMo (671063511, 683316486) or Orange Money (689115595, 640194505).\n2. Submit payment in the Payment Gate Modal; status enters PENDING_ADMIN_CONFIRMATION (downloads remain locked).\n3. Admin reviews & clicks "Confirm & Press OK" in Admin Dashboard -> dispatches SMTP confirmation to kreboya603@gmail.com.\n4. Only after Admin presses OK do all Receipt, BoQ, PDF, Word & Excel download links unlock! (Admin downloads for free).'
+    },
+    {
+      step: 'Step 3: Requesting a Custom Quote, Bidding on Tenders & Verifying Documents',
+      desc: '1. Use "Request a Quote" or "Schedule Consultation" to submit blueprints and book a senior civil engineer.\n2. Visit "Verify Document" (#verify) to scan QR codes or verify official MADECC receipts (RCP-...) and contracts (CNT-...).'
     }
   ];
 
   workflows.forEach(wf => {
     doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
     doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-    doc.roundedRect(margin, y, contentWidth, 22, 1.5, 1.5, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 20, 1.5, 1.5, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8.2);
     doc.setTextColor(deepBlue[0], deepBlue[1], deepBlue[2]);
     doc.text(wf.step, margin + 3, y + 4.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.2);
     doc.setTextColor(51, 65, 85);
     const splitDesc = doc.splitTextToSize(wf.desc, contentWidth - 6);
-    doc.text(splitDesc, margin + 3, y + 9);
+    doc.text(splitDesc, margin + 3, y + 8.5);
 
-    y += 25;
+    y += 22;
   });
 
   // =========================================================================
@@ -392,11 +399,12 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
     },
     body: [
       ['Primary Executive Administrator:', 'Eric Kreboya (Managing Director & Lead Engineer)'],
-      ['Direct Contact Email:', 'kreboya603@gmail.com (Prompt 24/7 Response)'],
-      ['Primary WhatsApp Channel:', '+237 671 063 511 (Instant Credential Dispatch)'],
-      ['Secondary WhatsApp Channel:', '+237 640 194 505'],
+      ['Direct Contact & Admin SMTP:', 'kreboya603@gmail.com (Prompt 24/7 Response & Receipt Dispatch)'],
+      ['Official MTN Mobile Money (MoMo):', '671063511 / 683316486 (Standard Client Document Fee: 2,199 XAF)'],
+      ['Official Orange Money (OM):', '689115595 / 640194505 (Unlocks after Admin Confirm & OK)'],
+      ['Primary WhatsApp Channel:', '+237 671 063 511 / +237 640 194 505'],
       ['Official Website URL:', 'https://madeccgroup.online'],
-      ['Headquarters Address:', 'MADECC GROUP S.A.R.L, Omnisports / Bastos, Yaoundé, Centre Region, Cameroon'],
+      ['Headquarters Address:', 'MADECC GROUP S.A.R.L, Mbankolo / Omnisports, Yaoundé, Centre Region, Cameroon'],
       ['Business Classification:', 'Civil Engineering, Geotechnics, Renewable Energy & Cloud Systems']
     ]
   });

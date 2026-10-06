@@ -28,6 +28,8 @@ import {
   Briefcase
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
+import { STANDARD_RECEIPT_FEE_XAF, isReceiptPaid } from '../utils/paymentDomain.ts';
 
 interface ProjectBudgetCalculatorProps {
   onNavigateToTab?: (tab: string) => void;
@@ -41,6 +43,7 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
   // Mode selection
   const [mode, setMode] = useState<'quick' | 'detailed'>('quick');
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isPaymentGateOpen, setIsPaymentGateOpen] = useState<boolean>(false);
 
   // Form Inputs
   const [projectType, setProjectType] = useState<string>('Residential House');
@@ -252,8 +255,18 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
     }
   };
 
-  // Generate PDF Summary
+  // Generate PDF Summary (Gated by 2,199 XAF + Admin Confirmation OK for clients)
   const handleDownloadPdf = () => {
+    if (!calculationResult) return;
+    const rcpNo = `RCP-${calculationResult.estimateReference || 'EST-2026'}`;
+    if (!isReceiptPaid(rcpNo)) {
+      setIsPaymentGateOpen(true);
+      return;
+    }
+    executeDirectPdfDownload();
+  };
+
+  const executeDirectPdfDownload = () => {
     if (!calculationResult) return;
 
     try {
@@ -1183,6 +1196,29 @@ I would like to discuss this project and request a formal BOQ.`;
             </div>
 
           </div>
+        )}
+
+        {isPaymentGateOpen && calculationResult && (
+          <ReceiptPaymentGateModal
+            isOpen={isPaymentGateOpen}
+            onClose={() => setIsPaymentGateOpen(false)}
+            isAdmin={false}
+            receiptDetails={{
+              receiptNo: `RCP-${calculationResult.estimateReference || 'EST-2026'}`,
+              projectName: `${calculationResult.projectType} (${calculationResult.location})`,
+              clientName: leadName || 'Valued Client',
+              clientEmail: leadEmail || '',
+              location: calculationResult.location,
+              totalAmount: Number(calculationResult.estimatedBudgetExpected) || STANDARD_RECEIPT_FEE_XAF,
+              customFeeAmount: STANDARD_RECEIPT_FEE_XAF,
+              currency: 'XAF',
+              docType: 'budget_estimate_receipt',
+              language: 'en'
+            }}
+            onUnlockCustomDownload={executeDirectPdfDownload}
+            customDownloadLabel="Download Budget Estimate PDF (Unlocked)"
+            showToast={showToast}
+          />
         )}
 
       </div>

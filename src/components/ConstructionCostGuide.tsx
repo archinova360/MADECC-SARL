@@ -28,6 +28,8 @@ import {
   Home
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
+import { STANDARD_RECEIPT_FEE_XAF, isReceiptPaid } from '../utils/paymentDomain.ts';
 
 interface ConstructionCostGuideProps {
   onNavigateToTab?: (tab: string, extraState?: any) => void;
@@ -47,6 +49,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [isPaymentGateOpen, setIsPaymentGateOpen] = useState<boolean>(false);
 
   // Fetch live public cost guide data
   useEffect(() => {
@@ -101,8 +104,18 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
     return Math.round(base * mult);
   };
 
-  // PDF Export
+  // PDF Export (Gated by 2,199 XAF + Admin Confirmation OK for clients)
   const handleDownloadPdf = () => {
+    if (!data) return;
+    const rcpNo = `RCP-COST-GUIDE-${selectedRegion.toUpperCase()}`;
+    if (!isReceiptPaid(rcpNo)) {
+      setIsPaymentGateOpen(true);
+      return;
+    }
+    executeDirectCostGuidePdf();
+  };
+
+  const executeDirectCostGuidePdf = () => {
     if (!data) return;
     try {
       const doc = new jsPDF();
@@ -673,6 +686,28 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
             </div>
           </div>
         </div>
+
+        {isPaymentGateOpen && (
+          <ReceiptPaymentGateModal
+            isOpen={isPaymentGateOpen}
+            onClose={() => setIsPaymentGateOpen(false)}
+            isAdmin={false}
+            receiptDetails={{
+              receiptNo: `RCP-COST-GUIDE-${selectedRegion.toUpperCase()}`,
+              projectName: `Cameroon Construction Cost Guide 2026 (${selectedRegion})`,
+              clientName: 'Valued Client',
+              location: `${selectedRegion}, Cameroon`,
+              totalAmount: STANDARD_RECEIPT_FEE_XAF,
+              customFeeAmount: STANDARD_RECEIPT_FEE_XAF,
+              currency: 'XAF',
+              docType: 'cost_guide_receipt',
+              language: 'en'
+            }}
+            onUnlockCustomDownload={executeDirectCostGuidePdf}
+            customDownloadLabel="Download Cost Guide PDF (Unlocked)"
+            showToast={showToast}
+          />
+        )}
 
       </div>
     </div>

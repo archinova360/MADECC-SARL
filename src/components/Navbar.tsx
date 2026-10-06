@@ -39,7 +39,8 @@ import {
   Radio,
   Calculator,
   HelpCircle,
-  Info
+  Info,
+  Compass
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
@@ -388,8 +389,8 @@ export default function Navbar({
     { id: 'blog', label: 'Insights' },
   ];
 
-  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'saas-cloud', 'developers'].includes(currentTab);
-  const isCompanyActive = ['about', 'faq', 'contact'].includes(currentTab);
+  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'saas-cloud', 'developers'].includes(currentTab);
+  const isCompanyActive = ['about', 'faq', 'contact', 'walkthrough-guide'].includes(currentTab);
 
   return (
     <nav className={`sticky top-0 z-50 border-b transition-colors duration-300 w-full max-w-full overflow-x-clip ${
@@ -530,6 +531,29 @@ export default function Navbar({
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
                       }`}
                     >
+                      <button
+                        onClick={() => {
+                          setCurrentTab('walkthrough-guide');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'walkthrough-guide' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Compass className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Visitor Walkthrough Guide</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-bold">NEW</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Complete step-by-step client &amp; visitor manual</div>
+                        </div>
+                      </button>
+
                       <button
                         onClick={() => {
                           setCurrentTab('budget-calculator');
@@ -684,6 +708,26 @@ export default function Navbar({
                         <div>
                           <div className="text-xs font-bold font-sans">About Us</div>
                           <div className="text-[11px] text-slate-400 leading-tight">History, certifications & leadership</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('walkthrough-guide');
+                          setCompanyDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'walkthrough-guide' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Compass className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">Visitor Walkthrough Guide</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Step-by-step tour &amp; 2,199 XAF unlock guide</div>
                         </div>
                       </button>
 

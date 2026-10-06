@@ -112,6 +112,18 @@ import CmsSiteSettings from './CmsSiteSettings.tsx';
 import { WebsiteLiveOptimizer } from './WebsiteLiveOptimizer.tsx';
 import AdminApiPlatform from './AdminApiPlatform.tsx';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
+import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
+import { AdminMaintenanceAndHandoverHub } from './AdminMaintenanceAndHandoverHub.tsx';
+import { 
+  ReceiptPaymentRecord, 
+  STANDARD_RECEIPT_FEE_XAF, 
+  ADMIN_SMTP_USER_EMAIL, 
+  OFFICIAL_PAYMENT_CONFIG,
+  syncPaymentRequestsWithServer, 
+  confirmClientPaymentByAdmin, 
+  submitClientPaymentRequest 
+} from '../utils/paymentDomain.ts';
+import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
 
 import { getOptimizedImageUrl, getYouTubeEmbedUrl, ensureAbsoluteUrl } from '../lib/utils.ts';
 
@@ -241,6 +253,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   const [projects, setProjects] = useState<Project[]>([]);
   const [signedContracts, setSignedContracts] = useState<SignedContract[]>([]);
   const [signedReceipts, setSignedReceipts] = useState<SignedReceipt[]>([]);
+  const [paymentRequestsQueue, setPaymentRequestsQueue] = useState<ReceiptPaymentRecord[]>([]);
+  const [selectedPaymentToConfirm, setSelectedPaymentToConfirm] = useState<ReceiptPaymentRecord | null>(null);
+  const [previewingUnlockedReceipt, setPreviewingUnlockedReceipt] = useState<ReceiptPaymentRecord | null>(null);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState<boolean>(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -587,11 +603,204 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       if (teamRes.ok) setTeamMembersList(await teamRes.json());
       if (analyticsRes && analyticsRes.ok) setDbAnalytics(await analyticsRes.json());
 
+      // Sync client payment confirmation queue (2,199 XAF)
+      const syncedPayments = await syncPaymentRequestsWithServer();
+      setPaymentRequestsQueue(syncedPayments);
+
     } catch (err) {
       console.error('Error loading administrative lists:', err);
     } finally {
       setLoadingData(false);
     }
+  };
+
+  const handleAdminPressOkToConfirmPayment = async (rec: ReceiptPaymentRecord) => {
+    try {
+      setIsConfirmingPayment(true);
+      const res = await confirmClientPaymentByAdmin(rec.receiptNo, rec);
+      const updatedList = await syncPaymentRequestsWithServer();
+      setPaymentRequestsQueue(updatedList);
+      setSelectedPaymentToConfirm(null);
+      showToast(
+        `Confirmed (OK)! Message dispatched to SMTP user ${ADMIN_SMTP_USER_EMAIL}. Receipt ${rec.receiptNo} and all download links are now unlocked!`,
+        'success'
+      );
+      return res.record;
+    } catch (err: any) {
+      showToast(`Failed to confirm payment: ${err.message}`, 'error');
+      return null;
+    } finally {
+      setIsConfirmingPayment(false);
+    }
+  };
+
+  const handleSimulateNewClientPayment2199 = async () => {
+    const newRef = `RCP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRec: ReceiptPaymentRecord = {
+      id: `PAY-REQ-${Date.now().toString().slice(-5)}`,
+      receiptNo: newRef,
+      isPaid: false,
+      status: 'PENDING_ADMIN_CONFIRMATION',
+      adminConfirmed: false,
+      amount: STANDARD_RECEIPT_FEE_XAF,
+      currency: 'XAF',
+      paymentMethod: 'MTN Mobile Money (671063511)',
+      recipientNumber: '671063511',
+      transactionId: `TXN-MOMO-${Date.now().toString().slice(-6)}`,
+      paidAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      payerName: 'BTP Horizon Cameroon SARL',
+      payerPhone: '671 063 511',
+      clientEmail: 'contact@btphorizon.cm',
+      projectName: 'Douala Bonapriso Structural BOQ & Certified Receipt',
+      docType: 'boq_receipt',
+      domainUsed: 'https://madeccgroup.online'
+    };
+    await submitClientPaymentRequest(newRec);
+    const updatedList = await syncPaymentRequestsWithServer();
+    setPaymentRequestsQueue(updatedList);
+    showToast(
+      `New client payment of ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF (${newRef}) received! Press "Confirm & OK" to dispatch SMTP to ${ADMIN_SMTP_USER_EMAIL} and unlock downloads.`,
+      'info'
+    );
+  };
+
+  const renderClientPaymentConfirmationCenter = () => {
+    const pendingCount = paymentRequestsQueue.filter(r => !r.isPaid || r.status === 'PENDING_ADMIN_CONFIRMATION').length;
+    const confirmedCount = paymentRequestsQueue.filter(r => r.isPaid && r.status !== 'PENDING_ADMIN_CONFIRMATION').length;
+
+    return (
+      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/30 border-2 border-amber-500/50 p-6 rounded-3xl space-y-5 shadow-2xl" id="admin-payment-confirmation-center">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-950 bg-amber-500 font-black px-2.5 py-0.5 rounded">
+                2,199 XAF Client Payment Gate
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded font-bold">
+                SMTP Dispatch: {ADMIN_SMTP_USER_EMAIL}
+              </span>
+              <span className="text-[10px] font-mono text-slate-300 bg-slate-800 border border-slate-700 px-2.5 py-0.5 rounded">
+                MoMo: 671063511, 683316486 • OM: 689115595, 640194505
+              </span>
+            </div>
+            <h2 className="text-lg md:text-xl font-extrabold text-white flex items-center gap-2 pt-1">
+              <Receipt className="w-5 h-5 text-amber-400" />
+              Client Payment Confirmation &amp; Download Link Unlock Queue (2,199 XAF)
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              When clients pay <strong>2,199 XAF</strong>, confirm and press <strong>OK</strong> below. This dispatches the confirmation message to SMTP user <strong>{ADMIN_SMTP_USER_EMAIL}</strong> — only then will their receipt and other document download links work. <span className="text-emerald-400 font-semibold">(As Admin, your own downloads &amp; exports remain 100% free without payment.)</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span className="text-xs font-mono font-bold text-amber-300 bg-amber-500/15 px-3 py-1.5 rounded-xl border border-amber-500/30">
+              {pendingCount} Awaiting OK • {confirmedCount} Unlocked
+            </span>
+            <button
+              type="button"
+              onClick={handleSimulateNewClientPayment2199}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>+ Simulate 2,199 XAF Client Payment</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {paymentRequestsQueue.length > 0 ? (
+            paymentRequestsQueue.map((req) => {
+              const isConfirmed = Boolean(req.isPaid && req.status !== 'PENDING_ADMIN_CONFIRMATION');
+              return (
+                <div
+                  key={req.receiptNo}
+                  className={`p-4 rounded-2xl border flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all ${
+                    isConfirmed
+                      ? 'bg-emerald-950/20 border-emerald-500/40'
+                      : 'bg-slate-900/90 border-amber-500/50 shadow-lg'
+                  }`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-black text-sm text-amber-400">{req.receiptNo}</span>
+                      <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {Number(req.amount || STANDARD_RECEIPT_FEE_XAF).toLocaleString()} {req.currency || 'XAF'}
+                      </span>
+                      {isConfirmed ? (
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> CONFIRMED (OK) • DOWNLOADS UNLOCKED • SMTP SENT ({ADMIN_SMTP_USER_EMAIL})
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                          ⏳ PENDING ADMIN CONFIRMATION (OK) — DOWNLOADS LOCKED
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-white font-bold">
+                      {req.payerName || 'Client'} <span className="text-slate-400 font-normal">• {req.projectName || 'MADECC Project'}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 font-mono">
+                      <span>Method: <strong className="text-slate-200">{req.paymentMethod}</strong></span>
+                      <span>Payer Tel: <strong className="text-slate-200">{req.payerPhone || 'N/A'}</strong></span>
+                      <span>Txn: <strong className="text-slate-300">{req.transactionId}</strong></span>
+                      {req.confirmedAt && (
+                        <span className="text-emerald-400">Confirmed: {req.confirmedAt}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {!isConfirmed ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPaymentToConfirm(req)}
+                          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Confirm &amp; Press OK</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAdminPressOkToConfirmPayment(req)}
+                          disabled={isConfirmingPayment}
+                          className="px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+                          title={`Immediately Confirm (OK), dispatch SMTP to ${ADMIN_SMTP_USER_EMAIL}, and unlock download links`}
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>OK (1-Click Dispatch &amp; Unlock)</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewingUnlockedReceipt(req)}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download Unlocked Receipt (PDF / Word)</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewingUnlockedReceipt(req)}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Open Gate</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-6 border border-dashed border-slate-800 rounded-2xl text-xs text-slate-400">
+              No client payment requests in queue yet. Click "+ Simulate 2,199 XAF Client Payment" above to test.
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -2344,6 +2553,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       <Download className="w-4 h-4 text-amber-400" /> A4 Navigation Manual (PDF)
                     </button>
                     <button
+                      onClick={() => downloadBuyerHandoverManualPdf({ sellerEmail: ADMIN_SMTP_USER_EMAIL })}
+                      className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white font-bold text-xs border border-emerald-500/40 rounded-xl flex items-center gap-2 transition-all shadow"
+                      id="admin-top-download-buyer-handover-btn"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" /> Buyer Handover Guide (PDF)
+                    </button>
+                    <button
                       onClick={() => setActiveAdminTab('boq-studio')}
                       className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-2 shadow shadow-amber-500/20 transition-all"
                     >
@@ -2387,6 +2603,12 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   );
                 })}
               </div>
+
+              {/* Client Payment Confirmation & Download Unlock Queue (2,199 XAF -> SMTP kreboya603@gmail.com) */}
+              {renderClientPaymentConfirmationCenter()}
+
+              {/* Non-Intrusive Website Maintenance Mode Trigger (SMTP kreboya603@gmail.com) & Buyer Brand Handover Manual */}
+              <AdminMaintenanceAndHandoverHub />
 
               {/* Two-Column Dashboard Body */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -5202,6 +5424,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 </div>
               </div>
 
+              {/* Client Payment Confirmation & Download Unlock Queue (2,199 XAF -> SMTP kreboya603@gmail.com) */}
+              {renderClientPaymentConfirmationCenter()}
+
               {/* Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
@@ -6138,6 +6363,117 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
           </div>
         </div>
+      )}
+
+      {/* ADMIN PAYMENT CONFIRMATION ("CONFIRM & PRESS OK") MODAL */}
+      {selectedPaymentToConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">
+                    Confirm Client Payment &amp; Press OK
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Dispatches confirmation to SMTP user <strong className="text-amber-400">{ADMIN_SMTP_USER_EMAIL}</strong> &amp; unlocks download links
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPaymentToConfirm(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Receipt / Document Ref:</span>
+                <span className="font-mono font-bold text-amber-400">{selectedPaymentToConfirm.receiptNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Amount Paid by Client:</span>
+                <span className="font-mono font-extrabold text-emerald-400">
+                  {Number(selectedPaymentToConfirm.amount || STANDARD_RECEIPT_FEE_XAF).toLocaleString()} {selectedPaymentToConfirm.currency || 'XAF'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Client / Payer:</span>
+                <span className="font-bold text-white">{selectedPaymentToConfirm.payerName} ({selectedPaymentToConfirm.payerPhone || 'N/A'})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Payment Channel:</span>
+                <span className="text-slate-200">{selectedPaymentToConfirm.paymentMethod}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Project:</span>
+                <span className="text-slate-200 truncate max-w-[240px]">{selectedPaymentToConfirm.projectName}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-slate-800">
+                <span className="text-slate-400">SMTP Dispatch Target:</span>
+                <span className="font-mono font-bold text-amber-300">{ADMIN_SMTP_USER_EMAIL}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Pressing <strong>OK</strong> below confirms receipt of the <strong>{Number(selectedPaymentToConfirm.amount || STANDARD_RECEIPT_FEE_XAF).toLocaleString()} XAF</strong> payment, dispatches the official confirmation message to SMTP user <strong>{ADMIN_SMTP_USER_EMAIL}</strong>, and immediately unlocks all receipt and document download links for the client.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSelectedPaymentToConfirm(null)}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isConfirmingPayment}
+                onClick={() => handleAdminPressOkToConfirmPayment(selectedPaymentToConfirm)}
+                className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 transition flex items-center gap-2 cursor-pointer"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>{isConfirmingPayment ? 'Dispatching SMTP & Unlocking...' : `OK — Confirm & Dispatch to ${ADMIN_SMTP_USER_EMAIL}`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PREVIEW / DOWNLOAD MODAL FOR SELECTED RECEIPT FROM ADMIN QUEUE */}
+      {previewingUnlockedReceipt && (
+        <ReceiptPaymentGateModal
+          isOpen={Boolean(previewingUnlockedReceipt)}
+          onClose={async () => {
+            setPreviewingUnlockedReceipt(null);
+            const updatedList = await syncPaymentRequestsWithServer();
+            setPaymentRequestsQueue(updatedList);
+          }}
+          isAdmin={true}
+          receiptDetails={{
+            receiptNo: previewingUnlockedReceipt.receiptNo,
+            projectName: previewingUnlockedReceipt.projectName || 'MADECC Infrastructure Project',
+            clientName: previewingUnlockedReceipt.payerName || 'Valued Client',
+            clientEmail: previewingUnlockedReceipt.clientEmail || '',
+            totalAmount: Number(previewingUnlockedReceipt.amount) || STANDARD_RECEIPT_FEE_XAF,
+            customFeeAmount: STANDARD_RECEIPT_FEE_XAF,
+            currency: previewingUnlockedReceipt.currency || 'XAF',
+            docType: previewingUnlockedReceipt.docType || 'boq_receipt',
+            language: 'en'
+          }}
+          onPaymentSuccess={async () => {
+            const updatedList = await syncPaymentRequestsWithServer();
+            setPaymentRequestsQueue(updatedList);
+          }}
+          showToast={showToast}
+        />
       )}
 
     </div>

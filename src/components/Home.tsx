@@ -27,7 +27,8 @@ import {
   Layers,
   Ruler,
   CheckCircle2,
-  X
+  X,
+  Compass
 } from 'lucide-react';
 import { Service, Project, Review, HeroBanner, PageContent, HeroSectionConfig, Tenant } from '../types.ts';
 import LucideIcon from './LucideIcon.tsx';
@@ -375,6 +376,16 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 id="hero-cta-consultation"
               >
                 Schedule Consultation →
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setCurrentTab('walkthrough-guide')}
+                className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                id="hero-cta-walkthrough-guide"
+              >
+                <Compass className="w-4 h-4 text-emerald-400" /> Visitor Walkthrough Guide
               </motion.button>
             </div>
 

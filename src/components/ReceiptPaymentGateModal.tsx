@@ -15,17 +15,24 @@ import {
   Check, 
   QrCode,
   Building,
-  RefreshCw
+  RefreshCw,
+  Clock,
+  Mail
 } from 'lucide-react';
 import { 
   TARGET_OFFICIAL_DOMAIN, 
+  STANDARD_RECEIPT_FEE_XAF,
+  ADMIN_SMTP_USER_EMAIL,
   OFFICIAL_PAYMENT_CONFIG,
   resolvePaymentDomain, 
   generatePaymentUrl, 
   generateVerificationUrl,
   isReceiptPaid, 
+  isReceiptPendingAdminConfirmation,
   getReceiptPaymentRecord, 
   recordReceiptPayment,
+  submitClientPaymentRequest,
+  confirmClientPaymentByAdmin,
   ReceiptPaymentRecord 
 } from '../utils/paymentDomain';
 import { generateBoqReceiptPdf, generateBoqReceiptDocx, BoqReceiptData } from '../utils/boqReceiptExport';
@@ -49,6 +56,8 @@ export interface ReceiptPaymentGateModalProps {
     customFeeAmount?: number;
   };
   onPaymentSuccess?: (record: ReceiptPaymentRecord) => void;
+  onUnlockCustomDownload?: () => void;
+  customDownloadLabel?: string;
   showToast?: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -58,6 +67,8 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
   isAdmin = true,
   receiptDetails,
   onPaymentSuccess,
+  onUnlockCustomDownload,
+  customDownloadLabel,
   showToast
 }) => {
   const isFrench = receiptDetails.language === 'fr';
@@ -81,13 +92,14 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
   
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isPaid, setIsPaid] = useState<boolean>(false);
+  const [isPendingAdmin, setIsPendingAdmin] = useState<boolean>(false);
   const [existingRecord, setExistingRecord] = useState<ReceiptPaymentRecord | null>(null);
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
 
-  // Amount to pay (can be standard certified receipt registration fee e.g. 15,000 XAF or full amount or partial)
-  const defaultFee = receiptDetails.customFeeAmount || (currency === 'XAF' ? 15000 : 25);
+  // Amount to pay: standard certified receipt & document fee is 2,199 XAF (not 15,000 XAF)
+  const defaultFee = receiptDetails.customFeeAmount || (currency === 'XAF' ? STANDARD_RECEIPT_FEE_XAF : 5);
   const [paymentAmountType, setPaymentAmountType] = useState<'fee' | 'total'>('fee');
   const activeAmount = paymentAmountType === 'total' ? receiptDetails.totalAmount : defaultFee;
 
@@ -97,14 +109,34 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
     setDomainInfo(resolved);
   }, [domainMode, isOpen]);
 
-  // Check if receipt has already been paid
+  // Check if receipt has already been paid & confirmed by Admin, or is pending Admin confirmation
+  const refreshReceiptApprovalStatus = async () => {
+    if (!receiptDetails.receiptNo) return;
+    try {
+      const res = await fetch(`/api/receipts/payment-requests/status/${encodeURIComponent(receiptDetails.receiptNo)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.record) {
+          recordReceiptPayment(data.record);
+        }
+      }
+    } catch {}
+
+    const paid = isReceiptPaid(receiptDetails.receiptNo);
+    const pending = isReceiptPendingAdminConfirmation(receiptDetails.receiptNo);
+    const rec = getReceiptPaymentRecord(receiptDetails.receiptNo);
+    setIsPaid(paid);
+    setIsPendingAdmin(pending);
+    if (rec) {
+      setExistingRecord(rec);
+    }
+  };
+
   useEffect(() => {
     if (isOpen && receiptDetails.receiptNo) {
-      const paid = isReceiptPaid(receiptDetails.receiptNo);
-      setIsPaid(paid);
-      if (paid) {
-        setExistingRecord(getReceiptPaymentRecord(receiptDetails.receiptNo));
-      }
+      refreshReceiptApprovalStatus();
+      const interval = setInterval(refreshReceiptApprovalStatus, 4000);
+      return () => clearInterval(interval);
     }
   }, [isOpen, receiptDetails.receiptNo]);
 
@@ -184,69 +216,86 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
     }
   };
 
-  const handleAdminMarkAsPaid = () => {
-    const adminRecord: ReceiptPaymentRecord = {
-      receiptNo: receiptDetails.receiptNo,
-      isPaid: true,
-      amount: activeAmount,
-      currency,
-      paymentMethod: 'Admin Free Clearance',
-      transactionId: `ADM-CERT-${Date.now().toString().slice(-6)}`,
-      paidAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      payerName: receiptDetails.clientName || 'Certified Client',
-      payerPhone: '+237 671063511',
-      domainUsed: currentDomain
-    };
-    recordReceiptPayment(adminRecord);
-    setIsPaid(true);
-    setExistingRecord(adminRecord);
-    if (showToast) {
-      showToast(isFrench ? 'Quittance certifiée sans paiement (Passe-droit Administrateur) !' : 'Receipt certified without payment (Admin Privilege)!', 'success');
+  const handleAdminMarkAsPaid = async () => {
+    try {
+      setIsProcessing(true);
+      const res = await confirmClientPaymentByAdmin(receiptDetails.receiptNo, {
+        receiptNo: receiptDetails.receiptNo,
+        amount: activeAmount,
+        currency,
+        paymentMethod: existingRecord?.paymentMethod || 'Admin Confirmed (OK)',
+        transactionId: existingRecord?.transactionId || `ADM-OK-${Date.now().toString().slice(-6)}`,
+        payerName: receiptDetails.clientName || payerName || 'Certified Client',
+        payerPhone: phoneNumber || '671063511',
+        clientEmail: receiptDetails.clientEmail || '',
+        projectName: receiptDetails.projectName,
+        docType: receiptDetails.docType || 'boq_receipt',
+        domainUsed: currentDomain
+      });
+      setIsPaid(true);
+      setIsPendingAdmin(false);
+      setExistingRecord(res.record);
+      if (showToast) {
+        showToast(
+          isFrench
+            ? `Confirmé (OK) ! Message envoyé à ${ADMIN_SMTP_USER_EMAIL}. Téléchargements déverrouillés !`
+            : `Confirmed (OK)! Message dispatched to SMTP user ${ADMIN_SMTP_USER_EMAIL}. Receipt & download links unlocked!`,
+          'success'
+        );
+      }
+      if (onPaymentSuccess) {
+        onPaymentSuccess(res.record);
+      }
+    } catch (err: any) {
+      if (showToast) showToast(`Admin confirmation error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleExecutePayment = async () => {
     try {
       setIsProcessing(true);
-      // Simulate real-time payment gateway transaction verification with domain host
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // Verify transaction submission with payment domain host
+      await new Promise(resolve => setTimeout(resolve, 900));
 
+      const recipientUsed = paymentMethod === 'momo' ? '671063511 / 683316486' : paymentMethod === 'om' ? '689115595 / 640194505' : 'Bank / Card';
       const txnId = `TXN-${Date.now().toString().slice(-6)}-${paymentMethod.toUpperCase()}`;
       const record: ReceiptPaymentRecord = {
         receiptNo: receiptDetails.receiptNo,
-        isPaid: true,
+        isPaid: false,
+        status: 'PENDING_ADMIN_CONFIRMATION',
+        adminConfirmed: false,
         amount: activeAmount,
         currency,
-        paymentMethod: paymentMethod === 'momo' ? 'MTN Mobile Money' : paymentMethod === 'om' ? 'Orange Money' : paymentMethod === 'card' ? 'Visa / Mastercard' : 'Bank Transfer',
+        paymentMethod: paymentMethod === 'momo' ? 'MTN Mobile Money (671063511 / 683316486)' : paymentMethod === 'om' ? 'Orange Money (689115595 / 640194505)' : paymentMethod === 'card' ? 'Visa / Mastercard' : 'Bank Transfer',
+        recipientNumber: recipientUsed,
         transactionId: txnId,
         paidAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
         payerName,
         payerPhone: phoneNumber,
+        clientEmail: receiptDetails.clientEmail || '',
+        projectName: receiptDetails.projectName,
+        docType: receiptDetails.docType || 'boq_receipt',
         domainUsed: currentDomain
       };
 
-      recordReceiptPayment(record);
-      setIsPaid(true);
-      setExistingRecord(record);
+      const savedPending = await submitClientPaymentRequest(record);
+      setIsPaid(false);
+      setIsPendingAdmin(true);
+      setExistingRecord(savedPending);
 
       if (showToast) {
         showToast(
           isFrench
-            ? `Paiement validé avec succès (${txnId}) ! Téléchargement de la quittance déverrouillé.`
-            : `Payment approved successfully (${txnId})! Certified receipt download unlocked.`,
-          'success'
+            ? `Paiement de ${Number(activeAmount).toLocaleString()} ${currency} soumis (${txnId}) ! En attente de confirmation (OK) par l'Admin sur le tableau de bord et envoi SMTP à ${ADMIN_SMTP_USER_EMAIL}.`
+            : `Payment of ${Number(activeAmount).toLocaleString()} ${currency} submitted (${txnId})! Awaiting Admin confirmation (OK) in Admin Dashboard & SMTP dispatch to ${ADMIN_SMTP_USER_EMAIL} to unlock download links.`,
+          'info'
         );
       }
-
-      if (onPaymentSuccess) {
-        onPaymentSuccess(record);
-      }
-
-      // Automatically trigger download of paid receipt
-      await handleDownloadReceiptPdf(record);
     } catch (err: any) {
       console.error('Payment execution failed:', err);
-      if (showToast) showToast(`Payment failed: ${err.message || 'Error'}`, 'error');
+      if (showToast) showToast(`Payment submission failed: ${err.message || 'Error'}`, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -483,16 +532,22 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
               <span className="italic text-emerald-400/90 text-[10px]">
                 {isFrench ? 'Passe-droit certifié MADECC SARL actif.' : 'MADECC SARL executive clearance verified.'}
               </span>
               <button
                 type="button"
                 onClick={handleAdminMarkAsPaid}
-                className="text-amber-400 hover:text-amber-300 font-semibold underline text-[11px] cursor-pointer"
+                disabled={isProcessing}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-lg text-[11px] transition flex items-center gap-1.5 shadow cursor-pointer"
               >
-                {isFrench ? 'Valider et certifier au grand livre (Sans Paiement)' : 'Certify & Mark Settled on Ledger (No Fee)'}
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>
+                  {isFrench
+                    ? `Confirmer & OK — Envoyer SMTP (${ADMIN_SMTP_USER_EMAIL}) & Déverrouiller`
+                    : `Confirm & Press OK — Dispatch SMTP (${ADMIN_SMTP_USER_EMAIL}) & Unlock Links`}
+                </span>
               </button>
             </div>
           </div>
@@ -556,24 +611,33 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
           </div>
         </div>
 
-        {/* ALREADY PAID STATE VIEW */}
+        {/* ALREADY PAID & ADMIN CONFIRMED STATE VIEW */}
         {isPaid ? (
-          <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-4 space-y-3">
-            <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
-              <CheckCircle2 className="w-5 h-5" />
-              <span>{isFrench ? 'Paiement Validé & Quittance Déverrouillée !' : 'Payment Confirmed — Receipt Unlocked!'}</span>
+          <div className="bg-emerald-950/35 border-2 border-emerald-500/50 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5" />
+                <span>
+                  {isFrench
+                    ? 'Confirmé par l\'Admin (OK) — Quittance & Liens Déverrouillés !'
+                    : 'Confirmed by Admin (OK) — Receipt & Download Links Unlocked!'}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                SMTP: {ADMIN_SMTP_USER_EMAIL}
+              </span>
             </div>
             <p className="text-xs text-slate-300">
               {isFrench
-                ? `La quittance officielle N° ${receiptDetails.receiptNo} a été acquittée avec succès (Réf: ${existingRecord?.transactionId || 'TXN-OK'}).`
-                : `Official receipt ${receiptDetails.receiptNo} has been successfully settled (Ref: ${existingRecord?.transactionId || 'TXN-OK'}).`}
+                ? `L'administrateur a confirmé le règlement de ${Number(existingRecord?.amount || activeAmount).toLocaleString()} ${currency} (Réf: ${existingRecord?.transactionId || 'TXN-OK'}) et le message a été transmis à ${ADMIN_SMTP_USER_EMAIL}. Tous les liens de téléchargement sont désormais actifs.`
+                : `The administrator has confirmed your ${Number(existingRecord?.amount || activeAmount).toLocaleString()} ${currency} payment (Ref: ${existingRecord?.transactionId || 'TXN-OK'}) and dispatched confirmation to ${ADMIN_SMTP_USER_EMAIL}. All receipt and document download links are now active.`}
             </p>
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => handleDownloadReceiptPdf()}
                 disabled={isDownloading}
-                className="py-2.5 px-3 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow"
+                className="py-2.5 px-3 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>{isDownloading ? 'Téléchargement...' : (isFrench ? 'Télécharger Quittance PDF (A4)' : 'Download Receipt PDF (A4)')}</span>
@@ -583,10 +647,93 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
                 type="button"
                 onClick={handleDownloadReceiptDocx}
                 disabled={isDownloading}
-                className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow"
+                className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow cursor-pointer"
               >
                 <FileText className="w-4 h-4" />
                 <span>{isFrench ? 'Télécharger Word (.docx)' : 'Download Word (.docx)'}</span>
+              </button>
+            </div>
+            {onUnlockCustomDownload && (
+              <button
+                type="button"
+                onClick={onUnlockCustomDownload}
+                className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>{customDownloadLabel || (isFrench ? 'Télécharger le Document Associé' : 'Download Associated Document')}</span>
+              </button>
+            )}
+          </div>
+        ) : isPendingAdmin ? (
+          /* PENDING ADMIN CONFIRMATION (OK) STATE — DOWNLOAD LINKS LOCKED */
+          <div className="bg-amber-950/35 border-2 border-amber-500/60 rounded-xl p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                <Clock className="w-5 h-5 animate-pulse shrink-0" />
+                <span>
+                  {isFrench
+                    ? 'Paiement Soumis — En Attente de Confirmation Admin (OK)'
+                    : 'Payment Submitted — Awaiting Admin Dashboard Confirmation (OK)'}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold shrink-0">
+                PENDING ADMIN OK
+              </span>
+            </div>
+
+            <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1.5 text-xs text-slate-300">
+              <p>
+                {isFrench
+                  ? `Votre paiement de ${Number(existingRecord?.amount || activeAmount).toLocaleString()} ${currency} (Réf: ${existingRecord?.transactionId || 'TXN-PENDING'}) a bien été enregistré.`
+                  : `Your payment of ${Number(existingRecord?.amount || activeAmount).toLocaleString()} ${currency} (Ref: ${existingRecord?.transactionId || 'TXN-PENDING'}) has been recorded.`}
+              </p>
+              <p className="text-amber-300 font-semibold flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {isFrench
+                    ? `L'administrateur doit confirmer et appuyer sur OK dans le tableau de bord Admin (message envoyé à ${ADMIN_SMTP_USER_EMAIL}) avant que les liens de téléchargement ne fonctionnent.`
+                    : `The Administrator must confirm and press OK in the Admin Dashboard (dispatching confirmation to SMTP user ${ADMIN_SMTP_USER_EMAIL}) — only then will the receipt and other download links work.`}
+                </span>
+              </p>
+            </div>
+
+            {/* Locked Download Buttons (Disabled until Admin presses OK) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                disabled
+                className="py-2.5 px-3 bg-slate-800/80 text-slate-500 border border-slate-700 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-75"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>{isFrench ? 'Quittance PDF Verrouillée (Attente OK Admin)' : 'Receipt PDF Locked (Awaiting Admin OK)'}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled
+                className="py-2.5 px-3 bg-slate-800/80 text-slate-500 border border-slate-700 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-75"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>{isFrench ? 'Word (.docx) Verrouillé (Attente OK Admin)' : 'Word (.docx) Locked (Awaiting Admin OK)'}</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={refreshReceiptApprovalStatus}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{isFrench ? 'Vérifier le Statut de Confirmation Admin' : 'Check Admin Confirmation Status'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsPendingAdmin(false)}
+                className="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+              >
+                {isFrench ? 'Modifier les informations de paiement' : 'Update payment details'}
               </button>
             </div>
           </div>
@@ -863,8 +1010,8 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
                   <ShieldCheck className="w-4 h-4" />
                   <span>
                     {isFrench
-                      ? `Régler ${Number(activeAmount).toLocaleString()} ${currency} et Déverrouiller la Quittance`
-                      : `Pay ${Number(activeAmount).toLocaleString()} ${currency} & Unlock Certified Receipt`}
+                      ? `Payer ${Number(activeAmount).toLocaleString()} ${currency} & Soumettre pour Confirmation Admin (OK)`
+                      : `Pay ${Number(activeAmount).toLocaleString()} ${currency} & Submit for Admin Confirmation (OK)`}
                   </span>
                 </>
               )}

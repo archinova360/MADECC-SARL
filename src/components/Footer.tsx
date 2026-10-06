@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
+import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
 import { 
   HardHat, 
   Mail, 
@@ -259,6 +260,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <ul className="space-y-3.5 text-sm">
               {[
                 { label: 'Home Page', id: 'home' },
+                { label: 'Visitor & Client Walkthrough Guide', id: 'walkthrough-guide' },
                 { label: 'Our Services', id: 'services' },
                 { label: 'Tenders & Procurement', id: 'tenders' },
                 { label: 'FAQ / Help Centre', id: 'faq' },
@@ -290,6 +292,16 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 >
                   <FileDown className="w-3.5 h-3.5 text-amber-500" />
                   Navigation Manual (A4 PDF)
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => downloadBuyerHandoverManualPdf()}
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors text-left font-bold flex items-center gap-1.5"
+                  id="footer-download-buyer-handover-guide"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-emerald-500" />
+                  Buyer Brand Handover Manual (PDF)
                 </button>
               </li>
             </ul>

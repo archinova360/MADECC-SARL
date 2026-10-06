@@ -580,4 +580,443 @@ export function setupDocumentRoutes(app: express.Express) {
       res.status(500).json({ error: error.message || 'Failed to email receipt' });
     }
   });
+
+  // ==========================================
+  // --- CLIENT PAYMENT CONFIRMATION & ADMIN UNLOCK QUEUE (2,199 XAF) ---
+  // ==========================================
+
+  const ADMIN_SMTP_USER = 'kreboya603@gmail.com';
+  const paymentRequestsStore = new Map<string, any>([
+    [
+      'RCP-2026-0001',
+      {
+        id: 'PAY-REQ-1001',
+        receiptNo: 'RCP-2026-0001',
+        isPaid: false,
+        status: 'PENDING_ADMIN_CONFIRMATION',
+        adminConfirmed: false,
+        amount: 2199,
+        currency: 'XAF',
+        paymentMethod: 'MTN Mobile Money (671063511)',
+        recipientNumber: '671063511',
+        transactionId: 'TXN-MOMO-849201',
+        paidAt: new Date(Date.now() - 1000 * 60 * 15).toISOString().replace('T', ' ').slice(0, 19),
+        payerName: 'Société Générale de Construction (SGC)',
+        payerPhone: '677 412 890',
+        clientEmail: 'direction@sgc-cameroun.cm',
+        projectName: 'R+4 Commercial Complex & BOQ Dossier — Douala Akwa',
+        docType: 'boq_receipt',
+        domainUsed: 'https://madeccgroup.online'
+      }
+    ],
+    [
+      'RCP-PROP-2026-02',
+      {
+        id: 'PAY-REQ-1002',
+        receiptNo: 'RCP-PROP-2026-02',
+        isPaid: false,
+        status: 'PENDING_ADMIN_CONFIRMATION',
+        adminConfirmed: false,
+        amount: 2199,
+        currency: 'XAF',
+        paymentMethod: 'Orange Money (689115595)',
+        recipientNumber: '689115595',
+        transactionId: 'TXN-OM-519034',
+        paidAt: new Date(Date.now() - 1000 * 60 * 42).toISOString().replace('T', ' ').slice(0, 19),
+        payerName: 'Dr. Emmanuel Ndi & Associates',
+        payerPhone: '699 104 522',
+        clientEmail: 'emmanuel.ndi@cabinet-ndi.cm',
+        projectName: 'Yaoundé Mbankolo Duplex Villa — Certified Proposal & Receipt',
+        docType: 'proposal_receipt',
+        domainUsed: 'https://madeccgroup.online'
+      }
+    ]
+  ]);
+
+  // 13. Get all payment requests (for Admin Dashboard & Client Sync)
+  app.get('/api/receipts/payment-requests', async (req, res) => {
+    try {
+      const records = Array.from(paymentRequestsStore.values());
+      res.json({ success: true, records });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to fetch payment requests' });
+    }
+  });
+
+  // 14. Get single payment status by receiptNo
+  app.get('/api/receipts/payment-requests/status/:receiptNo', async (req, res) => {
+    try {
+      const receiptNo = req.params.receiptNo;
+      const record = paymentRequestsStore.get(receiptNo) || null;
+      res.json({ success: true, record });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 15. Client submits 2,199 XAF payment -> awaits Admin confirmation (OK) in Admin Dashboard
+  app.post('/api/receipts/payment-requests', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const receiptNo = body.receiptNo || `RCP-${Date.now().toString().slice(-6)}`;
+      const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+      const pendingRecord = {
+        id: body.id || `PAY-REQ-${Date.now().toString().slice(-5)}`,
+        receiptNo,
+        isPaid: false,
+        status: 'PENDING_ADMIN_CONFIRMATION',
+        adminConfirmed: false,
+        amount: Number(body.amount) || 2199,
+        currency: body.currency || 'XAF',
+        paymentMethod: body.paymentMethod || 'MTN Mobile Money (671063511)',
+        recipientNumber: body.recipientNumber || '671063511',
+        transactionId: body.transactionId || `TXN-${Date.now().toString().slice(-6)}`,
+        paidAt: body.paidAt || nowStr,
+        payerName: body.payerName || 'Valued Client',
+        payerPhone: body.payerPhone || '671063511',
+        clientEmail: body.clientEmail || '',
+        projectName: body.projectName || 'MADECC Infrastructure Project',
+        docType: body.docType || 'boq_receipt',
+        domainUsed: body.domainUsed || 'https://madeccgroup.online'
+      };
+
+      paymentRequestsStore.set(receiptNo, pendingRecord);
+
+      // Alert Admin (kreboya603@gmail.com) that a payment is awaiting confirmation in Admin Dashboard
+      const alertSubject = `[MADECC ACTION REQUIRED] Client Paid ${pendingRecord.amount.toLocaleString()} ${pendingRecord.currency} — Confirm & Press OK in Admin Dashboard (${receiptNo})`;
+      const alertText = `A client has submitted a payment of ${pendingRecord.amount.toLocaleString()} ${pendingRecord.currency} for Receipt/Document ${receiptNo}.\n\nPayer: ${pendingRecord.payerName} (${pendingRecord.payerPhone})\nMethod: ${pendingRecord.paymentMethod}\nTransaction Ref: ${pendingRecord.transactionId}\nProject: ${pendingRecord.projectName}\n\nPlease open the MADECC Admin Dashboard and press "Confirm & OK" to dispatch the official confirmation and unlock all receipt and document download links.`;
+      const alertHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 2px solid #f59e0b; border-radius: 12px; background-color: #ffffff; color: #0f172a;">
+          <h2 style="color: #d97706; margin-top: 0;">Payment Submitted — Awaiting Admin Confirmation (OK)</h2>
+          <p>A client has completed a <strong>${pendingRecord.amount.toLocaleString()} ${pendingRecord.currency}</strong> payment and is waiting for your confirmation in the Admin Dashboard before download links unlock:</p>
+          <ul style="line-height: 1.7; font-size: 14px;">
+            <li><strong>Receipt / Document Ref:</strong> ${receiptNo}</li>
+            <li><strong>Amount Paid:</strong> ${pendingRecord.amount.toLocaleString()} ${pendingRecord.currency}</li>
+            <li><strong>Payment Method:</strong> ${pendingRecord.paymentMethod}</li>
+            <li><strong>Transaction ID:</strong> ${pendingRecord.transactionId}</li>
+            <li><strong>Client / Payer:</strong> ${pendingRecord.payerName} (${pendingRecord.payerPhone})</li>
+            <li><strong>Project:</strong> ${pendingRecord.projectName}</li>
+          </ul>
+          <p style="font-size: 13px; color: #475569;">Log in to the <strong>Admin Dashboard</strong> and click <strong>Confirm &amp; OK</strong> to dispatch the confirmation and unlock the client's receipt and document download links.</p>
+        </div>
+      `;
+      sendNotificationEmail(alertSubject, alertText, alertHtml, { to: ADMIN_SMTP_USER }).catch(err => {
+        console.warn('Initial payment alert email note:', err);
+      });
+
+      res.json({
+        success: true,
+        record: pendingRecord,
+        message: 'Payment submitted! Awaiting Admin confirmation (OK) in Admin Dashboard before download links unlock.'
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to submit payment request' });
+    }
+  });
+
+  // 16. Admin presses "Confirm & OK" in Admin Dashboard -> Dispatches message to SMTP user kreboya603@gmail.com & unlocks downloads
+  app.post('/api/receipts/payment-requests/confirm', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const receiptNo = body.receiptNo;
+      if (!receiptNo) {
+        return res.status(400).json({ error: 'receiptNo is required to confirm payment.' });
+      }
+
+      const existing = paymentRequestsStore.get(receiptNo) || {};
+      const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+      const confirmedRecord = {
+        ...existing,
+        ...body,
+        receiptNo,
+        amount: Number(body.amount || existing.amount) || 2199,
+        currency: body.currency || existing.currency || 'XAF',
+        isPaid: true,
+        adminConfirmed: true,
+        status: 'ADMIN_CONFIRMED',
+        confirmedAt: nowStr,
+        confirmedBy: ADMIN_SMTP_USER,
+        smtpDispatchedTo: ADMIN_SMTP_USER,
+        smtpDispatchedAt: nowStr
+      };
+
+      paymentRequestsStore.set(receiptNo, confirmedRecord);
+
+      const verifyAndDownloadUrl = `${confirmedRecord.domainUsed || 'https://madeccgroup.online'}/?pay=1&receipt=${encodeURIComponent(receiptNo)}&amount=${confirmedRecord.amount}&currency=${confirmedRecord.currency}&client=${encodeURIComponent(confirmedRecord.payerName || 'Client')}&project=${encodeURIComponent(confirmedRecord.projectName || 'Project')}`;
+
+      // Dispatch official confirmation message to SMTP user kreboya603@gmail.com
+      const smtpSubject = `[MADECC ADMIN CONFIRMED - OK] Payment of ${confirmedRecord.amount.toLocaleString()} ${confirmedRecord.currency} Approved & Download Links Unlocked (${receiptNo})`;
+      const smtpText = `ADMIN CONFIRMATION (OK) DISPATCHED TO ${ADMIN_SMTP_USER}\n\nPayment for Receipt/Document ${receiptNo} has been confirmed and approved by the Administrator.\n\nAmount Confirmed: ${confirmedRecord.amount.toLocaleString()} ${confirmedRecord.currency}\nPayment Method: ${confirmedRecord.paymentMethod || 'Mobile Money'}\nTransaction ID: ${confirmedRecord.transactionId}\nClient / Payer: ${confirmedRecord.payerName} (${confirmedRecord.payerPhone || 'N/A'})\nProject: ${confirmedRecord.projectName}\nConfirmed At: ${nowStr}\nSMTP User Dispatched: ${ADMIN_SMTP_USER}\n\nSTATUS: ALL RECEIPT & DOCUMENT DOWNLOAD LINKS ARE NOW UNLOCKED AND ACTIVE.\nDownload & Verification Link: ${verifyAndDownloadUrl}`;
+      const smtpHtml = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 28px; border: 2px solid #10b981; border-radius: 14px; background-color: #ffffff; color: #0f172a;">
+          <div style="background-color: #0f172a; padding: 18px 24px; border-radius: 10px; margin-bottom: 20px; border-bottom: 3px solid #10b981;">
+            <h2 style="color: #10b981; margin: 0; font-size: 18px; text-transform: uppercase;">✓ Admin Confirmation (OK) — Downloads Unlocked</h2>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px; font-family: monospace;">Dispatched to SMTP User: ${ADMIN_SMTP_USER}</p>
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; color: #334155;">
+            You have confirmed and pressed <strong>OK</strong> in the MADECC Admin Dashboard for receipt/document <strong>${receiptNo}</strong>. All receipt PDF, Word (.docx), BOQ, and document download links are now active and unlocked for the client.
+          </p>
+          <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; margin: 18px 0; font-size: 13px; line-height: 1.8;">
+            <div><strong>Receipt / Document No:</strong> <span style="font-family: monospace; color: #d97706; font-weight: bold;">${receiptNo}</span></div>
+            <div><strong>Confirmed Amount:</strong> <span style="color: #16a34a; font-weight: 800;">${confirmedRecord.amount.toLocaleString()} ${confirmedRecord.currency}</span></div>
+            <div><strong>Payment Channel:</strong> ${confirmedRecord.paymentMethod || 'Mobile Money'}</div>
+            <div><strong>Transaction Reference:</strong> <span style="font-family: monospace;">${confirmedRecord.transactionId}</span></div>
+            <div><strong>Client / Payer:</strong> ${confirmedRecord.payerName} (${confirmedRecord.payerPhone || 'N/A'})</div>
+            <div><strong>Project:</strong> ${confirmedRecord.projectName}</div>
+            <div><strong>Confirmed By (SMTP User):</strong> <span style="font-family: monospace;">${ADMIN_SMTP_USER}</span></div>
+            <div><strong>Download Links Status:</strong> <span style="color: #16a34a; font-weight: bold;">UNLOCKED &amp; ACTIVE</span></div>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${verifyAndDownloadUrl}" style="background-color: #10b981; color: #0f172a; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 13px; display: inline-block;">
+              Access Unlocked Receipt &amp; Download Links &rarr;
+            </a>
+          </div>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Official SMTP Dispatch to ${ADMIN_SMTP_USER}
+          </p>
+        </div>
+      `;
+
+      await sendNotificationEmail(smtpSubject, smtpText, smtpHtml, {
+        to: ADMIN_SMTP_USER,
+        replyTo: confirmedRecord.clientEmail || ADMIN_SMTP_USER
+      });
+
+      // Also notify client email if provided so their download link works directly from email
+      if (confirmedRecord.clientEmail && confirmedRecord.clientEmail.includes('@')) {
+        sendEmail(confirmedRecord.clientEmail.trim(), smtpSubject, smtpText, smtpHtml).catch(err => {
+          console.warn('Client unlock email note:', err);
+        });
+      }
+
+      res.json({
+        success: true,
+        record: confirmedRecord,
+        smtpDispatchedTo: ADMIN_SMTP_USER,
+        message: `Confirmed (OK)! Notification dispatched to SMTP user ${ADMIN_SMTP_USER}. Receipt ${receiptNo} and all download links are now unlocked.`
+      });
+    } catch (error: any) {
+      console.error('Error confirming payment request:', error);
+      res.status(500).json({ error: error.message || 'Failed to confirm payment' });
+    }
+  });
+
+  // =========================================================================
+  // --- NON-INTRUSIVE WEBSITE MAINTENANCE MODE & SMTP DISPATCH (kreboya603@gmail.com) ---
+  // =========================================================================
+  interface MaintenanceSubscriber {
+    email: string;
+    name?: string;
+    phone?: string;
+    note?: string;
+    subscribedAt: string;
+  }
+
+  interface MaintenanceState {
+    enabled: boolean;
+    mode: 'non_intrusive_banner' | 'soft_dismissible_modal';
+    title: string;
+    message: string;
+    estimatedCompletion: string;
+    affectedModules: string;
+    allowFullBrowsing: boolean;
+    smtpUser: string;
+    lastTriggeredAt: string;
+    lastSmtpDispatchAt?: string;
+    subscribers: MaintenanceSubscriber[];
+  }
+
+  let currentMaintenanceState: MaintenanceState = {
+    enabled: false,
+    mode: 'non_intrusive_banner',
+    title: 'Scheduled Platform Enhancement & Maintenance in Progress',
+    message: 'We are currently performing background engineering database & server optimizations. You can continue browsing all pages, using calculators, and exploring the website without any interruption.',
+    estimatedCompletion: 'Today at 18:00 WAT',
+    affectedModules: 'Background Sync & Cloud Backup Only (All Public Pages & Calculators 100% Active)',
+    allowFullBrowsing: true,
+    smtpUser: ADMIN_SMTP_USER,
+    lastTriggeredAt: new Date().toISOString(),
+    subscribers: [
+      {
+        email: ADMIN_SMTP_USER,
+        name: 'Executive Admin Monitor',
+        phone: '+237 671 063 511',
+        note: 'Primary SMTP Maintenance Dispatch Account',
+        subscribedAt: new Date().toISOString()
+      }
+    ]
+  };
+
+  app.get('/api/maintenance/status', (_req, res) => {
+    res.json({
+      success: true,
+      maintenance: currentMaintenanceState
+    });
+  });
+
+  app.post('/api/maintenance/toggle', async (req, res) => {
+    try {
+      const {
+        enabled,
+        mode,
+        title,
+        message,
+        estimatedCompletion,
+        affectedModules,
+        recipientEmails
+      } = req.body || {};
+
+      const nowIso = new Date().toISOString();
+      currentMaintenanceState = {
+        ...currentMaintenanceState,
+        enabled: typeof enabled === 'boolean' ? enabled : !currentMaintenanceState.enabled,
+        mode: mode || currentMaintenanceState.mode || 'non_intrusive_banner',
+        title: title || currentMaintenanceState.title,
+        message: message || currentMaintenanceState.message,
+        estimatedCompletion: estimatedCompletion || currentMaintenanceState.estimatedCompletion,
+        affectedModules: affectedModules || currentMaintenanceState.affectedModules,
+        allowFullBrowsing: true,
+        smtpUser: ADMIN_SMTP_USER,
+        lastTriggeredAt: nowIso,
+        lastSmtpDispatchAt: nowIso
+      };
+
+      const statusLabel = currentMaintenanceState.enabled
+        ? 'ACTIVE (Non-Intrusive Visitor Notification Enabled)'
+        : 'COMPLETED / NORMAL OPERATIONS RESTORED';
+
+      const smtpSubject = currentMaintenanceState.enabled
+        ? `[MADECC MAINTENANCE NOTICE] ${currentMaintenanceState.title} (Non-Intrusive Mode Active)`
+        : `[MADECC MAINTENANCE COMPLETE] Scheduled Maintenance Finished — All Systems 100% Optimal`;
+
+      const smtpText = `OFFICIAL WEBSITE MAINTENANCE NOTIFICATION\nDispatched via SMTP User: ${ADMIN_SMTP_USER}\n\nStatus: ${statusLabel}\nNotice Title: ${currentMaintenanceState.title}\nVisitor Message: ${currentMaintenanceState.message}\nEstimated Completion: ${currentMaintenanceState.estimatedCompletion}\nModules Note: ${currentMaintenanceState.affectedModules}\nVisitor Experience: Non-Intrusive (Visitors can browse, calculate budgets, and use the website without inconvenience).\nTriggered At: ${nowIso}\n\nFor immediate assistance, contact ${ADMIN_SMTP_USER} or WhatsApp +237 671 063 511.`;
+
+      const smtpHtml = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 28px; border: 2px solid ${currentMaintenanceState.enabled ? '#f59e0b' : '#10b981'}; border-radius: 14px; background-color: #ffffff; color: #0f172a;">
+          <div style="background-color: #0f172a; padding: 18px 24px; border-radius: 10px; margin-bottom: 20px; border-bottom: 3px solid ${currentMaintenanceState.enabled ? '#f59e0b' : '#10b981'};">
+            <h2 style="color: ${currentMaintenanceState.enabled ? '#f59e0b' : '#10b981'}; margin: 0; font-size: 18px; text-transform: uppercase;">
+              ${currentMaintenanceState.enabled ? '⚙️ Non-Intrusive Maintenance Mode Activated' : '✓ Scheduled Maintenance Completed'}
+            </h2>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px; font-family: monospace;">
+              Triggered in Admin Dashboard &bull; Dispatched via SMTP User: ${ADMIN_SMTP_USER}
+            </p>
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; color: #334155;">
+            ${currentMaintenanceState.message}
+          </p>
+          <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; margin: 18px 0; font-size: 13px; line-height: 1.8;">
+            <div><strong>Current Status:</strong> <span style="color: ${currentMaintenanceState.enabled ? '#d97706' : '#16a34a'}; font-weight: bold;">${statusLabel}</span></div>
+            <div><strong>Display Mode:</strong> ${currentMaintenanceState.mode === 'soft_dismissible_modal' ? 'Polite Dismissible Welcome Notice + Top Status Bar' : 'Non-Intrusive Top Status Bar & Floating Badge'}</div>
+            <div><strong>Estimated Completion:</strong> ${currentMaintenanceState.estimatedCompletion}</div>
+            <div><strong>Scope:</strong> ${currentMaintenanceState.affectedModules}</div>
+            <div><strong>Visitor Convenience Guarantee:</strong> <span style="color: #16a34a; font-weight: bold;">Zero Interruption — Full Website &amp; Calculators Remain Accessible</span></div>
+            <div><strong>Authorized SMTP User:</strong> <span style="font-family: monospace;">${ADMIN_SMTP_USER}</span></div>
+          </div>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0;">
+            MADECC GROUP S.A.R.L. &bull; Official Maintenance Advisory via ${ADMIN_SMTP_USER}
+          </p>
+        </div>
+      `;
+
+      // 1. Dispatch to Admin SMTP user kreboya603@gmail.com
+      await sendNotificationEmail(smtpSubject, smtpText, smtpHtml, {
+        to: ADMIN_SMTP_USER,
+        replyTo: ADMIN_SMTP_USER
+      });
+
+      // 2. Dispatch to any subscribed visitors or extra recipient emails specified by Admin
+      const extraEmails: string[] = Array.isArray(recipientEmails)
+        ? recipientEmails
+        : typeof recipientEmails === 'string'
+        ? recipientEmails.split(',').map((e: string) => e.trim()).filter(Boolean)
+        : [];
+
+      const subscriberEmails = currentMaintenanceState.subscribers
+        .map(s => s.email.trim())
+        .filter(e => e.includes('@') && e.toLowerCase() !== ADMIN_SMTP_USER.toLowerCase());
+
+      const allTargetClients = Array.from(new Set([...extraEmails, ...subscriberEmails])).filter(e => e.includes('@'));
+
+      for (const clientEmail of allTargetClients) {
+        sendEmail(clientEmail, smtpSubject, smtpText, smtpHtml).catch(err => {
+          console.warn('Maintenance client email dispatch note:', err);
+        });
+      }
+
+      res.json({
+        success: true,
+        maintenance: currentMaintenanceState,
+        smtpDispatchedTo: ADMIN_SMTP_USER,
+        clientRecipientsCount: allTargetClients.length,
+        message: `Maintenance mode ${currentMaintenanceState.enabled ? 'ACTIVATED (Non-Intrusive)' : 'DEACTIVATED'} and SMTP notification dispatched via ${ADMIN_SMTP_USER}!`
+      });
+    } catch (error: any) {
+      console.error('Error toggling maintenance status:', error);
+      res.status(500).json({ error: error.message || 'Failed to update maintenance mode' });
+    }
+  });
+
+  app.post('/api/maintenance/visitor-subscribe', async (req, res) => {
+    try {
+      const { email, name, phone, note } = req.body || {};
+      if (!email || !String(email).includes('@')) {
+        return res.status(400).json({ error: 'Please provide a valid email address.' });
+      }
+
+      const cleanEmail = String(email).trim();
+      const subRecord: MaintenanceSubscriber = {
+        email: cleanEmail,
+        name: name ? String(name).trim() : 'Website Visitor',
+        phone: phone ? String(phone).trim() : '',
+        note: note ? String(note).trim() : 'Requested maintenance status update via non-intrusive banner',
+        subscribedAt: new Date().toISOString()
+      };
+
+      const exists = currentMaintenanceState.subscribers.some(
+        s => s.email.toLowerCase() === cleanEmail.toLowerCase()
+      );
+      if (!exists) {
+        currentMaintenanceState.subscribers.unshift(subRecord);
+      }
+
+      // Dispatch immediate polite confirmation via SMTP user kreboya603@gmail.com
+      const visitorSubject = `[MADECC GROUP] Maintenance Status & Priority Support Confirmation`;
+      const visitorText = `Hello ${subRecord.name},\n\nThank you for visiting MADECC GROUP. We have registered your email (${cleanEmail}) for live maintenance updates from our SMTP desk (${ADMIN_SMTP_USER}).\n\nCurrent Notice: ${currentMaintenanceState.title}\nDetails: ${currentMaintenanceState.message}\nEstimated Completion: ${currentMaintenanceState.estimatedCompletion}\n\nYou can continue browsing and using all calculators on our website without any inconvenience. Our team will notify you as soon as scheduled maintenance is complete.\n\nWarm regards,\nMADECC GROUP Engineering Desk (${ADMIN_SMTP_USER})`;
+
+      const visitorHtml = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #f59e0b; border-radius: 12px; background-color: #ffffff; color: #0f172a;">
+          <h3 style="color: #d97706; margin-top: 0;">✓ You're Subscribed to Live Maintenance Updates</h3>
+          <p style="font-size: 14px; color: #334155; line-height: 1.6;">
+            Hello <strong>${subRecord.name}</strong>, thank you for visiting <strong>MADECC GROUP</strong>. While our team completes background maintenance (<em>${currentMaintenanceState.estimatedCompletion}</em>), all website pages and calculators remain open for your convenience.
+          </p>
+          ${subRecord.note ? `<p style="font-size: 13px; background: #f8fafc; padding: 12px; border-radius: 8px;"><strong>Your Note:</strong> ${subRecord.note}</p>` : ''}
+          <p style="font-size: 12px; color: #64748b;">
+            Dispatched via Official Admin SMTP: <strong>${ADMIN_SMTP_USER}</strong> &bull; WhatsApp: +237 671 063 511
+          </p>
+        </div>
+      `;
+
+      await sendNotificationEmail(
+        `[MADECC VISITOR MAINTENANCE SUBSCRIPTION] ${subRecord.name} (${cleanEmail})`,
+        `Visitor ${subRecord.name} (${cleanEmail}, Phone: ${subRecord.phone || 'N/A'}) subscribed to maintenance updates.\nNote: ${subRecord.note}`,
+        visitorHtml,
+        { to: ADMIN_SMTP_USER, replyTo: cleanEmail }
+      );
+
+      sendEmail(cleanEmail, visitorSubject, visitorText, visitorHtml).catch(() => {});
+
+      res.json({
+        success: true,
+        subscriber: subRecord,
+        smtpDispatchedBy: ADMIN_SMTP_USER,
+        message: `Thank you! Confirmation dispatched via ${ADMIN_SMTP_USER}. You may continue using the website freely.`
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to subscribe for updates' });
+    }
+  });
 }

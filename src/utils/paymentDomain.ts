@@ -19,6 +19,8 @@ export const OFFICIAL_PAYMENT_CONFIG = {
   merchantName: 'MADECC GROUP SARL',
   standardFeeXaf: STANDARD_RECEIPT_FEE_XAF,
   adminSmtpEmail: ADMIN_SMTP_USER_EMAIL,
+  mtnMomoNumbers: ['671063511', '683316486'],
+  orangeMoneyNumbers: ['689115595', '640194505'],
   momo: [
     { number: '671063511', formatted: '671 063 511', label: 'MTN Mobile Money Line 1 (Primary / Finance)' },
     { number: '683316486', formatted: '683 316 486', label: 'MTN Mobile Money Line 2 (Operations / Accounting)' }

@@ -134,8 +134,8 @@ export const AdminMaintenanceAndHandoverHub: React.FC = () => {
         `TARGET_OFFICIAL_DOMAIN: Replace "https://madeccgroup.online" with the buyer's domain name`,
         `STANDARD_RECEIPT_FEE_XAF: Currently set to ${STANDARD_RECEIPT_FEE_XAF} XAF — change to any custom download fee`,
         `ADMIN_SMTP_USER_EMAIL: Replace "${ADMIN_SMTP_USER_EMAIL}" with the buyer's admin email`,
-        `mtnMomoNumbers: Replace [${OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers.join(', ')}] with buyer's MTN MoMo numbers`,
-        `orangeMoneyNumbers: Replace [${OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers.join(', ')}] with buyer's Orange Money numbers`,
+        `mtnMomoNumbers: Replace [${(OFFICIAL_PAYMENT_CONFIG?.mtnMomoNumbers || ['671063511', '683316486']).join(', ')}] with buyer's MTN MoMo numbers`,
+        `orangeMoneyNumbers: Replace [${(OFFICIAL_PAYMENT_CONFIG?.orangeMoneyNumbers || ['689115595', '640194505']).join(', ')}] with buyer's Orange Money numbers`,
         'bankAccount: Replace Bank Name, Account Name, IBAN/RIB, and SWIFT code'
       ]
     },

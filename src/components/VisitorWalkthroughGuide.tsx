@@ -76,6 +76,8 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
   onNavigateToTab
 }) => {
   const { settings } = useSiteSettings();
+  const mtnMomoNumbers = OFFICIAL_PAYMENT_CONFIG?.mtnMomoNumbers || ['671063511', '683316486'];
+  const orangeMoneyNumbers = OFFICIAL_PAYMENT_CONFIG?.orangeMoneyNumbers || ['689115595', '640194505'];
   const [selectedPersona, setSelectedPersona] = useState<PersonaType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
@@ -190,7 +192,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
         `To protect document integrity and issue cryptographically certified engineering dossiers, client downloads of official PDF Receipts, Itemized BoQs, Cost Guides, and Contracts carry a flat processing fee of only ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF (reduced from 15,000 XAF). Once paid, the Administrator confirms your payment in the Admin Dashboard and presses OK—dispatching an official SMTP confirmation to ${ADMIN_SMTP_USER_EMAIL} and unlocking all your download links immediately!`,
       howToSteps: [
         `Click any "Download PDF / Export Receipt" button on the platform to open the Official Payment Gate (${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF).`,
-        `Send ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF via MTN Mobile Money (${OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers.join(' or ')}) or Orange Money (${OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers.join(' or ')}).`,
+        `Send ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF via MTN Mobile Money (${mtnMomoNumbers.join(' or ')}) or Orange Money (${orangeMoneyNumbers.join(' or ')}).`,
         'Enter your sender phone number and click "Submit 2,199 XAF Payment for Admin Confirmation". Your status becomes Pending Admin Confirmation.',
         `The Admin verifies the transaction in the Admin Dashboard and clicks "Confirm & Press OK", which dispatches an SMTP verification email to ${ADMIN_SMTP_USER_EMAIL}.`,
         'As soon as Admin presses OK, your Receipt PDF, Itemized BoQ, Word (DOCX), and Excel (XLSX) download buttons unlock automatically!'
@@ -291,7 +293,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
   const walkthroughFaqs = [
     {
       q: 'How much do visitors and clients pay to download official receipts, BoQs, or PDF cost guides?',
-      a: `Clients pay a flat fee of only ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF (not 15,000 XAF) via MTN Mobile Money (${OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers.join(', ')}) or Orange Money (${OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers.join(', ')}). Browsing the website, using the interactive calculators on-screen, and submitting quote inquiries are 100% free.`
+      a: `Clients pay a flat fee of only ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF (not 15,000 XAF) via MTN Mobile Money (${mtnMomoNumbers.join(', ')}) or Orange Money (${orangeMoneyNumbers.join(', ')}). Browsing the website, using the interactive calculators on-screen, and submitting quote inquiries are 100% free.`
     },
     {
       q: 'When do the receipt and document download links start working after I pay 2,199 XAF?',
@@ -395,11 +397,11 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">MTN MoMo:</span>
-                  <span className="font-mono text-amber-300">{OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers.join(' / ')}</span>
+                  <span className="font-mono text-amber-300">{mtnMomoNumbers.join(' / ')}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Orange Money:</span>
-                  <span className="font-mono text-orange-300">{OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers.join(' / ')}</span>
+                  <span className="font-mono text-orange-300">{orangeMoneyNumbers.join(' / ')}</span>
                 </div>
               </div>
             </div>
@@ -502,7 +504,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
                 <p className="text-[11px] text-slate-300 mt-0.5">Click any number to copy for your 2,199 XAF transfer:</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers.map((num) => (
+                {mtnMomoNumbers.map((num) => (
                   <button
                     key={num}
                     onClick={() => handleCopyNumber(num)}
@@ -527,7 +529,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
                 <p className="text-[11px] text-slate-300 mt-0.5">Click any number to copy for your 2,199 XAF transfer:</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers.map((num) => (
+                {orangeMoneyNumbers.map((num) => (
                   <button
                     key={num}
                     onClick={() => handleCopyNumber(num)}

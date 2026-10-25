@@ -1,9 +1,11 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { isReceiptPaid, isCurrentUserAdmin, NAVIGATION_MANUAL_RECEIPT_NO, MANUAL_DOWNLOAD_FEE_XAF } from './paymentDomain';
 
 export interface NavigationGuideOptions {
   includeMetaReviewerProtocol?: boolean;
   generatedBy?: string;
+  bypassPaymentGate?: boolean;
 }
 
 export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): jsPDF {
@@ -400,7 +402,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
     body: [
       ['Primary Executive Administrator:', 'Eric Kreboya (Managing Director & Lead Engineer)'],
       ['Direct Contact & Admin SMTP:', 'kreboya603@gmail.com (Prompt 24/7 Response & Receipt Dispatch)'],
-      ['Official MTN Mobile Money (MoMo):', '671063511 / 683316486 (Standard Client Document Fee: 2,199 XAF)'],
+      ['Official MTN Mobile Money (MoMo):', `671063511 / 683316486 (Receipts: 2,199 XAF | PDF Manuals: ${MANUAL_DOWNLOAD_FEE_XAF} XAF)`],
       ['Official Orange Money (OM):', '689115595 / 640194505 (Unlocks after Admin Confirm & OK)'],
       ['Primary WhatsApp Channel:', '+237 671 063 511 / +237 640 194 505'],
       ['Official Website URL:', 'https://madeccgroup.online'],
@@ -430,7 +432,28 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   return doc;
 }
 
-export function downloadWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): void {
+export function forceDownloadWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): void {
   const doc = generateWebsiteNavigationGuidePdf(options);
   doc.save('MADECC_Group_Website_Navigation_Manual_A4.pdf');
+}
+
+export function downloadWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): void {
+  if (options.bypassPaymentGate) {
+    forceDownloadWebsiteNavigationGuidePdf(options);
+    return;
+  }
+  if (!isCurrentUserAdmin() && isReceiptPaid(NAVIGATION_MANUAL_RECEIPT_NO)) {
+    forceDownloadWebsiteNavigationGuidePdf(options);
+    return;
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('madecc:open-manual-payment-gate', {
+        detail: {
+          manualType: 'navigation_manual',
+          options
+        }
+      })
+    );
+  }
 }

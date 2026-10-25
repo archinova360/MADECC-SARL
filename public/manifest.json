@@ -1,0 +1,66 @@
+{
+  "id": "/",
+  "name": "MADECC GROUP - Engineering, Construction & Tech",
+  "short_name": "MADECC Group",
+  "description": "Cameroon's premier civil engineering, construction management, and architectural enterprise delivering world-class infrastructure.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "dir": "ltr",
+  "lang": "en",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Services & Engineering",
+      "short_name": "Services",
+      "description": "Explore structural, civil, architectural, and survey engineering services",
+      "url": "/services",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Project Portfolio",
+      "short_name": "Projects",
+      "description": "View completed commercial, residential, and infrastructure works",
+      "url": "/projects",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Budget Estimator",
+      "short_name": "Calculator",
+      "description": "Instant BoQ and construction cost estimation calculator",
+      "url": "/calculator",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Engineering Articles",
+      "short_name": "Blog",
+      "description": "Read technical standards and building code guides",
+      "url": "/blog",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

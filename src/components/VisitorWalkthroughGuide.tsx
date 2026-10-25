@@ -345,7 +345,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
                   id="walkthrough-download-pdf-hero"
                 >
                   <Download className="w-4 h-4" />
-                  Download Complete A4 Walkthrough Guide (PDF)
+                  Navigation Manual (A4 PDF) — 999 XAF
                 </button>
                 <button
                   onClick={() => downloadBuyerHandoverManualPdf({ sellerEmail: ADMIN_SMTP_USER_EMAIL })}
@@ -353,7 +353,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
                   id="walkthrough-download-buyer-handover-pdf"
                 >
                   <FileText className="w-4 h-4 text-emerald-400" />
-                  Buyer Brand Customization Handover Manual (PDF)
+                  Buyer Brand Handover Manual (PDF) — 999 XAF
                 </button>
                 <button
                   onClick={() => onNavigateToTab('budget-calculator')}
@@ -717,7 +717,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
               className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-amber-500/40 text-amber-400 font-bold text-xs flex items-center gap-2 self-start sm:self-auto cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              Download A4 Manual (PDF)
+              Navigation Manual (A4 PDF) — 999 XAF
             </button>
           </div>
 
@@ -817,7 +817,7 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 flex items-center gap-1.5 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-amber-400" />
-                Save PDF Guide
+                Navigation Manual (A4 PDF — 999 XAF)
               </button>
             </div>
           </div>

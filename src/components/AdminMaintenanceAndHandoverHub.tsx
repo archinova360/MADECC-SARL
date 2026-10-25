@@ -353,7 +353,7 @@ export const AdminMaintenanceAndHandoverHub: React.FC = () => {
               id="download-buyer-handover-pdf-btn"
             >
               <Download className="w-4 h-4" />
-              <span>Download Buyer Handover Manual (A4 PDF)</span>
+              <span>Download Buyer Handover Manual (A4 PDF — Confirm Admin Key/Email)</span>
             </button>
             <button
               onClick={() => setShowHandoverDetails(!showHandoverDetails)}

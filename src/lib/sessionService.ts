@@ -3,6 +3,21 @@ import { db, pool } from '../db/index.ts';
 import { authSessions } from '../db/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 
+interface MemorySessionRecord {
+  id: number;
+  sessionToken: string;
+  userId: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  expiresAt: Date;
+  revokedAt?: Date | null;
+  createdAt: Date;
+}
+
+// Authoritative in-memory session mirror so admin login works reliably even if DB is cold/unreachable
+const activeMemorySessions = new Map<string, MemorySessionRecord>();
+
 /**
  * Ensure the auth_sessions table exists in Neon PostgreSQL
  */
@@ -30,20 +45,31 @@ export async function ensureAuthSessionsTable(): Promise<void> {
 }
 
 /**
- * Creates an authoritative database session in Neon PostgreSQL
+ * Creates an authoritative database session in Neon PostgreSQL (with memory mirror)
  */
 export async function createDatabaseSession(
   userId: string,
   email: string,
   role: string = 'admin'
 ): Promise<{ sessionToken: string; expiresAt: Date }> {
-  await ensureAuthSessionsTable();
   const sessionToken = 'MADECC_AUTH_' + crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days validity
   const normalizedEmail = (email || '').toLowerCase().trim();
 
-  if (db) {
-    try {
+  activeMemorySessions.set(sessionToken, {
+    id: Date.now(),
+    sessionToken,
+    userId: userId || 'admin-madecc-uid',
+    email: normalizedEmail,
+    role: role || 'admin',
+    isActive: true,
+    expiresAt,
+    createdAt: new Date()
+  });
+
+  try {
+    await ensureAuthSessionsTable();
+    if (db) {
       await db.insert(authSessions).values({
         sessionToken,
         userId: userId || 'admin-madecc-uid',
@@ -52,20 +78,32 @@ export async function createDatabaseSession(
         isActive: true,
         expiresAt,
       });
-    } catch (err) {
-      console.error('[DATABASE_SESSION_CREATE_ERROR]', err);
     }
+  } catch (err) {
+    console.warn('[DATABASE_SESSION_CREATE_NOTICE] Using memory session fallback:', err);
   }
 
   return { sessionToken, expiresAt };
 }
 
 /**
- * Validates whether a given session token is active and unexpired in Neon PostgreSQL
+ * Validates whether a given session token is active and unexpired in Neon PostgreSQL or memory mirror
  */
 export async function validateDatabaseSession(sessionToken: string) {
-  if (!sessionToken || !db) return null;
+  if (!sessionToken) return null;
   const trimmed = sessionToken.trim();
+
+  // Check in-memory mirror first for fast & resilient verification
+  const memSess = activeMemorySessions.get(trimmed);
+  if (memSess) {
+    if (!memSess.isActive || new Date(memSess.expiresAt).getTime() <= Date.now()) {
+      memSess.isActive = false;
+      return null;
+    }
+    return memSess;
+  }
+
+  if (!db) return null;
 
   try {
     const results = await db
@@ -92,7 +130,7 @@ export async function validateDatabaseSession(sessionToken: string) {
 
     return sess;
   } catch (err) {
-    console.error('[DATABASE_SESSION_VALIDATE_ERROR]', err);
+    console.warn('[DATABASE_SESSION_VALIDATE_ERROR]', err);
     return null;
   }
 }
@@ -105,8 +143,27 @@ export async function revokeDatabaseSession(
   email?: string,
   userId?: string
 ): Promise<boolean> {
-  if (!db) return false;
   const now = new Date();
+  const normalizedEmail = email ? email.toLowerCase().trim() : '';
+
+  if (sessionToken) {
+    const mem = activeMemorySessions.get(sessionToken.trim());
+    if (mem) {
+      mem.isActive = false;
+      mem.revokedAt = now;
+    }
+  }
+  for (const [, mem] of activeMemorySessions.entries()) {
+    if (
+      (normalizedEmail && mem.email === normalizedEmail) ||
+      (userId && mem.userId === userId)
+    ) {
+      mem.isActive = false;
+      mem.revokedAt = now;
+    }
+  }
+
+  if (!db) return true;
   let revokedCount = 0;
 
   try {

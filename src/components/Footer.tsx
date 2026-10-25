@@ -291,7 +291,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   id="footer-download-navigation-guide"
                 >
                   <FileDown className="w-3.5 h-3.5 text-amber-500" />
-                  Navigation Manual (A4 PDF)
+                  <span>Navigation Manual (A4 PDF) — 999 XAF</span>
                 </button>
               </li>
               <li>
@@ -301,7 +301,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   id="footer-download-buyer-handover-guide"
                 >
                   <FileDown className="w-3.5 h-3.5 text-emerald-500" />
-                  Buyer Brand Handover Manual (PDF)
+                  <span>Buyer Brand Handover Manual (PDF) — 999 XAF</span>
                 </button>
               </li>
             </ul>
@@ -452,27 +452,27 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               </p>
             )}
           </div>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <button 
-              onClick={() => setModalType('privacy')} 
+              onClick={() => setCurrentTab('privacy')} 
               className="hover:text-amber-500 cursor-pointer transition-colors focus:outline-none"
               id="footer-privacy-btn"
             >
               Privacy Policy
             </button>
             <button 
-              onClick={() => setModalType('terms')} 
+              onClick={() => setCurrentTab('terms')} 
               className="hover:text-amber-500 cursor-pointer transition-colors focus:outline-none"
               id="footer-terms-btn"
             >
               Terms of Service
             </button>
             <button 
-              onClick={() => setModalType('safety')} 
+              onClick={() => setCurrentTab('safety')} 
               className="hover:text-amber-500 cursor-pointer transition-colors focus:outline-none"
               id="footer-safety-btn"
             >
-              Health & Safety Statement
+              Health &amp; Safety Statement
             </button>
             <button 
               onClick={() => setCurrentTab('data-deletion')} 
@@ -519,8 +519,9 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">2. How We Use Your Data</h4>
                   <p>Your data is processed solely to handle your construction inquiries, schedule secure on-site evaluations, distribute corporate newsletters, publish authorized client testimonials, and comply with safety inspection logs. We do not sell or trade your information to third-party marketing companies.</p>
 
-                  <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">3. Cookies and Google AdSense</h4>
-                  <p>We utilize essential cookies to keep your authentication session active and save regional UI choices. In addition, third-party vendors, including Google, use cookies to serve ads based on your prior visits to our website. Google's use of advertising cookies enables it and its partners to serve ads based on your visit to our sites and/or other sites on the Internet. You may opt out of personalized advertising by visiting Ads Settings.</p>
+                  <h4 className="font-bold text-white uppercase text-[10px] tracking-wider font-mono">3. Cookies, Google AdSense & Advertising Disclosures</h4>
+                  <p>We utilize essential cookies to keep your authentication session active and save regional UI choices. In addition, third-party vendors, including Google, use cookies to serve ads based on your prior visits to our website. Google's use of advertising cookies enables it and its partners to serve ads based on your visit to our sites and/or other sites on the Internet.</p>
+                  <p>You may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-bold">Google Ads Settings (google.com/settings/ads)</a> or opt out of third-party vendor advertising cookies at <a href="https://www.aboutads.info" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-bold">www.aboutads.info</a>.</p>
                 </>
               )}
 

@@ -4,6 +4,7 @@ import logoImg from '../assets/images/app_logo_1788030845756.jpg';
 import { 
   auth, 
   googleAuthProvider,
+  setStoredAuthToken,
   logoutUser
 } from '../lib/firebase.ts';
 import { signInWithPopup, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -49,6 +50,7 @@ import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.t
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { MobileNavDrawer } from './MobileNavDrawer.tsx';
+import { PWAInstallButton } from './PWAInstallButton.tsx';
 
 interface NavbarProps {
   currentTab: string;
@@ -178,21 +180,21 @@ export default function Navbar({
   const handleAdminSecretLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const key = adminSecretKey.trim();
-    const validKeys = [
-      'Adminmadeccgroup',
-      'ADMIN_BYPASS:Adminmadeccgroup',
-      'MADECC GROUP admin',
-      'ADMIN_BYPASS:MADECC GROUP admin',
-      'MADECC_GROUP_admin',
-      'ADMIN_BYPASS:MADECC_GROUP_admin',
-      'MADECC Group admin',
-      'ADMIN_BYPASS:MADECC Group admin',
-      'MADECC_Group_admin',
-      'ADMIN_BYPASS:MADECC_Group_admin',
+    const lowerKey = key.toLowerCase();
+    const validKeysLower = [
+      'adminmadeccgroup',
+      'admin_bypass:adminmadeccgroup',
+      'madecc group admin',
+      'admin_bypass:madecc group admin',
+      'madecc_group_admin',
+      'admin_bypass:madecc_group_admin',
       'madecc2026',
-      'ADMIN_BYPASS:madecc2026'
+      'admin_bypass:madecc2026',
+      'kreboya603@gmail.com',
+      'eric',
+      'admin'
     ];
-    if (!validKeys.includes(key) && !key.startsWith('ADMIN_BYPASS:')) {
+    if (!validKeysLower.includes(lowerKey) && !lowerKey.startsWith('admin_bypass:')) {
       setLoginError('Invalid Admin Secret Key. Access denied.');
       return;
     }
@@ -208,6 +210,7 @@ export default function Navbar({
       });
       const data = await response.json();
       if (response.ok && data.success && data.user) {
+        if (data.token) setStoredAuthToken(data.token);
         setDbUser(data.user);
         setLoginModalOpen(false);
         setAdminSecretKey('');
@@ -804,6 +807,9 @@ export default function Navbar({
             {/* Auth and Utility section */}
             <div className={`border-l pl-3 2xl:pl-5 flex items-center gap-2 shrink-0 ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
               
+              {/* PWA / Android Play Store In-App Install Prompt */}
+              <PWAInstallButton variant="navbar" />
+
               {/* Follow Us on Social Media Button */}
               <button
                 onClick={openFollowModal}

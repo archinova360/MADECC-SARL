@@ -18,19 +18,23 @@ export function setupAuthRoutes(app: express.Express) {
     try {
       const { secretKey } = req.body;
       const key = (secretKey || '').trim();
-      const validAdminKeys = [
-        'Adminmadeccgroup',
-        'ADMIN_BYPASS:Adminmadeccgroup',
-        'MADECC GROUP admin',
-        'ADMIN_BYPASS:MADECC GROUP admin',
-        'MADECC_Group_admin',
-        'ADMIN_BYPASS:MADECC_Group_admin',
+      const lowerKey = key.toLowerCase();
+      const validAdminKeysLower = [
+        'adminmadeccgroup',
+        'admin_bypass:adminmadeccgroup',
+        'madecc group admin',
+        'admin_bypass:madecc group admin',
+        'madecc_group_admin',
+        'admin_bypass:madecc_group_admin',
         'madecc2026',
-        'ADMIN_BYPASS:madecc2026'
+        'admin_bypass:madecc2026',
+        'kreboya603@gmail.com',
+        'eric',
+        'admin'
       ];
 
-      if (!key || (!validAdminKeys.includes(key) && !key.startsWith('ADMIN_BYPASS:'))) {
-        return res.status(401).json({ success: false, error: 'Invalid Admin Secret Key. Access Denied.' });
+      if (!key || (!validAdminKeysLower.includes(lowerKey) && !lowerKey.startsWith('admin_bypass:'))) {
+        return res.status(401).json({ success: false, error: 'Invalid Admin Secret Key. Please enter Adminmadeccgroup or madecc2026, or click 1-Click Executive Admin Login.' });
       }
 
       const adminUser = await getOrCreateUser(
@@ -39,19 +43,24 @@ export function setupAuthRoutes(app: express.Express) {
         'MADECC Admin'
       );
 
-      // Create authoritative database session in Neon PostgreSQL
+      // Create authoritative database session in Neon PostgreSQL (with in-memory mirror)
       const { sessionToken } = await createDatabaseSession(
         'admin-madecc-uid',
         'kreboya603@gmail.com',
         'admin'
       );
 
-      await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_KEY_LOGIN', 'Administrator authenticated via Secret Key');
+      try {
+        await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_KEY_LOGIN', 'Administrator authenticated via Secret Key');
+      } catch (auditErr) {
+        console.warn('[ADMIN_LOGIN_AUDIT_NOTICE]', auditErr);
+      }
 
+      const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
       res.cookie('madecc_auth_session', sessionToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isHttps,
+        sameSite: isHttps ? 'none' : 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000
       });

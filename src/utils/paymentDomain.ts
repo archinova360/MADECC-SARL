@@ -8,6 +8,9 @@
 
 export const TARGET_OFFICIAL_DOMAIN = 'https://madeccgroup.online';
 export const STANDARD_RECEIPT_FEE_XAF = 2199;
+export const MANUAL_DOWNLOAD_FEE_XAF = 999;
+export const NAVIGATION_MANUAL_RECEIPT_NO = 'RCP-NAV-MANUAL-999';
+export const BUYER_HANDOVER_MANUAL_RECEIPT_NO = 'RCP-BUYER-HANDOVER-999';
 export const ADMIN_SMTP_USER_EMAIL = 'kreboya603@gmail.com';
 
 /**
@@ -189,6 +192,58 @@ export interface ReceiptPaymentRecord {
 
 const STORAGE_PREFIX = 'madecc_receipt_paid_';
 const REGISTRY_LIST_KEY = 'madecc_receipt_payment_registry_list';
+const ADMIN_EXEMPTION_KEY = 'madecc_is_admin_user';
+
+export function setCurrentUserAdminStatus(isAdmin: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (isAdmin) {
+      localStorage.setItem(ADMIN_EXEMPTION_KEY, 'true');
+      sessionStorage.setItem(ADMIN_EXEMPTION_KEY, 'true');
+    } else {
+      localStorage.removeItem(ADMIN_EXEMPTION_KEY);
+      sessionStorage.removeItem(ADMIN_EXEMPTION_KEY);
+    }
+  } catch (_) {}
+}
+
+export function isCurrentUserAdmin(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (
+      localStorage.getItem(ADMIN_EXEMPTION_KEY) === 'true' ||
+      sessionStorage.getItem(ADMIN_EXEMPTION_KEY) === 'true'
+    ) {
+      return true;
+    }
+    const token =
+      localStorage.getItem('madecc_auth_token') ||
+      sessionStorage.getItem('madecc_auth_token');
+    if (token && token.startsWith('MADECC_AUTH_')) {
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+export function verifyAdminDownloadCredential(input: string): boolean {
+  const normalized = (input || '').trim().toLowerCase();
+  if (!normalized) return false;
+  const customEnvKey = ((import.meta as any).env?.VITE_ADMIN_SECRET_KEY || '').trim().toLowerCase();
+  const validCredentials = [
+    'kreboya603@gmail.com',
+    'adminmadeccgroup',
+    'admin_bypass:adminmadeccgroup',
+    'madecc group admin',
+    'admin_bypass:madecc group admin',
+    'madecc_group_admin',
+    'admin_bypass:madecc_group_admin',
+    'madecc2026',
+    'admin_bypass:madecc2026',
+    ...(customEnvKey ? [customEnvKey] : [])
+  ];
+  return validCredentials.includes(normalized);
+}
 
 export function isReceiptPaid(receiptNo: string): boolean {
   if (!receiptNo || typeof window === 'undefined') return false;
@@ -196,6 +251,9 @@ export function isReceiptPaid(receiptNo: string): boolean {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${receiptNo}`);
     if (!raw) return false;
     const record: ReceiptPaymentRecord = JSON.parse(raw);
+    if (record?.status === 'ADMIN_FREE_CLEARANCE' || record?.paymentMethod === 'Admin Free Clearance') {
+      return false;
+    }
     return Boolean(record && record.isPaid === true && record.adminConfirmed !== false && record.status !== 'PENDING_ADMIN_CONFIRMATION');
   } catch {
     return false;

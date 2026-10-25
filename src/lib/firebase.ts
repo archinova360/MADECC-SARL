@@ -7,6 +7,24 @@ export const auth = getAuth(app);
 export const googleAuthProvider = new GoogleAuthProvider();
 export { signOut };
 
+export function setStoredAuthToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem('madecc_auth_token', token);
+      sessionStorage.setItem('madecc_auth_token', token);
+      if (token.startsWith('MADECC_AUTH_')) {
+        localStorage.setItem('madecc_is_admin_user', 'true');
+        sessionStorage.setItem('madecc_is_admin_user', 'true');
+      }
+    } else {
+      localStorage.removeItem('madecc_auth_token');
+      sessionStorage.removeItem('madecc_auth_token');
+      localStorage.removeItem('madecc_is_admin_user');
+      sessionStorage.removeItem('madecc_is_admin_user');
+    }
+  } catch (_) {}
+}
+
 export async function logoutUser(userEmail?: string, userUid?: string): Promise<void> {
   // 1. Notify backend for audit tracking & clear server-side session cookies
   try {
@@ -35,6 +53,7 @@ export async function logoutUser(userEmail?: string, userUid?: string): Promise<
 
   // 3. Clear any legacy residual keys to ensure complete cleanup
   try {
+    setStoredAuthToken(null);
     sessionStorage.removeItem('admin_token');
     sessionStorage.removeItem('reviewer_token');
     sessionStorage.removeItem('token');
@@ -45,6 +64,13 @@ export async function logoutUser(userEmail?: string, userUid?: string): Promise<
 }
 
 export async function getAuthToken(): Promise<string | null> {
+  try {
+    const stored = localStorage.getItem('madecc_auth_token') || sessionStorage.getItem('madecc_auth_token');
+    if (stored) {
+      return stored;
+    }
+  } catch (_) {}
+
   try {
     if (auth?.currentUser) {
       return (await auth.currentUser.getIdToken()) || null;

@@ -48,7 +48,17 @@ import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext
 import FollowUsModal from './components/FollowUsModal.tsx';
 import { ReceiptPaymentGateModal } from './components/ReceiptPaymentGateModal.tsx';
 import { VisitorMaintenanceNotice } from './components/VisitorMaintenanceNotice.tsx';
-import { parsePaymentUrlParams, PaymentLinkParams } from './utils/paymentDomain.ts';
+import CookieConsentBanner from './components/CookieConsentBanner.tsx';
+import { OfflineIndicator } from './components/OfflineIndicator.tsx';
+import {
+  parsePaymentUrlParams,
+  PaymentLinkParams,
+  MANUAL_DOWNLOAD_FEE_XAF,
+  NAVIGATION_MANUAL_RECEIPT_NO,
+  BUYER_HANDOVER_MANUAL_RECEIPT_NO
+} from './utils/paymentDomain.ts';
+import { forceDownloadWebsiteNavigationGuidePdf } from './utils/navigationGuidePdf.ts';
+import { forceDownloadBuyerHandoverManualPdf } from './utils/buyerHandoverPdf.ts';
 
 function RouteLoadingFallback() {
   return (
@@ -100,6 +110,10 @@ function AppContent({
   const { settings, isFollowModalOpen, closeFollowModal } = useSiteSettings();
   const [preselectedService, setPreselectedService] = useState<string>('');
   const [clientPaymentRequest, setClientPaymentRequest] = useState<PaymentLinkParams | null>(() => parsePaymentUrlParams());
+  const [manualPaymentGate, setManualPaymentGate] = useState<{
+    manualType: 'navigation_manual' | 'buyer_handover_manual';
+    options?: any;
+  } | null>(null);
 
   useEffect(() => {
     const payParams = parsePaymentUrlParams();
@@ -107,6 +121,37 @@ function AppContent({
       setClientPaymentRequest(payParams);
     }
   }, []);
+
+  useEffect(() => {
+    const handleOpenManualPaymentGate = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        manualType: 'navigation_manual' | 'buyer_handover_manual';
+        options?: any;
+      }>;
+      const detail = customEvent.detail;
+      if (!detail?.manualType) return;
+
+      // Admin does not need to pay before downloading
+      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
+        if (detail.manualType === 'navigation_manual') {
+          forceDownloadWebsiteNavigationGuidePdf(detail.options || {});
+        } else {
+          forceDownloadBuyerHandoverManualPdf(detail.options || {});
+        }
+        return;
+      }
+
+      setManualPaymentGate({
+        manualType: detail.manualType,
+        options: detail.options || {}
+      });
+    };
+
+    window.addEventListener('madecc:open-manual-payment-gate', handleOpenManualPaymentGate);
+    return () => {
+      window.removeEventListener('madecc:open-manual-payment-gate', handleOpenManualPaymentGate);
+    };
+  }, [dbUser]);
 
   const handleNavigateWithState = (tab: string, extraState?: any) => {
     if (extraState?.selectedService) {
@@ -461,8 +506,82 @@ function AppContent({
           }}
         />
       )}
+
+      {/* 999 XAF Pay-Before-Download Modal for Navigation Manual (A4 PDF) & Buyer Brand Handover Manual (PDF) */}
+      {manualPaymentGate && (
+        <ReceiptPaymentGateModal
+          isOpen={Boolean(manualPaymentGate)}
+          isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
+          onClose={() => setManualPaymentGate(null)}
+          receiptDetails={{
+            receiptNo:
+              manualPaymentGate.manualType === 'navigation_manual'
+                ? NAVIGATION_MANUAL_RECEIPT_NO
+                : BUYER_HANDOVER_MANUAL_RECEIPT_NO,
+            projectName:
+              manualPaymentGate.manualType === 'navigation_manual'
+                ? 'Navigation Manual (A4 PDF)'
+                : 'Buyer Brand Handover Manual (PDF)',
+            clientName: dbUser?.name || 'Website Visitor / Client',
+            clientEmail: dbUser?.email || '',
+            totalAmount: MANUAL_DOWNLOAD_FEE_XAF,
+            customFeeAmount: MANUAL_DOWNLOAD_FEE_XAF,
+            currency: 'XAF',
+            docType:
+              manualPaymentGate.manualType === 'navigation_manual'
+                ? 'navigation_manual_pdf'
+                : 'buyer_handover_pdf',
+            language: 'en'
+          }}
+          customDownloadLabel={
+            manualPaymentGate.manualType === 'navigation_manual'
+              ? 'Download Navigation Manual (A4 PDF)'
+              : 'Download Buyer Brand Handover Manual (PDF)'
+          }
+          onUnlockCustomDownload={() => {
+            if (manualPaymentGate.manualType === 'navigation_manual') {
+              forceDownloadWebsiteNavigationGuidePdf(manualPaymentGate.options || {});
+            } else {
+              forceDownloadBuyerHandoverManualPdf(manualPaymentGate.options || {});
+            }
+          }}
+        />
+      )}
+
+      {/* PWA Network Connectivity Indicator */}
+      <OfflineIndicator />
+
+      {/* Global GDPR & Google AdSense Compliant Cookie Consent Banner */}
+      <CookieConsentBanner onOpenPrivacyPolicy={() => setCurrentTab('privacy')} />
     </div>
   );
+}
+
+function getTabFromPath(pathname: string, searchStr: string): string {
+  const path = pathname.toLowerCase();
+  const params = new URLSearchParams(searchStr);
+  if (path.includes('super-admin') || params.get('tab') === 'super-admin') return 'super-admin';
+  if (path.includes('saas') || path.includes('cloud') || params.get('tab') === 'saas') return 'saas-cloud';
+  if (path.includes('data-deletion') || path.includes('data_deletion') || params.get('tab') === 'data-deletion' || params.get('tracking')) return 'data-deletion';
+  if (path.includes('terms') || params.get('tab') === 'terms') return 'terms';
+  if (path.includes('privacy') || params.get('tab') === 'privacy') return 'privacy';
+  if (path.includes('safety') || path.includes('health') || path.includes('qhse') || params.get('tab') === 'safety') return 'safety';
+  if (path.includes('services')) return 'services';
+  if (path.includes('request-a-quote') || path.includes('request-quote')) return 'request-a-quote';
+  if (path.includes('schedule-consultation') || path.includes('consultation')) return 'schedule-consultation';
+  if (path.includes('construction-cost-guide')) return 'construction-cost-guide';
+  if (path.includes('budget-calculator') || path.includes('calculator')) return 'budget-calculator';
+  if (path.includes('walkthrough-guide') || path.includes('visitor-guide')) return 'walkthrough-guide';
+  if (path.includes('faq') || path.includes('help')) return 'faq';
+  if (path.includes('tender') || path.includes('procurement')) return 'tenders';
+  if (path.includes('about')) return 'about';
+  if (path.includes('projects')) return 'projects';
+  if (path.includes('blog')) return 'blog';
+  if (path.includes('contact')) return 'contact';
+  if (path.includes('booking')) return 'booking';
+  if (path.includes('developers') || path.includes('api-platform')) return 'developers';
+  if (path.includes('admin')) return 'admin';
+  return 'home';
 }
 
 export default function App() {
@@ -482,27 +601,7 @@ export default function App() {
   });
 
   const [currentTab, setCurrentTab] = useState<string>(() => {
-    const path = window.location.pathname.toLowerCase();
-    const params = new URLSearchParams(window.location.search);
-    if (path.includes('super-admin') || params.get('tab') === 'super-admin') return 'super-admin';
-    if (path.includes('saas') || path.includes('cloud') || params.get('tab') === 'saas') return 'saas-cloud';
-    if (path.includes('data-deletion') || path.includes('data_deletion') || params.get('tab') === 'data-deletion' || params.get('tracking')) return 'data-deletion';
-    if (path.includes('services')) return 'services';
-    if (path.includes('request-a-quote') || path.includes('request-quote')) return 'request-a-quote';
-    if (path.includes('schedule-consultation') || path.includes('consultation')) return 'schedule-consultation';
-    if (path.includes('construction-cost-guide')) return 'construction-cost-guide';
-    if (path.includes('budget-calculator')) return 'budget-calculator';
-    if (path.includes('terms')) return 'terms';
-    if (path.includes('privacy')) return 'privacy';
-    if (path.includes('safety') || path.includes('qhse')) return 'safety';
-    if (path.includes('faq') || path.includes('help')) return 'faq';
-    if (path.includes('tender') || path.includes('procurement')) return 'tenders';
-    if (path.includes('about')) return 'about';
-    if (path.includes('projects')) return 'projects';
-    if (path.includes('blog')) return 'blog';
-    if (path.includes('contact')) return 'contact';
-    if (path.includes('booking')) return 'booking';
-    return 'home';
+    return getTabFromPath(window.location.pathname, window.location.search);
   });
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -529,9 +628,15 @@ export default function App() {
   useEffect(() => {
     setLoadingAuth(true);
 
-    // 1. First check if a valid server session exists via HTTP-only cookie
+    // 1. First check if a valid server session exists via HTTP-only cookie or stored token
+    let storedToken: string | null = null;
+    try {
+      storedToken = localStorage.getItem('madecc_auth_token') || sessionStorage.getItem('madecc_auth_token');
+    } catch (_) {}
+
     fetch('/api/auth/me', {
-      credentials: 'include'
+      credentials: 'include',
+      headers: storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}
     })
       .then(res => {
         if (res.ok) return res.json();
@@ -596,26 +701,29 @@ export default function App() {
     };
   }, []);
 
-  // Scroll to top of page whenever tab transitions occur & sync URL path
+  // Scroll to top of page whenever tab transitions occur & sync URL path cleanly
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    if (currentTab === 'data-deletion') {
-      if (window.location.pathname !== '/data-deletion') {
-        window.history.pushState({ tab: 'data-deletion' }, '', '/data-deletion');
-      }
-    } else if (currentTab === 'home' && window.location.pathname === '/data-deletion') {
-      window.history.pushState({}, '', '/');
+    // Synchronize browser address bar with current active view
+    const targetPath = currentTab === 'home' ? '/' : `/${currentTab}`;
+    const currentPath = window.location.pathname.toLowerCase();
+    const isMatchingAlias =
+      (currentTab === 'terms' && (currentPath === '/terms' || currentPath === '/terms-of-service')) ||
+      (currentTab === 'privacy' && (currentPath === '/privacy' || currentPath === '/privacy-policy')) ||
+      (currentTab === 'safety' && (currentPath === '/safety' || currentPath === '/health-and-safety' || currentPath === '/health-safety')) ||
+      (currentTab === 'data-deletion' && (currentPath === '/data-deletion' || currentPath === '/data-deletion-instructions'));
+
+    if (window.location.pathname !== targetPath && !isMatchingAlias) {
+      window.history.pushState({ tab: currentTab }, '', targetPath + window.location.search);
     }
   }, [currentTab, selectedProjectId]);
 
-  // Support browser Back/Forward navigation
+  // Support browser Back/Forward navigation across all application routes
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname.toLowerCase();
-      if (path.includes('data-deletion')) {
-        setCurrentTab('data-deletion');
-      }
+      const tab = getTabFromPath(window.location.pathname, window.location.search);
+      setCurrentTab(tab);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);

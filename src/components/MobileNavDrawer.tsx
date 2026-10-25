@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
+import { PWAInstallButton } from './PWAInstallButton.tsx';
 // @ts-ignore
 import logoImg from '../assets/images/app_logo_1788030845756.jpg';
 
@@ -529,6 +530,9 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                     />
                   )}
                 </div>
+
+                {/* In-App PWA Install Trigger */}
+                <PWAInstallButton className="w-full justify-center min-h-[44px] mb-2" />
 
                 {/* Theme & Language Dual Controls with min-h-[48px] */}
                 <div className="grid grid-cols-2 gap-2">

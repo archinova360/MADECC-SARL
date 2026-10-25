@@ -18,7 +18,8 @@ import {
   UserX,
   Database,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  HardHat
 } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext.tsx';
 
@@ -218,6 +219,41 @@ export default function DataDeletion({ onNavigateToTab, setCurrentTab }: DataDel
             REGULATORY COMPLIANCE URL: <strong className={isLight ? 'text-slate-900' : 'text-slate-200'}>madeccgroup.online/data-deletion</strong>
           </span>
         </div>
+      </div>
+
+      {/* 4-Tab Legal Quick Navigation Switcher */}
+      <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-slate-950/80 border border-slate-800 rounded-2xl shadow-lg">
+        <button
+          onClick={() => navigate('terms')}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900 cursor-pointer"
+        >
+          <FileText className="w-4 h-4" />
+          <span>Terms of Service (/terms)</span>
+        </button>
+
+        <button
+          onClick={() => navigate('privacy')}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900 cursor-pointer"
+        >
+          <Lock className="w-4 h-4" />
+          <span>Privacy Policy (/privacy)</span>
+        </button>
+
+        <button
+          onClick={() => navigate('safety')}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900 cursor-pointer"
+        >
+          <HardHat className="w-4 h-4" />
+          <span>QHSE Statement (/safety)</span>
+        </button>
+
+        <button
+          onClick={() => navigate('data-deletion')}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 bg-amber-500 text-slate-950 shadow-md font-extrabold cursor-pointer"
+        >
+          <Trash2 className="w-4 h-4 text-slate-950" />
+          <span>Data Deletion (/data-deletion)</span>
+        </button>
       </div>
 
       {/* Main Container */}

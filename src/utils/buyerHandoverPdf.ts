@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { isReceiptPaid, isCurrentUserAdmin, BUYER_HANDOVER_MANUAL_RECEIPT_NO } from './paymentDomain';
 
 export interface BuyerHandoverOptions {
   buyerName?: string;
@@ -7,6 +8,7 @@ export interface BuyerHandoverOptions {
   buyerDomain?: string;
   sellerName?: string;
   sellerEmail?: string;
+  bypassPaymentGate?: boolean;
 }
 
 export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): jsPDF {
@@ -466,7 +468,28 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
   return doc;
 }
 
-export function downloadBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): void {
+export function forceDownloadBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): void {
   const doc = generateBuyerHandoverManualPdf(options);
   doc.save('Website_Buyer_Brand_Customization_Handover_Manual_A4.pdf');
+}
+
+export function downloadBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): void {
+  if (options.bypassPaymentGate) {
+    forceDownloadBuyerHandoverManualPdf(options);
+    return;
+  }
+  if (!isCurrentUserAdmin() && isReceiptPaid(BUYER_HANDOVER_MANUAL_RECEIPT_NO)) {
+    forceDownloadBuyerHandoverManualPdf(options);
+    return;
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('madecc:open-manual-payment-gate', {
+        detail: {
+          manualType: 'buyer_handover_manual',
+          options
+        }
+      })
+    );
+  }
 }

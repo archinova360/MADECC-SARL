@@ -1206,8 +1206,8 @@ I would like to discuss this project and request a formal BOQ.`;
             receiptDetails={{
               receiptNo: `RCP-${calculationResult.estimateReference || 'EST-2026'}`,
               projectName: `${calculationResult.projectType} (${calculationResult.location})`,
-              clientName: leadName || 'Valued Client',
-              clientEmail: leadEmail || '',
+              clientName: clientName || 'Valued Client',
+              clientEmail: clientEmail || '',
               location: calculationResult.location,
               totalAmount: Number(calculationResult.estimatedBudgetExpected) || STANDARD_RECEIPT_FEE_XAF,
               customFeeAmount: STANDARD_RECEIPT_FEE_XAF,

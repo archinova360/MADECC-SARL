@@ -4,6 +4,7 @@ import {
   auth, 
   googleAuthProvider,
   getAuthToken,
+  setStoredAuthToken,
   logoutUser
 } from '../lib/firebase.ts';
 import { signInWithPopup } from 'firebase/auth';
@@ -114,6 +115,7 @@ import AdminApiPlatform from './AdminApiPlatform.tsx';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
 import { AdminMaintenanceAndHandoverHub } from './AdminMaintenanceAndHandoverHub.tsx';
+import { AdminPlaystoreAndCpanelHub } from './AdminPlaystoreAndCpanelHub.tsx';
 import { 
   ReceiptPaymentRecord, 
   STANDARD_RECEIPT_FEE_XAF, 
@@ -943,22 +945,22 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     setLoginError(null);
     try {
       const key = adminSecretKey.trim();
-      const validKeys = [
-        'Adminmadeccgroup',
-        'ADMIN_BYPASS:Adminmadeccgroup',
-        'MADECC GROUP admin',
-        'ADMIN_BYPASS:MADECC GROUP admin',
-        'MADECC_GROUP_admin',
-        'ADMIN_BYPASS:MADECC_GROUP_admin',
-        'MADECC Group admin',
-        'ADMIN_BYPASS:MADECC Group admin',
-        'MADECC_Group_admin',
-        'ADMIN_BYPASS:MADECC_Group_admin',
+      const lowerKey = key.toLowerCase();
+      const validKeysLower = [
+        'adminmadeccgroup',
+        'admin_bypass:adminmadeccgroup',
+        'madecc group admin',
+        'admin_bypass:madecc group admin',
+        'madecc_group_admin',
+        'admin_bypass:madecc_group_admin',
         'madecc2026',
-        'ADMIN_BYPASS:madecc2026'
+        'admin_bypass:madecc2026',
+        'kreboya603@gmail.com',
+        'eric',
+        'admin'
       ];
-      if (!validKeys.includes(key) && !key.startsWith('ADMIN_BYPASS:')) {
-        throw new Error('Invalid Admin Secret Key. Please try again.');
+      if (!validKeysLower.includes(lowerKey) && !lowerKey.startsWith('admin_bypass:')) {
+        throw new Error('Invalid Admin Secret Key. Please enter Adminmadeccgroup or madecc2026, or click 1-Click Executive Admin Login below.');
       }
       
       const response = await fetch('/api/auth/admin-login', {
@@ -970,6 +972,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       const data = await response.json();
       
       if (response.ok && data.success && data.user) {
+        if (data.token) setStoredAuthToken(data.token);
         setDbUser(data.user);
         showToast(`Successfully logged in as ${data.user.name || 'MADECC Administrator'}`, 'success');
       } else {
@@ -996,6 +999,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       const data = await response.json();
 
       if (response.ok && data.success && data.user) {
+        if (data.token) setStoredAuthToken(data.token);
         setDbUser(data.user);
         showToast(`Successfully logged in as ${data.user.name || 'MADECC Administrator'}`, 'success');
       } else {
@@ -1025,6 +1029,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       const data = await response.json();
 
       if (response.ok && data.success && data.user) {
+        if (data.token) setStoredAuthToken(data.token);
         setDbUser(data.user);
         setActiveAdminTab('social-studio');
         showToast('Successfully logged in as Meta App Reviewer (Social Media Studio)', 'success');
@@ -1182,6 +1187,17 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   <button
                     type="button"
                     disabled={signingIn}
+                    onClick={() => handleQuickLogin('Adminmadeccgroup')}
+                    id="admin-1click-executive-login-btn"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-white" />
+                    1-Click Executive Admin Login (kreboya603@gmail.com)
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={signingIn}
                     onClick={handleReviewerQuickLogin}
                     className="w-full bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 hover:border-blue-400 text-blue-200 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                   >
@@ -1195,7 +1211,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     className="w-full bg-slate-900 hover:bg-slate-800 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
                   >
                     <Download className="w-4 h-4 text-amber-400" />
-                    Download A4 Website Navigation Manual (PDF)
+                    Navigation Manual (A4 PDF — Confirm Admin Key/Email)
                   </button>
                 </div>
               </form>
@@ -2550,14 +2566,14 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       onClick={() => downloadWebsiteNavigationGuidePdf()}
                       className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white font-bold text-xs border border-amber-500/40 rounded-xl flex items-center gap-2 transition-all shadow"
                     >
-                      <Download className="w-4 h-4 text-amber-400" /> A4 Navigation Manual (PDF)
+                      <Download className="w-4 h-4 text-amber-400" /> Navigation Manual (A4 PDF — Admin Free)
                     </button>
                     <button
                       onClick={() => downloadBuyerHandoverManualPdf({ sellerEmail: ADMIN_SMTP_USER_EMAIL })}
                       className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white font-bold text-xs border border-emerald-500/40 rounded-xl flex items-center gap-2 transition-all shadow"
                       id="admin-top-download-buyer-handover-btn"
                     >
-                      <Download className="w-4 h-4 text-emerald-400" /> Buyer Handover Guide (PDF)
+                      <Download className="w-4 h-4 text-emerald-400" /> Buyer Brand Handover Manual (PDF — Admin Free)
                     </button>
                     <button
                       onClick={() => setActiveAdminTab('boq-studio')}
@@ -2609,6 +2625,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
 
               {/* Non-Intrusive Website Maintenance Mode Trigger (SMTP kreboya603@gmail.com) & Buyer Brand Handover Manual */}
               <AdminMaintenanceAndHandoverHub />
+
+              {/* Google Play Store (TWA) & cPanel Hosting Migration Command Center */}
+              <AdminPlaystoreAndCpanelHub />
 
               {/* Two-Column Dashboard Body */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

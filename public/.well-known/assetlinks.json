@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "online.madeccgroup.twa",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7E:0F:52:9C:ED:3E:EE:4F:7E:6D:88:2E:FE:09:A6:49:12:47:8E:B8:38:52:77:E6:BA:61:94:AE:BB"
+      ]
+    }
+  }
+]

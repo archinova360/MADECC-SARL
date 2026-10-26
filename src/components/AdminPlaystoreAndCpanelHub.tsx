@@ -131,6 +131,22 @@ AddDefaultCharset UTF-8
     { "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/pwa-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MADECC GROUP Civil Engineering & Construction Management Dashboard"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "MADECC Mobile Project Budget Estimator & Services Portal"
+    }
   ]
 }`;
 

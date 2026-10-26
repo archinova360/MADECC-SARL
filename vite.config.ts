@@ -19,6 +19,8 @@ export default defineConfig(() => {
           'logo.png',
           'pwa-192x192.png',
           'pwa-512x512.png',
+          'screenshot-wide.png',
+          'screenshot-narrow.png',
           'robots.txt',
           'sitemap.xml',
           '.well-known/assetlinks.json'
@@ -54,10 +56,28 @@ export default defineConfig(() => {
               purpose: 'maskable',
             },
           ],
+          screenshots: [
+            {
+              src: '/screenshot-wide.png',
+              sizes: '1280x720',
+              type: 'image/png',
+              form_factor: 'wide',
+              label: 'MADECC GROUP Civil Engineering & Construction Management Dashboard'
+            },
+            {
+              src: '/screenshot-narrow.png',
+              sizes: '720x1280',
+              type: 'image/png',
+              form_factor: 'narrow',
+              label: 'MADECC Mobile Project Budget Estimator & Services Portal'
+            }
+          ],
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB limit to support admin studio bundle
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

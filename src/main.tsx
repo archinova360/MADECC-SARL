@@ -4,7 +4,13 @@ import App from './App.tsx';
 import './index.css';
 import { ToastProvider } from './components/Toast.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { registerSW } from 'virtual:pwa-register';
 import { initCsrfProtection } from './lib/csrf.ts';
+
+// Register PWA service worker with offline caching
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  registerSW({ immediate: true });
+}
 
 // Initialize global CSRF protection headers for all write requests
 initCsrfProtection();

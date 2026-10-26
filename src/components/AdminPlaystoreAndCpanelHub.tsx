@@ -124,9 +124,23 @@ AddDefaultCharset UTF-8
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "orientation": "portrait-primary",
   "theme_color": "#0f172a",
   "background_color": "#0f172a",
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ec4e53b7",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "scope_extensions": [
+    { "origin": "https://madeccgroup.online" },
+    { "origin": "https://www.madeccgroup.online" }
+  ],
   "icons": [
     { "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
@@ -146,6 +160,13 @@ AddDefaultCharset UTF-8
       "type": "image/png",
       "form_factor": "narrow",
       "label": "MADECC Mobile Project Budget Estimator & Services Portal"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=online.madeccgroup.twa",
+      "id": "online.madeccgroup.twa"
     }
   ]
 }`;

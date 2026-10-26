@@ -21,6 +21,7 @@ export default defineConfig(() => {
           'pwa-512x512.png',
           'screenshot-wide.png',
           'screenshot-narrow.png',
+          'sw-extra.js',
           'robots.txt',
           'sitemap.xml',
           '.well-known/assetlinks.json'
@@ -33,9 +34,23 @@ export default defineConfig(() => {
           theme_color: '#0f172a',
           background_color: '#0f172a',
           display: 'standalone',
+          display_override: [
+            'window-controls-overlay',
+            'standalone',
+            'minimal-ui',
+            'browser'
+          ],
           orientation: 'portrait-primary',
           start_url: '/',
           scope: '/',
+          iarc_rating_id: 'e84b072d-71b3-4d3e-86ae-31a8ec4e53b7',
+          launch_handler: {
+            client_mode: ['navigate-existing', 'auto']
+          },
+          scope_extensions: [
+            { origin: 'https://madeccgroup.online' },
+            { origin: 'https://www.madeccgroup.online' }
+          ],
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -72,12 +87,29 @@ export default defineConfig(() => {
               label: 'MADECC Mobile Project Budget Estimator & Services Portal'
             }
           ],
+          related_applications: [
+            {
+              platform: 'play',
+              url: 'https://play.google.com/store/apps/details?id=online.madeccgroup.twa',
+              id: 'online.madeccgroup.twa'
+            },
+            {
+              platform: 'webapp',
+              url: 'https://madeccgroup.online/manifest.json'
+            }
+          ],
+          prefer_related_applications: false,
+          handle_links: 'preferred',
+          edge_side_panel: {
+            preferred_width: 480
+          }
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB limit to support admin studio bundle
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//],
+          importScripts: ['/sw-extra.js'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

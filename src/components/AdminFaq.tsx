@@ -20,6 +20,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { exportFaqsPDF } from '../lib/exportEngine.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 
 interface FAQ {
   id: number;
@@ -68,21 +69,36 @@ export const AdminFaq: React.FC = () => {
 
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  const getAuthHeaders = async () => {
+    const token = await getAuthToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  };
+
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    fetch('/api/admin/faqs')
-      .then(res => res.json())
-      .then(data => {
+  const loadData = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/admin/faqs', {
+        credentials: 'include',
+        headers
+      });
+      if (res.ok) {
+        const data = await res.json();
         if (data.success) {
           if (data.faqs) setFaqs(data.faqs);
           if (data.categories) setCategories(data.categories);
           if (data.auditLogs) setAuditLogs(data.auditLogs);
         }
-      })
-      .catch(err => console.error('Failed to load admin FAQs data:', err));
+      }
+    } catch (err) {
+      console.error('Failed to load admin FAQs data:', err);
+    }
   };
 
   const handleSaveFaq = async (e: React.FormEvent) => {
@@ -90,9 +106,11 @@ export const AdminFaq: React.FC = () => {
     if (!editingFaq?.question || !editingFaq?.answer) return;
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch('/api/admin/faqs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(editingFaq)
       });
       const data = await res.json();
@@ -109,9 +127,11 @@ export const AdminFaq: React.FC = () => {
 
   const handleStatusChange = async (faq: FAQ, newStatus: string) => {
     try {
+      const headers = await getAuthHeaders();
       await fetch(`/api/admin/faqs/${faq.id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify({ status: newStatus })
       });
       loadData();
@@ -123,7 +143,12 @@ export const AdminFaq: React.FC = () => {
   const handleDeleteFaq = async (id: number) => {
     if (!confirm('Are you sure you want to delete this FAQ?')) return;
     try {
-      await fetch(`/api/admin/faqs/${id}`, { method: 'DELETE' });
+      const headers = await getAuthHeaders();
+      await fetch(`/api/admin/faqs/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers
+      });
       loadData();
     } catch (err) {
       console.error(err);
@@ -132,9 +157,11 @@ export const AdminFaq: React.FC = () => {
 
   const handleDuplicateFaq = async (faq: FAQ) => {
     try {
+      const headers = await getAuthHeaders();
       await fetch('/api/admin/faqs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify({
           ...faq,
           id: undefined,

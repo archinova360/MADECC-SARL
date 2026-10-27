@@ -125,6 +125,7 @@ AddDefaultCharset UTF-8
   "scope": "/",
   "display": "standalone",
   "display_override": [
+    "tabbed",
     "window-controls-overlay",
     "standalone",
     "minimal-ui",
@@ -138,9 +139,37 @@ AddDefaultCharset UTF-8
     "client_mode": ["navigate-existing", "auto"]
   },
   "scope_extensions": [
+    { "origin": "https://*.madeccgroup.online" },
     { "origin": "https://madeccgroup.online" },
     { "origin": "https://www.madeccgroup.online" }
   ],
+  "file_handlers": [
+    {
+      "action": "/services",
+      "name": "Civil Engineering & CAD Documents",
+      "accept": { "application/pdf": [".pdf"], "application/json": [".json"] }
+    }
+  ],
+  "protocol_handlers": [
+    { "protocol": "web+madecc", "url": "/?protocol=%s" },
+    { "protocol": "web+boq", "url": "/budget-calculator?boq=%s" }
+  ],
+  "share_target": {
+    "action": "/request-a-quote",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
+  "widgets": [
+    {
+      "name": "MADECC Cost Estimator Widget",
+      "short_name": "Cost Estimator",
+      "tag": "madecc-estimator-widget",
+      "ms_ac_template": "/widget-template.json"
+    }
+  ],
+  "note_taking": {
+    "new_note_url": "/booking?type=site_notes"
+  },
   "icons": [
     { "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

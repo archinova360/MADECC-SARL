@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { SiteSettings } from '../types.ts';
 import { getCsrfHeaders } from '../lib/csrf.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 
 export default function CmsSiteSettings() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -31,7 +32,14 @@ export default function CmsSiteSettings() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/cms/settings');
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/cms/settings', {
+        headers,
+        credentials: 'include'
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.settings) {
@@ -59,12 +67,17 @@ export default function CmsSiteSettings() {
 
     try {
       const csrf = await getCsrfHeaders();
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...csrf
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/cms/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...csrf
-        },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(settings)
       });
 

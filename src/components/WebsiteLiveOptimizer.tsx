@@ -40,6 +40,7 @@ import {
   Flame,
   UserCheck
 } from 'lucide-react';
+import { getAuthToken } from '../lib/firebase.ts';
 
 interface WebsiteLiveOptimizerProps {
   currentUser?: any;
@@ -159,12 +160,29 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
   const [rawImageUrl, setRawImageUrl] = useState('');
   const [optimizedUrl, setOptimizedUrl] = useState('');
 
+  const getAuthHeaders = async (includeJson = true): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = {};
+    if (includeJson) headers['Content-Type'] = 'application/json';
+    try {
+      const token = await getAuthToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch {
+      // Ignore if guest or unauthenticated
+    }
+    return headers;
+  };
+
   // 1. Fetch live system status & site settings
   const fetchAllData = async () => {
     try {
       setLoading(true);
+      const authHeaders = await getAuthHeaders(false);
+
       // Status
-      const statusRes = await fetch('/api/optimizer/status', { credentials: 'include' });
+      const statusRes = await fetch('/api/optimizer/status', { 
+        headers: authHeaders,
+        credentials: 'include' 
+      });
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         if (statusData.success) {
@@ -173,7 +191,10 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
       }
 
       // Site Settings from Neon DB
-      const settingsRes = await fetch('/api/cms/settings', { credentials: 'include' });
+      const settingsRes = await fetch('/api/cms/settings', { 
+        headers: authHeaders,
+        credentials: 'include' 
+      });
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         if (settingsData.success && settingsData.settings) {
@@ -220,7 +241,9 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
   const fetchAuditLogs = async () => {
     try {
       setLoadingAudit(true);
+      const authHeaders = await getAuthHeaders(false);
       const res = await fetch(`/api/optimizer/audit-trail?limit=60&action=${auditActionFilter}&search=${encodeURIComponent(auditSearch)}`, {
+        headers: authHeaders,
         credentials: 'include'
       });
       if (res.ok) {
@@ -243,7 +266,11 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
   const refreshStatus = async () => {
     setRefreshingStatus(true);
     try {
-      const statusRes = await fetch('/api/optimizer/status', { credentials: 'include' });
+      const authHeaders = await getAuthHeaders(false);
+      const statusRes = await fetch('/api/optimizer/status', { 
+        headers: authHeaders,
+        credentials: 'include' 
+      });
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         if (statusData.success) {
@@ -262,10 +289,11 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch('/api/cms/settings', {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(settings)
       });
       const data = await res.json();
@@ -288,10 +316,11 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
     setSendingSmtpTest(true);
     setSmtpTestResult(null);
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch('/api/optimizer/test-smtp', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           recipient: smtpRecipient,
           customSubject: smtpSubject,
@@ -329,10 +358,11 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
   // 4. Clean Stale Sessions in Neon DB
   const handleCleanSessions = async () => {
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch('/api/optimizer/clean-sessions', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
+        headers
       });
       const data = await res.json();
       if (data.success) {

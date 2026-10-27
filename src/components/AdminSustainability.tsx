@@ -23,6 +23,7 @@ import {
   Users
 } from 'lucide-react';
 import { exportSustainabilityPDF, exportSustainabilityDOCX } from '../lib/exportEngine.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 
 interface SustainabilityContent {
   title: string;
@@ -102,14 +103,27 @@ export const AdminSustainability: React.FC = () => {
   const [metricModalOpen, setMetricModalOpen] = useState(false);
   const [editingMetric, setEditingMetric] = useState<Partial<Metric> | null>(null);
 
+  const getAuthHeaders = async () => {
+    const token = await getAuthToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  };
+
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    fetch('/api/admin/sustainability')
-      .then(res => res.json())
-      .then(data => {
+  const loadData = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/admin/sustainability', {
+        credentials: 'include',
+        headers
+      });
+      if (res.ok) {
+        const data = await res.json();
         if (data.success) {
           if (data.content) setContent(data.content);
           if (data.initiatives) setInitiatives(data.initiatives);
@@ -117,8 +131,10 @@ export const AdminSustainability: React.FC = () => {
           if (data.metrics) setMetrics(data.metrics);
           if (data.auditLogs) setAuditLogs(data.auditLogs);
         }
-      })
-      .catch(err => console.error('Failed to load admin sustainability data:', err));
+      }
+    } catch (err) {
+      console.error('Failed to load admin sustainability data:', err);
+    }
   };
 
   const handleSaveOverview = async (e: React.FormEvent) => {
@@ -127,9 +143,11 @@ export const AdminSustainability: React.FC = () => {
     setMsg(null);
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch('/api/admin/sustainability/overview', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(content)
       });
       const data = await res.json();
@@ -151,9 +169,11 @@ export const AdminSustainability: React.FC = () => {
     if (!editingInit?.title) return;
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch('/api/admin/sustainability/initiatives', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(editingInit)
       });
       const data = await res.json();
@@ -170,7 +190,12 @@ export const AdminSustainability: React.FC = () => {
   const handleDeleteInitiative = async (id: number) => {
     if (!confirm('Are you sure you want to delete this initiative?')) return;
     try {
-      await fetch(`/api/admin/sustainability/initiatives/${id}`, { method: 'DELETE' });
+      const headers = await getAuthHeaders();
+      await fetch(`/api/admin/sustainability/initiatives/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers
+      });
       loadData();
     } catch (err) {
       console.error(err);
@@ -182,9 +207,11 @@ export const AdminSustainability: React.FC = () => {
     if (!editingSocial?.title) return;
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch('/api/admin/sustainability/social-projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(editingSocial)
       });
       const data = await res.json();
@@ -201,7 +228,12 @@ export const AdminSustainability: React.FC = () => {
   const handleDeleteSocialProject = async (id: number) => {
     if (!confirm('Delete this social impact project?')) return;
     try {
-      await fetch(`/api/admin/sustainability/social-projects/${id}`, { method: 'DELETE' });
+      const headers = await getAuthHeaders();
+      await fetch(`/api/admin/sustainability/social-projects/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers
+      });
       loadData();
     } catch (err) {
       console.error(err);
@@ -213,9 +245,11 @@ export const AdminSustainability: React.FC = () => {
     if (!editingMetric?.label) return;
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch('/api/admin/sustainability/metrics', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(editingMetric)
       });
       const data = await res.json();
@@ -232,7 +266,12 @@ export const AdminSustainability: React.FC = () => {
   const handleDeleteMetric = async (id: number) => {
     if (!confirm('Delete this metric indicator?')) return;
     try {
-      await fetch(`/api/admin/sustainability/metrics/${id}`, { method: 'DELETE' });
+      const headers = await getAuthHeaders();
+      await fetch(`/api/admin/sustainability/metrics/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers
+      });
       loadData();
     } catch (err) {
       console.error(err);

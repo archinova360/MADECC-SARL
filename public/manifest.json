@@ -7,11 +7,20 @@
   "scope": "/",
   "display": "standalone",
   "display_override": [
+    "tabbed",
     "window-controls-overlay",
     "standalone",
     "minimal-ui",
     "browser"
   ],
+  "tab_strip": {
+    "home_tab": {
+      "scope_url": "/"
+    },
+    "new_tab_button": {
+      "url": "/budget-calculator"
+    }
+  },
   "orientation": "portrait-primary",
   "theme_color": "#0f172a",
   "background_color": "#0f172a",
@@ -23,9 +32,84 @@
     "client_mode": ["navigate-existing", "auto"]
   },
   "scope_extensions": [
+    { "origin": "https://*.madeccgroup.online" },
     { "origin": "https://madeccgroup.online" },
-    { "origin": "https://www.madeccgroup.online" }
+    { "origin": "https://www.madeccgroup.online" },
+    { "origin": "https://app.madeccgroup.online" }
   ],
+  "file_handlers": [
+    {
+      "action": "/services",
+      "name": "Civil Engineering & CAD Documents",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "accept": {
+        "application/pdf": [".pdf"],
+        "application/json": [".json"],
+        "text/csv": [".csv"],
+        "image/*": [".png", ".jpg", ".jpeg", ".webp", ".svg"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+madecc",
+      "url": "/?protocol=%s"
+    },
+    {
+      "protocol": "web+boq",
+      "url": "/budget-calculator?boq=%s"
+    },
+    {
+      "protocol": "web+tender",
+      "url": "/tenders?tender=%s"
+    }
+  ],
+  "share_target": {
+    "action": "/request-a-quote",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "widgets": [
+    {
+      "name": "MADECC Cost Estimator Widget",
+      "short_name": "Cost Estimator",
+      "description": "Live construction cost calculator and regional material price benchmarks",
+      "tag": "madecc-estimator-widget",
+      "template": "widget-template",
+      "ms_ac_template": "/widget-template.json",
+      "data": "/api/widget/data",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/screenshot-narrow.png",
+          "sizes": "720x1280",
+          "label": "Estimator Widget Preview"
+        }
+      ],
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192"
+        }
+      ],
+      "auth": false,
+      "update": 86400
+    }
+  ],
+  "note_taking": {
+    "new_note_url": "/booking?type=site_notes"
+  },
   "icons": [
     {
       "src": "/pwa-192x192.png",
@@ -81,7 +165,7 @@
       "name": "Budget Estimator",
       "short_name": "Calculator",
       "description": "Instant BoQ and construction cost estimation calculator",
-      "url": "/calculator",
+      "url": "/budget-calculator",
       "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
     },
     {

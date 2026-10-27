@@ -1,6 +1,7 @@
 import express from 'express';
+import crypto from 'crypto';
 import { db } from '../../db/index.ts';
-import { signedContracts, signedReceipts } from '../../db/schema.ts';
+import { signedContracts, signedReceipts, exportHistoryLogs, projects, lessonPlans, drawingTakeoffs, companyDocuments } from '../../db/schema.ts';
 import { eq, desc, sql } from 'drizzle-orm';
 import { requireStaffOrAdmin } from '../../middleware/auth.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
@@ -327,6 +328,23 @@ export function setupDocumentRoutes(app: express.Express) {
     }
   });
 
+  // 6b. Regenerate verification token for contract
+  app.post('/api/contracts/:id/regenerate-token', requireStaffOrAdmin, async (req, res) => {
+    try {
+      await ensureDocumentTablesExist();
+      const id = parseInt(req.params.id);
+      const newToken = `CNT-VERIF-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+      const updated = await db.update(signedContracts)
+        .set({ verificationToken: newToken })
+        .where(eq(signedContracts.id, id))
+        .returning();
+      if (updated.length === 0) return res.status(404).json({ error: 'Contract not found' });
+      res.json(updated[0]);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ==========================================
   // --- RECEIPTS MANAGEMENT & E-MAILING ---
   // ==========================================
@@ -467,6 +485,23 @@ export function setupDocumentRoutes(app: express.Express) {
       const id = parseInt(req.params.id);
       const deleted = await db.delete(signedReceipts).where(eq(signedReceipts.id, id)).returning();
       res.json(deleted[0]);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 11b. Regenerate verification token for receipt
+  app.post('/api/receipts/:id/regenerate-token', requireStaffOrAdmin, async (req, res) => {
+    try {
+      await ensureDocumentTablesExist();
+      const id = parseInt(req.params.id);
+      const newToken = `RCP-VERIF-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+      const updated = await db.update(signedReceipts)
+        .set({ verificationToken: newToken, updatedAt: new Date() })
+        .where(eq(signedReceipts.id, id))
+        .returning();
+      if (updated.length === 0) return res.status(404).json({ error: 'Receipt not found' });
+      res.json(updated[0]);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1017,6 +1052,89 @@ export function setupDocumentRoutes(app: express.Express) {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to subscribe for updates' });
+    }
+  });
+
+  // ==========================================
+  // --- DOCUMENT EXPORT SERVICE & AUDIT TRAIL ---
+  // ==========================================
+  app.get('/api/export/history', async (req, res) => {
+    try {
+      const logs = await db.select().from(exportHistoryLogs).orderBy(desc(exportHistoryLogs.timestamp)).limit(100);
+      res.json({ success: true, logs });
+    } catch (error: any) {
+      console.warn('[DB Fallback] /api/export/history:', error.message || error);
+      res.json({ success: true, logs: [] });
+    }
+  });
+
+  app.post('/api/export/log', async (req, res) => {
+    try {
+      const { userEmail, moduleType, recordId, documentTitle, version, format, status, filename, errorMessage, metadata } = req.body;
+      if (!moduleType || !recordId || !format) {
+        return res.status(400).json({ error: 'Missing required export log parameters' });
+      }
+
+      const inserted = await db.insert(exportHistoryLogs).values({
+        userEmail: userEmail || 'system@madeccgroup.online',
+        moduleType,
+        recordId: String(recordId),
+        documentTitle: documentTitle || 'Export Document',
+        version: String(version || '1.0'),
+        format: format || 'pdf',
+        status: status || 'SUCCESS',
+        filename: filename || 'export-file',
+        errorMessage: errorMessage || null,
+        metadata: metadata || null
+      }).returning();
+
+      res.json({ success: true, log: inserted[0] });
+    } catch (error: any) {
+      console.warn('Failed to insert export log:', error.message || error);
+      res.json({ success: true });
+    }
+  });
+
+  app.get('/api/export/record/:moduleType/:recordId', async (req, res) => {
+    const { moduleType, recordId } = req.params;
+    try {
+      let record: any = null;
+
+      if (moduleType === 'receipts') {
+        const idNum = parseInt(recordId);
+        const rows = isNaN(idNum) 
+          ? await db.select().from(signedReceipts).where(eq(signedReceipts.receiptNo, recordId)).limit(1)
+          : await db.select().from(signedReceipts).where(eq(signedReceipts.id, idNum)).limit(1);
+        if (rows.length > 0) record = rows[0];
+      } else if (moduleType === 'civil_works' || moduleType === 'contracts') {
+        const idNum = parseInt(recordId);
+        const rows = isNaN(idNum)
+          ? await db.select().from(signedContracts).where(eq(signedContracts.contractNo, recordId)).limit(1)
+          : await db.select().from(signedContracts).where(eq(signedContracts.id, idNum)).limit(1);
+        if (rows.length > 0) record = rows[0];
+      } else if (moduleType === 'blueprints') {
+        const idNum = parseInt(recordId);
+        if (!isNaN(idNum)) {
+          const rows = await db.select().from(drawingTakeoffs).where(eq(drawingTakeoffs.id, idNum)).limit(1);
+          if (rows.length > 0) record = rows[0];
+        }
+      } else if (moduleType === 'pedagogical_lessons') {
+        const idNum = parseInt(recordId);
+        if (!isNaN(idNum)) {
+          const rows = await db.select().from(lessonPlans).where(eq(lessonPlans.id, idNum)).limit(1);
+          if (rows.length > 0) record = rows[0];
+        }
+      } else if (moduleType === 'safety_inspections') {
+        const idNum = parseInt(recordId);
+        if (!isNaN(idNum)) {
+          const rows = await db.select().from(companyDocuments).where(eq(companyDocuments.id, idNum)).limit(1);
+          if (rows.length > 0) record = rows[0];
+        }
+      }
+
+      res.json({ success: true, record });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 }

@@ -20,6 +20,7 @@ import {
   History
 } from 'lucide-react';
 import { exportSupplierDossierPDF } from '../lib/exportEngine.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 
 interface SupplierApp {
   id: number;
@@ -91,17 +92,38 @@ export const AdminSuppliers: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    fetch('/api/admin/suppliers')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          if (data.suppliers) setSuppliers(data.suppliers);
-          if (data.subcontractors) setSubcontractors(data.subcontractors);
-          if (data.auditLogs) setAuditLogs(data.auditLogs);
-        }
-      })
-      .catch(err => console.error('Failed to load admin suppliers:', err));
+  const getAuthHeaders = async (includeJson = true): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = {};
+    if (includeJson) {
+      headers['Content-Type'] = 'application/json';
+    }
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch {
+      // Ignore if auth is unavailable or guest
+    }
+    return headers;
+  };
+
+  const loadData = async () => {
+    try {
+      const headers = await getAuthHeaders(false);
+      const res = await fetch('/api/admin/suppliers', {
+        headers,
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.suppliers) setSuppliers(data.suppliers);
+        if (data.subcontractors) setSubcontractors(data.subcontractors);
+        if (data.auditLogs) setAuditLogs(data.auditLogs);
+      }
+    } catch (err) {
+      console.error('Failed to load admin suppliers:', err);
+    }
   };
 
   const handleOpenSupplierDrawer = (sup: SupplierApp) => {
@@ -116,9 +138,11 @@ export const AdminSuppliers: React.FC = () => {
     setSavingReview(true);
 
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch(`/api/admin/suppliers/${selectedSupplier.id}/review`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           status: appStatus,
           reviewerNotes,
@@ -150,9 +174,11 @@ export const AdminSuppliers: React.FC = () => {
     setSavingReview(true);
 
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch(`/api/admin/subcontractors/${selectedSubcontractor.id}/review`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           status: appStatus,
           reviewerNotes,

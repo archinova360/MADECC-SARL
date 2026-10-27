@@ -36,6 +36,7 @@ import {
   exportAllTendersPDF, 
   exportAllEoisPDF 
 } from '../lib/exportEngine.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 
 interface Tender {
   id: number;
@@ -101,23 +102,45 @@ export const AdminTenders: React.FC = () => {
 
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  const getAuthHeaders = async (includeJson = true): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = {};
+    if (includeJson) {
+      headers['Content-Type'] = 'application/json';
+    }
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch {
+      // Ignore if guest or unauthenticated
+    }
+    return headers;
+  };
+
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    fetch('/api/admin/tenders')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          if (data.tenders) setTenders(data.tenders);
-          if (data.eois) setEois(data.eois);
-          if (data.auditLogs) setAuditLogs(data.auditLogs);
-        }
-      })
-      .catch(err => console.error('Failed to load admin tenders:', err))
-      .finally(() => setLoading(false));
+    try {
+      const headers = await getAuthHeaders(false);
+      const res = await fetch('/api/admin/tenders', {
+        headers,
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.tenders) setTenders(data.tenders);
+        if (data.eois) setEois(data.eois);
+        if (data.auditLogs) setAuditLogs(data.auditLogs);
+      }
+    } catch (err) {
+      console.error('Failed to load admin tenders:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveTender = async (e: React.FormEvent) => {
@@ -126,9 +149,11 @@ export const AdminTenders: React.FC = () => {
 
     setSavingTender(true);
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch('/api/admin/tenders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(editingTender)
       });
       const data = await res.json();
@@ -149,9 +174,11 @@ export const AdminTenders: React.FC = () => {
 
   const handleStatusChange = async (tender: Tender, newStatus: string) => {
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch(`/api/admin/tenders/${tender.id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus })
       });
       const data = await res.json();
@@ -167,7 +194,12 @@ export const AdminTenders: React.FC = () => {
   const handleDeleteTender = async (id: number) => {
     if (!confirm('Are you sure you want to delete this tender notice?')) return;
     try {
-      const res = await fetch(`/api/admin/tenders/${id}`, { method: 'DELETE' });
+      const headers = await getAuthHeaders(false);
+      const res = await fetch(`/api/admin/tenders/${id}`, { 
+        method: 'DELETE',
+        headers,
+        credentials: 'include'
+      });
       const data = await res.json();
       if (data.success) {
         setMsg({ text: 'Tender notice removed from active records.', type: 'success' });
@@ -181,9 +213,11 @@ export const AdminTenders: React.FC = () => {
   const handleDuplicateTender = async (tender: Tender) => {
     try {
       const copyNum = `${tender.tenderNumber}-CPY${Math.floor(10 + Math.random() * 90)}`;
+      const headers = await getAuthHeaders(true);
       const res = await fetch('/api/admin/tenders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           ...tender,
           id: undefined,
@@ -206,9 +240,11 @@ export const AdminTenders: React.FC = () => {
     if (!selectedEoi) return;
     setSavingEoiReview(true);
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch(`/api/admin/tenders/eois/${selectedEoi.id}/review`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           status: eoiStatus,
           reviewNotes: eoiReviewNotes,
@@ -230,9 +266,11 @@ export const AdminTenders: React.FC = () => {
 
   const handleQuickEoiAction = async (eoi: EoiSubmission, status: string) => {
     try {
+      const headers = await getAuthHeaders(true);
       const res = await fetch(`/api/admin/tenders/eois/${eoi.id}/review`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           status,
           reviewNotes: `Quick approved by Procurement Admin on ${new Date().toLocaleDateString()}`,

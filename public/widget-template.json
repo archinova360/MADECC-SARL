@@ -1,0 +1,49 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "MADECC GROUP — Construction Estimator",
+      "weight": "Bolder",
+      "size": "Medium",
+      "color": "Warning"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Regional Cameroon Construction Rate (2026): 280,000 XAF/m²",
+      "wrap": true,
+      "size": "Small"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        {
+          "title": "Foundation:",
+          "value": "Eurocode 2 / BAEL 91"
+        },
+        {
+          "title": "Decennial:",
+          "value": "10-Year Guarantee (Art 1792)"
+        },
+        {
+          "title": "Status:",
+          "value": "Active Telemetry"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Calculate Project Budget",
+      "url": "https://madeccgroup.online/budget-calculator"
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "2026 Cost Guide",
+      "url": "https://madeccgroup.online/construction-cost-guide"
+    }
+  ]
+}

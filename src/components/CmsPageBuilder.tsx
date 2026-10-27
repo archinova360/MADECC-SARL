@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { PageContent, HeroSectionConfig, PageSection, SeoConfig, CmsRevision } from '../types.ts';
 import { getCsrfHeaders } from '../lib/csrf.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import CmsMediaLibrary from './CmsMediaLibrary.tsx';
 
@@ -201,12 +202,19 @@ export default function CmsPageBuilder() {
     setSavingDraft(true);
     try {
       const csrf = await getCsrfHeaders();
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...csrf
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/cms/pages/${selectedSlug}/draft`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...csrf
-        },
+        credentials: 'include',
+        headers,
         body: JSON.stringify({
           heroConfig: pageData.heroConfig,
           sections: pageData.sections,
@@ -235,12 +243,19 @@ export default function CmsPageBuilder() {
     setPublishing(true);
     try {
       const csrf = await getCsrfHeaders();
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...csrf
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/cms/pages/${selectedSlug}/publish`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...csrf
-        },
+        credentials: 'include',
+        headers,
         body: JSON.stringify({
           heroConfig: pageData.heroConfig,
           sections: pageData.sections,
@@ -277,9 +292,18 @@ export default function CmsPageBuilder() {
 
     try {
       const csrf = await getCsrfHeaders();
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {
+        ...csrf
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/cms/pages/${selectedSlug}/restore/${revId}`, {
         method: 'POST',
-        headers: csrf
+        credentials: 'include',
+        headers
       });
       if (res.ok) {
         const data = await res.json();

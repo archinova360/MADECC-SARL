@@ -22,6 +22,7 @@ export default defineConfig(() => {
           'screenshot-wide.png',
           'screenshot-narrow.png',
           'sw-extra.js',
+          'widget-template.json',
           'robots.txt',
           'sitemap.xml',
           '.well-known/assetlinks.json'
@@ -35,11 +36,20 @@ export default defineConfig(() => {
           background_color: '#0f172a',
           display: 'standalone',
           display_override: [
+            'tabbed',
             'window-controls-overlay',
             'standalone',
             'minimal-ui',
             'browser'
           ],
+          tab_strip: {
+            home_tab: {
+              scope_url: '/'
+            },
+            new_tab_button: {
+              url: '/budget-calculator'
+            }
+          },
           orientation: 'portrait-primary',
           start_url: '/',
           scope: '/',
@@ -48,9 +58,84 @@ export default defineConfig(() => {
             client_mode: ['navigate-existing', 'auto']
           },
           scope_extensions: [
+            { origin: 'https://*.madeccgroup.online' },
             { origin: 'https://madeccgroup.online' },
-            { origin: 'https://www.madeccgroup.online' }
+            { origin: 'https://www.madeccgroup.online' },
+            { origin: 'https://app.madeccgroup.online' }
           ],
+          file_handlers: [
+            {
+              action: '/services',
+              name: 'Civil Engineering & CAD Documents',
+              icons: [
+                {
+                  src: '/pwa-192x192.png',
+                  sizes: '192x192',
+                  type: 'image/png'
+                }
+              ],
+              accept: {
+                'application/pdf': ['.pdf'],
+                'application/json': ['.json'],
+                'text/csv': ['.csv'],
+                'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.svg']
+              }
+            }
+          ],
+          protocol_handlers: [
+            {
+              protocol: 'web+madecc',
+              url: '/?protocol=%s'
+            },
+            {
+              protocol: 'web+boq',
+              url: '/budget-calculator?boq=%s'
+            },
+            {
+              protocol: 'web+tender',
+              url: '/tenders?tender=%s'
+            }
+          ],
+          share_target: {
+            action: '/request-a-quote',
+            method: 'GET',
+            enctype: 'application/x-www-form-urlencoded',
+            params: {
+              title: 'title',
+              text: 'text',
+              url: 'url'
+            }
+          },
+          widgets: [
+            {
+              name: 'MADECC Cost Estimator Widget',
+              short_name: 'Cost Estimator',
+              description: 'Live construction cost calculator and regional material price benchmarks',
+              tag: 'madecc-estimator-widget',
+              template: 'widget-template',
+              ms_ac_template: '/widget-template.json',
+              data: '/api/widget/data',
+              type: 'application/json',
+              screenshots: [
+                {
+                  src: '/screenshot-narrow.png',
+                  sizes: '720x1280',
+                  label: 'Estimator Widget Preview'
+                }
+              ],
+              icons: [
+                {
+                  src: '/pwa-192x192.png',
+                  sizes: '192x192'
+                }
+              ],
+              auth: false,
+              update: 86400
+            }
+          ],
+          note_taking: {
+            new_note_url: '/booking?type=site_notes'
+          },
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -103,7 +188,7 @@ export default defineConfig(() => {
           edge_side_panel: {
             preferred_width: 480
           }
-        },
+        } as any,
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB limit to support admin studio bundle
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],

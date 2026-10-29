@@ -41,7 +41,9 @@ import {
   Calculator,
   HelpCircle,
   Info,
-  Compass
+  Compass,
+  ShoppingBag,
+  PackageCheck
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
@@ -372,6 +374,8 @@ export default function Navbar({
 
   const menuItems = [
     { id: 'home', label: t('nav_home') },
+    { id: 'store', label: 'KRR Bookstore & Sales' },
+    { id: 'order-tracking', label: 'Track My Order' },
     { id: 'services', label: 'Services' },
     { id: 'schedule-consultation', label: 'Consultation' },
     { id: 'projects', label: t('nav_projects') },
@@ -386,6 +390,7 @@ export default function Navbar({
   // Core direct desktop links
   const primaryDesktopNav = [
     { id: 'home', label: t('nav_home') },
+    { id: 'store', label: 'Bookstore' },
     { id: 'services', label: 'Services' },
     { id: 'projects', label: t('nav_projects') },
     { id: 'schedule-consultation', label: 'Consultation' },
@@ -534,6 +539,49 @@ export default function Navbar({
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
                       }`}
                     >
+                      <button
+                        onClick={() => {
+                          setCurrentTab('store');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'store' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <ShoppingBag className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>KRR Bookstore & Sales</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded font-bold">XAF</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Engineering textbooks, BOQs & manuals with MTN/Orange MoMo</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('order-tracking');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'order-tracking' 
+                            ? 'bg-sky-500/10 text-sky-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <PackageCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans">Track Order & Download</div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Check payment status & download unlocked PDFs</div>
+                        </div>
+                      </button>
+
                       <button
                         onClick={() => {
                           setCurrentTab('walkthrough-guide');

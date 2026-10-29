@@ -24,7 +24,9 @@ import {
   ChevronRight,
   Layers,
   Wrench,
-  Compass
+  Compass,
+  ShoppingBag,
+  PackageCheck
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
@@ -142,6 +144,8 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
   const primaryLinks = [
     { id: 'home', label: t('nav_home'), icon: Home },
+    { id: 'store', label: 'KRR Bookstore & Sales', icon: ShoppingBag },
+    { id: 'order-tracking', label: 'Track My Order', icon: PackageCheck },
     { id: 'services', label: 'Services & Solutions', icon: Briefcase },
     { id: 'projects', label: t('nav_projects'), icon: FolderKanban },
     { id: 'schedule-consultation', label: 'Schedule Consultation', icon: Calendar },
@@ -149,6 +153,20 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
   ];
 
   const toolsLinks = [
+    { 
+      id: 'store', 
+      label: 'KRR Official Bookstore', 
+      desc: 'Buy Eurocode 2, BOQ manuals & TVET engineering textbooks in XAF',
+      icon: ShoppingBag,
+      badge: 'Store'
+    },
+    { 
+      id: 'order-tracking', 
+      label: 'Track Order & Downloads', 
+      desc: 'Verify MTN/Orange payment & access digital textbook downloads',
+      icon: PackageCheck,
+      badge: 'Instant'
+    },
     { 
       id: 'walkthrough-guide', 
       label: 'Visitor Walkthrough Guide', 

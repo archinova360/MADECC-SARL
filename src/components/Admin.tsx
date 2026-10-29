@@ -66,8 +66,10 @@ import {
   LogOut,
   Menu,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ShoppingBag
 } from 'lucide-react';
+import AdminSalesHub from './AdminSalesHub.tsx';
 import { 
   User, 
   Project, 
@@ -183,7 +185,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   };
 
   // Navigation internal to admin
-  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'website-optimizer' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio' | 'api-platform'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
+  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'sales-hub' | 'website-optimizer' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio' | 'api-platform'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
   const [activeSyllabus, setActiveSyllabus] = useState<any | null>(null);
 
   // Lock and default reviewer to Social Media Studio
@@ -204,6 +206,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   // Expanded navigation groups state
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     'command-center-group': true,
+    'sales-group': true,
     'analytics-group': true,
     'projects-group': true,
     'qs-group': true,
@@ -2017,11 +2020,20 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       icon: LayoutDashboard,
       items: [
         { id: 'command-center', label: 'Dashboard Overview', icon: LayoutDashboard },
+        { id: 'sales-hub', label: '🛒 KRR Bookstore & Orders Hub', icon: ShoppingBag },
         { id: 'website-optimizer', label: '⚡ Website Live Optimizer (Real-Life)', icon: Sparkles },
         { id: 'analytics', label: 'Executive Analytics', icon: TrendingUp },
         { id: 'contacts', label: 'Notifications & Alerts', icon: Mail, badgeKey: 'unreadInquiries' },
         { id: 'reviews', label: 'Approval Center', icon: Star, badgeKey: 'pendingReviews' },
         { id: 'audit', label: 'Activity Feed', icon: History }
+      ]
+    },
+    {
+      id: 'sales-group',
+      title: '🛒 KRR BOOKSTORE & SALES',
+      icon: ShoppingBag,
+      items: [
+        { id: 'sales-hub', label: 'KRR Bookstore, Orders & Verifications', icon: ShoppingBag }
       ]
     },
     {
@@ -2820,6 +2832,11 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             <span className="w-3 h-3 rounded-full border border-t-amber-500 animate-spin shrink-0" />
             <span>Syncing database tables in real-time...</span>
           </div>
+        )}
+
+        {/* KRR BOOKSTORE, SALES, ORDERS & VERIFICATION HUB */}
+        {activeAdminTab === 'sales-hub' && (
+          <AdminSalesHub />
         )}
 
         {/* WEBSITE LIVE OPTIMIZER & MASTER CUSTOMIZER */}

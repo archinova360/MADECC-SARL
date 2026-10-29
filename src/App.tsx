@@ -32,6 +32,8 @@ const FAQ = lazy(() => import('./components/FAQ.tsx'));
 const Tenders = lazy(() => import('./components/Tenders.tsx').then(m => ({ default: m.Tenders })));
 const DeveloperPortal = lazy(() => import('./components/DeveloperPortal.tsx'));
 const VisitorWalkthroughGuide = lazy(() => import('./components/VisitorWalkthroughGuide.tsx').then(m => ({ default: m.VisitorWalkthroughGuide })));
+const KrrSalesStore = lazy(() => import('./components/KrrSalesStore.tsx').then(m => ({ default: m.KrrSalesStore })));
+const KrrOrderTracking = lazy(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
 
 // Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
 const SuperAdmin = lazy(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
@@ -309,6 +311,23 @@ function AppContent({
             }} 
           />
         );
+      case 'store':
+      case 'bookstore':
+      case 'textbooks':
+      case 'shop':
+        return (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <KrrSalesStore onNavigateToTab={handleNavigateWithState} />
+          </Suspense>
+        );
+      case 'order-tracking':
+      case 'track-order':
+      case 'tracking':
+        return (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <KrrOrderTracking onNavigateToTab={handleNavigateWithState} />
+          </Suspense>
+        );
       case 'admin':
         return (
           <Admin 
@@ -563,6 +582,8 @@ function getTabFromPath(pathname: string, searchStr: string): string {
   if (path.includes('super-admin') || params.get('tab') === 'super-admin') return 'super-admin';
   if (path.includes('saas') || path.includes('cloud') || params.get('tab') === 'saas') return 'saas-cloud';
   if (path.includes('data-deletion') || path.includes('data_deletion') || params.get('tab') === 'data-deletion' || params.get('tracking')) return 'data-deletion';
+  if (path.includes('store') || path.includes('bookstore') || path.includes('textbook') || path.includes('shop') || params.get('tab') === 'store') return 'store';
+  if (path.includes('order-tracking') || path.includes('track-order') || (path.includes('order') && !path.includes('onboarding')) || params.get('tab') === 'order-tracking') return 'order-tracking';
   if (path.includes('terms') || params.get('tab') === 'terms') return 'terms';
   if (path.includes('privacy') || params.get('tab') === 'privacy') return 'privacy';
   if (path.includes('safety') || path.includes('health') || path.includes('qhse') || params.get('tab') === 'safety') return 'safety';

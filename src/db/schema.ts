@@ -1963,6 +1963,148 @@ export const authSessions = pgTable('auth_sessions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// =========================================================================
+// 89. KRR GROUP SALES & TEXTBOOK PRODUCTS CATALOG
+// =========================================================================
+export const salesProducts = pgTable('sales_products', {
+  id: serial('id').primaryKey(),
+  sku: text('sku').notNull().unique(), // e.g. 'KRR-TXT-2026-001'
+  title: text('title').notNull(),
+  slug: text('slug').notNull().unique(),
+  description: text('description').notNull(),
+  shortDescription: text('short_description'),
+  category: text('category').notNull().default('Civil Engineering Textbooks'), // 'Civil Engineering Textbooks', 'Technical School & TVET', 'Quantity Surveying & BOQ', 'Building Construction', 'Eurocode & Standards', 'Educational Guides'
+  yearLevel: text('year_level').default('General'), // 'Form 4 - 5', 'Lower & Upper Sixth', 'University & Polytechnic', 'Professional Practice', 'General'
+  subject: text('subject').default('Civil Engineering'), // 'Civil Engineering', 'Building Construction', 'Quantity Surveying', 'Technical Drawing', 'Structural Design'
+  format: text('format').notNull().default('DIGITAL'), // 'DIGITAL', 'PHYSICAL', 'BUNDLE'
+  price: integer('price').notNull().default(0), // Price in XAF
+  compareAtPrice: integer('compare_at_price'), // Original price in XAF
+  coverImage: text('cover_image').notNull(),
+  previewPdfUrl: text('preview_pdf_url'), // Free sample / TOC preview
+  digitalFileUrl: text('digital_file_url'), // Secured private PDF/EPUB file
+  digitalFileName: text('digital_file_name'),
+  digitalFileSizeMb: numeric('digital_file_size_mb'),
+  stockQuantity: integer('stock_quantity').default(100),
+  trackInventory: boolean('track_inventory').default(false).notNull(),
+  isbn: text('isbn'),
+  author: text('author').default('KRR Engineering Editorial Board'),
+  publisher: text('publisher').default('KRR Group & MADECC Publishing, Yaoundé'),
+  publicationYear: integer('publication_year').default(2026),
+  pagesCount: integer('pages_count').default(350),
+  language: text('language').default('English & French'),
+  status: text('status').notNull().default('PUBLISHED'), // 'DRAFT', 'PUBLISHED', 'ARCHIVED'
+  featured: boolean('featured').default(false).notNull(),
+  tags: json('tags'), // Array of keywords
+  displayOrder: integer('display_order').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 90. KRR GROUP SALES ORDERS
+// =========================================================================
+export const salesOrders = pgTable('sales_orders', {
+  id: serial('id').primaryKey(),
+  orderReference: text('order_reference').notNull().unique(), // e.g. 'KRR-ORD-2026-0042'
+  accessToken: text('access_token').notNull().unique(), // Cryptographic token for secure tracking & downloads
+  customerName: text('customer_name').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  customerPhone: text('customer_phone').notNull(),
+  customerWhatsapp: text('customer_whatsapp'),
+  shippingCity: text('shipping_city').notNull().default('Yaoundé'),
+  shippingAddress: text('shipping_address'),
+  deliveryMethod: text('delivery_method').default('DIGITAL_DOWNLOAD').notNull(), // 'DIGITAL_DOWNLOAD', 'HOME_DELIVERY', 'AGENCY_PICKUP_YAOUNDE', 'AGENCY_PICKUP_DOUALA'
+  subtotal: integer('subtotal').notNull().default(0), // In XAF
+  deliveryFee: integer('delivery_fee').default(0).notNull(),
+  taxAmount: integer('tax_amount').default(0).notNull(),
+  grandTotal: integer('grand_total').notNull().default(0), // In XAF
+  currency: text('currency').default('XAF').notNull(),
+  orderStatus: text('order_status').default('PENDING').notNull(), // 'PENDING', 'PROCESSING', 'DISPATCHED', 'COMPLETED', 'CANCELLED'
+  paymentStatus: text('payment_status').default('UNPAID').notNull(), // 'UNPAID', 'AWAITING_VERIFICATION', 'VERIFIED_PAID', 'PAYMENT_REJECTED', 'REFUNDED'
+  paymentMethod: text('payment_method').default('MTN_MOMO').notNull(), // 'MTN_MOMO', 'ORANGE_MONEY', 'BANK_TRANSFER', 'CASH_ON_DELIVERY'
+  internalNotes: text('internal_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 91. KRR GROUP SALES ORDER LINE ITEMS
+// =========================================================================
+export const salesOrderItems = pgTable('sales_order_items', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => salesOrders.id, { onDelete: 'cascade' }).notNull(),
+  productId: integer('product_id').references(() => salesProducts.id, { onDelete: 'set null' }),
+  productTitle: text('product_title').notNull(),
+  productSku: text('product_sku'),
+  productFormat: text('product_format').notNull().default('DIGITAL'),
+  unitPrice: integer('unit_price').notNull(), // In XAF
+  quantity: integer('quantity').notNull().default(1),
+  totalPrice: integer('total_price').notNull(), // In XAF
+  digitalFileUrl: text('digital_file_url'),
+  downloadCount: integer('download_count').default(0).notNull(),
+  lastDownloadedAt: timestamp('last_downloaded_at'),
+});
+
+// =========================================================================
+// 92. KRR GROUP SALES PAYMENT SUBMISSIONS & PROOF OF PAYMENT
+// =========================================================================
+export const salesPayments = pgTable('sales_payments', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => salesOrders.id, { onDelete: 'cascade' }).notNull(),
+  orderReference: text('order_reference').notNull(),
+  amount: integer('amount').notNull(), // In XAF
+  currency: text('currency').default('XAF').notNull(),
+  paymentMethod: text('payment_method').notNull(), // 'MTN_MOMO', 'ORANGE_MONEY', 'BANK_TRANSFER'
+  transactionReference: text('transaction_reference').notNull(), // TXID or bank ref
+  payerPhone: text('payer_phone'),
+  payerName: text('payer_name'),
+  proofImageUrl: text('proof_image_url'), // Screenshot or PDF receipt
+  status: text('status').default('AWAITING_VERIFICATION').notNull(), // 'AWAITING_VERIFICATION', 'APPROVED', 'REJECTED'
+  rejectionReason: text('rejection_reason'),
+  verifiedBy: text('verified_by'), // Staff or admin email
+  verifiedAt: timestamp('verified_at'),
+  customerNotified: boolean('customer_notified').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 93. KRR GROUP DIGITAL PRODUCT DOWNLOAD LOGS
+// =========================================================================
+export const salesDownloadLogs = pgTable('sales_download_logs', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull(),
+  orderReference: text('order_reference').notNull(),
+  productId: integer('product_id').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+});
+
+// Relations
+export const salesOrdersRelations = relations(salesOrders, ({ many }) => ({
+  items: many(salesOrderItems),
+  payments: many(salesPayments),
+}));
+
+export const salesOrderItemsRelations = relations(salesOrderItems, ({ one }) => ({
+  order: one(salesOrders, {
+    fields: [salesOrderItems.orderId],
+    references: [salesOrders.id],
+  }),
+  product: one(salesProducts, {
+    fields: [salesOrderItems.productId],
+    references: [salesProducts.id],
+  }),
+}));
+
+export const salesPaymentsRelations = relations(salesPayments, ({ one }) => ({
+  order: one(salesOrders, {
+    fields: [salesPayments.orderId],
+    references: [salesOrders.id],
+  }),
+}));
+
 
 
 

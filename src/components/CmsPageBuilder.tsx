@@ -223,13 +223,19 @@ export default function CmsPageBuilder() {
         })
       });
 
-      if (!res.ok) throw new Error('Failed to save draft');
-      const data = await res.json();
-      if (data.success) {
-        setPageData(prev => prev ? { ...prev, status: 'DRAFT', draftData: data.page.draftData } : null);
-        showToast('success', 'Draft saved safely without modifying live site.');
-        fetchPages();
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {}
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Failed to save draft (HTTP ${res.status})`);
       }
+
+      setPageData(prev => prev ? { ...prev, status: 'DRAFT', draftData: data.page?.draftData || prev.draftData } : null);
+      showToast('success', 'Draft saved safely without modifying live site.');
+      fetchPages();
     } catch (err: any) {
       showToast('error', err.message || 'Error saving draft');
     } finally {
@@ -248,7 +254,7 @@ export default function CmsPageBuilder() {
         'Content-Type': 'application/json',
         ...csrf
       };
-      if (token) {
+      if (token && token !== 'null' && token !== 'undefined') {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
@@ -264,20 +270,27 @@ export default function CmsPageBuilder() {
         })
       });
 
-      if (!res.ok) throw new Error('Failed to publish changes');
-      const data = await res.json();
-      if (data.success) {
-        setPageData(prev => prev ? { 
-          ...prev, 
-          status: 'PUBLISHED', 
-          version: data.version, 
-          publishedAt: new Date().toISOString() 
-        } : null);
-        showToast('success', `Version ${data.version} is now LIVE on the public website!`);
-        fetchPages();
-        fetchRevisions(selectedSlug);
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {}
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Failed to publish changes (HTTP ${res.status})`);
       }
+
+      setPageData(prev => prev ? { 
+        ...prev, 
+        status: 'PUBLISHED', 
+        version: data.version || (prev.version + 1), 
+        publishedAt: new Date().toISOString() 
+      } : null);
+      showToast('success', `Version ${data.version || ''} is now LIVE on the public website!`);
+      fetchPages();
+      fetchRevisions(selectedSlug);
     } catch (err: any) {
+
       showToast('error', err.message || 'Error publishing page');
     } finally {
       setPublishing(false);

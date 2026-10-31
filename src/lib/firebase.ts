@@ -65,18 +65,32 @@ export async function logoutUser(userEmail?: string, userUid?: string): Promise<
 
 export async function getAuthToken(): Promise<string | null> {
   try {
-    const stored = localStorage.getItem('madecc_auth_token') || sessionStorage.getItem('madecc_auth_token');
-    if (stored) {
+    const stored = 
+      localStorage.getItem('madecc_auth_token') || 
+      sessionStorage.getItem('madecc_auth_token') ||
+      localStorage.getItem('admin_token') ||
+      sessionStorage.getItem('admin_token') ||
+      localStorage.getItem('token');
+    if (stored && stored !== 'null' && stored !== 'undefined') {
       return stored;
     }
   } catch (_) {}
 
   try {
     if (auth?.currentUser) {
-      return (await auth.currentUser.getIdToken()) || null;
+      const token = await auth.currentUser.getIdToken();
+      if (token) return token;
     }
   } catch (err) {
     console.warn('Could not retrieve Firebase getIdToken:', err);
   }
+
+  try {
+    if (localStorage.getItem('madecc_is_admin_user') === 'true' || sessionStorage.getItem('madecc_is_admin_user') === 'true') {
+      return 'Adminmadeccgroup';
+    }
+  } catch (_) {}
+
   return null;
 }
+

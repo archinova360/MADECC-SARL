@@ -29,11 +29,24 @@ interface CmsMediaLibraryProps {
   filterType?: 'all' | 'image' | 'video' | 'document' | 'logo';
 }
 
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
+
 export default function CmsMediaLibrary({
   onSelectMedia,
   isPickerMode = false,
   filterType: initialFilterType = 'all'
 }: CmsMediaLibraryProps) {
+
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -141,15 +154,20 @@ export default function CmsMediaLibrary({
           body: formData
         });
 
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json().catch(() => ({}));
-          throw new Error(errData.error || 'Failed to upload asset to cloud storage');
+        const rawUploadText = await uploadRes.text();
+        let uploadData: any = {};
+        try {
+          uploadData = JSON.parse(rawUploadText);
+        } catch (_) {}
+
+        if (!uploadRes.ok || !uploadData.url) {
+          throw new Error(uploadData.error || `Failed to upload asset to cloud storage (${uploadRes.status})`);
         }
 
-        const uploadData = await uploadRes.json();
         finalFileUrl = uploadData.url;
         mimeType = uploadFile.type;
         fileSize = uploadFile.size;
+
 
         if (uploadFile.type.startsWith('video/')) {
           finalFileType = 'video';
@@ -204,10 +222,16 @@ export default function CmsMediaLibrary({
         })
       });
 
-      if (!res.ok) {
-        const resErr = await res.json().catch(() => ({}));
-        throw new Error(resErr.error || 'Failed to register media in database');
+      const regText = await res.text();
+      let regData: any = {};
+      try {
+        regData = JSON.parse(regText);
+      } catch (_) {}
+
+      if (!res.ok || !regData.success) {
+        throw new Error(regData.error || `Failed to register media in database (${res.status})`);
       }
+
 
       setUploadProgress(100);
       setShowUploadModal(false);
@@ -276,9 +300,10 @@ export default function CmsMediaLibrary({
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this media asset? Any sections referencing it may show fallback imagery.')) {
+    if (!safeConfirm('Are you sure you want to delete this media asset? Any sections referencing it may show fallback imagery.')) {
       return;
     }
+
 
     try {
       const csrf = await getCsrfHeaders();

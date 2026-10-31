@@ -13,35 +13,69 @@ import SEOHandler from './components/SEOHandler.tsx';
 import LiveTickerMarquee from './components/LiveTickerMarquee.tsx';
 import Home from './components/Home.tsx';
 
+// Robust dynamic import with automatic retry on chunk loading glitch
+function lazyRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T } | any>,
+  retries = 3,
+  interval = 800
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    new Promise<{ default: T }>((resolve, reject) => {
+      const attempt = (remaining: number) => {
+        factory()
+          .then((mod) => {
+            if (mod && mod.default) {
+              resolve(mod);
+            } else if (mod) {
+              resolve({ default: mod });
+            } else {
+              resolve(mod);
+            }
+          })
+          .catch((error) => {
+            if (remaining > 0) {
+              setTimeout(() => attempt(remaining - 1), interval);
+            } else {
+              console.warn('[LAZY_RETRY] Failed to load module after retries, retrying once more:', error);
+              factory().then((mod) => resolve(mod && mod.default ? mod : { default: mod })).catch(reject);
+            }
+          });
+      };
+      attempt(retries);
+    })
+  );
+}
+
 // Code-Split Dynamic Route Screens
-const About = lazy(() => import('./components/About.tsx'));
-const Projects = lazy(() => import('./components/Projects.tsx'));
-const Blog = lazy(() => import('./components/Blog.tsx'));
-const Contact = lazy(() => import('./components/Contact.tsx'));
-const Booking = lazy(() => import('./components/Booking.tsx'));
-const Admin = lazy(() => import('./components/Admin.tsx'));
-const VerifyContract = lazy(() => import('./components/VerifyContract.tsx'));
-const ProjectBudgetCalculator = lazy(() => import('./components/ProjectBudgetCalculator.tsx').then(m => ({ default: m.ProjectBudgetCalculator })));
-const ConstructionCostGuide = lazy(() => import('./components/ConstructionCostGuide.tsx').then(m => ({ default: m.ConstructionCostGuide })));
-const Services = lazy(() => import('./components/Services.tsx').then(m => ({ default: m.Services })));
-const RequestQuote = lazy(() => import('./components/RequestQuote.tsx').then(m => ({ default: m.RequestQuote })));
-const ScheduleConsultation = lazy(() => import('./components/ScheduleConsultation.tsx').then(m => ({ default: m.ScheduleConsultation })));
-const LegalPage = lazy(() => import('./components/LegalPage.tsx'));
-const DataDeletion = lazy(() => import('./components/DataDeletion.tsx'));
-const FAQ = lazy(() => import('./components/FAQ.tsx'));
-const Tenders = lazy(() => import('./components/Tenders.tsx').then(m => ({ default: m.Tenders })));
-const DeveloperPortal = lazy(() => import('./components/DeveloperPortal.tsx'));
-const VisitorWalkthroughGuide = lazy(() => import('./components/VisitorWalkthroughGuide.tsx').then(m => ({ default: m.VisitorWalkthroughGuide })));
-const KrrSalesStore = lazy(() => import('./components/KrrSalesStore.tsx').then(m => ({ default: m.KrrSalesStore })));
-const KrrOrderTracking = lazy(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
+const About = lazyRetry(() => import('./components/About.tsx'));
+const Projects = lazyRetry(() => import('./components/Projects.tsx'));
+const Blog = lazyRetry(() => import('./components/Blog.tsx'));
+const Contact = lazyRetry(() => import('./components/Contact.tsx'));
+const Booking = lazyRetry(() => import('./components/Booking.tsx'));
+const Admin = lazyRetry(() => import('./components/Admin.tsx'));
+const VerifyContract = lazyRetry(() => import('./components/VerifyContract.tsx'));
+const ProjectBudgetCalculator = lazyRetry(() => import('./components/ProjectBudgetCalculator.tsx').then(m => ({ default: m.ProjectBudgetCalculator })));
+const ConstructionCostGuide = lazyRetry(() => import('./components/ConstructionCostGuide.tsx').then(m => ({ default: m.ConstructionCostGuide })));
+const Services = lazyRetry(() => import('./components/Services.tsx').then(m => ({ default: m.Services })));
+const RequestQuote = lazyRetry(() => import('./components/RequestQuote.tsx').then(m => ({ default: m.RequestQuote })));
+const ScheduleConsultation = lazyRetry(() => import('./components/ScheduleConsultation.tsx').then(m => ({ default: m.ScheduleConsultation })));
+const LegalPage = lazyRetry(() => import('./components/LegalPage.tsx'));
+const DataDeletion = lazyRetry(() => import('./components/DataDeletion.tsx'));
+const FAQ = lazyRetry(() => import('./components/FAQ.tsx'));
+const Tenders = lazyRetry(() => import('./components/Tenders.tsx').then(m => ({ default: m.Tenders })));
+const DeveloperPortal = lazyRetry(() => import('./components/DeveloperPortal.tsx'));
+const VisitorWalkthroughGuide = lazyRetry(() => import('./components/VisitorWalkthroughGuide.tsx').then(m => ({ default: m.VisitorWalkthroughGuide })));
+const KrrSalesStore = lazyRetry(() => import('./components/KrrSalesStore.tsx').then(m => ({ default: m.KrrSalesStore })));
+const KrrOrderTracking = lazyRetry(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
 
 // Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
-const SuperAdmin = lazy(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
-const PublicSaaSMarketing = lazy(() => import('./components/PublicSaaSMarketing.tsx').then(m => ({ default: m.PublicSaaSMarketing })));
-const TenantBillingModal = lazy(() => import('./components/TenantBillingModal.tsx').then(m => ({ default: m.TenantBillingModal })));
-const TenantThankYouModal = lazy(() => import('./components/TenantThankYouModal.tsx').then(m => ({ default: m.TenantThankYouModal })));
-const TenantOnboardingModal = lazy(() => import('./components/TenantOnboardingModal.tsx').then(m => ({ default: m.TenantOnboardingModal })));
-const FloatingVoiceAssistant = lazy(() => import('./components/FloatingVoiceAssistant.tsx'));
+const SuperAdmin = lazyRetry(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
+const PublicSaaSMarketing = lazyRetry(() => import('./components/PublicSaaSMarketing.tsx').then(m => ({ default: m.PublicSaaSMarketing })));
+const TenantBillingModal = lazyRetry(() => import('./components/TenantBillingModal.tsx').then(m => ({ default: m.TenantBillingModal })));
+const TenantThankYouModal = lazyRetry(() => import('./components/TenantThankYouModal.tsx').then(m => ({ default: m.TenantThankYouModal })));
+const TenantOnboardingModal = lazyRetry(() => import('./components/TenantOnboardingModal.tsx').then(m => ({ default: m.TenantOnboardingModal })));
+const FloatingVoiceAssistant = lazyRetry(() => import('./components/FloatingVoiceAssistant.tsx'));
+
 
 import { TenantService } from './services/tenantService.ts';
 import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';

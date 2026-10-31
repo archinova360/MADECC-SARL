@@ -28,7 +28,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught application error in React tree:', error, errorInfo);
     this.setState({ errorInfo });
+
+    // If dynamic chunk loading failed (e.g. after server restart or network hiccup), auto-refresh once
+    if (error && typeof error.message === 'string' && /Failed to fetch dynamically imported module/i.test(error.message)) {
+      const reloadKey = 'madecc_chunk_reload_' + error.message;
+      if (typeof window !== 'undefined' && !sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, 'true');
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
+      }
+    }
   }
+
 
   public render() {
     if (this.state.hasError) {

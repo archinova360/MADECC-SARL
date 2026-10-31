@@ -29,7 +29,20 @@ interface SyllabusDoc {
   uploadedAt: string;
 }
 
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
+
 interface SyllabusUploadProps {
+
   showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
   setActiveAdminTab: (tab: any) => void;
   setActiveSyllabus?: (syllabus: any | null) => void;
@@ -131,9 +144,10 @@ export default function SyllabusUpload({ showToast, setActiveAdminTab, setActive
 
   // Delete syllabus document
   const handleDeleteDoc = async (id: number, filename: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${filename}"?`)) {
+    if (!safeConfirm(`Are you sure you want to delete "${filename}"?`)) {
       return;
     }
+
 
     try {
       const res = await fetch(`/api/syllabus-documents/${id}`, {

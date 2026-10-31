@@ -296,8 +296,14 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
         headers,
         body: JSON.stringify(settings)
       });
-      const data = await res.json();
-      if (data.success) {
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {
+        throw new Error(`Server returned unexpected response (${res.status}).`);
+      }
+      if (res.ok && data.success) {
         showToast('Website parameters updated & saved directly to Neon DB!', 'success');
         await fetchAuditLogs();
       } else {
@@ -309,6 +315,7 @@ export const WebsiteLiveOptimizer: React.FC<WebsiteLiveOptimizerProps> = ({ curr
       setSaving(false);
     }
   };
+
 
   // 3. Dispatch Live SMTP Test Email via kreboya603@gmail.com
   const handleSendSmtpTest = async (e: React.FormEvent) => {

@@ -703,18 +703,59 @@ export function setupSalesRoutes(app: express.Express) {
     }
   });
 
+  // Helper to sanitize database and Drizzle error messages for user-friendly UI presentation
+  const formatFriendlySalesError = (err: any): string => {
+    if (!err) return 'An unexpected server error occurred';
+    const msg = typeof err === 'string' ? err : (err.message || String(err));
+    if (msg.includes('sales_products_sku_key') || msg.includes('unique constraint "sales_products_sku_key"')) {
+      return 'A publication with this SKU already exists. Please choose a unique SKU.';
+    }
+    if (msg.includes('sales_products_slug_key') || msg.includes('unique constraint "sales_products_slug_key"')) {
+      return 'A publication with this title or slug already exists. Please choose a distinct title or slug.';
+    }
+    if (msg.includes('unique constraint')) {
+      return 'A database record with these unique details already exists.';
+    }
+    if (msg.includes('Failed query:') || msg.includes('insert into "sales_products"')) {
+      return 'Unable to save publication to the database. Please verify all required fields and ensure the SKU is unique.';
+    }
+    return msg;
+  };
+
   // Create Product
   app.post('/api/admin/sales/products', requireStaffOrAdmin, async (req: any, res) => {
     try {
       const data = req.body;
-      if (!data.title || !data.sku || !data.price) {
+      if (!data.title?.trim() || !data.sku?.trim() || data.price === undefined || data.price === null || data.price === '') {
         return res.status(400).json({ success: false, error: 'Title, SKU, and price are required' });
       }
 
-      const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const targetSku = data.sku.trim().toUpperCase();
+
+      // Check if SKU already exists
+      const existingSku = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.sku, targetSku)).limit(1);
+      if (existingSku.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: `A publication with SKU "${targetSku}" already exists. Please choose a different SKU.`
+        });
+      }
+
+      // Generate clean, collision-free slug
+      let baseSlug = (data.slug || data.title)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      if (!baseSlug) baseSlug = `pub-${Date.now().toString(36)}`;
+
+      let slug = baseSlug;
+      const slugCollision = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.slug, slug)).limit(1);
+      if (slugCollision.length > 0) {
+        slug = `${baseSlug}-${Date.now().toString(36).slice(-5)}`;
+      }
 
       const inserted = await db.insert(salesProducts).values({
-        sku: data.sku.trim().toUpperCase(),
+        sku: targetSku,
         title: data.title.trim(),
         slug,
         description: data.description || '',
@@ -749,13 +790,13 @@ export function setupSalesRoutes(app: express.Express) {
         userId: req.dbUser?.uid || 'admin',
         userEmail: req.dbUser?.email || 'admin@krrgroup.com',
         action: 'CREATE_SALES_PRODUCT',
-        details: `Created product "${data.title}" (SKU: ${data.sku})`
+        details: `Created product "${data.title}" (SKU: ${targetSku})`
       });
 
       res.json({ success: true, product: inserted[0] });
     } catch (err: any) {
       console.error('[ADMIN_CREATE_PRODUCT_ERROR]', err);
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({ success: false, error: formatFriendlySalesError(err) });
     }
   });
 
@@ -765,9 +806,20 @@ export function setupSalesRoutes(app: express.Express) {
       const id = parseInt(req.params.id, 10);
       const data = req.body;
 
+      if (data.sku) {
+        const targetSku = data.sku.trim().toUpperCase();
+        const existingSku = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.sku, targetSku)).limit(1);
+        if (existingSku.length > 0 && existingSku[0].id !== id) {
+          return res.status(409).json({
+            success: false,
+            error: `Another publication already has SKU "${targetSku}". Please enter a unique SKU.`
+          });
+        }
+      }
+
       const updated = await db.update(salesProducts).set({
         title: data.title,
-        sku: data.sku,
+        sku: data.sku ? data.sku.trim().toUpperCase() : undefined,
         description: data.description,
         shortDescription: data.shortDescription,
         category: data.category,
@@ -783,7 +835,7 @@ export function setupSalesRoutes(app: express.Express) {
         digitalFileSizeMb: data.digitalFileSizeMb ? String(data.digitalFileSizeMb) : null,
         stockQuantity: data.stockQuantity !== undefined ? parseInt(data.stockQuantity, 10) : 100,
         trackInventory: Boolean(data.trackInventory),
-        isbn: data.isbn || null,
+        isbn: data.isbn ? data.isbn.trim() : null,
         author: data.author,
         publisher: data.publisher,
         publicationYear: parseInt(data.publicationYear, 10) || 2026,
@@ -806,7 +858,8 @@ export function setupSalesRoutes(app: express.Express) {
 
       res.json({ success: true, product: updated[0] });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
+      console.error('[ADMIN_UPDATE_PRODUCT_ERROR]', err);
+      res.status(500).json({ success: false, error: formatFriendlySalesError(err) });
     }
   });
 
@@ -825,9 +878,11 @@ export function setupSalesRoutes(app: express.Express) {
 
       res.json({ success: true, message: 'Product deleted successfully' });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
+      console.error('[ADMIN_DELETE_PRODUCT_ERROR]', err);
+      res.status(500).json({ success: false, error: formatFriendlySalesError(err) });
     }
   });
+
 
   // Admin Order Listing with search, status filters
   app.get('/api/admin/sales/orders', requireStaffOrAdmin, async (req, res) => {

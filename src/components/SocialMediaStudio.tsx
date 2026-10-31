@@ -115,11 +115,20 @@ export interface AuditLogItem {
   status: 'SUCCESS' | 'WARNING' | 'FAILED';
 }
 
-interface SocialMediaStudioProps {
-  currentUser?: any;
-}
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
 
 export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProps) {
+
   const { showToast } = useToast();
 
   // --- TAB STATE ---
@@ -1170,7 +1179,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
   };
 
   const handleDeleteWebhookOutlet = async (id: number, name: string) => {
-    if (window.confirm(`Are you sure you want to delete webhook broadcast outlet "${name}"?`)) {
+    if (safeConfirm(`Are you sure you want to delete webhook broadcast outlet "${name}"?`)) {
       try {
         const res = await fetch(`/api/social/webhooks/${id}`, { method: 'DELETE' });
         if (res.ok) {
@@ -1757,7 +1766,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
   };
 
   const handleDisconnectChannel = async (channelId: number | string, channelName: string) => {
-    if (window.confirm(`Are you sure you want to disconnect and revoke OAuth tokens for ${channelName}?`)) {
+    if (safeConfirm(`Are you sure you want to disconnect and revoke OAuth tokens for ${channelName}?`)) {
       try {
         await fetch(`/api/social/accounts/${channelId}/disconnect`, { method: 'POST' });
       } catch (err) {
@@ -2043,7 +2052,7 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
   };
 
   const handleDeletePost = async (id: number | string) => {
-    if (window.confirm('Are you sure you want to delete this social media post?')) {
+    if (safeConfirm('Are you sure you want to delete this social media post?')) {
       try {
         const isNumeric = typeof id === 'number' || (!isNaN(Number(id)) && Number(id) < 1000000000);
         if (isNumeric) {

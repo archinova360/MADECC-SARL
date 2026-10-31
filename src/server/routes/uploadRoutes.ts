@@ -43,10 +43,24 @@ export function setupUploadRoutes(app: express.Express) {
     }
   });
 
+  // Middleware wrapper ensuring all multer errors return JSON (prevents HTML error pages and "Jason error")
+  const safeMulter = (req: any, res: any, next: any) => {
+    upload.single('file')(req, res, (err: any) => {
+      if (err) {
+        console.error('[STORAGE_MULTER_ERROR]', err);
+        return res.status(400).json({
+          success: false,
+          error: err.message || 'File upload processing failed'
+        });
+      }
+      next();
+    });
+  };
+
   // Upload endpoint (accepts all media types: images, videos up to 2000MB / 2GB, audio, documents, and archives)
-  app.post('/api/upload', upload.single('file'), async (req: any, res) => {
+  app.post('/api/upload', safeMulter, async (req: any, res) => {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
     try {
@@ -158,9 +172,9 @@ export function setupUploadRoutes(app: express.Express) {
 
   });
 
-  app.post('/api/public/upload', upload.single('file'), async (req: any, res) => {
+  app.post('/api/public/upload', safeMulter, async (req: any, res) => {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
     try {
       let fileUrl = `/uploads/${req.file.filename}`;

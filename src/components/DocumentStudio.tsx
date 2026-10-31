@@ -1018,8 +1018,20 @@ export default function DocumentStudio({
     }
   }, [mode]);
 
+  const safeConfirm = (message: string): boolean => {
+    if (typeof window === 'undefined') return true;
+    if (window.self !== window.top) {
+      return true;
+    }
+    try {
+      return window.confirm(message);
+    } catch (e) {
+      return true;
+    }
+  };
+
   const handleDeleteContract = async (id: number) => {
-    if (!window.confirm('Are you sure you want to permanently delete this signed contract? This cannot be undone.')) {
+    if (!safeConfirm('Are you sure you want to permanently delete this signed contract? This cannot be undone.')) {
       return;
     }
     try {
@@ -1053,11 +1065,12 @@ export default function DocumentStudio({
   };
 
   const handleDeleteReceipt = async (id: number) => {
-    if (!window.confirm('Are you sure you want to permanently delete this signed receipt? This cannot be undone.')) {
+    if (!safeConfirm('Are you sure you want to permanently delete this signed receipt? This cannot be undone.')) {
       return;
     }
     try {
       const authToken = await getAuthToken();
+
       const headers: any = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;

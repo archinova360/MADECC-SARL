@@ -116,6 +116,18 @@ interface DashboardMetrics {
   lowStockCount: number;
 }
 
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
+
 export const AdminSalesHub: React.FC = () => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'verification'>('overview');
@@ -133,6 +145,7 @@ export const AdminSalesHub: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -256,7 +269,7 @@ export const AdminSalesHub: React.FC = () => {
   // Save / Update Product
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct?.title || !editingProduct?.sku || !editingProduct?.price) {
+    if (!editingProduct?.title?.trim() || !editingProduct?.sku?.trim() || editingProduct?.price === undefined || editingProduct?.price === null) {
       showToast('Please fill in title, SKU, and price.', 'error');
       return;
     }
@@ -277,12 +290,19 @@ export const AdminSalesHub: React.FC = () => {
         body: JSON.stringify(editingProduct)
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error(`Server returned unexpected response (status ${res.status}). Could not save publication.`);
+      }
+
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to save product');
       }
 
-      showToast(`Product ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
+      showToast(`Publication ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
       setIsProductModalOpen(false);
       setEditingProduct(null);
       fetchProducts();
@@ -296,7 +316,7 @@ export const AdminSalesHub: React.FC = () => {
 
   // Delete Product
   const handleDeleteProduct = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    if (!safeConfirm('Are you sure you want to delete this publication? This will remove it from the online store.')) return;
     try {
       const headers = await getAuthHeaders(false);
       const res = await fetch(`/api/admin/sales/products/${id}`, {
@@ -304,14 +324,21 @@ export const AdminSalesHub: React.FC = () => {
         headers,
         credentials: 'include'
       });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Product deleted.', 'success');
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {}
+
+      if (res.ok && data.success) {
+        showToast('Publication deleted successfully.', 'success');
         fetchProducts();
         fetchMetrics();
+      } else {
+        throw new Error(data.error || 'Failed to delete publication');
       }
     } catch (err: any) {
-      showToast('Error deleting product', 'error');
+      showToast(err.message || 'Error deleting product', 'error');
     }
   };
 
@@ -322,23 +349,75 @@ export const AdminSalesHub: React.FC = () => {
 
     setUploadingImage(true);
     try {
+      const headers = await getAuthHeaders(false);
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/upload', {
         method: 'POST',
+        headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
         body: formData
       });
-      const data = await res.json();
-      if (data.url) {
-        setEditingProduct(prev => ({ ...prev, coverImage: data.url }));
-        showToast('Cover image uploaded successfully.', 'success');
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error('Upload response was not valid JSON. Server status: ' + res.status);
       }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Server rejected file upload');
+      }
+
+      setEditingProduct(prev => prev ? ({ ...prev, coverImage: data.url }) : null);
+      showToast('Cover image uploaded successfully.', 'success');
     } catch (err: any) {
       showToast('Image upload failed: ' + err.message, 'error');
     } finally {
       setUploadingImage(false);
     }
   };
+
+  // Handle Digital PDF Book Upload
+  const handleProductDigitalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDigitalFile(true);
+    try {
+      const headers = await getAuthHeaders(false);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
+        body: formData
+      });
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error('Upload response was not valid JSON. Server status: ' + res.status);
+      }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'File upload failed');
+      }
+
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      setEditingProduct(prev => prev ? ({
+        ...prev,
+        digitalFileUrl: data.url,
+        digitalFileName: file.name,
+        digitalFileSizeMb: sizeMb
+      }) : null);
+      showToast(`Book PDF uploaded successfully (${sizeMb} MB)!`, 'success');
+    } catch (err: any) {
+      showToast('Digital file upload failed: ' + err.message, 'error');
+    } finally {
+      setUploadingDigitalFile(false);
+    }
+  };
+
 
   // Approve or Reject Payment Verification
   const handleVerifyPayment = async (paymentId: number, action: 'APPROVE' | 'REJECT', reason?: string) => {
@@ -1098,15 +1177,34 @@ export const AdminSalesHub: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-mono text-slate-400 block mb-1">Secured Digital PDF URL</label>
-                  <input
-                    type="text"
-                    value={editingProduct.digitalFileUrl || ''}
-                    onChange={e => setEditingProduct({ ...editingProduct, digitalFileUrl: e.target.value })}
-                    placeholder="https://.../textbook.pdf"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono"
-                  />
+                  <label className="text-[11px] font-mono text-slate-400 block mb-1">Secured Digital PDF Book File</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editingProduct.digitalFileUrl || ''}
+                      onChange={e => setEditingProduct({ ...editingProduct, digitalFileUrl: e.target.value })}
+                      placeholder="https://.../textbook.pdf or upload below"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono"
+                    />
+                    <label className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl cursor-pointer text-xs font-mono shrink-0 flex items-center gap-1.5 transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingDigitalFile ? 'Uploading...' : 'Upload PDF'}</span>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.doc,.docx,.epub" 
+                        onChange={handleProductDigitalFileUpload} 
+                        className="hidden" 
+                        disabled={uploadingDigitalFile}
+                      />
+                    </label>
+                  </div>
+                  {editingProduct.digitalFileName && (
+                    <span className="text-[10px] font-mono text-emerald-400 block mt-1">
+                      File: {editingProduct.digitalFileName} {editingProduct.digitalFileSizeMb ? `(${editingProduct.digitalFileSizeMb} MB)` : ''}
+                    </span>
+                  )}
                 </div>
+
 
                 <div>
                   <label className="text-[11px] font-mono text-slate-400 block mb-1">Author</label>

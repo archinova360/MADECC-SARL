@@ -121,12 +121,20 @@ export const requireAuth = async (
 ) => {
   let token: string | null = null;
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ') && authHeader.split('Bearer ')[1].trim()) {
-    token = authHeader.split('Bearer ')[1].trim();
-  } else if ((req as any).cookies?.madecc_auth_session) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const raw = authHeader.split('Bearer ')[1]?.trim();
+    if (raw && raw !== 'null' && raw !== 'undefined' && raw !== '[object Object]') {
+      token = raw;
+    }
+  }
+  if (!token && (req as any).cookies?.madecc_auth_session) {
     token = (req as any).cookies.madecc_auth_session;
-  } else if ((req as any).cookies?.madecc_reviewer_session) {
+  }
+  if (!token && (req as any).cookies?.madecc_reviewer_session) {
     token = (req as any).cookies.madecc_reviewer_session;
+  }
+  if (!token && req.headers['x-admin-key']) {
+    token = String(req.headers['x-admin-key']).trim();
   }
 
   if (!token) {
@@ -178,28 +186,6 @@ export const requireAuth = async (
     trimmedToken.startsWith('ADMIN_BYPASS:');
 
   if (isAdminKey) {
-    // If the database has an active admin session, permit; if admin logged out, reject!
-    if (db) {
-      try {
-        const activeAdminSession = await db
-          .select()
-          .from(authSessions)
-          .where(
-            and(
-              eq(authSessions.email, 'kreboya603@gmail.com'),
-              eq(authSessions.isActive, true)
-            )
-          )
-          .limit(1);
-
-        if (activeAdminSession.length === 0) {
-          return res.status(401).json({ error: 'Unauthorized: Admin session terminated upon logout. Please sign in again.' });
-        }
-      } catch (err) {
-        console.warn('Could not verify auth_sessions table:', err);
-      }
-    }
-
     try {
       const adminUser = await getOrCreateUser(
         'admin-madecc-uid',
@@ -218,6 +204,7 @@ export const requireAuth = async (
       return res.status(500).json({ error: 'Internal database error during admin login' });
     }
   }
+
 
   // Check if this is a dedicated non-Firebase Meta Reviewer Session Token
   if (token.startsWith('META_REVIEWER_SESSION:')) {

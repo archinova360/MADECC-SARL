@@ -127,10 +127,17 @@ export async function deleteFileFromCloud(fileUrl: string | null | undefined) {
   // 3. Local disk clean-up fallback
   else if (fileUrl.startsWith('/uploads/')) {
     try {
-      const localPath = path.join(process.cwd(), fileUrl);
-      if (fs.existsSync(localPath)) {
-        fs.unlinkSync(localPath);
-        console.log(`[STORAGE_DELETE] Deleted local file: ${localPath}`);
+      const filename = path.basename(fileUrl);
+      const candidates = [
+        path.join(process.cwd(), fileUrl),
+        path.join(os.tmpdir(), 'madecc_uploads', filename),
+        path.join(os.tmpdir(), filename)
+      ];
+      for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+          fs.unlinkSync(candidate);
+          console.log(`[STORAGE_DELETE] Deleted local file: ${candidate}`);
+        }
       }
     } catch (err) {
       console.error('[STORAGE_DELETE_ERROR] Error deleting local file:', err);
@@ -138,19 +145,40 @@ export async function deleteFileFromCloud(fileUrl: string | null | undefined) {
   }
 }
 
-// Multer storage setup
-const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
+
+// Multer storage setup with dynamic writable directory detection
+import os from 'os';
+
+export function getWritableUploadDir(): string {
+  // 1. Try local project uploads directory
+  const localDir = path.join(process.cwd(), 'uploads');
   try {
-    fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true });
+    }
+    // Test write permission
+    const testFile = path.join(localDir, `.write_test_${Date.now()}`);
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+    return localDir;
   } catch (err) {
-    console.warn('[STORAGE] Note: uploads directory creation skipped (read-only container or serverless).');
+    // 2. Fallback to OS temporary directory (guaranteed writable on Netlify / AWS Lambda / read-only containers)
+    const tmpDir = path.join(os.tmpdir(), 'madecc_uploads');
+    try {
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+      return tmpDir;
+    } catch (_) {
+      return os.tmpdir();
+    }
   }
 }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    const targetDir = getWritableUploadDir();
+    cb(null, targetDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -164,3 +192,4 @@ export const upload = multer({
     fileSize: 2000 * 1024 * 1024 // 2000 MB / 2 GB Maximum Upload Capacity
   }
 });
+

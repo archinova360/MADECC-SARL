@@ -421,10 +421,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       try {
         data = JSON.parse(rawText);
       } catch (parseErr) {
-        if (!res.ok) throw new Error(`Server upload failed (${res.status})`);
+        if (!res.ok) throw new Error(`Server upload error (${res.status})`);
       }
-      if (!res.ok && data.error) {
-        throw new Error(data.error);
+      if (!res.ok) {
+        throw new Error(data.error || `Server rejected upload (${res.status})`);
       }
       const finalUrl = data.url || data.secure_url;
       if (!finalUrl) throw new Error('No asset URL returned from upload server');
@@ -1228,11 +1228,15 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   // Helper headers with auth token
   const getAuthHeaders = async () => {
     const token = await getAuthToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
+    if (token && token !== 'null' && token !== 'undefined') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
   };
+
 
   // ==========================================
   // --- OPERATIONS FOR PROJECTS ---

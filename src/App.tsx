@@ -67,6 +67,7 @@ const DeveloperPortal = lazyRetry(() => import('./components/DeveloperPortal.tsx
 const VisitorWalkthroughGuide = lazyRetry(() => import('./components/VisitorWalkthroughGuide.tsx').then(m => ({ default: m.VisitorWalkthroughGuide })));
 const KrrSalesStore = lazyRetry(() => import('./components/KrrSalesStore.tsx').then(m => ({ default: m.KrrSalesStore })));
 const KrrOrderTracking = lazyRetry(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
+const SiteMap = lazyRetry(() => import('./components/SiteMap.tsx'));
 
 // Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
 const SuperAdmin = lazyRetry(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
@@ -360,6 +361,13 @@ function AppContent({
         return (
           <Suspense fallback={<RouteLoadingFallback />}>
             <KrrOrderTracking onNavigateToTab={handleNavigateWithState} />
+          </Suspense>
+        );
+      case 'sitemap':
+      case 'site-map':
+        return (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <SiteMap onNavigateToTab={handleNavigateWithState} />
           </Suspense>
         );
       case 'admin':

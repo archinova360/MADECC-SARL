@@ -200,21 +200,33 @@ export async function getApp(): Promise<express.Express> {
     });
   });
 
-  // Global Error Handler for /api routes (Always outputs valid JSON, never HTML)
-  app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('[API_UNHANDLED_ERROR]', req.method, req.originalUrl, err);
-    if (res.headersSent) {
-      return next(err);
+  // Global Error Handler for /api routes (Always outputs valid JSON, never HTML error pages)
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.originalUrl?.startsWith('/api') || req.path?.startsWith('/api') || req.url?.startsWith('/api')) {
+      console.error('[API_UNHANDLED_ERROR]', req.method, req.originalUrl, err);
+      if (res.headersSent) {
+        return next(err);
+      }
+      const status = typeof err.status === 'number' ? err.status : (typeof err.statusCode === 'number' ? err.statusCode : 500);
+      return res.status(status).json({
+        success: false,
+        message: err.message || 'The requested operation could not be completed.',
+        error: err.name || 'INTERNAL_SERVER_ERROR',
+        data: null,
+        errors: [
+          {
+            code: err.code || 'SERVER_ERROR',
+            field: err.field || undefined,
+            message: err.message || 'An unexpected internal server error occurred'
+          }
+        ],
+        path: req.originalUrl,
+        timestamp: new Date().toISOString()
+      });
     }
-    const status = typeof err.status === 'number' ? err.status : (typeof err.statusCode === 'number' ? err.statusCode : 500);
-    res.status(status).json({
-      success: false,
-      error: err.name || 'INTERNAL_SERVER_ERROR',
-      message: err.message || 'An unexpected internal server error occurred',
-      path: req.originalUrl,
-      timestamp: new Date().toISOString()
-    });
+    next(err);
   });
+
 
   return app;
 }

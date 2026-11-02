@@ -227,30 +227,6 @@ export const KrrOrderTracking: React.FC<KrrOrderTrackingProps> = ({
     }
   };
 
-  const [isFastUnlocking, setIsFastUnlocking] = useState(false);
-
-  const handleFastUnlockOrder = async () => {
-    if (!trackedOrder) return;
-    setIsFastUnlocking(true);
-    try {
-      const res = await fetch(`/api/sales/orders/${trackedOrder.orderReference}/fast-unlock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Fast unlock failed');
-      }
-      showToast('Order approved! Digital textbook download is now immediately available.', 'success');
-      // Refresh order state
-      fetchOrderDetails(trackedOrder.orderReference, accessToken || trackedOrder.accessToken, customerEmail || trackedOrder.customerEmail);
-    } catch (err: any) {
-      showToast(err.message || 'Fast unlock failed', 'error');
-    } finally {
-      setIsFastUnlocking(false);
-    }
-  };
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopiedLabel(label);
@@ -574,44 +550,7 @@ export const KrrOrderTracking: React.FC<KrrOrderTrackingProps> = ({
             </div>
           )}
 
-          {/* Admin / Instant Fast-Unlock Panel for Store Owner & Testing */}
-          {trackedOrder.paymentStatus !== 'VERIFIED_PAID' && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900 border border-amber-500/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <span>Store Administrator &amp; Fast Approval Desk</span>
-                    <span className="text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30">Admin Bypass</span>
-                  </h4>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
-                    Testing or approving this transaction? Click below to immediately approve this order and activate all PDF textbook downloads.
-                  </p>
-                </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={handleFastUnlockOrder}
-                disabled={isFastUnlocking}
-                className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
-              >
-                {isFastUnlocking ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Unlocking...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>⚡ 1-Click Fast Unlock (Activate Downloads)</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
 
           {/* Verified Success Notice */}
           {trackedOrder.paymentStatus === 'VERIFIED_PAID' && (

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 // @ts-ignore
-import logoImg from '../assets/images/app_logo_1788030845756.jpg';
+import logoImg from '../assets/images/madecc_premium_logo_1793583157182.jpg';
 import { 
   auth, 
   googleAuthProvider,

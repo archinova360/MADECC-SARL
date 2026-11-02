@@ -34,8 +34,20 @@ import { getCsrfHeaders } from '../lib/csrf.ts';
 import { getAuthToken } from '../lib/firebase.ts';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import CmsMediaLibrary from './CmsMediaLibrary.tsx';
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
 
 const DEFAULT_PAGES_LIST = [
+
   { id: 1, slug: 'home', title: 'Home Page', status: 'PUBLISHED', version: 1 },
   { id: 2, slug: 'about', title: 'About Us', status: 'PUBLISHED', version: 1 },
   { id: 3, slug: 'services', title: 'Services & Engineering', status: 'PUBLISHED', version: 1 },
@@ -299,9 +311,10 @@ export default function CmsPageBuilder() {
 
   // Restore Revision Handler
   const handleRestoreRevision = async (revId: number) => {
-    if (!window.confirm('Restore this snapshot into your current draft? You can preview before publishing.')) {
+    if (!safeConfirm('Restore this snapshot into your current draft? You can preview before publishing.')) {
       return;
     }
+
 
     try {
       const csrf = await getCsrfHeaders();

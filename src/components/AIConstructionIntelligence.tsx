@@ -103,6 +103,18 @@ export const BOQ_UNIT_CATEGORIES: Record<string, string[]> = {
   'WATER': ['Litre', 'm³', 'Tank', 'Drum']
 };
 
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
+
 interface AIConstructionIntelligenceProps {
   initialTab?: string;
   dbUser: any;
@@ -1860,7 +1872,7 @@ export default function AIConstructionIntelligence({
 
             <button
               onClick={() => {
-                if (window.confirm('Are you sure you want to delete this active entry?')) {
+                if (safeConfirm('Are you sure you want to delete this active entry?')) {
                   showToast('Entry deleted.', 'info');
                 }
               }}

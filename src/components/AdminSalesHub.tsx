@@ -658,7 +658,7 @@ export const AdminSalesHub: React.FC = () => {
                 <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono inline-flex items-center justify-center mb-2">3</span>
                 <h4 className="font-bold text-white mb-1">Admin Approves &amp; Unlocks</h4>
                 <p className="text-slate-400 text-[11px] leading-relaxed">
-                  You check the Payment Queue below or click "⚡ 1-Click Fast Unlock" on the tracking page. The order status shifts to VERIFIED_PAID and the PDF download button instantly activates for the client!
+                  You verify the payment in the Payment Queue below and click Approve. The order status shifts to VERIFIED_PAID and the PDF download button instantly activates for the client!
                 </p>
               </div>
             </div>

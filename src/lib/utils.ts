@@ -53,6 +53,14 @@ export function getOptimizedImageUrl(url: string | null | undefined, width = 800
     return formattedUrl;
   }
 
+  // Handle Cloudinary URLs for WebP/AVIF auto-format and compression
+  if (formattedUrl.includes('res.cloudinary.com') && formattedUrl.includes('/upload/')) {
+    if (!formattedUrl.includes('/upload/f_auto') && !formattedUrl.includes('/upload/q_auto')) {
+      const transform = width ? `f_auto,q_auto,w_${width}` : 'f_auto,q_auto';
+      return formattedUrl.replace('/upload/', `/upload/${transform}/`);
+    }
+  }
+
   // Handle Unsplash URLs for WebP conversion and resizing
   if (formattedUrl.includes('images.unsplash.com')) {
     try {
@@ -72,6 +80,7 @@ export function getOptimizedImageUrl(url: string | null | undefined, width = 800
   
   return formattedUrl;
 }
+
 
 /**
  * Utility to trigger CSV file download in browser

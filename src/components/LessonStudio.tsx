@@ -38,6 +38,18 @@ import {
 import { jsPDF } from 'jspdf';
 import { getAuthToken } from '../lib/firebase.ts';
 
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) {
+    return true;
+  }
+  try {
+    return window.confirm(message);
+  } catch (e) {
+    return true;
+  }
+};
+
 interface Slide {
   slideNumber: number;
   title: string;
@@ -398,7 +410,7 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
   };
 
   const handleDeleteMedia = (id: string) => {
-    if (window.confirm('Remove this media file from your gallery?')) {
+    if (safeConfirm('Remove this media file from your gallery?')) {
       setUploadedMediaFiles(prev => prev.filter(f => f.id !== id));
       showToast('Media removed from gallery.', 'success');
     }
@@ -923,7 +935,7 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
   };
 
   const handleDeleteLesson = async (lessonId: string) => {
-    if (!window.confirm('Are you sure you want to permanently delete this lesson package from the database?')) {
+    if (!safeConfirm('Are you sure you want to permanently delete this lesson package from the database?')) {
       return;
     }
 
@@ -2824,7 +2836,7 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
                             {uploadedMediaFiles.length > 0 && (
                               <button 
                                 onClick={() => {
-                                  if (window.confirm('Clear all media files from local gallery cache?')) {
+                                  if (safeConfirm('Clear all media files from local gallery cache?')) {
                                     setUploadedMediaFiles([]);
                                     showToast('Gallery cache cleared.', 'info');
                                   }

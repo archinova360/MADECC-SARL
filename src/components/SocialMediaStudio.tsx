@@ -127,6 +127,10 @@ const safeConfirm = (message: string): boolean => {
   }
 };
 
+export interface SocialMediaStudioProps {
+  currentUser?: any;
+}
+
 export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProps) {
 
   const { showToast } = useToast();

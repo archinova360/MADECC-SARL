@@ -32,7 +32,7 @@ import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
 // @ts-ignore
-import logoImg from '../assets/images/app_logo_1788030845756.jpg';
+import logoImg from '../assets/images/madecc_premium_logo_1793583157182.jpg';
 
 export interface MobileNavDrawerProps {
   isOpen: boolean;
@@ -206,6 +206,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
   const companyLinks = [
     { id: 'about', label: 'About Us', desc: 'Certifications, leadership & history', icon: Building2 },
+    { id: 'sitemap', label: 'Platform Site Map', desc: 'Architecture index, navigation & manuals', icon: Compass },
     { id: 'faq', label: 'Frequently Asked Questions', desc: 'Contracts, warranties & timelines', icon: HelpCircle },
     { id: 'contact', label: 'Contact Us & HQ', desc: 'Yaoundé office & 24/7 client desk', icon: Phone },
   ];

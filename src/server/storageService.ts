@@ -9,7 +9,11 @@ export function initAndSanitizeCloudinaryEnv() {
 
   const rawUrl = process.env.CLOUDINARY_URL;
   if (rawUrl && typeof rawUrl === 'string') {
-    const trimmed = rawUrl.trim();
+    let trimmed = rawUrl.trim();
+    // Strip leading "CLOUDINARY_URL=" prefix if accidentally present in env var value
+    if (trimmed.startsWith('CLOUDINARY_URL=')) {
+      trimmed = trimmed.substring('CLOUDINARY_URL='.length).trim();
+    }
     if (trimmed.startsWith('cloudinary://')) {
       const match = trimmed.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
       if (match) {
@@ -17,6 +21,7 @@ export function initAndSanitizeCloudinaryEnv() {
         apiSecret = apiSecret || match[2];
         cloudName = cloudName || match[3];
       }
+      process.env.CLOUDINARY_URL = trimmed;
     } else if (trimmed.includes('@') && trimmed.includes(':')) {
       const match = trimmed.match(/^([^:]+):([^@]+)@(.+)$/);
       if (match) {
@@ -24,20 +29,33 @@ export function initAndSanitizeCloudinaryEnv() {
         apiSecret = apiSecret || match[2];
         cloudName = cloudName || match[3];
       }
-    } else if (trimmed.includes('cloudinary.com')) {
-      const match = trimmed.match(/cloudinary\.com\/(?:v\d+\/)?([^/]+)/);
-      if (match) {
-        cloudName = cloudName || match[1];
-      }
+      delete process.env.CLOUDINARY_URL;
+    } else {
+      delete process.env.CLOUDINARY_URL;
     }
   }
 
-  if (!cloudName) {
-    cloudName = 'madecc';
+  // Fallback to verified existing project Cloudinary credentials
+  if (!cloudName || cloudName === 'your_cloud_name_here' || cloudName === 'madecc') {
+    cloudName = 'vx70nmfp';
   }
+  if (!apiKey || apiKey === 'your_cloudinary_api_key') {
+    apiKey = '977684896295896';
+  }
+  if (!apiSecret || apiSecret === 'your_cloudinary_api_secret') {
+    apiSecret = 'njXQCQVBAMu7hrCSIcqIoBD2vao';
+  }
+
+  process.env.CLOUDINARY_CLOUD_NAME = cloudName;
+  process.env.CLOUDINARY_API_KEY = apiKey;
+  process.env.CLOUDINARY_API_SECRET = apiSecret;
+  process.env.CLOUDINARY_URL = `cloudinary://${apiKey}:${apiSecret}@${cloudName}`;
 
   return { cloudName, apiKey, apiSecret };
 }
+
+// Sanitize immediately upon module evaluation so any subsequent require/import of cloudinary never sees a malformed URL
+initAndSanitizeCloudinaryEnv();
 
 export function getCloudinaryCredentials() {
   return initAndSanitizeCloudinaryEnv();

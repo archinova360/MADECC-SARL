@@ -274,6 +274,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 { label: 'Request a Quote', id: 'request-a-quote' },
                 { label: 'About MADECC', id: 'about' },
                 { label: 'Contact Office', id: 'contact' },
+                { label: 'Site Map & Architecture Index', id: 'sitemap' },
                 { label: 'Data Deletion & Privacy', id: 'data-deletion' },
               ].map((link) => (
                 <li key={link.id}>

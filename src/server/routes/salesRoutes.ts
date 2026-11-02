@@ -512,9 +512,9 @@ export function setupSalesRoutes(app: express.Express) {
   });
 
   // =========================================================================
-  // 4B. 1-CLICK FAST UNLOCK (ADMIN / TEST INSTANT APPROVAL)
+  // 4B. 1-CLICK FAST UNLOCK (ADMIN ONLY INSTANT APPROVAL)
   // =========================================================================
-  app.post('/api/sales/orders/:orderRef/fast-unlock', async (req, res) => {
+  app.post('/api/sales/orders/:orderRef/fast-unlock', requireStaffOrAdmin, async (req, res) => {
     try {
       const { orderRef } = req.params;
       const orders = await db.select().from(salesOrders).where(eq(salesOrders.orderReference, orderRef)).limit(1);

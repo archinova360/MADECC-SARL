@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { seedDatabase } from '../db/seed.ts';
 import { ensureReviewerCredentialsTable } from '../lib/reviewerAuth.ts';
 import { ensureAuthSessionsTable } from '../lib/sessionService.ts';
+import { ensureSiteSettingsTable } from '../db/ensureSiteSettings.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
@@ -30,9 +31,15 @@ let isDatabaseSeeded = false;
 export async function getApp(): Promise<express.Express> {
   if (!isDatabaseSeeded) {
     try {
-      await seedDatabase();
       await ensureReviewerCredentialsTable();
       await ensureAuthSessionsTable();
+      await ensureSiteSettingsTable();
+      if (!process.env.NETLIFY) {
+        await seedDatabase();
+      } else {
+        // Run full database seed non-blockingly on Netlify to avoid 10s lambda timeout on cold start
+        seedDatabase().catch((e: any) => console.warn('[NETLIFY_SEED_ASYNC]', e.message));
+      }
       isDatabaseSeeded = true;
     } catch (seedErr) {
       console.error('[SEED_INITIALIZATION_ERROR] Failed to run database seeding:', seedErr);
@@ -44,10 +51,32 @@ export async function getApp(): Promise<express.Express> {
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
+  // Global Cross-Origin Resource Sharing (CORS) & Preflight Handling for Netlify & Production
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-api-key, x-admin-key, Accept');
+    res.setHeader('Access-Control-Max-Age', '86400');
+
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    next();
+  });
+
   // Support Netlify Serverless environment path forwarding
   app.use((req, res, next) => {
     if (req.url.startsWith('/.netlify/functions/api')) {
-      req.url = req.url.replace('/.netlify/functions/api', '/api');
+      const remainder = req.url.slice('/.netlify/functions/api'.length);
+      req.url = remainder.startsWith('/api') ? remainder : `/api${remainder || ''}`;
+    } else if (process.env.NETLIFY && !req.url.startsWith('/api') && !req.url.startsWith('/uploads')) {
+      req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
     }
     next();
   });

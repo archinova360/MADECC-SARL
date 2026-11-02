@@ -534,7 +534,12 @@ export const AdminSalesHub: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
+              const randNum = Math.floor(Math.random() * 900) + 100;
               setEditingProduct({
+                sku: `KRR-TXT-2026-${randNum}`,
+                title: '',
+                description: 'Official educational publication & reference manual for civil engineering and construction technology in Cameroon.',
+                coverImage: '/logo.png',
                 format: 'DIGITAL',
                 status: 'PUBLISHED',
                 price: 15000,
@@ -1108,13 +1113,25 @@ export const AdminSalesHub: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-mono text-slate-400 block mb-1">SKU *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-mono text-slate-400">SKU (Unique Identifier) *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rand = Math.floor(Math.random() * 900) + 100;
+                        setEditingProduct(prev => prev ? ({ ...prev, sku: `KRR-TXT-2026-${rand}` }) : null);
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 font-mono underline cursor-pointer"
+                    >
+                      ⚡ Auto SKU
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
                     value={editingProduct.sku || ''}
                     onChange={e => setEditingProduct({ ...editingProduct, sku: e.target.value.toUpperCase() })}
-                    placeholder="e.g. KRR-TXT-2026-001"
+                    placeholder="e.g. KRR-TXT-2026-002"
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono uppercase"
                   />
                 </div>

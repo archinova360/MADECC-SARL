@@ -17,6 +17,7 @@ import {
   cmsContentRevisions
 } from './schema.ts';
 import { eq, sql } from 'drizzle-orm';
+import { ensureSiteSettingsTable } from './ensureSiteSettings.ts';
 
 export async function seedDatabase() {
   try {
@@ -1438,6 +1439,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
 
     // 11. Seed CMS Site Settings
     console.log('Seeding CMS site settings...');
+    await ensureSiteSettingsTable();
     const existingSettings = await db.select().from(siteSettings).limit(1);
     if (existingSettings.length === 0) {
       await db.insert(siteSettings).values({

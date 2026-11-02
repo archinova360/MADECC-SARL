@@ -36,7 +36,7 @@ export const DEFAULT_HERO_VIDEOS: HeroVideoItem[] = [
     category: 'Heavy Infrastructure & Bridges',
     location: 'Yaoundé - Douala Expressway Corridor',
     videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=85',
+    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=75&fm=webp',
     accent: '#f59e0b'
   },
   {
@@ -46,7 +46,7 @@ export const DEFAULT_HERO_VIDEOS: HeroVideoItem[] = [
     category: 'Eurocode 2 & BAEL 91 Standards',
     location: 'Yaoundé (Mbankolo & Bastos)',
     videoUrl: 'https://cdn.jsdelivr.net/npm/video-media-samples@1.0.0/big-buck-bunny-480p-30sec.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1920&q=85',
+    posterUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1200&q=75&fm=webp',
     accent: '#10b981'
   },
   {
@@ -56,7 +56,7 @@ export const DEFAULT_HERO_VIDEOS: HeroVideoItem[] = [
     category: 'Modern Architecture in Cameroon',
     location: 'Douala (Akwa & Bonanjo Business Districts)',
     videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1590486803833-1c5dc8ddd4c8?auto=format&fit=crop&w=1920&q=85',
+    posterUrl: 'https://images.unsplash.com/photo-1590486803833-1c5dc8ddd4c8?auto=format&fit=crop&w=1200&q=75&fm=webp',
     accent: '#3b82f6'
   },
   {
@@ -66,7 +66,7 @@ export const DEFAULT_HERO_VIDEOS: HeroVideoItem[] = [
     category: 'Municipal & Inter-Urban Roadways',
     location: 'National Road Network & Urban Centers',
     videoUrl: 'https://cdn.jsdelivr.net/npm/video-media-samples@1.0.0/big-buck-bunny-480p-30sec.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1920&q=85',
+    posterUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1200&q=75&fm=webp',
     accent: '#f97316'
   }
 ];
@@ -313,17 +313,22 @@ export default function HeroVideoPlayer({
               aria-roledescription="slide"
               aria-label={`Slide ${idx + 1} of ${slides.length}: ${item.title}`}
             >
-              {/* Cinematic Background Poster Image - LCP optimized with eager priority for first slide */}
+              {/* Cinematic Background Poster Image - LCP optimized with responsive srcSet & priority for first slide */}
               <img
-                src={getOptimizedImageUrl(item.posterUrl, 1280, 80)}
+                src={getOptimizedImageUrl(item.posterUrl, 800, 75)}
+                srcSet={`
+                  ${getOptimizedImageUrl(item.posterUrl, 480, 70)} 480w,
+                  ${getOptimizedImageUrl(item.posterUrl, 768, 75)} 768w,
+                  ${getOptimizedImageUrl(item.posterUrl, 1200, 80)} 1200w
+                `}
+                sizes="(max-width: 768px) 100vw, 1200px"
                 alt={item.title}
-                width={1280}
-                height={720}
-                decoding="async"
+                width={800}
+                height={450}
+                decoding={idx === 0 ? 'sync' : 'async'}
                 loading={idx === 0 ? 'eager' : 'lazy'}
-                // fetchPriority optimizes LCP for the initial hero visual
-                {...({ fetchPriority: idx === 0 ? 'high' : 'auto' } as any)}
-                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] ease-out ${
+                {...({ fetchPriority: idx === 0 ? 'high' : 'low' } as any)}
+                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] ease-out will-change-transform ${
                   isActive ? 'scale-105' : 'scale-100'
                 }`}
               />

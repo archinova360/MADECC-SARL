@@ -12,6 +12,7 @@ import { logAudit } from '../../lib/audit.ts';
 import { deleteFileFromCloud } from '../storageService.js';
 import { seedDatabase } from '../../db/seed.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
+import { getSiteSettings, upsertSiteSettings } from '../../db/ensureSiteSettings.ts';
 
   async function ensureFaqDefaults() {
     const existingCats = await db.select().from(faqCategories);
@@ -1164,97 +1165,19 @@ export function setupCmsRoutes(app: express.Express) {
   // 1. CMS Site Settings
   app.get('/api/cms/settings', async (req, res) => {
     try {
-      const settings = await db.select().from(siteSettings).limit(1);
-      if (settings.length > 0) {
-        return res.json({ success: true, settings: settings[0] });
-      }
-      // Fallback if not yet seeded
-      return res.json({
-        success: true,
-        settings: {
-          siteName: 'MADECC GROUP',
-          tagline: 'Premier Construction, Civil Engineering & Project Management in Cameroon',
-          phone: '+237 670 00 00 00',
-          emergencyPhone: '+237 690 00 00 00',
-          email: 'contact@madeccgroup.com',
-          officeAddressYaounde: 'Mbankolo, Yaounde, Centre Region, Cameroon',
-          officeAddressDouala: 'Akwa, Douala, Littoral Region, Cameroon',
-          businessHours: 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 14:00 (GMT+1)',
-          whatsappNumber: '+237670000000',
-          facebookUrl: 'https://facebook.com/madeccgroup',
-          linkedinUrl: 'https://linkedin.com/company/madecc-group',
-          instagramUrl: 'https://instagram.com/madeccgroup',
-          youtubeUrl: 'https://youtube.com/@madeccgroup',
-          twitterUrl: 'https://x.com/madeccgroup',
-          globalSeo: {
-            seoTitle: 'MADECC GROUP -- Premier Construction & Civil Engineering in Cameroon',
-            metaDescription: 'Leading Cameroonian construction and engineering firm. Eurocode 2 standards, certified concrete batching, and turnkey execution.',
-            robotsIndex: true
-          }
-        }
-      });
+      const settings = await getSiteSettings();
+      return res.json({ success: true, settings });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('[GET /api/cms/settings] Error:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
   app.put('/api/cms/settings', requireStaffOrAdmin, async (req: any, res) => {
     try {
       const data = req.body;
-      const existing = await db.select().from(siteSettings).limit(1);
-      let updatedRecord;
-      if (existing.length > 0) {
-        const updated = await db.update(siteSettings)
-          .set({
-            siteName: data.siteName !== undefined ? data.siteName : existing[0].siteName,
-            tagline: data.tagline !== undefined ? data.tagline : existing[0].tagline,
-            developerName: data.developerName !== undefined ? data.developerName : existing[0].developerName,
-            phone: data.phone !== undefined ? data.phone : existing[0].phone,
-            phoneSecondary: data.phoneSecondary !== undefined ? data.phoneSecondary : existing[0].phoneSecondary,
-            phoneTertiary: data.phoneTertiary !== undefined ? data.phoneTertiary : existing[0].phoneTertiary,
-            emergencyPhone: data.emergencyPhone !== undefined ? data.emergencyPhone : existing[0].emergencyPhone,
-            email: data.email !== undefined ? data.email : existing[0].email,
-            secondaryEmail: data.secondaryEmail !== undefined ? data.secondaryEmail : existing[0].secondaryEmail,
-            officeAddressYaounde: data.officeAddressYaounde !== undefined ? data.officeAddressYaounde : existing[0].officeAddressYaounde,
-            officeAddressDouala: data.officeAddressDouala !== undefined ? data.officeAddressDouala : existing[0].officeAddressDouala,
-            businessHours: data.businessHours !== undefined ? data.businessHours : existing[0].businessHours,
-            whatsappNumber: data.whatsappNumber !== undefined ? data.whatsappNumber : existing[0].whatsappNumber,
-            whatsappSecondary: data.whatsappSecondary !== undefined ? data.whatsappSecondary : existing[0].whatsappSecondary,
-            paymentMtnNumbers: data.paymentMtnNumbers !== undefined ? data.paymentMtnNumbers : existing[0].paymentMtnNumbers,
-            paymentOrangeNumbers: data.paymentOrangeNumbers !== undefined ? data.paymentOrangeNumbers : existing[0].paymentOrangeNumbers,
-            paymentInstructions: data.paymentInstructions !== undefined ? data.paymentInstructions : existing[0].paymentInstructions,
-            facebookUrl: data.facebookUrl !== undefined ? data.facebookUrl : existing[0].facebookUrl,
-            linkedinUrl: data.linkedinUrl !== undefined ? data.linkedinUrl : existing[0].linkedinUrl,
-            instagramUrl: data.instagramUrl !== undefined ? data.instagramUrl : existing[0].instagramUrl,
-            youtubeUrl: data.youtubeUrl !== undefined ? data.youtubeUrl : existing[0].youtubeUrl,
-            twitterUrl: data.twitterUrl !== undefined ? data.twitterUrl : existing[0].twitterUrl,
-            tiktokUrl: data.tiktokUrl !== undefined ? data.tiktokUrl : existing[0].tiktokUrl,
-            pinterestUrl: data.pinterestUrl !== undefined ? data.pinterestUrl : existing[0].pinterestUrl,
-            rccmNumber: data.rccmNumber !== undefined ? data.rccmNumber : existing[0].rccmNumber,
-            niuTaxId: data.niuTaxId !== undefined ? data.niuTaxId : existing[0].niuTaxId,
-            legalStatus: data.legalStatus !== undefined ? data.legalStatus : existing[0].legalStatus,
-            shareHeadline: data.shareHeadline !== undefined ? data.shareHeadline : existing[0].shareHeadline,
-            shareDescription: data.shareDescription !== undefined ? data.shareDescription : existing[0].shareDescription,
-            logoUrl: data.logoUrl !== undefined ? data.logoUrl : existing[0].logoUrl,
-            faviconUrl: data.faviconUrl !== undefined ? data.faviconUrl : existing[0].faviconUrl,
-            themeSettings: data.themeSettings !== undefined ? data.themeSettings : existing[0].themeSettings,
-            globalSeo: data.globalSeo !== undefined ? data.globalSeo : existing[0].globalSeo,
-            navigationLinks: data.navigationLinks !== undefined ? data.navigationLinks : existing[0].navigationLinks,
-            footerContent: data.footerContent !== undefined ? data.footerContent : existing[0].footerContent,
-            emergencyBanner: data.emergencyBanner !== undefined ? data.emergencyBanner : existing[0].emergencyBanner,
-            updatedBy: req.dbUser?.displayName || req.dbUser?.email || 'MADECC Executive Admin',
-            updatedAt: new Date()
-          })
-          .where(eq(siteSettings.id, existing[0].id))
-          .returning();
-        updatedRecord = updated[0];
-      } else {
-        const inserted = await db.insert(siteSettings).values({
-          ...data,
-          updatedBy: req.dbUser?.displayName || req.dbUser?.email || 'MADECC Executive Admin'
-        }).returning();
-        updatedRecord = inserted[0];
-      }
+      const updatedBy = req.dbUser?.displayName || req.dbUser?.email || 'MADECC Executive Admin';
+      const updatedRecord = await upsertSiteSettings(data, updatedBy);
 
       await db.insert(cmsActivityLogs).values({
         module: 'SITE_SETTINGS',
@@ -1263,11 +1186,12 @@ export function setupCmsRoutes(app: express.Express) {
         recordTitle: 'Global Site Settings',
         performedBy: req.dbUser?.email || 'Admin',
         details: 'Updated global site settings & branding'
-      }).catch(e => console.warn('[CMS_LOG]', e));
+      }).catch((e: any) => console.warn('[CMS_LOG]', e.message));
 
       res.json({ success: true, settings: updatedRecord });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('[PUT /api/cms/settings] Error:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 

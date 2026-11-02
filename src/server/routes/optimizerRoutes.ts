@@ -15,6 +15,7 @@ import {
 import { eq, desc, and, sql, or, like } from 'drizzle-orm';
 import { logAudit } from '../../lib/audit.ts';
 import { getTransporter, SMTP_CANONICAL_USER, sendNotificationEmail } from '../mailService.ts';
+import { upsertSiteSettings } from '../../db/ensureSiteSettings.ts';
 
 export function setupOptimizerRoutes(app: express.Express) {
   // 1. LIVE SYSTEM & INFRASTRUCTURE STATUS INSPECTION
@@ -306,61 +307,10 @@ export function setupOptimizerRoutes(app: express.Express) {
   // 5. QUICK LIVE OPTIMIZATION SETTINGS UPDATE
   app.post('/api/optimizer/quick-settings', requireStaffOrAdmin, async (req: any, res) => {
     try {
-      if (!db) {
-        return res.status(500).json({ success: false, error: 'Database unavailable' });
-      }
-
-      const { 
-        siteName,
-        tagline,
-        phone,
-        phoneSecondary,
-        emergencyPhone,
-        email,
-        businessHours,
-        whatsappNumber,
-        emergencyBanner,
-        themeSettings
-      } = req.body;
-
-      const existing = await db.select().from(siteSettings).limit(1);
-      let updatedRecord;
-
-      if (existing.length > 0) {
-        const result = await db.update(siteSettings)
-          .set({
-            ...(siteName !== undefined ? { siteName } : {}),
-            ...(tagline !== undefined ? { tagline } : {}),
-            ...(phone !== undefined ? { phone } : {}),
-            ...(phoneSecondary !== undefined ? { phoneSecondary } : {}),
-            ...(emergencyPhone !== undefined ? { emergencyPhone } : {}),
-            ...(email !== undefined ? { email } : {}),
-            ...(businessHours !== undefined ? { businessHours } : {}),
-            ...(whatsappNumber !== undefined ? { whatsappNumber } : {}),
-            ...(emergencyBanner !== undefined ? { emergencyBanner } : {}),
-            ...(themeSettings !== undefined ? { themeSettings } : {}),
-            updatedBy: req.dbUser?.displayName || req.dbUser?.email || 'Administrator',
-            updatedAt: new Date()
-          })
-          .where(eq(siteSettings.id, existing[0].id))
-          .returning();
-        updatedRecord = result[0];
-      } else {
-        const result = await db.insert(siteSettings).values({
-          siteName: siteName || 'MADECC GROUP',
-          tagline: tagline || 'Premier Engineering, Construction & Project Management in Cameroon',
-          phone: phone || '+237 683 31 64 86',
-          phoneSecondary: phoneSecondary || '+237 671 063 511',
-          emergencyPhone: emergencyPhone || '+237 683 31 64 86',
-          email: email || SMTP_CANONICAL_USER,
-          businessHours: businessHours || 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 14:00 (GMT+1)',
-          whatsappNumber: whatsappNumber || '+237 683 31 64 86',
-          emergencyBanner: emergencyBanner || null,
-          themeSettings: themeSettings || null,
-          updatedBy: req.dbUser?.displayName || req.dbUser?.email || 'Administrator'
-        }).returning();
-        updatedRecord = result[0];
-      }
+      const updatedRecord = await upsertSiteSettings(
+        req.body,
+        req.dbUser?.displayName || req.dbUser?.email || 'Administrator'
+      );
 
       await logAudit(
         req.dbUser?.uid || 'admin-madecc-uid',
@@ -375,7 +325,7 @@ export function setupOptimizerRoutes(app: express.Express) {
         settings: updatedRecord
       });
     } catch (err: any) {
-      console.error('[OPTIMIZER_QUICK_SETTINGS_ERROR]', err);
+      console.error('[OPTIMIZER QUICK SETTINGS] Error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   });

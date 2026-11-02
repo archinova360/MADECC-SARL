@@ -16,6 +16,7 @@ import {
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, requireAdmin } from '../../middleware/auth.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
+import { getSiteSettings } from '../../db/ensureSiteSettings.ts';
 
 const router = express.Router();
 
@@ -165,7 +166,7 @@ router.get('/plans', async (req: Request, res: Response) => {
 // GET /api/v1/company-payment-config — Returns official payment channels
 router.get('/company-payment-config', async (req: Request, res: Response) => {
   try {
-    const [settings] = await db.select().from(siteSettings).limit(1);
+    const settings = await getSiteSettings();
     return res.json({
       success: true,
       company: settings?.siteName || 'MADECC GROUP',

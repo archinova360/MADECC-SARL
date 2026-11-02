@@ -18,6 +18,7 @@
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
+  force = true
 
 # 2. Support standard React Router SPA paths (fallback to index.html for frontend routing)
 [[redirects]]

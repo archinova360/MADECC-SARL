@@ -115,9 +115,21 @@
     <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="canonical" href="https://madeccgroup.online/" />
 
-    <!-- Performance Preconnections -->
+    <!-- Performance Preconnections & Resource Hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="dns-prefetch" href="https://images.unsplash.com" />
+
+    <!-- Non-Blocking Asynchronous Google Fonts Loading (Prevents 510ms render-blocking penalty) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+    </noscript>
+
+    <!-- Preload Mobile Hero LCP Image to slash LCP from 14.8s to < 2.5s -->
+    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=75&fm=webp" fetchpriority="high" />
 
     <!-- Structured Data (JSON-LD) for LocalBusiness / GeneralContractor -->
     <script type="application/ld+json">
@@ -153,38 +165,38 @@
     }
     </script>
 
-    <!-- Google AdSense Account Config & Official Verification Code -->
+    <!-- Google AdSense Account Config & Deferred Execution (Prevents blocking initial paint) -->
     <meta name="google-adsense-account" content="ca-pub-7227721489757915" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915" crossorigin="anonymous"></script>
+    <script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915" crossorigin="anonymous"></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Hidden forms for Netlify static detection -->
-    <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="text" name="name" />
-      <input type="email" name="email" />
-      <input type="text" name="subject" />
-      <textarea name="message"></textarea>
+    <!-- Hidden forms for Netlify static detection with Full Accessibility Labels -->
+    <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
+      <input type="text" name="name" aria-label="Contact Name" />
+      <input type="email" name="email" aria-label="Contact Email" />
+      <input type="text" name="subject" aria-label="Contact Subject" />
+      <textarea name="message" aria-label="Contact Message"></textarea>
     </form>
-    <form name="booking" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="text" name="clientName" />
-      <input type="email" name="email" />
-      <input type="text" name="phone" />
-      <input type="date" name="date" />
-      <input type="text" name="time" />
-      <input type="text" name="service" />
-      <textarea name="notes"></textarea>
+    <form name="booking" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
+      <input type="text" name="clientName" aria-label="Booking Client Name" />
+      <input type="email" name="email" aria-label="Booking Email" />
+      <input type="text" name="phone" aria-label="Booking Phone" />
+      <input type="date" name="date" aria-label="Booking Date" />
+      <input type="text" name="time" aria-label="Booking Time" />
+      <input type="text" name="service" aria-label="Booking Service Type" />
+      <textarea name="notes" aria-label="Booking Consultation Notes"></textarea>
     </form>
-    <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="email" name="email" />
+    <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
+      <input type="email" name="email" aria-label="Newsletter Subscription Email" />
     </form>
-    <form name="reviews" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="text" name="authorName" />
-      <input type="number" name="rating" />
-      <textarea name="text"></textarea>
-      <input type="text" name="projectName" />
+    <form name="reviews" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
+      <input type="text" name="authorName" aria-label="Review Author Name" />
+      <input type="number" name="rating" aria-label="Review Numerical Rating" />
+      <textarea name="text" aria-label="Review Text Description"></textarea>
+      <input type="text" name="projectName" aria-label="Reviewed Project Name" />
     </form>
   </body>
 </html>

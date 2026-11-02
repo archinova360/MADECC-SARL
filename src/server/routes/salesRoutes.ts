@@ -13,6 +13,7 @@ import {
 import { eq, desc, and, sql, or, like, inArray } from 'drizzle-orm';
 import { requireStaffOrAdmin } from '../../middleware/auth.ts';
 import { sendNotificationEmail, sendEmail, SMTP_CANONICAL_USER } from '../mailService.ts';
+import { getSiteSettings } from '../../db/ensureSiteSettings.ts';
 
 export function setupSalesRoutes(app: express.Express) {
   // =========================================================================
@@ -284,8 +285,7 @@ export function setupSalesRoutes(app: express.Express) {
       }
 
       // Fetch payment instructions from site settings
-      const settingsList = await db.select().from(siteSettings).limit(1);
-      const settings = settingsList[0] || {};
+      const settings = await getSiteSettings();
       const mtnNumbers = settings.paymentMtnNumbers || '671063511, 683316486';
       const orangeNumbers = settings.paymentOrangeNumbers || '689115595, 640194505';
 
@@ -456,8 +456,7 @@ export function setupSalesRoutes(app: express.Express) {
       const payments = await db.select().from(salesPayments).where(eq(salesPayments.orderId, order.id)).orderBy(desc(salesPayments.createdAt));
 
       // Fetch site settings for payment instructions
-      const settingsList = await db.select().from(siteSettings).limit(1);
-      const settings = settingsList[0] || {};
+      const settings = await getSiteSettings();
 
       // Digital downloads are ONLY unlocked if payment is VERIFIED_PAID
       const isPaid = order.paymentStatus === 'VERIFIED_PAID';
@@ -703,6 +702,22 @@ export function setupSalesRoutes(app: express.Express) {
     }
   });
 
+  // Helpers to safely sanitize integers, numerics, and strings for PostgreSQL
+  const sanitizeInt = (val: any, fallback: number | null = null): number | null => {
+    if (val === null || val === undefined || val === '') return fallback;
+    const cleaned = String(val).replace(/[^0-9-]/g, '');
+    if (!cleaned) return fallback;
+    const num = parseInt(cleaned, 10);
+    return isNaN(num) ? fallback : num;
+  };
+
+  const sanitizeNumeric = (val: any, fallback: string | null = null): string | null => {
+    if (val === null || val === undefined || val === '') return fallback;
+    const cleaned = String(val).replace(/[^0-9.]/g, '');
+    if (!cleaned || isNaN(Number(cleaned))) return fallback;
+    return cleaned;
+  };
+
   // Helper to sanitize database and Drizzle error messages for user-friendly UI presentation
   const formatFriendlySalesError = (err: any): string => {
     if (!err) return 'An unexpected server error occurred';
@@ -715,6 +730,13 @@ export function setupSalesRoutes(app: express.Express) {
     }
     if (msg.includes('unique constraint')) {
       return 'A database record with these unique details already exists.';
+    }
+    if (msg.includes('not-null constraint') || msg.includes('violates not-null')) {
+      const match = msg.match(/column "([^"]+)" of relation "sales_products"/);
+      return `Please fill in required field: ${match ? match[1] : 'required information'}.`;
+    }
+    if (msg.includes('invalid input syntax for type numeric') || msg.includes('invalid input syntax for integer')) {
+      return 'Invalid number format. Please ensure price, stock, and file sizes are numbers only.';
     }
     if (msg.includes('Failed query:') || msg.includes('insert into "sales_products"')) {
       return 'Unable to save publication to the database. Please verify all required fields and ensure the SKU is unique.';
@@ -737,11 +759,11 @@ export function setupSalesRoutes(app: express.Express) {
       if (existingSku.length > 0) {
         return res.status(409).json({
           success: false,
-          error: `A publication with SKU "${targetSku}" already exists. Please choose a different SKU.`
+          error: `A publication with SKU "${targetSku}" already exists. Please choose a different SKU or click "Auto SKU".`
         });
       }
 
-      // Generate clean, collision-free slug
+      // Generate clean, collision-free slug with iterative safety loop
       let baseSlug = (data.slug || data.title)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -749,45 +771,56 @@ export function setupSalesRoutes(app: express.Express) {
       if (!baseSlug) baseSlug = `pub-${Date.now().toString(36)}`;
 
       let slug = baseSlug;
-      const slugCollision = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.slug, slug)).limit(1);
-      if (slugCollision.length > 0) {
-        slug = `${baseSlug}-${Date.now().toString(36).slice(-5)}`;
+      let counter = 1;
+      while (true) {
+        const collision = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.slug, slug)).limit(1);
+        if (collision.length === 0) break;
+        slug = `${baseSlug}-${Date.now().toString(36).slice(-4)}${counter > 1 ? `-${counter}` : ''}`;
+        counter++;
       }
+
+      const cleanPrice = sanitizeInt(data.price, 0) || 0;
+      const cleanComparePrice = sanitizeInt(data.compareAtPrice, null);
+      const cleanStock = sanitizeInt(data.stockQuantity, 100);
+      const cleanPubYear = sanitizeInt(data.publicationYear, 2026);
+      const cleanPages = sanitizeInt(data.pagesCount, 300);
+      const cleanDisplayOrder = sanitizeInt(data.displayOrder, 1);
+      const cleanFileSizeMb = sanitizeNumeric(data.digitalFileSizeMb, null);
 
       const inserted = await db.insert(salesProducts).values({
         sku: targetSku,
         title: data.title.trim(),
         slug,
-        description: data.description || '',
-        shortDescription: data.shortDescription || '',
+        description: data.description?.trim() || `Official educational textbook and curriculum reference published by ${data.publisher || 'KRR Group & MADECC Publishing, Yaoundé'}.`,
+        shortDescription: data.shortDescription?.trim() || '',
         category: data.category || 'Civil Engineering Textbooks',
         yearLevel: data.yearLevel || 'General',
         subject: data.subject || 'Civil Engineering',
         format: data.format || 'DIGITAL',
-        price: parseInt(data.price, 10) || 0,
-        compareAtPrice: data.compareAtPrice ? parseInt(data.compareAtPrice, 10) : null,
-        coverImage: data.coverImage || 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=80',
-        previewPdfUrl: data.previewPdfUrl || null,
-        digitalFileUrl: data.digitalFileUrl || null,
-        digitalFileName: data.digitalFileName || null,
-        digitalFileSizeMb: data.digitalFileSizeMb ? String(data.digitalFileSizeMb) : null,
-        stockQuantity: data.stockQuantity !== undefined ? parseInt(data.stockQuantity, 10) : 100,
+        price: cleanPrice,
+        compareAtPrice: cleanComparePrice,
+        coverImage: data.coverImage?.trim() || '/logo.png',
+        previewPdfUrl: data.previewPdfUrl?.trim() || null,
+        digitalFileUrl: data.digitalFileUrl?.trim() || null,
+        digitalFileName: data.digitalFileName?.trim() || null,
+        digitalFileSizeMb: cleanFileSizeMb,
+        stockQuantity: cleanStock,
         trackInventory: Boolean(data.trackInventory),
         isbn: data.isbn ? data.isbn.trim() : null,
-        author: data.author || 'KRR Engineering Editorial Board',
-        publisher: data.publisher || 'KRR Group & MADECC Publishing, Yaoundé',
-        publicationYear: parseInt(data.publicationYear, 10) || 2026,
-        pagesCount: parseInt(data.pagesCount, 10) || 300,
-        language: data.language || 'English & French',
+        author: data.author?.trim() || 'KRR Engineering Editorial Board',
+        publisher: data.publisher?.trim() || 'KRR Group & MADECC Publishing, Yaoundé',
+        publicationYear: cleanPubYear,
+        pagesCount: cleanPages,
+        language: data.language?.trim() || 'English & French',
         status: data.status || 'PUBLISHED',
         featured: Boolean(data.featured),
         tags: Array.isArray(data.tags) ? data.tags : [],
-        displayOrder: parseInt(data.displayOrder, 10) || 1
+        displayOrder: cleanDisplayOrder
       }).returning();
 
       // Audit Log
       await db.insert(auditLogs).values({
-        userId: req.dbUser?.uid || 'admin',
+        userId: req.dbUser?.uid || String(req.dbUser?.id || 'admin'),
         userEmail: req.dbUser?.email || 'admin@krrgroup.com',
         action: 'CREATE_SALES_PRODUCT',
         details: `Created product "${data.title}" (SKU: ${targetSku})`
@@ -817,40 +850,48 @@ export function setupSalesRoutes(app: express.Express) {
         }
       }
 
+      const cleanPrice = sanitizeInt(data.price, 0) || 0;
+      const cleanComparePrice = sanitizeInt(data.compareAtPrice, null);
+      const cleanStock = sanitizeInt(data.stockQuantity, 100);
+      const cleanPubYear = sanitizeInt(data.publicationYear, 2026);
+      const cleanPages = sanitizeInt(data.pagesCount, 300);
+      const cleanDisplayOrder = sanitizeInt(data.displayOrder, 1);
+      const cleanFileSizeMb = sanitizeNumeric(data.digitalFileSizeMb, null);
+
       const updated = await db.update(salesProducts).set({
-        title: data.title,
+        title: data.title ? data.title.trim() : undefined,
         sku: data.sku ? data.sku.trim().toUpperCase() : undefined,
-        description: data.description,
-        shortDescription: data.shortDescription,
+        description: data.description !== undefined ? data.description.trim() : undefined,
+        shortDescription: data.shortDescription !== undefined ? data.shortDescription.trim() : undefined,
         category: data.category,
         yearLevel: data.yearLevel,
         subject: data.subject,
         format: data.format,
-        price: parseInt(data.price, 10) || 0,
-        compareAtPrice: data.compareAtPrice ? parseInt(data.compareAtPrice, 10) : null,
-        coverImage: data.coverImage,
-        previewPdfUrl: data.previewPdfUrl || null,
-        digitalFileUrl: data.digitalFileUrl || null,
-        digitalFileName: data.digitalFileName || null,
-        digitalFileSizeMb: data.digitalFileSizeMb ? String(data.digitalFileSizeMb) : null,
-        stockQuantity: data.stockQuantity !== undefined ? parseInt(data.stockQuantity, 10) : 100,
+        price: cleanPrice,
+        compareAtPrice: cleanComparePrice,
+        coverImage: data.coverImage ? data.coverImage.trim() : '/logo.png',
+        previewPdfUrl: data.previewPdfUrl ? data.previewPdfUrl.trim() : null,
+        digitalFileUrl: data.digitalFileUrl ? data.digitalFileUrl.trim() : null,
+        digitalFileName: data.digitalFileName ? data.digitalFileName.trim() : null,
+        digitalFileSizeMb: cleanFileSizeMb,
+        stockQuantity: cleanStock,
         trackInventory: Boolean(data.trackInventory),
         isbn: data.isbn ? data.isbn.trim() : null,
-        author: data.author,
-        publisher: data.publisher,
-        publicationYear: parseInt(data.publicationYear, 10) || 2026,
-        pagesCount: parseInt(data.pagesCount, 10) || 300,
+        author: data.author ? data.author.trim() : undefined,
+        publisher: data.publisher ? data.publisher.trim() : undefined,
+        publicationYear: cleanPubYear,
+        pagesCount: cleanPages,
         language: data.language,
         status: data.status,
         featured: Boolean(data.featured),
         tags: Array.isArray(data.tags) ? data.tags : [],
-        displayOrder: parseInt(data.displayOrder, 10) || 1,
+        displayOrder: cleanDisplayOrder,
         updatedAt: new Date()
       }).where(eq(salesProducts.id, id)).returning();
 
       // Audit Log
       await db.insert(auditLogs).values({
-        userId: req.dbUser?.uid || 'admin',
+        userId: req.dbUser?.uid || String(req.dbUser?.id || 'admin'),
         userEmail: req.dbUser?.email || 'admin@krrgroup.com',
         action: 'UPDATE_SALES_PRODUCT',
         details: `Updated product #${id} "${data.title}"`

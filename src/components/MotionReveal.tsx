@@ -44,6 +44,7 @@ export function FadeIn({
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
       className={className}
+      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
       {...props}
     >
       {children}
@@ -86,6 +87,7 @@ export function FadeInDirection({
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
       className={className}
+      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
       {...props}
     >
       {children}
@@ -113,6 +115,7 @@ export function ScaleIn({
       viewport={{ once: true, margin: '-30px' }}
       transition={{ duration, delay, ease: [0.175, 0.885, 0.32, 1.275] }}
       className={className}
+      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
       {...props}
     >
       {children}
@@ -182,7 +185,12 @@ export function StaggerItem({
   };
 
   return (
-    <motion.div variants={itemVariants} className={className} {...props}>
+    <motion.div
+      variants={itemVariants}
+      className={className}
+      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
+      {...props}
+    >
       {children}
     </motion.div>
   );
@@ -205,6 +213,7 @@ export function InteractiveCard({
       whileHover={{ y: -4, scale: hoverScale }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      style={{ willChange: 'transform', transform: 'translateZ(0)', ...(props.style || {}) }}
       className={className}
       {...props}
     >

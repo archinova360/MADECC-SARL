@@ -7,6 +7,7 @@ import { seedDatabase } from '../db/seed.ts';
 import { ensureReviewerCredentialsTable } from '../lib/reviewerAuth.ts';
 import { ensureAuthSessionsTable } from '../lib/sessionService.ts';
 import { ensureSiteSettingsTable } from '../db/ensureSiteSettings.ts';
+import { ensureSalesTables } from '../db/ensureSalesTables.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
@@ -34,6 +35,7 @@ export async function getApp(): Promise<express.Express> {
       await ensureReviewerCredentialsTable();
       await ensureAuthSessionsTable();
       await ensureSiteSettingsTable();
+      await ensureSalesTables();
       if (!process.env.NETLIFY) {
         await seedDatabase();
       } else {
@@ -79,6 +81,36 @@ export async function getApp(): Promise<express.Express> {
       req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
     }
     next();
+  });
+
+  // Explicit sitemap.xml handler (ensures valid XML header & immediate delivery)
+  app.get('/sitemap.xml', (req, res) => {
+    const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+    if (fs.existsSync(sitemapPath)) {
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      return res.sendFile(sitemapPath);
+    }
+    const distSitemap = path.join(process.cwd(), 'dist', 'sitemap.xml');
+    if (fs.existsSync(distSitemap)) {
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      return res.sendFile(distSitemap);
+    }
+    res.status(404).send('Sitemap not found');
+  });
+
+  // Explicit robots.txt handler
+  app.get('/robots.txt', (req, res) => {
+    const robotsPath = path.join(process.cwd(), 'public', 'robots.txt');
+    if (fs.existsSync(robotsPath)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(robotsPath);
+    }
+    const distRobots = path.join(process.cwd(), 'dist', 'robots.txt');
+    if (fs.existsSync(distRobots)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(distRobots);
+    }
+    res.status(404).send('Robots not found');
   });
 
   // Base Health and Diagnostic Endpoints (Guaranteed JSON responses)

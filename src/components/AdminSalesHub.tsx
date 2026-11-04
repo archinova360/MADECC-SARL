@@ -342,6 +342,66 @@ export const AdminSalesHub: React.FC = () => {
     }
   };
 
+  // Helper to upload files: tries direct signed Cloudinary upload first (bypassing Netlify 6MB body limit),
+  // then falls back to /api/upload proxy if signature is unavailable.
+  const uploadFileWithFallback = async (file: File): Promise<string> => {
+    const headers = await getAuthHeaders(false);
+    
+    // 1. Try direct Cloudinary upload via signed signature
+    try {
+      const sigRes = await fetch('/api/cloudinary-signature', {
+        headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
+        credentials: 'include'
+      });
+      if (sigRes.ok) {
+        const ticket = await sigRes.json();
+        if (ticket.signature && ticket.cloudName && ticket.apiKey && ticket.timestamp) {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('api_key', ticket.apiKey);
+          formData.append('timestamp', String(ticket.timestamp));
+          formData.append('signature', ticket.signature);
+          formData.append('folder', ticket.folder || 'madecc');
+          
+          const uploadUrl = `https://api.cloudinary.com/v1_1/${ticket.cloudName}/auto/upload`;
+          const cloudRes = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formData
+          });
+          if (cloudRes.ok) {
+            const cloudData = await cloudRes.json();
+            if (cloudData.secure_url || cloudData.url) {
+              return cloudData.secure_url || cloudData.url;
+            }
+          }
+        }
+      }
+    } catch (directErr) {
+      console.warn('[UPLOAD] Direct Cloudinary upload skipped, falling back to server proxy:', directErr);
+    }
+
+    // 2. Server-side proxy upload fallback
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
+      credentials: 'include',
+      body: formData
+    });
+    const rawText = await res.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(`Upload server returned status ${res.status}`);
+    }
+    if (!res.ok || (!data.url && !data.secure_url)) {
+      throw new Error(data.error || 'Server rejected file upload');
+    }
+    return data.secure_url || data.url;
+  };
+
   // Handle Image Upload for Product Cover
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -349,26 +409,8 @@ export const AdminSalesHub: React.FC = () => {
 
     setUploadingImage(true);
     try {
-      const headers = await getAuthHeaders(false);
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
-        body: formData
-      });
-      const rawText = await res.text();
-      let data: any = {};
-      try {
-        data = JSON.parse(rawText);
-      } catch (parseErr) {
-        throw new Error('Upload response was not valid JSON. Server status: ' + res.status);
-      }
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Server rejected file upload');
-      }
-
-      setEditingProduct(prev => prev ? ({ ...prev, coverImage: data.url }) : null);
+      const url = await uploadFileWithFallback(file);
+      setEditingProduct(prev => prev ? ({ ...prev, coverImage: url }) : null);
       showToast('Cover image uploaded successfully.', 'success');
     } catch (err: any) {
       showToast('Image upload failed: ' + err.message, 'error');
@@ -384,29 +426,11 @@ export const AdminSalesHub: React.FC = () => {
 
     setUploadingDigitalFile(true);
     try {
-      const headers = await getAuthHeaders(false);
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
-        body: formData
-      });
-      const rawText = await res.text();
-      let data: any = {};
-      try {
-        data = JSON.parse(rawText);
-      } catch (parseErr) {
-        throw new Error('Upload response was not valid JSON. Server status: ' + res.status);
-      }
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'File upload failed');
-      }
-
+      const url = await uploadFileWithFallback(file);
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
       setEditingProduct(prev => prev ? ({
         ...prev,
-        digitalFileUrl: data.url,
+        digitalFileUrl: url,
         digitalFileName: file.name,
         digitalFileSizeMb: sizeMb
       }) : null);

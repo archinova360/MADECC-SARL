@@ -164,11 +164,19 @@ export async function ensureSiteSettingsTable(): Promise<void> {
 
       // 2. Safe incremental column additions for backwards compatibility with any existing tables
       const columnsToAdd = [
+        "site_name TEXT DEFAULT 'MADECC GROUP'",
+        "tagline TEXT DEFAULT 'Premier Engineering, Construction & Project Management in Cameroon'",
         "developer_name TEXT DEFAULT 'Kasah Rodrick Reboya'",
+        "phone TEXT DEFAULT '+237 683 31 64 86'",
         "phone_secondary TEXT DEFAULT '+237 671 063 511'",
         "phone_tertiary TEXT DEFAULT '+237 640 194 505'",
         "emergency_phone TEXT DEFAULT '+237 683 31 64 86'",
+        "email TEXT DEFAULT 'kreboya603@gmail.com'",
         "secondary_email TEXT DEFAULT 'Infomadeccconstruction@gmail.com'",
+        "office_address_yaounde TEXT DEFAULT 'Mbankolo, Yaoundé, Centre Region, Cameroon'",
+        "office_address_douala TEXT DEFAULT 'Akwa, Douala, Littoral Region, Cameroon'",
+        "business_hours TEXT DEFAULT 'Mon - Fri: 08:00 - 18:00 | Sat: 08:30 - 14:00 (GMT+1)'",
+        "whatsapp_number TEXT DEFAULT '+237 683 31 64 86'",
         "whatsapp_secondary TEXT DEFAULT '+237 671 063 511'",
         "payment_mtn_numbers TEXT DEFAULT '671063511, 683316486, 671289643'",
         "payment_orange_numbers TEXT DEFAULT '689115595, 640194505'",

@@ -47,7 +47,7 @@ export const handler = async (event: any, context: any) => {
     if (!cachedHandler) {
       const app = await getApp();
       cachedHandler = serverless(app, {
-        binary: ['image/*', 'application/pdf', 'application/octet-stream']
+        binary: ['image/*', 'application/pdf', 'application/octet-stream', 'multipart/form-data']
       });
     }
 

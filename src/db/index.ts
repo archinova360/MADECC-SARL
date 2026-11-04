@@ -3,11 +3,38 @@ import pkg from 'pg';
 const { Pool } = pkg;
 import * as schema from './schema.ts';
 
+// Function to resolve database connection string across all standard naming conventions
+export const getDatabaseConnectionString = (): string | undefined => {
+  if (
+    !process.env.DATABASE_URL &&
+    !process.env.DIRECT_DATABASE_URL &&
+    !process.env.POSTGRES_URL &&
+    !process.env.NEON_DATABASE_URL &&
+    !process.env.SUPABASE_DATABASE_URL
+  ) {
+    try {
+      // Lazily attempt loading .env if available
+      const dotenv = require('dotenv');
+      dotenv.config();
+    } catch (_) {}
+  }
+
+  return (
+    process.env.DATABASE_URL ||
+    process.env.DIRECT_DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.SUPABASE_DATABASE_URL
+  );
+};
+
 // Function to create a new connection pool.
 export const createPool = () => {
-  const connectionString = process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
+  const connectionString = getDatabaseConnectionString();
   if (!connectionString) {
-    console.warn('⚠️  [DATABASE WARNING] Neither DATABASE_URL nor DIRECT_DATABASE_URL environment variable is defined.');
+    console.warn('⚠️  [DATABASE WARNING] No PostgreSQL connection string found (checked DATABASE_URL, DIRECT_DATABASE_URL, POSTGRES_URL, NEON_DATABASE_URL, SUPABASE_DATABASE_URL).');
     return null;
   }
   
@@ -25,7 +52,7 @@ export const createPool = () => {
   return new Pool({
     connectionString,
     connectionTimeoutMillis: 15000,
-    max: process.env.NETLIFY ? 2 : 10, // Optimize pool size for serverless environments
+    max: process.env.NETLIFY ? 3 : 10, // Optimize pool size for serverless environments
     idleTimeoutMillis: process.env.NETLIFY ? 1000 : 30000,
     ssl: needsSsl ? { rejectUnauthorized: false } : false
   });

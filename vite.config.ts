@@ -251,6 +251,10 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    esbuild: {
+      legalComments: 'none',
+      drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    },
     build: {
       target: 'es2020',
       minify: 'esbuild',
@@ -276,9 +280,6 @@ export default defineConfig(() => {
               }
               if (id.includes('recharts') || id.includes('d3')) {
                 return 'vendor-charts';
-              }
-              if (id.includes('lucide-react')) {
-                return 'vendor-icons';
               }
               if (id.includes('motion')) {
                 return 'vendor-motion';

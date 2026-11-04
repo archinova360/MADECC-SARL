@@ -165,9 +165,33 @@
     }
     </script>
 
-    <!-- Google AdSense Account Config & Deferred Execution (Prevents blocking initial paint) -->
+    <!-- Google AdSense Account Config & Performance-Optimized Idle Loading (Eliminates main-thread blocking during initial paint) -->
     <meta name="google-adsense-account" content="ca-pub-7227721489757915" />
-    <script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915" crossorigin="anonymous"></script>
+    <script>
+      (function() {
+        var adsLoaded = false;
+        function loadAdSense() {
+          if (adsLoaded) return;
+          adsLoaded = true;
+          window.removeEventListener('scroll', loadAdSense);
+          window.removeEventListener('mousemove', loadAdSense);
+          window.removeEventListener('touchstart', loadAdSense);
+          var s = document.createElement('script');
+          s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915';
+          s.crossOrigin = 'anonymous';
+          s.async = true;
+          document.head.appendChild(s);
+        }
+        window.addEventListener('scroll', loadAdSense, { passive: true, once: true });
+        window.addEventListener('mousemove', loadAdSense, { passive: true, once: true });
+        window.addEventListener('touchstart', loadAdSense, { passive: true, once: true });
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(loadAdSense, { timeout: 3500 });
+        } else {
+          setTimeout(loadAdSense, 3000);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

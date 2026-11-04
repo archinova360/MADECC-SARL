@@ -14,6 +14,7 @@ import { eq, desc, and, sql, or, like, inArray } from 'drizzle-orm';
 import { requireStaffOrAdmin } from '../../middleware/auth.ts';
 import { sendNotificationEmail, sendEmail, SMTP_CANONICAL_USER } from '../mailService.ts';
 import { getSiteSettings } from '../../db/ensureSiteSettings.ts';
+import { ensureSalesTables } from '../../db/ensureSalesTables.ts';
 
 export function setupSalesRoutes(app: express.Express) {
   // =========================================================================
@@ -718,7 +719,6 @@ export function setupSalesRoutes(app: express.Express) {
     return cleaned;
   };
 
-  // Helper to sanitize database and Drizzle error messages for user-friendly UI presentation
   const formatFriendlySalesError = (err: any): string => {
     if (!err) return 'An unexpected server error occurred';
     const msg = typeof err === 'string' ? err : (err.message || String(err));
@@ -738,9 +738,6 @@ export function setupSalesRoutes(app: express.Express) {
     if (msg.includes('invalid input syntax for type numeric') || msg.includes('invalid input syntax for integer')) {
       return 'Invalid number format. Please ensure price, stock, and file sizes are numbers only.';
     }
-    if (msg.includes('Failed query:') || msg.includes('insert into "sales_products"')) {
-      return 'Unable to save publication to the database. Please verify all required fields and ensure the SKU is unique.';
-    }
     return msg;
   };
 
@@ -755,12 +752,17 @@ export function setupSalesRoutes(app: express.Express) {
       const targetSku = data.sku.trim().toUpperCase();
 
       // Check if SKU already exists
-      const existingSku = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.sku, targetSku)).limit(1);
-      if (existingSku.length > 0) {
-        return res.status(409).json({
-          success: false,
-          error: `A publication with SKU "${targetSku}" already exists. Please choose a different SKU or click "Auto SKU".`
-        });
+      try {
+        const existingSku = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.sku, targetSku)).limit(1);
+        if (existingSku.length > 0) {
+          return res.status(409).json({
+            success: false,
+            error: `A publication with SKU "${targetSku}" already exists. Please choose a different SKU or click "Auto SKU".`
+          });
+        }
+      } catch (skuErr: any) {
+        console.warn('[SKU_CHECK_WARN] Ensuring sales tables schema:', skuErr.message);
+        await ensureSalesTables();
       }
 
       // Generate clean, collision-free slug with iterative safety loop
@@ -773,8 +775,12 @@ export function setupSalesRoutes(app: express.Express) {
       let slug = baseSlug;
       let counter = 1;
       while (true) {
-        const collision = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.slug, slug)).limit(1);
-        if (collision.length === 0) break;
+        try {
+          const collision = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.slug, slug)).limit(1);
+          if (collision.length === 0) break;
+        } catch (_) {
+          break;
+        }
         slug = `${baseSlug}-${Date.now().toString(36).slice(-4)}${counter > 1 ? `-${counter}` : ''}`;
         counter++;
       }
@@ -787,7 +793,7 @@ export function setupSalesRoutes(app: express.Express) {
       const cleanDisplayOrder = sanitizeInt(data.displayOrder, 1);
       const cleanFileSizeMb = sanitizeNumeric(data.digitalFileSizeMb, null);
 
-      const inserted = await db.insert(salesProducts).values({
+      const productValues = {
         sku: targetSku,
         title: data.title.trim(),
         slug,
@@ -816,15 +822,28 @@ export function setupSalesRoutes(app: express.Express) {
         featured: Boolean(data.featured),
         tags: Array.isArray(data.tags) ? data.tags : [],
         displayOrder: cleanDisplayOrder
-      }).returning();
+      };
 
-      // Audit Log
-      await db.insert(auditLogs).values({
-        userId: req.dbUser?.uid || String(req.dbUser?.id || 'admin'),
-        userEmail: req.dbUser?.email || 'admin@krrgroup.com',
-        action: 'CREATE_SALES_PRODUCT',
-        details: `Created product "${data.title}" (SKU: ${targetSku})`
-      });
+      let inserted;
+      try {
+        inserted = await db.insert(salesProducts).values(productValues).returning();
+      } catch (insertErr: any) {
+        console.warn('[ADMIN_CREATE_PRODUCT] First attempt failed, ensuring schema and retrying:', insertErr.message);
+        await ensureSalesTables();
+        inserted = await db.insert(salesProducts).values(productValues).returning();
+      }
+
+      // Safe Audit Log
+      try {
+        await db.insert(auditLogs).values({
+          userId: req.dbUser?.uid || String(req.dbUser?.id || 'admin'),
+          userEmail: req.dbUser?.email || 'admin@krrgroup.com',
+          action: 'CREATE_SALES_PRODUCT',
+          details: `Created product "${data.title}" (SKU: ${targetSku})`
+        });
+      } catch (auditErr: any) {
+        console.warn('[AUDIT_LOG_WARN]', auditErr.message);
+      }
 
       res.json({ success: true, product: inserted[0] });
     } catch (err: any) {
@@ -841,12 +860,16 @@ export function setupSalesRoutes(app: express.Express) {
 
       if (data.sku) {
         const targetSku = data.sku.trim().toUpperCase();
-        const existingSku = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.sku, targetSku)).limit(1);
-        if (existingSku.length > 0 && existingSku[0].id !== id) {
-          return res.status(409).json({
-            success: false,
-            error: `Another publication already has SKU "${targetSku}". Please enter a unique SKU.`
-          });
+        try {
+          const existingSku = await db.select({ id: salesProducts.id }).from(salesProducts).where(eq(salesProducts.sku, targetSku)).limit(1);
+          if (existingSku.length > 0 && existingSku[0].id !== id) {
+            return res.status(409).json({
+              success: false,
+              error: `Another publication already has SKU "${targetSku}". Please enter a unique SKU.`
+            });
+          }
+        } catch (_) {
+          await ensureSalesTables();
         }
       }
 
@@ -858,7 +881,7 @@ export function setupSalesRoutes(app: express.Express) {
       const cleanDisplayOrder = sanitizeInt(data.displayOrder, 1);
       const cleanFileSizeMb = sanitizeNumeric(data.digitalFileSizeMb, null);
 
-      const updated = await db.update(salesProducts).set({
+      const updateValues = {
         title: data.title ? data.title.trim() : undefined,
         sku: data.sku ? data.sku.trim().toUpperCase() : undefined,
         description: data.description !== undefined ? data.description.trim() : undefined,
@@ -887,15 +910,28 @@ export function setupSalesRoutes(app: express.Express) {
         tags: Array.isArray(data.tags) ? data.tags : [],
         displayOrder: cleanDisplayOrder,
         updatedAt: new Date()
-      }).where(eq(salesProducts.id, id)).returning();
+      };
 
-      // Audit Log
-      await db.insert(auditLogs).values({
-        userId: req.dbUser?.uid || String(req.dbUser?.id || 'admin'),
-        userEmail: req.dbUser?.email || 'admin@krrgroup.com',
-        action: 'UPDATE_SALES_PRODUCT',
-        details: `Updated product #${id} "${data.title}"`
-      });
+      let updated;
+      try {
+        updated = await db.update(salesProducts).set(updateValues).where(eq(salesProducts.id, id)).returning();
+      } catch (updateErr: any) {
+        console.warn('[ADMIN_UPDATE_PRODUCT] First attempt failed, ensuring schema and retrying:', updateErr.message);
+        await ensureSalesTables();
+        updated = await db.update(salesProducts).set(updateValues).where(eq(salesProducts.id, id)).returning();
+      }
+
+      // Safe Audit Log
+      try {
+        await db.insert(auditLogs).values({
+          userId: req.dbUser?.uid || String(req.dbUser?.id || 'admin'),
+          userEmail: req.dbUser?.email || 'admin@krrgroup.com',
+          action: 'UPDATE_SALES_PRODUCT',
+          details: `Updated product #${id} "${data.title}"`
+        });
+      } catch (auditErr: any) {
+        console.warn('[AUDIT_LOG_WARN]', auditErr.message);
+      }
 
       res.json({ success: true, product: updated[0] });
     } catch (err: any) {

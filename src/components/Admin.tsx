@@ -67,7 +67,12 @@ import {
   Menu,
   Maximize2,
   Minimize2,
-  ShoppingBag
+  ShoppingBag,
+  Clock,
+  Camera,
+  CheckCircle2,
+  Package,
+  Truck
 } from 'lucide-react';
 import AdminSalesHub from './AdminSalesHub.tsx';
 import { 
@@ -101,6 +106,7 @@ import LabourCalculator from './LabourCalculator.tsx';
 import DrawingTakeoffStudio from './DrawingTakeoffStudio.tsx';
 import AIConstructionIntelligence from './AIConstructionIntelligence.tsx';
 import EnterpriseErpHub from './EnterpriseErpHub.tsx';
+import ErpManagementCenter from './ErpManagementCenter.tsx';
 import StaffManagementHub from './StaffManagementHub.tsx';
 import SocialMediaStudio from './SocialMediaStudio.tsx';
 import { AdminQuoteRequests } from './AdminQuoteRequests.tsx';
@@ -185,7 +191,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   };
 
   // Navigation internal to admin
-  const [activeAdminTab, setActiveAdminTab] = useState<'command-center' | 'sales-hub' | 'website-optimizer' | 'analytics' | 'cms-pages' | 'cms-media' | 'cms-settings' | 'services-cms' | 'sustainability-cms' | 'faq-cms' | 'suppliers-cms' | 'tenders-cms' | 'quote-requests' | 'projects' | 'reviews' | 'blogs' | 'appointments' | 'contacts' | 'banners' | 'documents' | 'gallery' | 'audit' | 'team' | 'legal-contracts' | 'receipts' | 'cv-generator' | 'letter-generator' | 'doc-history' | 'db-architecture' | 'proposal-studio' | 'lesson-studio' | 'syllabus-upload' | 'extended-lesson-architect' | 'boq-studio' | 'structural-calculator' | 'labour-calculator' | 'drawing-studio' | 'enterprise-erp' | 'ai-construction-intelligence' | 'staff-access' | 'social-studio' | 'api-platform'>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
+  const [activeAdminTab, setActiveAdminTab] = useState<string>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
   const [activeSyllabus, setActiveSyllabus] = useState<any | null>(null);
 
   // Lock and default reviewer to Social Media Studio
@@ -2053,6 +2059,26 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       ]
     },
     {
+      id: 'construction-erp-group',
+      title: '🏗️ CONSTRUCTION ERP & CLIENT SUITE',
+      icon: Building2,
+      items: [
+        { id: 'erp-clients', label: '1. Client Management', icon: Users },
+        { id: 'erp-portal', label: '2. Client Portal Access', icon: ShieldCheck },
+        { id: 'erp-progress', label: '3. Project Progress', icon: Clock },
+        { id: 'erp-media', label: '4. Progress Photos & Videos', icon: Camera },
+        { id: 'erp-milestones', label: '5. Project Milestones', icon: CheckCircle2 },
+        { id: 'erp-invoices', label: '6. Project Invoices', icon: DollarSign },
+        { id: 'erp-estimator', label: '7. Cost Estimator', icon: Calculator },
+        { id: 'erp-boq', label: '8. BOQ Management', icon: FileSpreadsheet },
+        { id: 'erp-inventory', label: '9. Materials Inventory', icon: Package },
+        { id: 'erp-equipment', label: '10. Equipment Management', icon: Truck },
+        { id: 'erp-subcontractors', label: '11. Subcontractor Management', icon: Wrench },
+        { id: 'erp-workforce', label: '12. Workforce Management', icon: UserCheck },
+        { id: 'erp-reports', label: '13. Reports and Analytics', icon: BarChart3 }
+      ]
+    },
+    {
       id: 'projects-group',
       title: '🏗️ PROJECTS & OPERATIONS',
       icon: Building2,
@@ -2898,9 +2924,12 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           <StaffManagementHub currentUser={dbUser} userRole={dbUser?.role} />
         )}
 
-        {/* ENTERPRISE CONSTRUCTION ERP HUB */}
-        {activeAdminTab === 'enterprise-erp' && (
-          <EnterpriseErpHub />
+        {/* ENTERPRISE CONSTRUCTION ERP & CLIENT SUITE */}
+        {(activeAdminTab.startsWith('erp-') || activeAdminTab === 'enterprise-erp') && (
+          <ErpManagementCenter 
+            initialSubTab={activeAdminTab.startsWith('erp-') ? activeAdminTab.replace('erp-', '') : 'clients'}
+            onNavigateTab={(tab) => setActiveAdminTab(tab)}
+          />
         )}
 
         {/* AI CONSTRUCTION PLATFORM HUB */}
@@ -5739,9 +5768,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           />
         )}
 
-        {activeAdminTab === 'enterprise-erp' && (
-          <EnterpriseErpHub
-            userRole={dbUser.role}
+        {(activeAdminTab.startsWith('erp-') || activeAdminTab === 'enterprise-erp') && (
+          <ErpManagementCenter
+            initialSubTab={activeAdminTab.startsWith('erp-') ? activeAdminTab.replace('erp-', '') : 'clients'}
+            onNavigateTab={(tab) => setActiveAdminTab(tab)}
           />
         )}
 

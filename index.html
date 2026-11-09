@@ -63,17 +63,31 @@
           window.WebSocket.CLOSED = 3;
         }
 
-        // 3. Catch window error & unhandledrejection in capture phase
+        // 3. Catch window error & unhandledrejection in capture phase (suppresses harmless AbortError, media interruptions & WebSocket disconnects)
         window.addEventListener('unhandledrejection', function(event) {
-          var reason = String(event.reason && (event.reason.message || event.reason) || '');
-          if (reason.indexOf('WebSocket') !== -1 || reason.indexOf('websocket') !== -1 || reason.indexOf('closed without opened') !== -1) {
+          var reason = String(event.reason && (event.reason.message || event.reason.name || event.reason) || '');
+          var isAbort = (
+            (event.reason && (event.reason.name === 'AbortError' || event.reason.code === 20)) ||
+            reason.indexOf('AbortError') !== -1 ||
+            reason.indexOf('aborted') !== -1 ||
+            reason.indexOf('The user aborted a request') !== -1 ||
+            reason.indexOf('interrupted by a call to pause') !== -1
+          );
+          if (isAbort || reason.indexOf('WebSocket') !== -1 || reason.indexOf('websocket') !== -1 || reason.indexOf('closed without opened') !== -1) {
             event.preventDefault();
             if (event.stopImmediatePropagation) event.stopImmediatePropagation();
           }
         }, true);
         window.addEventListener('error', function(event) {
-          var msg = String(event.message || (event.error && event.error.message) || '');
-          if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('websocket') !== -1 || msg.indexOf('closed without opened') !== -1) {
+          var msg = String(event.message || (event.error && (event.error.message || event.error.name)) || '');
+          var isAbort = (
+            (event.error && (event.error.name === 'AbortError' || event.error.code === 20)) ||
+            msg.indexOf('AbortError') !== -1 ||
+            msg.indexOf('aborted') !== -1 ||
+            msg.indexOf('The user aborted a request') !== -1 ||
+            msg.indexOf('interrupted by a call to pause') !== -1
+          );
+          if (isAbort || msg.indexOf('WebSocket') !== -1 || msg.indexOf('websocket') !== -1 || msg.indexOf('closed without opened') !== -1) {
             event.preventDefault();
             if (event.stopImmediatePropagation) event.stopImmediatePropagation();
           }
@@ -199,28 +213,44 @@
 
     <!-- Hidden forms for Netlify static detection with Full Accessibility Labels -->
     <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <input type="text" name="name" aria-label="Contact Name" />
-      <input type="email" name="email" aria-label="Contact Email" />
-      <input type="text" name="subject" aria-label="Contact Subject" />
-      <textarea name="message" aria-label="Contact Message"></textarea>
+      <label for="contact-name">Contact Name</label>
+      <input type="text" id="contact-name" name="name" aria-label="Contact Name" />
+      <label for="contact-email">Contact Email</label>
+      <input type="email" id="contact-email" name="email" aria-label="Contact Email" />
+      <label for="contact-subject">Contact Subject</label>
+      <input type="text" id="contact-subject" name="subject" aria-label="Contact Subject" />
+      <label for="contact-message">Contact Message</label>
+      <textarea id="contact-message" name="message" aria-label="Contact Message"></textarea>
     </form>
     <form name="booking" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <input type="text" name="clientName" aria-label="Booking Client Name" />
-      <input type="email" name="email" aria-label="Booking Email" />
-      <input type="text" name="phone" aria-label="Booking Phone" />
-      <input type="date" name="date" aria-label="Booking Date" />
-      <input type="text" name="time" aria-label="Booking Time" />
-      <input type="text" name="service" aria-label="Booking Service Type" />
-      <textarea name="notes" aria-label="Booking Consultation Notes"></textarea>
+      <label for="booking-client">Booking Client Name</label>
+      <input type="text" id="booking-client" name="clientName" aria-label="Booking Client Name" />
+      <label for="booking-email">Booking Email</label>
+      <input type="email" id="booking-email" name="email" aria-label="Booking Email" />
+      <label for="booking-phone">Booking Phone</label>
+      <input type="text" id="booking-phone" name="phone" aria-label="Booking Phone" />
+      <label for="booking-date">Booking Date</label>
+      <input type="date" id="booking-date" name="date" aria-label="Booking Date" />
+      <label for="booking-time">Booking Time</label>
+      <input type="text" id="booking-time" name="time" aria-label="Booking Time" />
+      <label for="booking-service">Booking Service Type</label>
+      <input type="text" id="booking-service" name="service" aria-label="Booking Service Type" />
+      <label for="booking-notes">Booking Consultation Notes</label>
+      <textarea id="booking-notes" name="notes" aria-label="Booking Consultation Notes"></textarea>
     </form>
     <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <input type="email" name="email" aria-label="Newsletter Subscription Email" />
+      <label for="newsletter-email">Newsletter Subscription Email</label>
+      <input type="email" id="newsletter-email" name="email" aria-label="Newsletter Subscription Email" />
     </form>
     <form name="reviews" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <input type="text" name="authorName" aria-label="Review Author Name" />
-      <input type="number" name="rating" aria-label="Review Numerical Rating" />
-      <textarea name="text" aria-label="Review Text Description"></textarea>
-      <input type="text" name="projectName" aria-label="Reviewed Project Name" />
+      <label for="review-author">Review Author Name</label>
+      <input type="text" id="review-author" name="authorName" aria-label="Review Author Name" />
+      <label for="review-rating">Review Numerical Rating</label>
+      <input type="number" id="review-rating" name="rating" aria-label="Review Numerical Rating" />
+      <label for="review-text">Review Text Description</label>
+      <textarea id="review-text" name="text" aria-label="Review Text Description"></textarea>
+      <label for="review-project">Reviewed Project Name</label>
+      <input type="text" id="review-project" name="projectName" aria-label="Reviewed Project Name" />
     </form>
   </body>
 </html>

@@ -227,16 +227,27 @@ export default function HeroVideoPlayer({
       if (idx === currentIndex) {
         vid.muted = isMuted;
         if (isPlaying) {
-          vid.play().catch(() => {
-            // Autoplay policy fallback: guarantee muted
-            vid.muted = true;
-            vid.play().catch(() => {});
-          });
+          try {
+            const playPromise = vid.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch((err: any) => {
+                if (err && (err.name === 'AbortError' || err.code === 20)) return;
+                // Autoplay policy fallback: guarantee muted
+                vid.muted = true;
+                const retryPromise = vid.play();
+                if (retryPromise && typeof retryPromise.catch === 'function') {
+                  retryPromise.catch(() => {});
+                }
+              });
+            }
+          } catch (e) {
+            // Ignore synchronous play errors
+          }
         } else {
-          vid.pause();
+          try { vid.pause(); } catch (e) {}
         }
       } else {
-        vid.pause();
+        try { vid.pause(); } catch (e) {}
       }
     });
   }, [currentIndex, isPlaying, isMuted]);

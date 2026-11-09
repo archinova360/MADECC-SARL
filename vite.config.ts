@@ -25,6 +25,7 @@ export default defineConfig(() => {
           'widget-template.json',
           'robots.txt',
           'sitemap.xml',
+          'ads.txt',
           '.well-known/assetlinks.json'
         ],
         manifest: {

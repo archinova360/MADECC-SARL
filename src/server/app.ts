@@ -8,6 +8,7 @@ import { ensureReviewerCredentialsTable } from '../lib/reviewerAuth.ts';
 import { ensureAuthSessionsTable } from '../lib/sessionService.ts';
 import { ensureSiteSettingsTable } from '../db/ensureSiteSettings.ts';
 import { ensureSalesTables } from '../db/ensureSalesTables.ts';
+import { ensureErpTables } from '../db/ensureErpTables.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
@@ -25,6 +26,7 @@ import { setupSaasRoutes } from './routes/saasRoutes.ts';
 import { setupDocumentRoutes } from './routes/documentRoutes.ts';
 import { setupOptimizerRoutes } from './routes/optimizerRoutes.ts';
 import { setupSalesRoutes } from './routes/salesRoutes.ts';
+import { setupErpPlatformRoutes } from './routes/erpPlatformRoutes.ts';
 import apiPlatformRoutes from './routes/apiPlatformRoutes.ts';
 
 let isDatabaseSeeded = false;
@@ -36,6 +38,7 @@ export async function getApp(): Promise<express.Express> {
       await ensureAuthSessionsTable();
       await ensureSiteSettingsTable();
       await ensureSalesTables();
+      await ensureErpTables();
       if (!process.env.NETLIFY) {
         await seedDatabase();
       } else {
@@ -113,6 +116,22 @@ export async function getApp(): Promise<express.Express> {
     res.status(404).send('Robots not found');
   });
 
+  // Explicit ads.txt handler (guarantees AdSense crawler gets plain text 200 response immediately)
+  app.get('/ads.txt', (req, res) => {
+    const adsPath = path.join(process.cwd(), 'public', 'ads.txt');
+    if (fs.existsSync(adsPath)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(adsPath);
+    }
+    const distAds = path.join(process.cwd(), 'dist', 'ads.txt');
+    if (fs.existsSync(distAds)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(distAds);
+    }
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send('google.com, pub-7227721489757915, DIRECT, f08c47fec0942fa0\n');
+  });
+
   // Base Health and Diagnostic Endpoints (Guaranteed JSON responses)
   app.get('/api/health', (req, res) => {
     res.json({
@@ -166,6 +185,8 @@ export async function getApp(): Promise<express.Express> {
       req.path.startsWith('/data-deletion') ||
       req.path.startsWith('/contracts') ||
       req.path.startsWith('/receipts') ||
+      req.path.startsWith('/client') ||
+      req.path.startsWith('/erp') ||
       req.path.startsWith('/health') ||
       req.path.startsWith('/upload') ||
       req.path.startsWith('/public/upload') ||
@@ -241,6 +262,7 @@ export async function getApp(): Promise<express.Express> {
   setupCrmRoutes(app);
   setupProcurementRoutes(app);
   setupErpRoutes(app);
+  setupErpPlatformRoutes(app);
   setupLessonRoutes(app);
   setupSocialRoutes(app);
   setupSaasRoutes(app);

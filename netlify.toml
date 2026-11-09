@@ -20,7 +20,12 @@
   status = 200
   force = true
 
-# 2. Explicit direct static serving for sitemap.xml and robots.txt
+# 2. Explicit direct static serving for sitemap.xml, robots.txt, and ads.txt
+[[redirects]]
+  from = "/ads.txt"
+  to = "/ads.txt"
+  status = 200
+
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"
@@ -99,6 +104,12 @@
 
 [[headers]]
   for = "/robots.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/ads.txt"
   [headers.values]
     Content-Type = "text/plain; charset=utf-8"
     Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"

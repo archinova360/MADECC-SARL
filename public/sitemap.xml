@@ -42,6 +42,16 @@
       <image:title>About MADECC GROUP — Executive Engineering Governance</image:title>
     </image:image>
   </url>
+  <url>
+    <loc>https://madeccgroup.online/client-portal</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://madeccgroup.online/logo.png</image:loc>
+      <image:title>MADECC Client Portal — Real-Time Construction Monitoring &amp; Invoices</image:title>
+    </image:image>
+  </url>
 
   <!-- 2. Educational Bookstore & Publications Catalog -->
   <url>

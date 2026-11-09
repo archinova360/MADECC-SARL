@@ -692,6 +692,29 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Endpoints, BOQ calculators & webhooks</div>
                         </div>
                       </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('client-portal');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'client-portal' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Client Portal</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded font-bold">CLIENT</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Site progress, photos & invoices</div>
+                        </div>
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>

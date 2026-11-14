@@ -260,6 +260,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <ul className="space-y-3.5 text-sm">
               {[
                 { label: 'Home Page', id: 'home' },
+                { label: 'Client Portal (Live Progress & Invoices)', id: 'client-portal' },
                 { label: 'KRR Bookstore & Textbooks', id: 'store' },
                 { label: 'Track Order & Downloads', id: 'order-tracking' },
                 { label: 'Visitor & Client Walkthrough Guide', id: 'walkthrough-guide' },

@@ -214,6 +214,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     'command-center-group': true,
     'sales-group': true,
     'analytics-group': true,
+    'construction-erp-group': true,
     'projects-group': true,
     'qs-group': true,
     'ai-group': true,
@@ -2273,6 +2274,21 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
 
         {/* Header Right Quick Actions & Profile */}
         <div className="flex items-center gap-2.5">
+          {/* Direct Client Portal Access Button */}
+          <button
+            onClick={() => setActiveAdminTab('erp-portal' as any)}
+            className={`px-3 py-1.5 font-bold text-xs rounded-xl flex items-center gap-1.5 border transition-all shrink-0 ${
+              activeAdminTab === 'erp-portal' || activeAdminTab === 'erp-clients'
+                ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow'
+                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+            }`}
+            title="Manage Client Accounts, Portal Access & Preview Client Portal"
+            id="admin-topbar-client-portal-btn"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span className="hidden sm:inline">Client Portal ERP</span>
+          </button>
+
           {/* Quick Action Button */}
           <button
             onClick={() => setShowQuickActionModal(true)}
@@ -2400,7 +2416,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 <div>
                   <span className="text-[10px] font-mono tracking-widest text-amber-500 uppercase font-bold block">NAVIGATION PORTAL</span>
                   <span className="text-white font-extrabold text-sm block">MADECC ADMIN</span>
-                  <span className="text-[10px] text-slate-400 font-mono block">14 Collapsible Enterprise Modules</span>
+                  <span className="text-[10px] text-slate-400 font-mono block">15 Collapsible Enterprise Modules</span>
                 </div>
                 {mobileMenuOpen && (
                   <button 
@@ -2752,12 +2768,15 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                       {[
+                        { title: 'Client Management', desc: 'Register clients, credentials & project assignments', tab: 'erp-clients', icon: Users, color: 'text-emerald-400' },
+                        { title: 'Client Portal Access', desc: 'Portal permissions, progress media & preview', tab: 'erp-portal', icon: ShieldCheck, color: 'text-emerald-400' },
+                        { title: 'Invoices & Cost Estimator', desc: 'Client invoices, MoMo payments & BOQ engine', tab: 'erp-invoices', icon: DollarSign, color: 'text-amber-400' },
                         { title: 'Global Site Customizer', desc: 'Identity, Mbankolo HQ, contacts & theme', tab: 'cms-settings', icon: Settings, color: 'text-amber-400' },
                         { title: 'Page Builder Studio', desc: 'Frontend pages, heroes & custom content', tab: 'cms-pages', icon: Globe, color: 'text-sky-400' },
                         { title: 'Services CMS', desc: 'Manage civil & construction services', tab: 'services-cms', icon: Layers, color: 'text-emerald-400' },
                         { title: 'QS & BOQ Studio', desc: 'Civil engineering bill of quantities', tab: 'boq-studio', icon: FileSpreadsheet, color: 'text-amber-400' },
                         { title: 'AI Construction Platform', desc: 'Blueprint vision takeoff & estimates', tab: 'ai-construction-intelligence', icon: Sparkles, color: 'text-purple-400' },
-                        { title: 'Enterprise ERP Hub', desc: 'Site operations, inventory & equipment', tab: 'enterprise-erp', icon: Building2, color: 'text-teal-400' },
+                        { title: 'Equipment & Workforce ERP', desc: 'Machinery fleet, subcontractors & daily roster', tab: 'erp-equipment', icon: Truck, color: 'text-teal-400' },
                         { title: 'Quote Requests & Leads', desc: 'Commercial proposals & client pipeline', tab: 'quote-requests', icon: FileSpreadsheet, color: 'text-blue-400' },
                         { title: 'Social Media Studio', desc: 'OAuth 2.0 publisher & scheduler', tab: 'social-studio', icon: Megaphone, color: 'text-pink-400' },
                         { title: 'Contract Generator', desc: 'Legal contract agreement builder', tab: 'legal-contracts', icon: Scale, color: 'text-indigo-400' }
@@ -2929,6 +2948,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           <ErpManagementCenter 
             initialSubTab={activeAdminTab.startsWith('erp-') ? activeAdminTab.replace('erp-', '') : 'clients'}
             onNavigateTab={(tab) => setActiveAdminTab(tab)}
+            onOpenClientPortal={() => setCurrentTab('client-portal')}
           />
         )}
 
@@ -5765,13 +5785,6 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         {activeAdminTab === 'extended-lesson-architect' && (
           <ExtendedLessonArchitect
             showToast={showToast}
-          />
-        )}
-
-        {(activeAdminTab.startsWith('erp-') || activeAdminTab === 'enterprise-erp') && (
-          <ErpManagementCenter
-            initialSubTab={activeAdminTab.startsWith('erp-') ? activeAdminTab.replace('erp-', '') : 'clients'}
-            onNavigateTab={(tab) => setActiveAdminTab(tab)}
           />
         )}
 

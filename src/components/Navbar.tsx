@@ -397,7 +397,7 @@ export default function Navbar({
     { id: 'blog', label: 'Insights' },
   ];
 
-  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'saas-cloud', 'developers'].includes(currentTab);
+  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'saas-cloud', 'developers', 'client-portal'].includes(currentTab);
   const isCompanyActive = ['about', 'faq', 'contact', 'walkthrough-guide'].includes(currentTab);
 
   return (
@@ -849,6 +849,26 @@ export default function Navbar({
                 </AnimatePresence>
               </div>
 
+              {/* Direct Top-Level Client Portal Button */}
+              <button
+                onClick={() => {
+                  setCurrentTab('client-portal');
+                  setMenuOpen(false);
+                  setToolsDropdownOpen(false);
+                  setCompanyDropdownOpen(false);
+                }}
+                className={`px-3 py-1.5 rounded-lg font-sans text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap cursor-pointer select-none ${
+                  currentTab === 'client-portal' || currentTab === 'portal'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400'
+                }`}
+                id="nav-link-client-portal"
+                title="Construction Client Login: Track project progress, photos, milestones & invoices"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>Client Portal</span>
+              </button>
+
               {/* Admin or Reviewer Studio Button */}
               {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
                 <button
@@ -1107,6 +1127,28 @@ export default function Navbar({
               <h3 className="text-xl font-extrabold tracking-tight text-white font-sans">MADECC GROUP Portal</h3>
               <p className="text-xs text-slate-400">Authenticate for Admin, Staff, or Meta App Review access</p>
             </div>
+
+            {/* Direct Construction Client Portal Switch Banner */}
+            <button
+              type="button"
+              onClick={() => {
+                setLoginModalOpen(false);
+                setCurrentTab('client-portal');
+              }}
+              className="w-full mb-4 p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
+              id="signin-modal-client-portal-btn"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-emerald-300 block">Are you a Construction Client?</span>
+                  <span className="text-[11px] text-slate-300 block">Open Client Portal for project progress, photos &amp; invoices</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-emerald-400 group-hover:translate-x-0.5 transition-transform shrink-0">Open →</span>
+            </button>
 
             {/* Login Tab Switcher */}
             <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-4">

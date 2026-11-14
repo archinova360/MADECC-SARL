@@ -192,9 +192,21 @@ export default defineConfig(() => {
         } as any,
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB limit to support admin studio bundle
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
           navigateFallback: '/index.html',
-          navigateFallbackDenylist: [/^\/api\//],
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/\.netlify\//,
+            /^\/ads\.txt$/,
+            /^\/app-ads\.txt$/,
+            /^\/sitemap\.xml$/,
+            /^\/robots\.txt$/,
+            /^\/\.well-known\//,
+            /^\/uploads\//
+          ],
           importScripts: ['/sw-extra.js'],
           runtimeCaching: [
             {

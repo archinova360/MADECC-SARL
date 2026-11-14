@@ -381,11 +381,21 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => setCurrentTab('client-portal')}
+                className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/40 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                id="hero-cta-client-portal"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Client Portal
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentTab('walkthrough-guide')}
-                className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="bg-slate-900/75 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                 id="hero-cta-walkthrough-guide"
               >
-                <Compass className="w-4 h-4 text-emerald-400" /> Visitor Walkthrough Guide
+                <Compass className="w-4 h-4 text-amber-400" /> Walkthrough Guide
               </motion.button>
             </div>
 

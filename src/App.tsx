@@ -650,6 +650,8 @@ function getTabFromPath(pathname: string, searchStr: string): string {
   if (path.includes('blog')) return 'blog';
   if (path.includes('contact')) return 'contact';
   if (path.includes('booking')) return 'booking';
+  if (path.includes('client-portal') || path === '/portal' || path.startsWith('/client/') || params.get('tab') === 'client-portal') return 'client-portal';
+  if (path.includes('sitemap') || path.includes('site-map') || params.get('tab') === 'sitemap') return 'sitemap';
   if (path.includes('developers') || path.includes('api-platform')) return 'developers';
   if (path.includes('admin')) return 'admin';
   return 'home';

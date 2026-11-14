@@ -1,8 +1,57 @@
 import express from 'express';
 import { pool, getOrInitPool } from '../../db/index.ts';
+import { ensureErpTables } from '../../db/ensureErpTables.ts';
+import {
+  sendEmail,
+  sendNotificationEmail,
+  buildBrandedHtmlTemplate,
+  SMTP_CANONICAL_USER
+} from '../mailService.ts';
+
+function inferMediaType(url: string, explicitType?: string): 'PHOTO' | 'VIDEO' {
+  if (explicitType && explicitType.toUpperCase() === 'VIDEO') return 'VIDEO';
+  if (explicitType && explicitType.toUpperCase() === 'PHOTO') return 'PHOTO';
+  const lower = (url || '').toLowerCase();
+  if (
+    lower.includes('/video/upload/') ||
+    /\.(mp4|mov|webm|mkv|avi|m4v)(\?.*)?$/.test(lower)
+  ) {
+    return 'VIDEO';
+  }
+  return 'PHOTO';
+}
+
+function formatClientRow(r: any) {
+  return {
+    id: r.id,
+    clientCode: r.client_code,
+    fullName: r.full_name,
+    companyName: r.company_name,
+    email: r.email,
+    phone: r.phone,
+    phoneSecondary: r.phone_secondary,
+    address: r.address,
+    city: r.city,
+    country: r.country,
+    status: r.status,
+    lastLogin: r.last_login
+  };
+}
 
 export function setupErpPlatformRoutes(app: express.Express) {
   const router = express.Router();
+  const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.NETLIFY);
+  const siteBaseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://madeccgroup.online';
+
+  // Ensure tables on first ERP/Client request (no-op after first pass)
+  router.use(async (_req, _res, next) => {
+    try {
+      await ensureErpTables();
+    } catch (err) {
+      console.warn('[ERP_ROUTE_ENSURE_WARN]', err);
+    }
+    next();
+  });
 
   const getDbClient = async () => {
     const activePool = pool || getOrInitPool();
@@ -16,62 +65,53 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // 1. CLIENT PORTAL AUTHENTICATION & ACCESS
   // ==========================================
 
-  // Client Login
+  // Client Login (supports email or client code)
   router.post('/client/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required' });
+      return res.status(400).json({ success: false, message: 'Email/Client Code and password are required' });
     }
 
     let client;
     try {
       client = await getDbClient();
+      const identifier = String(email).trim();
       const result = await client.query(
-        'SELECT * FROM clients WHERE LOWER(email) = LOWER($1) AND status = $2',
-        [email.trim(), 'ACTIVE']
+        'SELECT * FROM clients WHERE (LOWER(email) = LOWER($1) OR LOWER(client_code) = LOWER($1))',
+        [identifier]
       );
 
       if (result.rows.length === 0) {
-        return res.status(401).json({ success: false, message: 'Invalid credentials or account suspended' });
+        return res.status(401).json({ success: false, message: 'No client account found matching that email or client code.' });
       }
 
       const clientRecord = result.rows[0];
-
-      // In production, compare password_hash. For immediate seamless access, compare or match default password
-      const validPassword = 
-        !clientRecord.password_hash || 
-        clientRecord.password_hash === password ||
-        password === 'Client2026@Madecc';
-
-      if (!validPassword) {
-        return res.status(401).json({ success: false, message: 'Invalid password provided' });
+      if (clientRecord.status !== 'ACTIVE') {
+        return res.status(403).json({ success: false, message: 'This client portal account is currently suspended. Please contact MADECC administration.' });
       }
 
-      // Update last login
+      const validPassword =
+        !clientRecord.password_hash ||
+        clientRecord.password_hash === password;
+
+      if (!validPassword) {
+        return res.status(401).json({ success: false, message: 'Invalid password provided. Use Forgot Password if you need a reset.' });
+      }
+
       await client.query('UPDATE clients SET last_login = now() WHERE id = $1', [clientRecord.id]);
 
-      // Set cookie and return payload
       res.cookie('madecc_client_token', `clt_${clientRecord.id}_${Date.now()}`, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProd,
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        sameSite: 'lax'
+        sameSite: 'lax',
+        path: '/'
       });
 
       return res.json({
         success: true,
         message: 'Client authentication successful',
-        client: {
-          id: clientRecord.id,
-          clientCode: clientRecord.client_code,
-          fullName: clientRecord.full_name,
-          companyName: clientRecord.company_name,
-          email: clientRecord.email,
-          phone: clientRecord.phone,
-          address: clientRecord.address,
-          city: clientRecord.city,
-          country: clientRecord.country
-        }
+        client: formatClientRow(clientRecord)
       });
     } catch (err: any) {
       console.error('[CLIENT_LOGIN_ERROR]', err);
@@ -81,16 +121,43 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
-  // Client Profile
-  router.get('/client/profile/:id', async (req, res) => {
+  // Client Logout
+  router.post('/client/logout', (_req, res) => {
+    res.clearCookie('madecc_client_token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/'
+    });
+    return res.json({ success: true, message: 'Signed out cleanly' });
+  });
+
+  // Current Authenticated Client Session Check
+  router.get('/client/me', async (req, res) => {
+    const token = req.cookies?.madecc_client_token;
+    const queryId = req.query.clientId ? Number(req.query.clientId) : null;
+
+    let targetId: number | null = null;
+    if (token && typeof token === 'string' && token.startsWith('clt_')) {
+      const parts = token.split('_');
+      const parsed = Number(parts[1]);
+      if (Number.isFinite(parsed) && parsed > 0) targetId = parsed;
+    } else if (queryId && Number.isFinite(queryId)) {
+      targetId = queryId;
+    }
+
+    if (!targetId) {
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+
     let client;
     try {
       client = await getDbClient();
-      const result = await client.query('SELECT id, client_code, full_name, company_name, email, phone, phone_secondary, address, city, country, created_at, last_login FROM clients WHERE id = $1', [req.params.id]);
+      const result = await client.query('SELECT * FROM clients WHERE id = $1 AND status = $2', [targetId, 'ACTIVE']);
       if (result.rows.length === 0) {
-        return res.status(404).json({ success: false, message: 'Client not found' });
+        return res.status(401).json({ success: false, message: 'Client session expired or suspended' });
       }
-      return res.json({ success: true, client: result.rows[0] });
+      return res.json({ success: true, client: formatClientRow(result.rows[0]) });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     } finally {
@@ -98,46 +165,272 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
-  // Client Assigned Projects
+  // Forgot Password -> Generates temporary password & sends via configured SMTP (kreboya603@gmail.com)
+  router.post('/client/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, message: 'Please enter your registered email or client code.' });
+    }
+
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        'SELECT * FROM clients WHERE LOWER(email) = LOWER($1) OR LOWER(client_code) = LOWER($1)',
+        [String(email).trim()]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'No active client account found with that email or code.' });
+      }
+
+      const rec = result.rows[0];
+      const tempPassword = `Madecc-${Math.floor(100000 + Math.random() * 900000)}`;
+      await client.query('UPDATE clients SET password_hash = $1, updated_at = now() WHERE id = $2', [tempPassword, rec.id]);
+
+      const html = buildBrandedHtmlTemplate({
+        title: 'Client Portal Password Reset',
+        badge: 'SECURITY & PORTAL ACCESS',
+        recipientName: rec.full_name,
+        leadParagraph: 'A password reset was requested for your MADECC GROUP Client Construction Portal account.',
+        sectionsHtml: `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;">
+            <p style="margin:0 0 8px 0;font-size:13px;color:#475569;"><strong>Client Code:</strong> ${rec.client_code}</p>
+            <p style="margin:0 0 8px 0;font-size:13px;color:#475569;"><strong>Login Email:</strong> ${rec.email}</p>
+            <p style="margin:0;font-size:15px;color:#0f172a;"><strong>Temporary Password:</strong> <code style="background:#fef3c7;padding:3px 8px;border-radius:6px;color:#b45309;font-weight:700;">${tempPassword}</code></p>
+          </div>
+          <p style="font-size:13px;color:#64748b;">Please sign in and update your password inside the Profile tab for ongoing security.</p>
+        `,
+        actionButton: { label: 'Open Client Portal', url: `${siteBaseUrl}/client-portal` }
+      });
+
+      await sendEmail(
+        rec.email,
+        `MADECC GROUP Client Portal - Password Reset (${rec.client_code})`,
+        `Hello ${rec.full_name},\n\nYour temporary Client Portal password is: ${tempPassword}\nSign in at: ${siteBaseUrl}/client-portal\n`,
+        html
+      );
+
+      return res.json({
+        success: true,
+        message: `A temporary password has been dispatched to ${rec.email} via ${SMTP_CANONICAL_USER}.`
+      });
+    } catch (err: any) {
+      console.error('[CLIENT_FORGOT_PWD_ERROR]', err);
+      return res.status(500).json({ success: false, message: err.message || 'Password reset failed' });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  // Client Profile Read
+  router.get('/client/profile/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        'SELECT id, client_code, full_name, company_name, email, phone, phone_secondary, address, city, country, status, created_at, last_login FROM clients WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Client not found' });
+      }
+      return res.json({ success: true, client: formatClientRow(result.rows[0]) });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  // Client Profile & Password Update
+  router.put('/client/profile/:id', async (req, res) => {
+    const {
+      fullName,
+      companyName,
+      phone,
+      phoneSecondary,
+      address,
+      city,
+      country,
+      currentPassword,
+      newPassword
+    } = req.body;
+
+    let client;
+    try {
+      client = await getDbClient();
+      const existing = await client.query('SELECT * FROM clients WHERE id = $1', [req.params.id]);
+      if (existing.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Client account not found' });
+      }
+      const rec = existing.rows[0];
+
+      let updatedPassword = rec.password_hash;
+      if (newPassword && String(newPassword).trim().length > 0) {
+        if (String(newPassword).trim().length < 6) {
+          return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+        }
+        if (rec.password_hash && currentPassword !== rec.password_hash) {
+          return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+        }
+        updatedPassword = String(newPassword).trim();
+      }
+
+      const updateRes = await client.query(
+        `UPDATE clients
+         SET full_name = COALESCE($1, full_name),
+             company_name = COALESCE($2, company_name),
+             phone = COALESCE($3, phone),
+             phone_secondary = COALESCE($4, phone_secondary),
+             address = COALESCE($5, address),
+             city = COALESCE($6, city),
+             country = COALESCE($7, country),
+             password_hash = $8,
+             updated_at = now()
+         WHERE id = $9
+         RETURNING *`,
+        [fullName, companyName, phone, phoneSecondary, address, city, country, updatedPassword, req.params.id]
+      );
+
+      return res.json({
+        success: true,
+        message: newPassword ? 'Profile and password updated in Neon PostgreSQL' : 'Client profile saved to Neon PostgreSQL',
+        client: formatClientRow(updateRes.rows[0])
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  // Client Assigned Projects (Enriched with Live Admin Updates, Milestones & Media Counts)
   router.get('/client/:id/projects', async (req, res) => {
     let client;
     try {
       client = await getDbClient();
-      // Join client_projects with projects
       const query = `
         SELECT 
           p.id,
           COALESCE(p.title, 'MADECC Construction Project') as title,
           p.description,
-          p.category,
+          COALESCE(cat.name, 'Civil Construction') as category,
           p.location,
           p.budget,
           p.status,
           p.image,
           p.video_url,
-          p.start_date,
-          p.end_date,
+          TO_CHAR(p.start_date, 'YYYY-MM-DD') as start_date,
+          TO_CHAR(p.end_date, 'YYYY-MM-DD') as end_date,
           cp.role as client_role,
           cp.access_level,
-          COALESCE((
-            SELECT AVG(percentage) 
-            FROM project_progress 
-            WHERE project_id = p.id
-          ), 35) as completion_percentage
+          lu.phase as current_phase,
+          lu.title as latest_update_title,
+          lu.summary as latest_update_summary,
+          lu.status_badge as schedule_status,
+          lu.schedule_variance,
+          lu.delay_explanation,
+          lu.supervisor_name,
+          lu.supervisor_phone,
+          lu.workforce_on_site,
+          TO_CHAR(lu.update_date, 'YYYY-MM-DD') as last_update_date,
+          COALESCE(
+            lu.completion_percentage,
+            (SELECT ROUND(AVG(percentage))::int FROM project_progress WHERE project_id = p.id),
+            CASE WHEN LOWER(p.status) = 'completed' THEN 100 ELSE 35 END
+          ) as completion_percentage,
+          (SELECT COUNT(*)::int FROM project_progress WHERE project_id = p.id) as milestones_count,
+          (SELECT COUNT(*)::int FROM project_media WHERE project_id = p.id AND is_client_visible = true) as media_count
         FROM client_projects cp
         JOIN projects p ON p.id = cp.project_id
+        LEFT JOIN categories cat ON cat.id = p.category_id
+        LEFT JOIN LATERAL (
+          SELECT * FROM project_updates u
+          WHERE u.project_id = p.id AND u.is_client_visible = true
+          ORDER BY u.update_date DESC, u.id DESC
+          LIMIT 1
+        ) lu ON TRUE
         WHERE cp.client_id = $1
         ORDER BY p.id DESC
       `;
-      const result = await client.query(query, [req.params.id]);
+      let result = await client.query(query, [req.params.id]);
 
-      // If no explicitly mapped projects, return first 2 projects as demo view
       if (result.rows.length === 0) {
-        const fallback = await client.query('SELECT *, 45 as completion_percentage FROM projects ORDER BY id DESC LIMIT 2');
-        return res.json({ success: true, projects: fallback.rows });
+        const fallback = await client.query(`
+          SELECT 
+            p.id,
+            COALESCE(p.title, 'MADECC Construction Project') as title,
+            p.description,
+            COALESCE(cat.name, 'Civil Construction') as category,
+            p.location,
+            p.budget,
+            p.status,
+            p.image,
+            p.video_url,
+            TO_CHAR(p.start_date, 'YYYY-MM-DD') as start_date,
+            TO_CHAR(p.end_date, 'YYYY-MM-DD') as end_date,
+            'PROJECT_SPONSOR' as client_role,
+            'FULL' as access_level,
+            lu.phase as current_phase,
+            lu.title as latest_update_title,
+            lu.summary as latest_update_summary,
+            lu.status_badge as schedule_status,
+            lu.schedule_variance,
+            lu.delay_explanation,
+            lu.supervisor_name,
+            lu.supervisor_phone,
+            lu.workforce_on_site,
+            TO_CHAR(lu.update_date, 'YYYY-MM-DD') as last_update_date,
+            COALESCE(
+              lu.completion_percentage,
+              (SELECT ROUND(AVG(percentage))::int FROM project_progress WHERE project_id = p.id),
+              CASE WHEN LOWER(p.status) = 'completed' THEN 100 ELSE 35 END
+            ) as completion_percentage,
+            (SELECT COUNT(*)::int FROM project_progress WHERE project_id = p.id) as milestones_count,
+            (SELECT COUNT(*)::int FROM project_media WHERE project_id = p.id AND is_client_visible = true) as media_count
+          FROM projects p
+          LEFT JOIN categories cat ON cat.id = p.category_id
+          LEFT JOIN LATERAL (
+            SELECT * FROM project_updates u
+            WHERE u.project_id = p.id AND u.is_client_visible = true
+            ORDER BY u.update_date DESC, u.id DESC
+            LIMIT 1
+          ) lu ON TRUE
+          ORDER BY p.id ASC
+          LIMIT 2
+        `);
+        result = fallback;
       }
 
       return res.json({ success: true, projects: result.rows });
+    } catch (err: any) {
+      console.error('[CLIENT_PROJECTS_ERROR]', err);
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  // Client Project Live Updates (Published & Visible Only)
+  router.get('/client/projects/:projectId/updates', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        `SELECT 
+           id, project_id, phase, title, summary, completion_percentage, status_badge,
+           schedule_variance, delay_explanation, supervisor_name, supervisor_phone,
+           workforce_on_site, weather, attachment_url, attachment_type,
+           is_client_visible, published_by,
+           TO_CHAR(update_date, 'YYYY-MM-DD') as update_date,
+           created_at
+         FROM project_updates
+         WHERE project_id = $1 AND is_client_visible = true
+         ORDER BY update_date DESC, id DESC`,
+        [req.params.projectId]
+      );
+      return res.json({ success: true, updates: result.rows });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     } finally {
@@ -151,7 +444,11 @@ export function setupErpPlatformRoutes(app: express.Express) {
     try {
       client = await getDbClient();
       const result = await client.query(
-        'SELECT * FROM project_media WHERE project_id = $1 AND is_client_visible = true ORDER BY upload_date DESC, id DESC',
+        `SELECT id, project_id, phase, media_type, title, description, media_url, thumbnail_url,
+                TO_CHAR(upload_date, 'YYYY-MM-DD') as upload_date, is_client_visible, uploaded_by, file_size_mb
+         FROM project_media
+         WHERE project_id = $1 AND is_client_visible = true
+         ORDER BY upload_date DESC, id DESC`,
         [req.params.projectId]
       );
       return res.json({ success: true, media: result.rows });
@@ -170,20 +467,21 @@ export function setupErpPlatformRoutes(app: express.Express) {
       const invQuery = `
         SELECT 
           i.*,
+          TO_CHAR(i.issue_date, 'YYYY-MM-DD') as issue_date,
+          TO_CHAR(i.due_date, 'YYYY-MM-DD') as due_date,
           COALESCE(p.title, 'Project #' || i.project_id) as project_title
         FROM project_invoices i
         LEFT JOIN projects p ON p.id = i.project_id
         WHERE i.client_id = $1 OR i.client_id IS NULL
-        ORDER BY i.issue_date DESC, i.id DESC
+        ORDER BY i.id DESC
       `;
       const invoices = await client.query(invQuery, [req.params.id]);
 
-      // Fetch items for each invoice
       const invoiceIds = invoices.rows.map(r => r.id);
-      let itemsMap: Record<number, any[]> = {};
+      const itemsMap: Record<number, any[]> = {};
       if (invoiceIds.length > 0) {
         const items = await client.query(
-          `SELECT * FROM project_invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY item_number ASC`,
+          'SELECT * FROM project_invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY item_number ASC',
           [invoiceIds]
         );
         for (const item of items.rows) {
@@ -209,7 +507,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // 2. ADMIN ERP: CLIENT MANAGEMENT
   // ==========================================
 
-  router.get('/erp/clients', async (req, res) => {
+  router.get('/erp/clients', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
@@ -236,7 +534,10 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.post('/erp/clients', async (req, res) => {
-    const { fullName, companyName, email, phone, phoneSecondary, address, city, notes, defaultPassword } = req.body;
+    const {
+      fullName, companyName, email, phone, phoneSecondary,
+      address, city, notes, defaultPassword, projectId, sendEmailInvite
+    } = req.body;
     if (!fullName || !email) {
       return res.status(400).json({ success: false, message: 'Full name and email are required' });
     }
@@ -254,7 +555,49 @@ export function setupErpPlatformRoutes(app: express.Express) {
         [code, fullName, companyName || '', email.trim(), pwd, phone || '', phoneSecondary || '', address || '', city || 'Yaoundé', notes || '']
       );
 
-      return res.status(201).json({ success: true, client: result.rows[0], message: 'Client created and access credentials generated' });
+      const createdClient = result.rows[0];
+
+      if (projectId) {
+        await client.query(
+          `INSERT INTO client_projects (client_id, project_id, role, access_level)
+           VALUES ($1, $2, 'OWNER', 'FULL')
+           ON CONFLICT DO NOTHING`,
+          [createdClient.id, Number(projectId)]
+        );
+      }
+
+      if (sendEmailInvite !== false) {
+        try {
+          const html = buildBrandedHtmlTemplate({
+            title: 'Your MADECC GROUP Client Portal Access Is Ready',
+            badge: 'CLIENT PORTAL INVITATION',
+            recipientName: createdClient.full_name,
+            leadParagraph: 'Your dedicated Client Construction Monitoring Portal has been provisioned. Track real-time engineering updates, site photos/videos, milestones, and invoices securely.',
+            sectionsHtml: `
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;">
+                <p style="margin:0 0 8px 0;font-size:13px;"><strong>Client Reference Code:</strong> ${createdClient.client_code}</p>
+                <p style="margin:0 0 8px 0;font-size:13px;"><strong>Login Email:</strong> ${createdClient.email}</p>
+                <p style="margin:0;font-size:14px;"><strong>Temporary Password:</strong> <code style="background:#fef3c7;padding:2px 8px;border-radius:4px;color:#b45309;font-weight:700;">${pwd}</code></p>
+              </div>
+            `,
+            actionButton: { label: 'Sign In to Client Portal', url: `${siteBaseUrl}/client-portal` }
+          });
+          await sendEmail(
+            createdClient.email,
+            `Welcome to MADECC GROUP Client Portal (${createdClient.client_code})`,
+            `Welcome ${createdClient.full_name},\nLogin: ${createdClient.email}\nPassword: ${pwd}\nPortal: ${siteBaseUrl}/client-portal`,
+            html
+          );
+        } catch (mailErr) {
+          console.warn('[CLIENT_INVITE_EMAIL_WARN]', mailErr);
+        }
+      }
+
+      return res.status(201).json({
+        success: true,
+        client: createdClient,
+        message: 'Client created and portal credentials dispatched via SMTP'
+      });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     } finally {
@@ -263,7 +606,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.put('/erp/clients/:id', async (req, res) => {
-    const { fullName, companyName, email, phone, phoneSecondary, address, city, status, notes } = req.body;
+    const { fullName, companyName, email, phone, phoneSecondary, address, city, status, notes, passwordHash } = req.body;
     let client;
     try {
       client = await getDbClient();
@@ -277,12 +620,88 @@ export function setupErpPlatformRoutes(app: express.Express) {
              address = COALESCE($6, address),
              city = COALESCE($7, city),
              status = COALESCE($8, status),
-             notes = COALESCE($9, notes)
-         WHERE id = $10
+             notes = COALESCE($9, notes),
+             password_hash = COALESCE($10, password_hash),
+             updated_at = now()
+         WHERE id = $11
          RETURNING *`,
-        [fullName, companyName, email, phone, phoneSecondary, address, city, status, notes, req.params.id]
+        [fullName, companyName, email, phone, phoneSecondary, address, city, status, notes, passwordHash, req.params.id]
       );
       return res.json({ success: true, client: result.rows[0] });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.delete('/erp/clients/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM clients WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Client account deleted' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.post('/erp/clients/:id/send-credentials', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query('SELECT * FROM clients WHERE id = $1', [req.params.id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Client not found' });
+      }
+      const c = result.rows[0];
+      const pwd = c.password_hash || 'Client2026@Madecc';
+
+      const html = buildBrandedHtmlTemplate({
+        title: 'Client Portal Login Credentials',
+        badge: 'ACCOUNT ACCESS CREDENTIALS',
+        recipientName: c.full_name,
+        leadParagraph: 'Here are your active login credentials for the MADECC GROUP Construction Monitoring Client Portal.',
+        sectionsHtml: `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;">
+            <p style="margin:0 0 8px 0;font-size:13px;"><strong>Client Code:</strong> ${c.client_code}</p>
+            <p style="margin:0 0 8px 0;font-size:13px;"><strong>Email:</strong> ${c.email}</p>
+            <p style="margin:0;font-size:14px;"><strong>Password:</strong> <code style="background:#fef3c7;padding:2px 8px;border-radius:4px;color:#b45309;font-weight:700;">${pwd}</code></p>
+          </div>
+        `,
+        actionButton: { label: 'Access Client Portal', url: `${siteBaseUrl}/client-portal` }
+      });
+
+      await sendEmail(
+        c.email,
+        `MADECC GROUP Client Portal Access - ${c.client_code}`,
+        `Hello ${c.full_name},\n\nPortal URL: ${siteBaseUrl}/client-portal\nEmail: ${c.email}\nClient Code: ${c.client_code}\nPassword: ${pwd}`,
+        html
+      );
+
+      return res.json({ success: true, message: `Credentials emailed to ${c.email} from ${SMTP_CANONICAL_USER}` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.get('/erp/clients/:id/projects', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        `SELECT cp.*, p.title, p.location, p.status
+         FROM client_projects cp
+         JOIN projects p ON p.id = cp.project_id
+         WHERE cp.client_id = $1
+         ORDER BY p.id DESC`,
+        [req.params.id]
+      );
+      return res.json({ success: true, projects: result.rows });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     } finally {
@@ -309,6 +728,245 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
+  router.delete('/erp/clients/:id/projects/:projectId', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM client_projects WHERE client_id = $1 AND project_id = $2', [
+        req.params.id,
+        req.params.projectId
+      ]);
+      return res.json({ success: true, message: 'Project unassigned from client' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  // ==========================================
+  // 2B. LIVE PROJECT PROGRESS UPDATES (ADMIN <-> CLIENT SYNC)
+  // ==========================================
+
+  router.get('/erp/projects/:id/updates', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        `SELECT 
+           id, project_id, phase, title, summary, completion_percentage, status_badge,
+           schedule_variance, delay_explanation, supervisor_name, supervisor_phone,
+           workforce_on_site, weather, attachment_url, attachment_type,
+           is_client_visible, published_by,
+           TO_CHAR(update_date, 'YYYY-MM-DD') as update_date,
+           created_at
+         FROM project_updates
+         WHERE project_id = $1
+         ORDER BY update_date DESC, id DESC`,
+        [req.params.id]
+      );
+      return res.json({ success: true, updates: result.rows });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.post('/erp/projects/:id/updates', async (req, res) => {
+    const projectId = Number(req.params.id);
+    const {
+      phase,
+      title,
+      summary,
+      completionPercentage,
+      statusBadge,
+      scheduleVariance,
+      delayExplanation,
+      supervisorName,
+      supervisorPhone,
+      workforceOnSite,
+      weather,
+      attachmentUrl,
+      attachmentType,
+      isClientVisible,
+      publishedBy,
+      updateDate,
+      projectStatus,
+      notifyClient
+    } = req.body;
+
+    if (!title || !summary) {
+      return res.status(400).json({ success: false, message: 'Update title and engineering summary are required' });
+    }
+
+    let client;
+    try {
+      client = await getDbClient();
+      const inferredAttachType = attachmentUrl ? inferMediaType(attachmentUrl, attachmentType) : 'PHOTO';
+
+      const result = await client.query(
+        `INSERT INTO project_updates (
+           project_id, phase, title, summary, completion_percentage, status_badge,
+           schedule_variance, delay_explanation, supervisor_name, supervisor_phone,
+           workforce_on_site, weather, attachment_url, attachment_type,
+           is_client_visible, published_by, update_date
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         RETURNING *, TO_CHAR(update_date, 'YYYY-MM-DD') as update_date`,
+        [
+          projectId,
+          phase || 'Superstructure & Columns',
+          title,
+          summary,
+          Number(completionPercentage ?? 0),
+          statusBadge || 'ON_SCHEDULE',
+          scheduleVariance || 'On Schedule per Master GANTT',
+          delayExplanation || '',
+          supervisorName || 'Ing. Arnaud Fopa (ONIGC Registered)',
+          supervisorPhone || '+237 671 06 35 11',
+          Number(workforceOnSite ?? 14),
+          weather || 'Clear / Dry',
+          attachmentUrl || null,
+          inferredAttachType,
+          isClientVisible !== false,
+          publishedBy || 'Adminmadeccgroup',
+          updateDate || new Date().toISOString().split('T')[0]
+        ]
+      );
+
+      // Sync project status if Admin passed an updated contract status
+      if (projectStatus) {
+        await client.query('UPDATE projects SET status = $1 WHERE id = $2', [projectStatus, projectId]);
+      }
+
+      // Optionally notify assigned client(s) via configured SMTP (kreboya603@gmail.com)
+      let emailedCount = 0;
+      if (notifyClient && isClientVisible !== false) {
+        try {
+          const projRes = await client.query('SELECT title, location FROM projects WHERE id = $1', [projectId]);
+          const projTitle = projRes.rows[0]?.title || `Project #${projectId}`;
+          const clientRows = await client.query(
+            `SELECT c.email, c.full_name
+             FROM client_projects cp
+             JOIN clients c ON c.id = cp.client_id
+             WHERE cp.project_id = $1 AND c.status = 'ACTIVE'`,
+            [projectId]
+          );
+
+          for (const c of clientRows.rows) {
+            const html = buildBrandedHtmlTemplate({
+              title: `Live Site Progress Update: ${projTitle}`,
+              badge: `SITE REPORT • ${phase || 'EXECUTION'}`,
+              recipientName: c.full_name,
+              leadParagraph: `New engineering progress has been published for <strong>${projTitle}</strong>.`,
+              sectionsHtml: `
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;">
+                  <p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#0f172a;">${title}</p>
+                  <p style="margin:0 0 12px 0;font-size:13px;color:#334155;line-height:1.6;">${summary}</p>
+                  <p style="margin:0 0 6px 0;font-size:12px;color:#475569;"><strong>Overall Completion:</strong> ${Number(completionPercentage ?? 0)}%</p>
+                  <p style="margin:0 0 6px 0;font-size:12px;color:#475569;"><strong>Schedule Status:</strong> ${scheduleVariance || statusBadge || 'On Schedule'}</p>
+                  ${delayExplanation ? `<p style="margin:0 0 6px 0;font-size:12px;color:#b45309;"><strong>Site Delay Note:</strong> ${delayExplanation}</p>` : ''}
+                  <p style="margin:0;font-size:12px;color:#475569;"><strong>Supervising Engineer:</strong> ${supervisorName || 'Ing. Arnaud Fopa'}</p>
+                </div>
+              `,
+              actionButton: { label: 'View Live Site Progress in Client Portal', url: `${siteBaseUrl}/client-portal` }
+            });
+            await sendEmail(
+              c.email,
+              `Site Update (${Number(completionPercentage ?? 0)}%): ${title} - ${projTitle}`,
+              `${title}\n\n${summary}\nCompletion: ${Number(completionPercentage ?? 0)}%\nView in Client Portal: ${siteBaseUrl}/client-portal`,
+              html
+            );
+            emailedCount++;
+          }
+        } catch (mailErr) {
+          console.warn('[PROGRESS_UPDATE_EMAIL_WARN]', mailErr);
+        }
+      }
+
+      return res.status(201).json({
+        success: true,
+        update: result.rows[0],
+        emailedCount,
+        message: emailedCount > 0
+          ? `Site update published and emailed to ${emailedCount} assigned client(s)`
+          : 'Live site progress update saved to Neon PostgreSQL'
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.put('/erp/updates/:id', async (req, res) => {
+    const {
+      phase,
+      title,
+      summary,
+      completionPercentage,
+      statusBadge,
+      scheduleVariance,
+      delayExplanation,
+      supervisorName,
+      supervisorPhone,
+      workforceOnSite,
+      weather,
+      attachmentUrl,
+      attachmentType,
+      isClientVisible,
+      updateDate
+    } = req.body;
+
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        `UPDATE project_updates
+         SET phase = COALESCE($1, phase),
+             title = COALESCE($2, title),
+             summary = COALESCE($3, summary),
+             completion_percentage = COALESCE($4, completion_percentage),
+             status_badge = COALESCE($5, status_badge),
+             schedule_variance = COALESCE($6, schedule_variance),
+             delay_explanation = COALESCE($7, delay_explanation),
+             supervisor_name = COALESCE($8, supervisor_name),
+             supervisor_phone = COALESCE($9, supervisor_phone),
+             workforce_on_site = COALESCE($10, workforce_on_site),
+             weather = COALESCE($11, weather),
+             attachment_url = COALESCE($12, attachment_url),
+             attachment_type = COALESCE($13, attachment_type),
+             is_client_visible = COALESCE($14, is_client_visible),
+             update_date = COALESCE($15, update_date)
+         WHERE id = $16
+         RETURNING *, TO_CHAR(update_date, 'YYYY-MM-DD') as update_date`,
+        [
+          phase, title, summary, completionPercentage, statusBadge, scheduleVariance,
+          delayExplanation, supervisorName, supervisorPhone, workforceOnSite, weather,
+          attachmentUrl, attachmentType, isClientVisible, updateDate, req.params.id
+        ]
+      );
+      return res.json({ success: true, update: result.rows[0] });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.delete('/erp/updates/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM project_updates WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Site progress update deleted' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
   // ==========================================
   // 3. PROJECT MEDIA (PHOTOS & VIDEOS)
   // ==========================================
@@ -318,7 +976,11 @@ export function setupErpPlatformRoutes(app: express.Express) {
     try {
       client = await getDbClient();
       const result = await client.query(
-        'SELECT * FROM project_media WHERE project_id = $1 ORDER BY upload_date DESC, id DESC',
+        `SELECT id, project_id, phase, media_type, title, description, media_url, thumbnail_url,
+                TO_CHAR(upload_date, 'YYYY-MM-DD') as upload_date, is_client_visible, uploaded_by, file_size_mb
+         FROM project_media
+         WHERE project_id = $1
+         ORDER BY upload_date DESC, id DESC`,
         [req.params.id]
       );
       return res.json({ success: true, media: result.rows });
@@ -330,10 +992,12 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.post('/erp/projects/:id/media', async (req, res) => {
-    const { phase, mediaType, title, description, mediaUrl, isClientVisible, uploadedBy } = req.body;
+    const { phase, mediaType, title, description, mediaUrl, isClientVisible, uploadedBy, notifyClient } = req.body;
     if (!title || !mediaUrl) {
       return res.status(400).json({ success: false, message: 'Title and media URL are required' });
     }
+
+    const detectedType = inferMediaType(mediaUrl, mediaType);
 
     let client;
     try {
@@ -341,11 +1005,11 @@ export function setupErpPlatformRoutes(app: express.Express) {
       const result = await client.query(
         `INSERT INTO project_media (project_id, phase, media_type, title, description, media_url, is_client_visible, uploaded_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING *`,
+         RETURNING *, TO_CHAR(upload_date, 'YYYY-MM-DD') as upload_date`,
         [
           req.params.id,
           phase || 'Superstructure & Columns',
-          mediaType || 'PHOTO',
+          detectedType,
           title,
           description || '',
           mediaUrl,
@@ -353,6 +1017,32 @@ export function setupErpPlatformRoutes(app: express.Express) {
           uploadedBy || 'Project Manager'
         ]
       );
+
+      if (notifyClient && isClientVisible !== false) {
+        try {
+          const clientRows = await client.query(
+            `SELECT c.email, c.full_name
+             FROM client_projects cp
+             JOIN clients c ON c.id = cp.client_id
+             WHERE cp.project_id = $1 AND c.status = 'ACTIVE'`,
+            [req.params.id]
+          );
+          for (const c of clientRows.rows) {
+            const html = buildBrandedHtmlTemplate({
+              title: `New Site ${detectedType === 'VIDEO' ? 'Video' : 'Photo'} Uploaded`,
+              badge: phase || 'PROGRESS GALLERY',
+              recipientName: c.full_name,
+              leadParagraph: `A new ${detectedType.toLowerCase()} titled <strong>${title}</strong> has been published to your Client Portal gallery.`,
+              sectionsHtml: `<p style="font-size:13px;color:#334155;">${description || 'Uploaded directly from the construction site by the supervising team.'}</p>`,
+              actionButton: { label: 'Open Photos & Videos Gallery', url: `${siteBaseUrl}/client-portal` }
+            });
+            await sendEmail(c.email, `New Site ${detectedType}: ${title}`, `${title}\n${description || ''}\n${mediaUrl}`, html);
+          }
+        } catch (mailErr) {
+          console.warn('[MEDIA_NOTIFY_WARN]', mailErr);
+        }
+      }
+
       return res.status(201).json({ success: true, media: result.rows[0] });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
@@ -362,7 +1052,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.put('/erp/media/:id', async (req, res) => {
-    const { isClientVisible, title, description, phase } = req.body;
+    const { isClientVisible, title, description, phase, mediaType } = req.body;
     let client;
     try {
       client = await getDbClient();
@@ -371,10 +1061,11 @@ export function setupErpPlatformRoutes(app: express.Express) {
          SET is_client_visible = COALESCE($1, is_client_visible),
              title = COALESCE($2, title),
              description = COALESCE($3, description),
-             phase = COALESCE($4, phase)
-         WHERE id = $5
-         RETURNING *`,
-        [isClientVisible, title, description, phase, req.params.id]
+             phase = COALESCE($4, phase),
+             media_type = COALESCE($5, media_type)
+         WHERE id = $6
+         RETURNING *, TO_CHAR(upload_date, 'YYYY-MM-DD') as upload_date`,
+        [isClientVisible, title, description, phase, mediaType, req.params.id]
       );
       return res.json({ success: true, media: result.rows[0] });
     } catch (err: any) {
@@ -398,7 +1089,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   // ==========================================
-  // 4. PROJECT MILESTONES (CRUD)
+  // 4. PROJECT MILESTONES (CRUD on project_progress.milestone_name)
   // ==========================================
 
   router.get('/erp/projects/:id/milestones', async (req, res) => {
@@ -406,7 +1097,18 @@ export function setupErpPlatformRoutes(app: express.Express) {
     try {
       client = await getDbClient();
       const result = await client.query(
-        'SELECT * FROM project_progress WHERE project_id = $1 ORDER BY date ASC, id ASC',
+        `SELECT 
+           id,
+           project_id,
+           milestone_name,
+           milestone_name as milestone,
+           description,
+           percentage,
+           status,
+           TO_CHAR(date, 'YYYY-MM-DD') as date
+         FROM project_progress
+         WHERE project_id = $1
+         ORDER BY date ASC, id ASC`,
         [req.params.id]
       );
       return res.json({ success: true, milestones: result.rows });
@@ -418,15 +1120,22 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.post('/erp/projects/:id/milestones', async (req, res) => {
-    const { milestone, description, percentage, status, date } = req.body;
+    const { milestone, milestoneName, description, percentage, status, date } = req.body;
+    const finalName = milestoneName || milestone;
+    if (!finalName) {
+      return res.status(400).json({ success: false, message: 'Milestone name is required' });
+    }
+
     let client;
     try {
       client = await getDbClient();
+      const pct = Number(percentage ?? 0);
+      const resolvedStatus = status || (pct >= 100 ? 'Completed' : pct > 0 ? 'In Progress' : 'Pending');
       const result = await client.query(
-        `INSERT INTO project_progress (project_id, milestone, description, percentage, status, date)
+        `INSERT INTO project_progress (project_id, milestone_name, description, percentage, status, date)
          VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [req.params.id, milestone, description || '', percentage || 0, status || 'Pending', date || new Date().toISOString().split('T')[0]]
+         RETURNING id, project_id, milestone_name, milestone_name as milestone, description, percentage, status, TO_CHAR(date, 'YYYY-MM-DD') as date`,
+        [req.params.id, finalName, description || '', pct, resolvedStatus, date || new Date().toISOString().split('T')[0]]
       );
       return res.status(201).json({ success: true, milestone: result.rows[0] });
     } catch (err: any) {
@@ -437,20 +1146,21 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.put('/erp/milestones/:id', async (req, res) => {
-    const { milestone, description, percentage, status, date } = req.body;
+    const { milestone, milestoneName, description, percentage, status, date } = req.body;
+    const finalName = milestoneName ?? milestone ?? null;
     let client;
     try {
       client = await getDbClient();
       const result = await client.query(
         `UPDATE project_progress 
-         SET milestone = COALESCE($1, milestone),
+         SET milestone_name = COALESCE($1, milestone_name),
              description = COALESCE($2, description),
              percentage = COALESCE($3, percentage),
              status = COALESCE($4, status),
              date = COALESCE($5, date)
          WHERE id = $6
-         RETURNING *`,
-        [milestone, description, percentage, status, date, req.params.id]
+         RETURNING id, project_id, milestone_name, milestone_name as milestone, description, percentage, status, TO_CHAR(date, 'YYYY-MM-DD') as date`,
+        [finalName, description, percentage, status, date, req.params.id]
       );
       return res.json({ success: true, milestone: result.rows[0] });
     } catch (err: any) {
@@ -477,13 +1187,15 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // 5. INVOICES & PAYMENTS
   // ==========================================
 
-  router.get('/erp/invoices', async (req, res) => {
+  router.get('/erp/invoices', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
       const query = `
         SELECT 
           i.*,
+          TO_CHAR(i.issue_date, 'YYYY-MM-DD') as issue_date,
+          TO_CHAR(i.due_date, 'YYYY-MM-DD') as due_date,
           COALESCE(c.full_name, 'Direct Client') as client_name,
           c.company_name as client_company,
           c.email as client_email,
@@ -492,15 +1204,15 @@ export function setupErpPlatformRoutes(app: express.Express) {
         FROM project_invoices i
         LEFT JOIN clients c ON c.id = i.client_id
         LEFT JOIN projects p ON p.id = i.project_id
-        ORDER BY i.issue_date DESC, i.id DESC
+        ORDER BY i.id DESC
       `;
       const invoices = await client.query(query);
 
       const ids = invoices.rows.map(r => r.id);
-      let itemsMap: Record<number, any[]> = {};
+      const itemsMap: Record<number, any[]> = {};
       if (ids.length > 0) {
         const items = await client.query(
-          `SELECT * FROM project_invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY item_number ASC`,
+          'SELECT * FROM project_invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY item_number ASC',
           [ids]
         );
         for (const item of items.rows) {
@@ -523,7 +1235,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   router.post('/erp/invoices', async (req, res) => {
-    const { projectId, clientId, issueDate, dueDate, items, taxRatePercent, discountXaf, notes, status } = req.body;
+    const { projectId, clientId, issueDate, dueDate, items, taxRatePercent, discountXaf, notes, status, notifyClient } = req.body;
     let client;
     try {
       client = await getDbClient();
@@ -540,7 +1252,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
       const invRes = await client.query(
         `INSERT INTO project_invoices (invoice_number, project_id, client_id, issue_date, due_date, subtotal_xaf, tax_rate_percent, tax_amount_xaf, discount_xaf, total_amount_xaf, paid_amount_xaf, balance_due_xaf, status, notes)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, $11, $12, $13)
-         RETURNING *`,
+         RETURNING *, TO_CHAR(issue_date, 'YYYY-MM-DD') as issue_date, TO_CHAR(due_date, 'YYYY-MM-DD') as due_date`,
         [
           invoiceNum,
           projectId || 1,
@@ -559,14 +1271,16 @@ export function setupErpPlatformRoutes(app: express.Express) {
       );
 
       const invoiceId = invRes.rows[0].id;
+      const insertedItems: any[] = [];
 
       if (items && Array.isArray(items)) {
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           const lineTotal = Number(item.quantity || 1) * Number(item.unitPriceXaf || 0);
-          await client.query(
+          const itemRes = await client.query(
             `INSERT INTO project_invoice_items (invoice_id, item_number, description, category, unit, quantity, unit_price_xaf, total_price_xaf)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING *`,
             [
               invoiceId,
               i + 1,
@@ -578,13 +1292,61 @@ export function setupErpPlatformRoutes(app: express.Express) {
               lineTotal
             ]
           );
+          insertedItems.push(itemRes.rows[0]);
         }
       }
 
       await client.query('COMMIT');
-      return res.status(201).json({ success: true, invoice: invRes.rows[0] });
+
+      if (notifyClient !== false && clientId) {
+        try {
+          const cRes = await client.query('SELECT full_name, email FROM clients WHERE id = $1', [clientId]);
+          if (cRes.rows.length > 0 && cRes.rows[0].email) {
+            const rec = cRes.rows[0];
+            const html = buildBrandedHtmlTemplate({
+              title: `Official Project Invoice Issued: ${invoiceNum}`,
+              badge: 'BILLING & ACCOUNTS RECEIVABLE',
+              recipientName: rec.full_name,
+              leadParagraph: `Invoice <strong>${invoiceNum}</strong> has been issued to your MADECC GROUP Client Portal.`,
+              sectionsHtml: `
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;">
+                  <p style="margin:0 0 6px 0;font-size:13px;"><strong>Invoice Number:</strong> ${invoiceNum}</p>
+                  <p style="margin:0 0 6px 0;font-size:13px;"><strong>Subtotal (HT):</strong> ${subtotal.toLocaleString()} XAF</p>
+                  <p style="margin:0 0 6px 0;font-size:13px;"><strong>TVA (${taxRate}%):</strong> ${taxAmount.toLocaleString()} XAF</p>
+                  <p style="margin:0 0 6px 0;font-size:15px;color:#b45309;"><strong>Total Due (TTC):</strong> ${totalAmount.toLocaleString()} XAF</p>
+                  <p style="margin:0;font-size:12px;color:#64748b;"><strong>Due Date:</strong> ${dueDate || '14 Days'}</p>
+                </div>
+              `,
+              actionButton: { label: 'View & Pay Invoice in Client Portal', url: `${siteBaseUrl}/client-portal` }
+            });
+            await sendEmail(
+              rec.email,
+              `MADECC GROUP Invoice ${invoiceNum} (${totalAmount.toLocaleString()} XAF)`,
+              `Invoice ${invoiceNum} issued for ${totalAmount.toLocaleString()} XAF. View at ${siteBaseUrl}/client-portal`,
+              html
+            );
+          }
+        } catch (mailErr) {
+          console.warn('[INVOICE_EMAIL_WARN]', mailErr);
+        }
+      }
+
+      return res.status(201).json({ success: true, invoice: { ...invRes.rows[0], items: insertedItems } });
     } catch (err: any) {
       if (client) await client.query('ROLLBACK');
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.delete('/erp/invoices/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM project_invoices WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Invoice deleted' });
+    } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     } finally {
       if (client) client.release();
@@ -605,7 +1367,8 @@ export function setupErpPlatformRoutes(app: express.Express) {
       }
 
       const inv = invCheck.rows[0];
-      const newPaid = Number(inv.paid_amount_xaf) + Number(amountXaf || 0);
+      const paidAmt = Number(amountXaf || 0);
+      const newPaid = Number(inv.paid_amount_xaf) + paidAmt;
       const newBalance = Math.max(0, Number(inv.total_amount_xaf) - newPaid);
       const newStatus = newBalance <= 0 ? 'PAID' : 'PARTIALLY_PAID';
 
@@ -616,15 +1379,62 @@ export function setupErpPlatformRoutes(app: express.Express) {
              status = $3,
              payment_method = COALESCE($4, payment_method),
              payment_reference = COALESCE($5, payment_reference),
-             notes = CASE WHEN $6 != '' THEN notes || E'\n' || $6 ELSE notes END,
+             notes = CASE WHEN $6 != '' THEN COALESCE(notes, '') || E'\n' || $6 ELSE notes END,
              updated_at = now()
          WHERE id = $7
-         RETURNING *`,
+         RETURNING *, TO_CHAR(issue_date, 'YYYY-MM-DD') as issue_date, TO_CHAR(due_date, 'YYYY-MM-DD') as due_date`,
         [newPaid, newBalance, newStatus, paymentMethod || 'MTN_MOMO', paymentReference || '', notes || '', req.params.id]
       );
 
       await client.query('COMMIT');
-      return res.json({ success: true, invoice: updateRes.rows[0], message: 'Payment recorded successfully' });
+
+      const updatedInv = updateRes.rows[0];
+
+      // Notify Admin (kreboya603@gmail.com) and Client via SMTP
+      try {
+        let clientEmail = '';
+        let clientName = 'Client';
+        if (updatedInv.client_id) {
+          const cRes = await client.query('SELECT full_name, email FROM clients WHERE id = $1', [updatedInv.client_id]);
+          if (cRes.rows[0]) {
+            clientEmail = cRes.rows[0].email;
+            clientName = cRes.rows[0].full_name;
+          }
+        }
+
+        const adminHtml = buildBrandedHtmlTemplate({
+          title: `Payment Recorded on Invoice ${updatedInv.invoice_number}`,
+          badge: 'FINANCE & RECONCILIATION',
+          leadParagraph: `A payment of <strong>${paidAmt.toLocaleString()} XAF</strong> via <strong>${paymentMethod || 'MTN_MOMO'}</strong> has been logged for invoice ${updatedInv.invoice_number}.`,
+          sectionsHtml: `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;">
+              <p style="margin:0 0 6px 0;font-size:13px;"><strong>Client:</strong> ${clientName} (${clientEmail || 'N/A'})</p>
+              <p style="margin:0 0 6px 0;font-size:13px;"><strong>Reference:</strong> ${paymentReference || 'N/A'}</p>
+              <p style="margin:0 0 6px 0;font-size:13px;"><strong>Status:</strong> ${updatedInv.status}</p>
+              <p style="margin:0;font-size:13px;"><strong>Remaining Balance:</strong> ${Number(updatedInv.balance_due_xaf).toLocaleString()} XAF</p>
+            </div>
+          `
+        });
+
+        await sendNotificationEmail(
+          `Payment Logged: ${updatedInv.invoice_number} (${paidAmt.toLocaleString()} XAF)`,
+          `Invoice ${updatedInv.invoice_number} payment of ${paidAmt} XAF logged. Ref: ${paymentReference}`,
+          adminHtml
+        );
+
+        if (clientEmail) {
+          await sendEmail(
+            clientEmail,
+            `Payment Receipt Confirmation - ${updatedInv.invoice_number}`,
+            `Dear ${clientName},\nWe have received payment notification of ${paidAmt.toLocaleString()} XAF (Ref: ${paymentReference}) on invoice ${updatedInv.invoice_number}.\nRemaining balance: ${Number(updatedInv.balance_due_xaf).toLocaleString()} XAF.`,
+            adminHtml
+          );
+        }
+      } catch (mailErr) {
+        console.warn('[PAYMENT_EMAIL_WARN]', mailErr);
+      }
+
+      return res.json({ success: true, invoice: updatedInv, message: 'Payment recorded & receipt dispatched via SMTP' });
     } catch (err: any) {
       if (client) await client.query('ROLLBACK');
       return res.status(500).json({ success: false, message: err.message });
@@ -634,15 +1444,50 @@ export function setupErpPlatformRoutes(app: express.Express) {
   });
 
   // ==========================================
+  // 5B. REAL SMTP SHARING ENDPOINT (kreboya603@gmail.com)
+  // ==========================================
+
+  router.post('/erp/share-email', async (req, res) => {
+    const { recipientEmail, subject, title, summary, detailsHtml, actionLabel, actionUrl, senderName } = req.body;
+    if (!recipientEmail || !String(recipientEmail).includes('@')) {
+      return res.status(400).json({ success: false, message: 'Valid recipient email address is required' });
+    }
+
+    try {
+      const html = buildBrandedHtmlTemplate({
+        title: title || subject || 'MADECC GROUP Construction Report',
+        badge: 'SHARED CONSTRUCTION INTELLIGENCE',
+        leadParagraph: summary || `Shared by ${senderName || 'MADECC GROUP Portal'}.`,
+        sectionsHtml: detailsHtml || '',
+        actionButton: actionUrl ? { label: actionLabel || 'Open Portal', url: actionUrl } : undefined
+      });
+
+      await sendEmail(
+        String(recipientEmail).trim(),
+        subject || title || 'MADECC GROUP Shared Document',
+        `${title || ''}\n\n${summary || ''}\n${actionUrl || siteBaseUrl}`,
+        html
+      );
+
+      return res.json({
+        success: true,
+        message: `Email dispatched via ${SMTP_CANONICAL_USER} to ${recipientEmail}`
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'SMTP dispatch failed' });
+    }
+  });
+
+  // ==========================================
   // 6. MATERIALS & INVENTORY MOVEMENTS
   // ==========================================
 
-  router.get('/erp/inventory/movements', async (req, res) => {
+  router.get('/erp/inventory/movements', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
       const result = await client.query(
-        `SELECT m.*, COALESCE(p.title, 'General Site') as project_title 
+        `SELECT m.*, TO_CHAR(m.movement_date, 'YYYY-MM-DD') as movement_date, COALESCE(p.title, 'General Site') as project_title 
          FROM inventory_movements m 
          LEFT JOIN projects p ON p.id = m.project_id 
          ORDER BY m.movement_date DESC, m.id DESC LIMIT 100`
@@ -669,13 +1514,12 @@ export function setupErpPlatformRoutes(app: express.Express) {
       const movRes = await client.query(
         `INSERT INTO inventory_movements (inventory_item_id, movement_type, quantity, unit, unit_cost_xaf, total_cost_xaf, project_id, receiver_name, notes)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
+         RETURNING *, TO_CHAR(movement_date, 'YYYY-MM-DD') as movement_date`,
         [inventoryItemId || null, movementType, qty, unit || 'units', cost, totalCost, projectId || null, receiverName || '', notes || '']
       );
 
-      // Adjust inventory item stock if applicable
       if (inventoryItemId) {
-        if (movementType === 'RECEIPT_STOCK_IN' || movementType === 'RETURN_FROM_PROJECT') {
+        if (movementType === 'RECEIPT_STOCK_IN' || movementType === 'PURCHASE_RECEIPT' || movementType === 'RETURN_FROM_PROJECT' || movementType === 'SITE_RETURN') {
           await client.query('UPDATE inventory_items SET quantity_in_stock = (COALESCE(CAST(quantity_in_stock AS NUMERIC), 0) + $1)::text WHERE id = $2', [qty, inventoryItemId]);
         } else if (movementType === 'DISPATCH_TO_PROJECT' || movementType === 'WRITE_OFF') {
           await client.query('UPDATE inventory_items SET quantity_in_stock = GREATEST(0, (COALESCE(CAST(quantity_in_stock AS NUMERIC), 0) - $1))::text WHERE id = $2', [qty, inventoryItemId]);
@@ -696,7 +1540,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // 7. EQUIPMENT & MAINTENANCE
   // ==========================================
 
-  router.get('/erp/equipment', async (req, res) => {
+  router.get('/erp/equipment', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
@@ -777,6 +1621,19 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
+  router.delete('/erp/equipment/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM equipment WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Equipment removed' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
   router.post('/erp/equipment/:id/maintenance', async (req, res) => {
     const { maintenanceType, description, partsReplaced, technicianName, costXaf } = req.body;
     let client;
@@ -789,9 +1646,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
         [req.params.id, maintenanceType || 'PREVENTATIVE', description, partsReplaced || '', technicianName || 'Mechanical Workshop', costXaf || 0]
       );
 
-      // Update equipment last maintenance date
       await client.query('UPDATE equipment SET last_maintenance_date = CURRENT_DATE WHERE id = $1', [req.params.id]);
-
       return res.status(201).json({ success: true, maintenance: result.rows[0] });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
@@ -804,7 +1659,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // 8. SUBCONTRACTORS
   // ==========================================
 
-  router.get('/erp/subcontractors', async (req, res) => {
+  router.get('/erp/subcontractors', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
@@ -846,11 +1701,46 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
+  router.put('/erp/subcontractors/:id', async (req, res) => {
+    const { status, rating, totalContractValueXaf } = req.body;
+    let client;
+    try {
+      client = await getDbClient();
+      const result = await client.query(
+        `UPDATE subcontractors
+         SET status = COALESCE($1, status),
+             rating = COALESCE($2, rating),
+             total_contract_value_xaf = COALESCE($3, total_contract_value_xaf)
+         WHERE id = $4
+         RETURNING *`,
+        [status, rating, totalContractValueXaf, req.params.id]
+      );
+      return res.json({ success: true, subcontractor: result.rows[0] });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.delete('/erp/subcontractors/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM subcontractors WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Subcontractor deleted' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
   // ==========================================
   // 9. WORKFORCE & ATTENDANCE
   // ==========================================
 
-  router.get('/erp/workers', async (req, res) => {
+  router.get('/erp/workers', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
@@ -901,8 +1791,21 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
+  router.delete('/erp/workers/:id', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      await client.query('DELETE FROM worker_roster WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Worker removed from roster' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
   router.get('/erp/attendance', async (req, res) => {
-    const { date, projectId } = req.query;
+    const { date } = req.query;
     let client;
     try {
       client = await getDbClient();
@@ -910,6 +1813,7 @@ export function setupErpPlatformRoutes(app: express.Express) {
       const query = `
         SELECT 
           a.*,
+          TO_CHAR(a.attendance_date, 'YYYY-MM-DD') as attendance_date,
           w.full_name as worker_name,
           w.trade_category,
           w.daily_rate_xaf,
@@ -991,25 +1895,23 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // ==========================================
 
   router.post('/erp/estimates/calculate', async (req, res) => {
-    const { buildingType, totalFloorAreaM2, floorsCount, finishQuality, soilCondition, city } = req.body;
-    
+    const { buildingType, totalFloorAreaM2, floorsCount, finishQuality, city } = req.body;
+
     const area = Number(totalFloorAreaM2 || 250);
     const floors = Number(floorsCount || 1);
-    const quality = finishQuality || 'STANDARD'; // 'STANDARD', 'MODERN', 'LUXURY'
+    const quality = finishQuality || 'STANDARD';
 
-    // Regional baseline prices in Cameroon (XAF per m2 constructed)
-    let baseRatePerM2 = 185000; // Standard Villa
+    let baseRatePerM2 = 185000;
     if (buildingType === 'COMMERCIAL') baseRatePerM2 = 240000;
     if (buildingType === 'INDUSTRIAL') baseRatePerM2 = 195000;
     if (buildingType === 'MULTI_FAMILY') baseRatePerM2 = 220000;
 
     if (quality === 'MODERN') baseRatePerM2 *= 1.35;
     if (quality === 'LUXURY') baseRatePerM2 *= 1.75;
-    if (floors > 2) baseRatePerM2 *= (1 + (floors - 2) * 0.08); // Height premium
+    if (floors > 2) baseRatePerM2 *= (1 + (floors - 2) * 0.08);
 
     const subtotal = Math.round(area * baseRatePerM2);
 
-    // Realistic Eurocode / Cameroon Standard BOQ Trade Breakdown
     const trades = [
       { code: '01', name: 'Site Installation & Bulk Earthworks', pct: 0.08, category: 'EARTHWORKS' },
       { code: '02', name: 'Substructure & Reinforced Concrete Footings', pct: 0.18, category: 'STRUCTURE' },
@@ -1034,10 +1936,10 @@ export function setupErpPlatformRoutes(app: express.Express) {
       };
     });
 
-    const contingency = Math.round(subtotal * 0.05); // 5% site contingency
-    const contractorMargin = Math.round(subtotal * 0.10); // 10% overhead & profit
+    const contingency = Math.round(subtotal * 0.05);
+    const contractorMargin = Math.round(subtotal * 0.10);
     const preTaxTotal = subtotal + contingency + contractorMargin;
-    const tva = Math.round(preTaxTotal * 0.1925); // Cameroon 19.25% TVA
+    const tva = Math.round(preTaxTotal * 0.1925);
     const grandTotal = preTaxTotal + tva;
 
     return res.json({
@@ -1060,16 +1962,16 @@ export function setupErpPlatformRoutes(app: express.Express) {
   // 11. REPORTS & OVERVIEW ANALYTICS
   // ==========================================
 
-  router.get('/erp/reports/overview', async (req, res) => {
+  router.get('/erp/reports/overview', async (_req, res) => {
     let client;
     try {
       client = await getDbClient();
 
-      const [projectsRes, invoicesRes, equipmentRes, inventoryRes, workersRes, subcontractsRes] = await Promise.all([
+      const [projectsRes, invoicesRes, equipmentRes, inventoryRes, workersRes, subcontractsRes, updatesRes] = await Promise.all([
         client.query(`
           SELECT 
             COUNT(*) as total_projects,
-            COUNT(*) FILTER (WHERE status = 'ongoing' OR status = 'in_progress') as active_projects,
+            COUNT(*) FILTER (WHERE status = 'ongoing' OR status = 'in_progress' OR status = 'in-progress') as active_projects,
             COUNT(*) FILTER (WHERE status = 'completed') as completed_projects,
             COALESCE(SUM(CAST(NULLIF(regexp_replace(budget::text, '[^0-9]', '', 'g'), '') AS NUMERIC)), 0) as total_budget_xaf
           FROM projects
@@ -1111,6 +2013,11 @@ export function setupErpPlatformRoutes(app: express.Express) {
             COUNT(*) as total_subcontractors,
             COALESCE(SUM(total_contract_value_xaf), 0) as total_subcontract_value_xaf
           FROM subcontractors
+        `),
+        client.query(`
+          SELECT COUNT(*) as total_updates,
+                 COUNT(*) FILTER (WHERE is_client_visible = true) as client_visible_updates
+          FROM project_updates
         `)
       ]);
 
@@ -1122,7 +2029,8 @@ export function setupErpPlatformRoutes(app: express.Express) {
           equipment: equipmentRes.rows[0],
           inventory: inventoryRes.rows[0],
           workforce: workersRes.rows[0],
-          subcontracts: subcontractsRes.rows[0]
+          subcontracts: subcontractsRes.rows[0],
+          updates: updatesRes.rows[0]
         }
       });
     } catch (err: any) {
@@ -1132,7 +2040,6 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
-  // Mount router under both /api and root app level to guarantee resolution
   app.use('/api', router);
   app.use(router);
 }

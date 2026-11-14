@@ -234,15 +234,43 @@ export async function ensureErpTables(): Promise<void> {
         );
       `);
 
+      // 11b. Project Site Progress Updates (Live Admin -> Client Portal Sync)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS project_updates (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL,
+          phase TEXT DEFAULT 'Superstructure & Columns' NOT NULL,
+          title TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          completion_percentage INTEGER DEFAULT 0 NOT NULL,
+          status_badge TEXT DEFAULT 'ON_SCHEDULE' NOT NULL,
+          schedule_variance TEXT DEFAULT 'On schedule per master Gantt',
+          delay_explanation TEXT DEFAULT '',
+          supervisor_name TEXT DEFAULT 'Ing. Arnaud Fopa (ONIGC Registered)',
+          supervisor_phone TEXT DEFAULT '+237 671 06 35 11',
+          workforce_on_site INTEGER DEFAULT 14,
+          weather TEXT DEFAULT 'Dry / Clear',
+          attachment_url TEXT,
+          attachment_type TEXT DEFAULT 'PHOTO',
+          is_client_visible BOOLEAN DEFAULT TRUE NOT NULL,
+          published_by TEXT DEFAULT 'Adminmadeccgroup',
+          update_date DATE DEFAULT CURRENT_DATE NOT NULL,
+          created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
+        );
+      `);
+
       // 12. Safe Additive Columns Check
       const additiveColumns: { table: string; col: string }[] = [
         { table: 'clients', col: 'password_hash TEXT' },
         { table: 'clients', col: 'last_login TIMESTAMP WITHOUT TIME ZONE' },
+        { table: 'clients', col: 'updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()' },
         { table: 'project_invoices', col: 'pdf_url TEXT' },
         { table: 'project_invoices', col: 'payment_reference TEXT' },
         { table: 'project_media', col: 'is_client_visible BOOLEAN DEFAULT TRUE' },
         { table: 'worker_roster', col: 'assigned_project_id INTEGER' },
-        { table: 'equipment', col: 'assigned_project_id INTEGER' }
+        { table: 'equipment', col: 'assigned_project_id INTEGER' },
+        { table: 'project_updates', col: 'attachment_type TEXT DEFAULT \'PHOTO\'' },
+        { table: 'project_updates', col: 'delay_explanation TEXT DEFAULT \'\'' }
       ];
 
       for (const item of additiveColumns) {
@@ -256,7 +284,7 @@ export async function ensureErpTables(): Promise<void> {
       // 13. Seed Starter Records if tables are empty
       const clientCount = await client.query('SELECT COUNT(*) FROM clients');
       if (parseInt(clientCount.rows[0].count, 10) === 0) {
-        // Create demo client account for testing / instant live use
+        // Create initial client accounts mapped to live projects
         await client.query(`
           INSERT INTO clients (client_code, full_name, company_name, email, password_hash, phone, address, city, status)
           VALUES 
@@ -264,14 +292,39 @@ export async function ensureErpTables(): Promise<void> {
           ('CLT-2026-002', 'Eng. Jeannette Ebanda', 'Ebanda Commercial Properties', 'ebanda.properties@gmail.com', 'Client2026@Madecc', '+237 699 82 41 05', 'Bonanjo Maritime Zone', 'Douala', 'ACTIVE');
         `);
 
-        // Link client to existing project 1 or 2
-        await client.query(`
-          INSERT INTO client_projects (client_id, project_id, role, access_level)
-          VALUES 
-          (1, 1, 'PROJECT_SPONSOR', 'FULL'),
-          (2, 2, 'DEVELOPER', 'FULL')
-          ON CONFLICT DO NOTHING;
-        `);
+        // Link clients dynamically to existing projects (or fallback 1 & 2)
+        const existingProjects = await client.query('SELECT id FROM projects ORDER BY id ASC LIMIT 2');
+        const firstProjId = existingProjects.rows[0]?.id || 1;
+        const secondProjId = existingProjects.rows[1]?.id || firstProjId;
+        await client.query(
+          `INSERT INTO client_projects (client_id, project_id, role, access_level)
+           VALUES (1, $1, 'PROJECT_SPONSOR', 'FULL'), (2, $2, 'DEVELOPER', 'FULL')
+           ON CONFLICT DO NOTHING`,
+          [firstProjId, secondProjId]
+        );
+      }
+
+      // Ensure Project 1 (or first existing project) has starter progress updates if empty
+      const updCount = await client.query('SELECT COUNT(*) FROM project_updates');
+      if (parseInt(updCount.rows[0].count, 10) === 0) {
+        const firstProjRes = await client.query('SELECT id FROM projects ORDER BY id ASC LIMIT 1');
+        const targetProjId = firstProjRes.rows[0]?.id || 1;
+        await client.query(
+          `INSERT INTO project_updates (
+            project_id, phase, title, summary, completion_percentage, status_badge, schedule_variance,
+            delay_explanation, supervisor_name, supervisor_phone, workforce_on_site, weather,
+            attachment_url, attachment_type, is_client_visible, published_by, update_date
+          ) VALUES
+          ($1, 'Foundation & Earthworks', 'Foundation Concrete Pour & Soil Certification Completed',
+           'Strip footing excavation, lean blinding concrete, and FeE500 rebar cage placement passed geotechnical & structural inspection with 28-day cube test confirmation.',
+           35, 'COMPLETED', '+2 Days Ahead', '', 'Ing. Arnaud Fopa (ONIGC Registered)', '+237 671 06 35 11', 16, 'Clear / Dry',
+           'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80', 'PHOTO', TRUE, 'Adminmadeccgroup', CURRENT_DATE - INTERVAL '10 days'),
+          ($1, 'Superstructure & Columns', 'Level 1 Columns, Beams Formwork & Concrete Curing Inspection',
+           'Completed Doka formwork alignment and Class C25/30 ready-mix concrete casting for primary structural columns C1-C14 and Level 1 ring beams. Mechanical vibration verified.',
+           58, 'ON_SCHEDULE', 'On Schedule per Master GANTT', '', 'Ing. Arnaud Fopa (ONIGC Registered)', '+237 671 06 35 11', 18, 'Partly Cloudy',
+           'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80', 'PHOTO', TRUE, 'Adminmadeccgroup', CURRENT_DATE - INTERVAL '2 days')`,
+          [targetProjId]
+        );
       }
 
       // Seed equipment if empty

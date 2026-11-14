@@ -144,6 +144,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
   const primaryLinks = [
     { id: 'home', label: t('nav_home'), icon: Home },
+    { id: 'client-portal', label: 'Client Portal (Projects & Invoices)', icon: ShieldCheck },
     { id: 'store', label: 'KRR Bookstore & Sales', icon: ShoppingBag },
     { id: 'order-tracking', label: 'Track My Order', icon: PackageCheck },
     { id: 'services', label: 'Services & Solutions', icon: Briefcase },
@@ -153,6 +154,13 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
   ];
 
   const toolsLinks = [
+    { 
+      id: 'client-portal', 
+      label: 'Client Portal', 
+      desc: 'Track construction progress, site photos, milestones & invoices',
+      icon: ShieldCheck,
+      badge: 'CLIENT'
+    },
     { 
       id: 'store', 
       label: 'KRR Official Bookstore', 

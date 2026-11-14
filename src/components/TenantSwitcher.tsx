@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { 
-  Building2, ChevronDown, Check, Plus, ShieldCheck, 
-  CreditCard, Sparkles, ExternalLink, Globe 
+import React, { useState, useEffect } from 'react';
+import {
+  Building2, ChevronDown, Check, Plus, ShieldCheck,
+  CreditCard, ExternalLink, Globe, RefreshCw
 } from 'lucide-react';
 import { Tenant } from '../types.ts';
 import { TenantService } from '../services/tenantService.ts';
@@ -24,11 +24,28 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
   isSuperAdmin = true
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const tenants = TenantService.getAllTenants();
+  const [tenants, setTenants] = useState<Tenant[]>(TenantService.getAllTenants());
+  const [syncing, setSyncing] = useState(false);
+
+  const syncTenants = async () => {
+    setSyncing(true);
+    try {
+      const live = await TenantService.fetchTenantsFromApi();
+      setTenants(live);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      syncTenants();
+    }
+  }, [isOpen]);
 
   const handleSelect = (tenant: Tenant) => {
-    TenantService.setActiveTenant(tenant.id);
-    onTenantChange(tenant);
+    const updated = TenantService.setActiveTenant(tenant);
+    onTenantChange(updated);
     setIsOpen(false);
   };
 
@@ -47,7 +64,7 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
             <Building2 className="w-3 h-3" />
           )}
         </div>
-        
+
         <div className="flex flex-col text-left max-w-[130px] sm:max-w-[160px] truncate">
           <span className="font-semibold text-slate-100 truncate leading-tight flex items-center gap-1">
             {currentTenant.name}
@@ -58,32 +75,35 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
             )}
           </span>
           <span className="text-[10px] text-slate-400 truncate leading-tight">
-            {currentTenant.planCode} Plan
+            {currentTenant.planCode} &bull; v{currentTenant.publishedVersion || 1}.0
           </span>
         </div>
 
         <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-transform duration-200" />
       </button>
 
-      {/* Dropdown Menu */}
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700/90 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="p-3 bg-slate-950/60 border-b border-slate-800 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">
-                  Organization Workspaces
-                </span>
-                <span className="text-[10px] text-amber-400 font-mono">Multi-Tenant</span>
-              </div>
+          <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-700/90 rounded-2xl shadow-2xl z-50 overflow-hidden">
+            <div className="p-3 bg-slate-950/60 border-b border-slate-800 text-xs flex items-center justify-between">
+              <span className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">
+                Organization Workspaces ({tenants.length})
+              </span>
+              <button
+                type="button"
+                onClick={syncTenants}
+                className="text-[10px] text-amber-400 flex items-center gap-1 hover:underline"
+              >
+                <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                Sync Neon
+              </button>
             </div>
 
-            {/* Tenant List */}
-            <div className="p-1.5 max-h-60 overflow-y-auto space-y-1">
+            <div className="p-1.5 max-h-64 overflow-y-auto space-y-1">
               {tenants.map((t) => {
                 const isSelected = t.id === currentTenant.id;
+                const isPublished = (t.publishStatus || 'PUBLISHED') === 'PUBLISHED';
                 return (
                   <button
                     key={t.id}
@@ -105,11 +125,11 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
                       <div className="truncate">
                         <div className="font-semibold text-white truncate flex items-center gap-1.5">
                           {t.name}
-                          {t.isFlagship && (
-                            <span className="text-[9px] px-1 bg-amber-500/20 text-amber-400 rounded">
-                              Flagship
-                            </span>
-                          )}
+                          <span className={`text-[8px] px-1 rounded font-bold ${
+                            isPublished ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'
+                          }`}>
+                            {t.publishStatus || 'PUBLISHED'}
+                          </span>
                         </div>
                         <div className="text-[10px] text-slate-400 flex items-center gap-1">
                           <Globe className="w-2.5 h-2.5" />
@@ -124,7 +144,6 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
               })}
             </div>
 
-            {/* Actions Footer */}
             <div className="p-2 bg-slate-950/80 border-t border-slate-800 space-y-1 text-xs">
               <button
                 onClick={() => {

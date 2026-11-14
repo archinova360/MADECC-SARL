@@ -446,9 +446,14 @@ export interface Tenant {
   legalName?: string | null;
   logoUrl?: string | null;
   faviconUrl?: string | null;
+  brandCoverUrl?: string | null;
   primaryDomain?: string | null;
   customDomain?: string | null;
   status: TenantStatus;
+  publishStatus?: 'PUBLISHED' | 'UNPUBLISHED' | 'DRAFT';
+  publishedVersion?: number;
+  publishedAt?: string | null;
+  lastRepublishedAt?: string | null;
   planCode: PlanCode;
   currency: string;
   timezone?: string | null;
@@ -462,6 +467,21 @@ export interface Tenant {
   isFlagship: boolean;
   createdAt: string;
   updatedAt: string;
+  versionsCount?: number;
+  membersCount?: number;
+  latestSubscriptionStatus?: string | null;
+}
+
+export interface SaaSWorkspaceVersion {
+  id: number;
+  tenantId: number;
+  versionNumber: number;
+  versionLabel: string;
+  changelog?: string | null;
+  snapshot: any;
+  publishStatus: string;
+  createdBy?: string | null;
+  createdAt: string;
 }
 
 export interface TenantMembership {
@@ -495,7 +515,10 @@ export interface SaaSPlan {
   aiCreditsMonthly: number;
   features?: string[] | null;
   isPopular?: boolean;
-  status: 'ACTIVE' | 'ARCHIVED';
+  status: 'ACTIVE' | 'ARCHIVED' | 'UNPUBLISHED';
+  publishStatus?: 'PUBLISHED' | 'UNPUBLISHED' | 'DRAFT';
+  version?: number;
+  publishedAt?: string | null;
   displayOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -512,6 +535,7 @@ export interface TenantSubscription {
   paymentMethod?: PaymentMethodCode | null;
   paymentReference?: string | null;
   senderPhone?: string | null;
+  proofUrl?: string | null;
   notes?: string | null;
   startDate: string;
   renewalDate: string;

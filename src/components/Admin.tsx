@@ -124,6 +124,8 @@ import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.t
 import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
 import { AdminMaintenanceAndHandoverHub } from './AdminMaintenanceAndHandoverHub.tsx';
 import { AdminPlaystoreAndCpanelHub } from './AdminPlaystoreAndCpanelHub.tsx';
+import { SuperAdmin } from './SuperAdmin.tsx';
+import { TenantService } from '../services/tenantService.ts';
 import { 
   ReceiptPaymentRecord, 
   STANDARD_RECEIPT_FEE_XAF, 
@@ -215,6 +217,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     'sales-group': true,
     'analytics-group': true,
     'construction-erp-group': true,
+    'saas-cloud-group': true,
     'projects-group': true,
     'qs-group': true,
     'ai-group': true,
@@ -2080,6 +2083,14 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       ]
     },
     {
+      id: 'saas-cloud-group',
+      title: '☁️ SAAS CLOUD & TENANTS',
+      icon: Layers,
+      items: [
+        { id: 'saas-cloud', label: 'SaaS Control Plane & Billing', icon: Layers }
+      ]
+    },
+    {
       id: 'projects-group',
       title: '🏗️ PROJECTS & OPERATIONS',
       icon: Building2,
@@ -2287,6 +2298,21 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           >
             <ShieldCheck className="w-4 h-4" />
             <span className="hidden sm:inline">Client Portal ERP</span>
+          </button>
+
+          {/* Direct SaaS Cloud Control Plane Access Button */}
+          <button
+            onClick={() => setActiveAdminTab('saas-cloud')}
+            className={`px-3 py-1.5 font-bold text-xs rounded-xl flex items-center gap-1.5 border transition-all shrink-0 ${
+              activeAdminTab === 'saas-cloud'
+                ? 'bg-sky-500 text-slate-950 border-sky-400 shadow'
+                : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/30'
+            }`}
+            title="Manage Multi-Tenant SaaS Portals, Publish/Versioning, Payments & Plans"
+            id="admin-topbar-saas-cloud-btn"
+          >
+            <Layers className="w-4 h-4" />
+            <span className="hidden sm:inline">SaaS Cloud</span>
           </button>
 
           {/* Quick Action Button */}
@@ -2949,6 +2975,19 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             initialSubTab={activeAdminTab.startsWith('erp-') ? activeAdminTab.replace('erp-', '') : 'clients'}
             onNavigateTab={(tab) => setActiveAdminTab(tab)}
             onOpenClientPortal={() => setCurrentTab('client-portal')}
+          />
+        )}
+
+        {/* MULTI-TENANT SAAS CLOUD CONTROL PLANE */}
+        {activeAdminTab === 'saas-cloud' && (
+          <SuperAdmin
+            embedded
+            onBackToApp={() => setActiveAdminTab('command-center')}
+            onImpersonateTenant={(t) => {
+              TenantService.setActiveTenant(t);
+              showToast(`Switched active workspace to ${t.name} (${t.planCode})`, 'success');
+              setCurrentTab('home');
+            }}
           />
         )}
 

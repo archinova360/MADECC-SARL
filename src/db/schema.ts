@@ -1613,9 +1613,14 @@ export const tenants = pgTable('tenants', {
   legalName: text('legal_name'),
   logoUrl: text('logo_url'),
   faviconUrl: text('favicon_url'),
+  brandCoverUrl: text('brand_cover_url'),
   primaryDomain: text('primary_domain'), // e.g. 'madeccgroup.online'
   customDomain: text('custom_domain'),
   status: text('status').notNull().default('ACTIVE'), // 'ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'CANCELLED'
+  publishStatus: text('publish_status').notNull().default('PUBLISHED'), // 'PUBLISHED', 'UNPUBLISHED', 'DRAFT'
+  publishedVersion: integer('published_version').default(1).notNull(),
+  publishedAt: timestamp('published_at'),
+  lastRepublishedAt: timestamp('last_republished_at'),
   planCode: text('plan_code').notNull().default('ENTERPRISE'), // 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'
   currency: text('currency').notNull().default('XAF'), // 'XAF', 'USD', 'EUR', 'NGN', 'GHS', 'GBP'
   timezone: text('timezone').default('Africa/Douala'),
@@ -1667,7 +1672,10 @@ export const plans = pgTable('plans', {
   aiCreditsMonthly: integer('ai_credits_monthly').notNull().default(100),
   features: json('features'), // Array of feature flags & entitlements
   isPopular: boolean('is_popular').default(false),
-  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE', 'ARCHIVED'
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE', 'ARCHIVED', 'UNPUBLISHED'
+  publishStatus: text('publish_status').notNull().default('PUBLISHED'), // 'PUBLISHED', 'UNPUBLISHED', 'DRAFT'
+  version: integer('version').default(1).notNull(),
+  publishedAt: timestamp('published_at'),
   displayOrder: integer('display_order').default(1).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -1687,6 +1695,7 @@ export const subscriptions = pgTable('subscriptions', {
   paymentMethod: text('payment_method'), // 'MTN_MOMO', 'ORANGE_MONEY', 'VISA_CARD', 'BANK_WIRE', 'CASH'
   paymentReference: text('payment_reference'), // Transaction TXID / Ref code provided by tenant
   senderPhone: text('sender_phone'), // Phone number or account used to send funds
+  proofUrl: text('proof_url'), // Uploaded receipt/proof file URL (Cloudinary/Supabase)
   notes: text('notes'),
   startDate: timestamp('start_date').defaultNow().notNull(),
   renewalDate: timestamp('renewal_date').notNull(),
@@ -1695,6 +1704,29 @@ export const subscriptions = pgTable('subscriptions', {
   thankYouShown: boolean('thank_you_shown').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const saasWorkspaceVersions = pgTable('saas_workspace_versions', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').notNull(),
+  versionNumber: integer('version_number').notNull(),
+  versionLabel: text('version_label').notNull(),
+  changelog: text('changelog'),
+  snapshot: json('snapshot').notNull(),
+  publishStatus: text('publish_status').notNull().default('DRAFT'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const saasPlanVersions = pgTable('saas_plan_versions', {
+  id: serial('id').primaryKey(),
+  planId: integer('plan_id').notNull(),
+  planCode: text('plan_code').notNull(),
+  versionNumber: integer('version_number').notNull(),
+  changelog: text('changelog'),
+  snapshot: json('snapshot').notNull(),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // =========================================================================
@@ -2107,6 +2139,16 @@ export const salesPaymentsRelations = relations(salesPayments, ({ one }) => ({
     references: [salesOrders.id],
   }),
 }));
+
+export const saasPlatformSettings = pgTable('saas_platform_settings', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  value: json('value'),
+  category: text('category').notNull().default('saas'),
+  description: text('description'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedBy: text('updated_by'),
+});
 
 
 

@@ -1,14 +1,8 @@
-import { SaaSPlan, DirectPaymentConfig, PlanCode, SubscriptionStatus, PaymentMethodCode } from '../types.ts';
+import { SaaSPlan, DirectPaymentConfig, PlanCode } from '../types.ts';
 
 export const DIRECT_PAYMENT_CONFIG: DirectPaymentConfig = {
-  momoNumbers: [
-    '+237671063511',
-    '+237683316486'
-  ],
-  orangeMoneyNumbers: [
-    '+237689115595',
-    '+237640194505'
-  ],
+  momoNumbers: ['+237671063511', '+237683316486'],
+  orangeMoneyNumbers: ['+237689115595', '+237640194505'],
   bankAccount: {
     accountName: 'MADECC GROUP SAAS / DIRECT SERVICES',
     bankName: 'UBA Cameroon / Afriland First Bank',
@@ -16,7 +10,8 @@ export const DIRECT_PAYMENT_CONFIG: DirectPaymentConfig = {
     ibanOrSwift: 'UNAFCMCXXXX'
   },
   contactWhatsApp: '+237671063511',
-  contactEmail: 'billing@madeccgroup.online'
+  contactEmail: 'kreboya603@gmail.com',
+  promoNote: 'Enjoy 2 Months Free with Annual Billing! Instant Workspace Activation.'
 };
 
 export const DEFAULT_PLANS: SaaSPlan[] = [
@@ -26,7 +21,7 @@ export const DEFAULT_PLANS: SaaSPlan[] = [
     name: 'Starter Construction Portal',
     description: 'Perfect for small construction contractors, craft teams, and specialized site builders.',
     monthlyPrice: 50000,
-    annualPrice: 500000, // 2 months free on annual
+    annualPrice: 500000,
     currency: 'XAF',
     maxUsers: 3,
     maxProjects: 5,
@@ -43,6 +38,8 @@ export const DEFAULT_PLANS: SaaSPlan[] = [
     ],
     isPopular: false,
     status: 'ACTIVE',
+    publishStatus: 'PUBLISHED',
+    version: 1,
     displayOrder: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -73,6 +70,8 @@ export const DEFAULT_PLANS: SaaSPlan[] = [
     ],
     isPopular: true,
     status: 'ACTIVE',
+    publishStatus: 'PUBLISHED',
+    version: 1,
     displayOrder: 2,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -85,8 +84,8 @@ export const DEFAULT_PLANS: SaaSPlan[] = [
     monthlyPrice: 250000,
     annualPrice: 2500000,
     currency: 'XAF',
-    maxUsers: -1, // Unlimited
-    maxProjects: -1, // Unlimited
+    maxUsers: -1,
+    maxProjects: -1,
     maxStorageGb: 100,
     aiCreditsMonthly: 5000,
     features: [
@@ -103,6 +102,8 @@ export const DEFAULT_PLANS: SaaSPlan[] = [
     ],
     isPopular: false,
     status: 'ACTIVE',
+    publishStatus: 'PUBLISHED',
+    version: 1,
     displayOrder: 3,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -113,50 +114,83 @@ export class SubscriptionService {
   private static cachedPlans: SaaSPlan[] = DEFAULT_PLANS;
   private static cachedConfig: DirectPaymentConfig = DIRECT_PAYMENT_CONFIG;
 
-  /**
-   * Fetch available plans from backend with fallback
-   */
-  static async fetchPlansFromApi(): Promise<SaaSPlan[]> {
-    try {
-      const res = await fetch('/api/saas/plans');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          this.cachedPlans = data;
-          return data;
-        }
+  static async fetchPlansFromApi(options?: { includeUnpublished?: boolean }): Promise<SaaSPlan[]> {
+    const query = options?.includeUnpublished ? '?includeUnpublished=true' : '';
+    const res = await fetch(`/api/saas/plans${query}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        this.cachedPlans = data;
+        return data;
       }
-    } catch (e) {
-      console.warn('[FETCH_PLANS_WARN]', e);
     }
     return this.cachedPlans;
   }
 
-  /**
-   * Synchronous plan getter
-   */
   static getPlans(): SaaSPlan[] {
     return this.cachedPlans;
   }
 
-  /**
-   * Get plan details by code
-   */
   static getPlanByCode(code: PlanCode | string): SaaSPlan {
     const match = this.cachedPlans.find(p => p.code.toUpperCase() === code.toUpperCase());
     return match || this.cachedPlans[0] || DEFAULT_PLANS[0];
   }
 
-  /**
-   * Format price in FCFA currency
-   */
   static formatPrice(amount: number, currency: string = 'XAF'): string {
     return `${new Intl.NumberFormat('fr-FR').format(amount)} ${currency}`;
   }
 
-  /**
-   * Fetch payment configuration from API
-   */
+  static async createPlan(payload: Partial<SaaSPlan> & { actorEmail?: string }): Promise<SaaSPlan> {
+    const res = await fetch('/api/saas/plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create plan');
+    return data;
+  }
+
+  static async updatePlan(id: number, payload: Partial<SaaSPlan> & { changelog?: string; actorEmail?: string }): Promise<SaaSPlan> {
+    const res = await fetch(`/api/saas/plans/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to save plan');
+    return data;
+  }
+
+  static async publishPlanAction(id: number, action: 'publish' | 'republish' | 'unpublish' | 'duplicate'): Promise<any> {
+    const res = await fetch(`/api/saas/plans/${id}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Failed to ${action} plan`);
+    return data;
+  }
+
+  static async fetchPlanVersions(id: number): Promise<any[]> {
+    const res = await fetch(`/api/saas/plans/${id}/versions`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch plan versions');
+    return data.versions || [];
+  }
+
+  static async restorePlanVersion(id: number, versionId: number): Promise<SaaSPlan> {
+    const res = await fetch(`/api/saas/plans/${id}/versions/${versionId}/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to restore plan version');
+    return data.plan;
+  }
+
   static async fetchPaymentConfigFromApi(): Promise<DirectPaymentConfig> {
     try {
       const res = await fetch('/api/saas/payment-config');
@@ -171,16 +205,10 @@ export class SubscriptionService {
     return this.cachedConfig;
   }
 
-  /**
-   * Get direct payment instructions
-   */
   static getPaymentConfig(): DirectPaymentConfig {
     return this.cachedConfig;
   }
 
-  /**
-   * Submit subscription payment
-   */
   static async submitPayment(payload: {
     tenantId: number;
     planCode: string;
@@ -190,6 +218,7 @@ export class SubscriptionService {
     paymentMethod: string;
     paymentReference: string;
     senderPhone?: string;
+    proofUrl?: string;
     notes?: string;
   }) {
     const res = await fetch('/api/saas/subscriptions', {
@@ -197,24 +226,33 @@ export class SubscriptionService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to submit payment');
+    return data;
   }
 
-  /**
-   * Confirm subscription payment
-   */
   static async confirmPayment(subscriptionId: number, confirmedBy?: string) {
     const res = await fetch(`/api/saas/subscriptions/${subscriptionId}/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ confirmedBy })
     });
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to confirm payment');
+    return data;
   }
 
-  /**
-   * Save updated payment config
-   */
+  static async shareReceipt(subscriptionId: number, recipientEmail: string) {
+    const res = await fetch(`/api/saas/subscriptions/${subscriptionId}/share-receipt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientEmail })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to share receipt');
+    return data;
+  }
+
   static async savePaymentConfig(config: Partial<DirectPaymentConfig>) {
     const res = await fetch('/api/saas/payment-config', {
       method: 'PUT',
@@ -222,9 +260,21 @@ export class SubscriptionService {
       body: JSON.stringify(config)
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to save payment configuration');
     if (data?.config) {
       this.cachedConfig = data.config;
     }
+    return data;
+  }
+
+  static async shareSaasOverview(recipientEmail: string, message?: string) {
+    const res = await fetch('/api/saas/share-overview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientEmail, message })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to share SaaS overview');
     return data;
   }
 }

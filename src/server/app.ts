@@ -9,6 +9,7 @@ import { ensureAuthSessionsTable } from '../lib/sessionService.ts';
 import { ensureSiteSettingsTable } from '../db/ensureSiteSettings.ts';
 import { ensureSalesTables } from '../db/ensureSalesTables.ts';
 import { ensureErpTables } from '../db/ensureErpTables.ts';
+import { ensureSaasTables } from '../db/ensureSaasTables.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
@@ -39,6 +40,7 @@ export async function getApp(): Promise<express.Express> {
       await ensureSiteSettingsTable();
       await ensureSalesTables();
       await ensureErpTables();
+      await ensureSaasTables();
       if (!process.env.NETLIFY) {
         await seedDatabase();
       } else {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase.ts';
-import { User, Tenant } from './types.ts';
+import { User, Tenant, PlanCode } from './types.ts';
 import { AnimatePresence } from 'motion/react';
 import { PageTransition } from './components/MotionReveal.tsx';
 
@@ -147,6 +147,10 @@ function AppContent({
   const { theme } = useTheme();
   const { settings, isFollowModalOpen, closeFollowModal } = useSiteSettings();
   const [preselectedService, setPreselectedService] = useState<string>('');
+  const [onboardingPrefill, setOnboardingPrefill] = useState<{
+    planCode?: PlanCode;
+    billingCycle?: 'MONTHLY' | 'ANNUAL';
+  }>({});
   const [clientPaymentRequest, setClientPaymentRequest] = useState<PaymentLinkParams | null>(() => parsePaymentUrlParams());
   const [manualPaymentGate, setManualPaymentGate] = useState<{
     manualType: 'navigation_manual' | 'buyer_handover_manual';
@@ -218,11 +222,25 @@ function AppContent({
               isOpen: true,
               tenant: t,
               planCode: planCode,
-              confirmedBy: 'Super Admin (Manual Direct Verification)',
+              confirmedBy: 'Super Admin (Verified in Neon)',
               transactionRef: txRef
             });
           }}
         />
+        {thankYouModalState.isOpen && thankYouModalState.tenant && (
+          <TenantThankYouModal
+            isOpen={thankYouModalState.isOpen}
+            onClose={() => setThankYouModalState({ isOpen: false, tenant: null, planCode: '' })}
+            tenant={thankYouModalState.tenant}
+            planCode={thankYouModalState.planCode}
+            confirmedBy={thankYouModalState.confirmedBy}
+            transactionRef={thankYouModalState.transactionRef}
+            onGoToDashboard={() => {
+              setThankYouModalState({ isOpen: false, tenant: null, planCode: '' });
+              setCurrentTab('admin');
+            }}
+          />
+        )}
       </Suspense>
     );
   }
@@ -236,12 +254,22 @@ function AppContent({
             handleTenantSwitch(flagship);
             setCurrentTab('home');
           }}
-          onOpenOnboarding={() => setIsOnboardingOpen(true)}
+          onEnterTenant={(t) => {
+            handleTenantSwitch(t);
+            setCurrentTab('home');
+          }}
+          onOpenOnboarding={(planCode, billingCycle) => {
+            setOnboardingPrefill({ planCode, billingCycle });
+            setIsOnboardingOpen(true);
+          }}
           onOpenSuperAdmin={() => setCurrentTab('super-admin')}
+          onBackToHome={() => setCurrentTab('home')}
         />
         <TenantOnboardingModal
           isOpen={isOnboardingOpen}
           onClose={() => setIsOnboardingOpen(false)}
+          initialPlanCode={onboardingPrefill.planCode}
+          initialBillingCycle={onboardingPrefill.billingCycle}
           onTenantCreated={(newTenant) => {
             handleTenantSwitch(newTenant);
             setCurrentTab('admin');
@@ -517,6 +545,8 @@ function AppContent({
         <TenantOnboardingModal
           isOpen={isOnboardingOpen}
           onClose={() => setIsOnboardingOpen(false)}
+          initialPlanCode={onboardingPrefill.planCode}
+          initialBillingCycle={onboardingPrefill.billingCycle}
           onTenantCreated={(newTenant) => {
             handleTenantSwitch(newTenant);
             setCurrentTab('admin');
@@ -686,6 +716,18 @@ export default function App() {
   useEffect(() => {
     TenantService.applyTenantBranding(currentTenant);
   }, [currentTenant]);
+
+  // Sync currentTenant when switched from nested workspaces (e.g. Admin SaaS Control Plane)
+  useEffect(() => {
+    const onTenantSwitched = (e: Event) => {
+      const detail = (e as CustomEvent<Tenant>).detail;
+      if (detail?.id) {
+        setCurrentTenant(detail);
+      }
+    };
+    window.addEventListener('madecc:tenant-switched', onTenantSwitched);
+    return () => window.removeEventListener('madecc:tenant-switched', onTenantSwitched);
+  }, []);
 
   // Sync contract verification tokens from query parameters
   useEffect(() => {

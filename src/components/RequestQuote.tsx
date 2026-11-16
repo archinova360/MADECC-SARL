@@ -61,7 +61,11 @@ const SERVICE_OPTIONS = [
   'Renovation, Extension & Remodeling',
   'Geotechnical & Land Surveying',
   'Interior Design & High-End Finishes',
-  'Infrastructure & Earthworks'
+  'Infrastructure & Earthworks',
+  'Corporate & Business Website Development',
+  'Custom Web Applications & Client Portals',
+  'E-Commerce & Mobile Money Platforms',
+  'Technical SEO, Performance & Cloud Hosting'
 ];
 
 const PROJECT_TYPES = [
@@ -71,6 +75,9 @@ const PROJECT_TYPES = [
   'Institutional / Public Building',
   'Infrastructure / Civil Works',
   'Renovation / Extension',
+  'Corporate / Business Website',
+  'Custom Web Application & Portal',
+  'E-Commerce & Mobile Money Platform',
   'Other Construction'
 ];
 
@@ -180,12 +187,22 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
     if (preselectedService) {
       // Find matching service option or add it
       const matched = SERVICE_OPTIONS.find(s => s.toLowerCase().includes(preselectedService.toLowerCase())) || preselectedService;
+      const lowerPre = preselectedService.toLowerCase();
+      const isWebPre = lowerPre.includes('website') || lowerPre.includes('web ') || lowerPre.includes('e-commerce') || lowerPre.includes('ecommerce') || lowerPre.includes('seo') || lowerPre.includes('portal');
       setFormData(prev => ({
         ...prev,
+        projectType: isWebPre
+          ? (lowerPre.includes('commerce') ? 'E-Commerce & Mobile Money Platform' : lowerPre.includes('portal') || lowerPre.includes('app') ? 'Custom Web Application & Portal' : 'Corporate / Business Website')
+          : prev.projectType,
         servicesRequested: prev.servicesRequested.includes(matched) ? prev.servicesRequested : [...prev.servicesRequested, matched]
       }));
     }
   }, [preselectedService]);
+
+  const isWebsiteProject =
+    formData.projectType.toLowerCase().includes('website') ||
+    formData.projectType.toLowerCase().includes('web application') ||
+    formData.projectType.toLowerCase().includes('e-commerce');
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -1033,18 +1050,34 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Building Typology</label>
-                      <select
-                        value={formData.buildingType}
-                        onChange={(e) => handleInputChange('buildingType', e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                      >
-                        {BUILDING_TYPES.map((bt, idx) => (
-                          <option key={idx} value={bt}>{bt}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {!isWebsiteProject ? (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Building Typology</label>
+                        <select
+                          value={formData.buildingType}
+                          onChange={(e) => handleInputChange('buildingType', e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        >
+                          {BUILDING_TYPES.map((bt, idx) => (
+                            <option key={idx} value={bt}>{bt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Target Payment &amp; Domain Setup</label>
+                        <select
+                          value={formData.buildingType}
+                          onChange={(e) => handleInputChange('buildingType', e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        >
+                          <option value="Web Platform + Custom Domain + SSL">Web Platform + Custom Domain + SSL</option>
+                          <option value="MTN MoMo & Orange Money Checkout">MTN MoMo &amp; Orange Money Checkout</option>
+                          <option value="Client Portal + PostgreSQL Database">Client Portal + PostgreSQL Database</option>
+                          <option value="Technical SEO & Cloud Migration">Technical SEO &amp; Cloud Migration</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Services Needed Multi-Select */}
@@ -1093,28 +1126,32 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Number of Storeys</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={30}
-                        value={formData.storeys}
-                        onChange={(e) => handleInputChange('storeys', parseInt(e.target.value) || 1)}
-                        className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                      />
-                    </div>
+                    {!isWebsiteProject && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Number of Storeys</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={30}
+                            value={formData.storeys}
+                            onChange={(e) => handleInputChange('storeys', parseInt(e.target.value) || 1)}
+                            className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Est. Floor Area (m²)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 250"
-                        value={formData.floorArea}
-                        onChange={(e) => handleInputChange('floorArea', e.target.value)}
-                        className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Est. Floor Area (m²)</label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 250"
+                            value={formData.floorArea}
+                            onChange={(e) => handleInputChange('floorArea', e.target.value)}
+                            className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

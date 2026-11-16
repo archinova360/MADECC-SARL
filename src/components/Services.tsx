@@ -22,7 +22,14 @@ import {
   Download,
   FileText,
   MapPin,
-  X
+  X,
+  Globe,
+  Code,
+  ShoppingBag,
+  Search,
+  HardHat,
+  DraftingCompass,
+  Leaf
 } from 'lucide-react';
 import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
 
@@ -36,6 +43,7 @@ export interface ServiceItem {
   title: string;
   category: string;
   icon: any;
+  priceRange?: string;
   shortDesc: string;
   overview: string;
   whatWeDeliver: string[];
@@ -45,6 +53,26 @@ export interface ServiceItem {
   faqs: { q: string; a: string }[];
   ctaLabel: string;
 }
+
+const SERVICE_ICON_MAP: Record<string, any> = {
+  Building2,
+  Ruler,
+  Layers,
+  Compass,
+  Calculator,
+  FileCheck,
+  Briefcase,
+  Eye,
+  UserCheck,
+  Hammer,
+  Globe,
+  Code,
+  ShoppingBag,
+  Search,
+  HardHat,
+  DraftingCompass,
+  Leaf
+};
 
 export const SERVICES_DATA: ServiceItem[] = [
   {
@@ -412,6 +440,7 @@ export const SERVICES_DATA: ServiceItem[] = [
 export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [dbServicesList, setDbServicesList] = useState<ServiceItem[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'CONSTRUCTION' | 'WEBSITE'>('ALL');
 
   useEffect(() => {
     const loadServicesFromDb = async () => {
@@ -425,7 +454,8 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
               slug: s.slug || `service-${s.id}`,
               title: s.name,
               category: s.category || 'Construction & Execution',
-              icon: Building2,
+              icon: SERVICE_ICON_MAP[s.icon] || Building2,
+              priceRange: s.priceRange || undefined,
               shortDesc: s.shortDescription || s.description || '',
               overview: s.fullDescription || s.overview || s.description || '',
               whatWeDeliver: Array.isArray(s.whatWeDeliver) && s.whatWeDeliver.length > 0 ? s.whatWeDeliver : ['Professional site execution', 'Quality technical management', 'Full compliance certification'],
@@ -453,6 +483,17 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
   const combinedServices = dbServicesList.length > 0 
     ? [...dbServicesList, ...SERVICES_DATA.filter(sd => !dbServicesList.some(dbs => dbs.title.toLowerCase() === sd.title.toLowerCase()))]
     : SERVICES_DATA;
+
+  const isWebsiteService = (cat: string) => {
+    const lower = (cat || '').toLowerCase();
+    return lower.includes('website') || lower.includes('digital') || lower.includes('web');
+  };
+
+  const filteredServices = combinedServices.filter(s => {
+    if (categoryFilter === 'WEBSITE') return isWebsiteService(s.category);
+    if (categoryFilter === 'CONSTRUCTION') return !isWebsiteService(s.category);
+    return true;
+  });
 
   const handleSelectServiceForQuote = (serviceName: string) => {
     onNavigateToTab('request-a-quote', { selectedService: serviceName });
@@ -508,20 +549,54 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
 
         {/* 2. SERVICES GRID SECTION */}
         <div>
-          <FadeIn className="text-center max-w-3xl mx-auto mb-12">
+          <FadeIn className="text-center max-w-3xl mx-auto mb-8">
             <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 font-mono">
               Our Core Expertise
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              Engineering Excellence Across Every Phase
+              Engineering Excellence Across Physical &amp; Digital Builds
             </h2>
             <p className="text-slate-600 text-sm sm:text-base mt-3">
-              Explore our core capabilities or click any service card for detailed process workflows, deliverables, and project scopes.
+              Explore our civil construction, structural engineering, and professional website development capabilities fetched live from our operations catalog.
             </p>
           </FadeIn>
 
+          {/* Category Filter + Dedicated Web Showcase CTA */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { id: 'ALL', label: `All Services (${combinedServices.length})` },
+                { id: 'CONSTRUCTION', label: 'Construction & Civil Engineering' },
+                { id: 'WEBSITE', label: 'Website & Digital Development' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(tab.id as any)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    categoryFilter === tab.id
+                      ? 'bg-slate-900 text-amber-400 shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigateToTab('website-development')}
+              className="px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-800 hover:text-slate-950 font-bold text-xs transition-all flex items-center gap-1.5 border border-amber-500/30 cursor-pointer shrink-0"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Website Development Hub</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {combinedServices.map((service) => {
+            {filteredServices.map((service) => {
               const IconComp = service.icon;
               return (
                 <StaggerItem

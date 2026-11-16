@@ -57,6 +57,7 @@ const VerifyContract = lazyRetry(() => import('./components/VerifyContract.tsx')
 const ProjectBudgetCalculator = lazyRetry(() => import('./components/ProjectBudgetCalculator.tsx').then(m => ({ default: m.ProjectBudgetCalculator })));
 const ConstructionCostGuide = lazyRetry(() => import('./components/ConstructionCostGuide.tsx').then(m => ({ default: m.ConstructionCostGuide })));
 const Services = lazyRetry(() => import('./components/Services.tsx').then(m => ({ default: m.Services })));
+const WebsiteDevelopmentServices = lazyRetry(() => import('./components/WebsiteDevelopmentServices.tsx').then(m => ({ default: m.WebsiteDevelopmentServices })));
 const RequestQuote = lazyRetry(() => import('./components/RequestQuote.tsx').then(m => ({ default: m.RequestQuote })));
 const ScheduleConsultation = lazyRetry(() => import('./components/ScheduleConsultation.tsx').then(m => ({ default: m.ScheduleConsultation })));
 const LegalPage = lazyRetry(() => import('./components/LegalPage.tsx'));
@@ -69,6 +70,7 @@ const KrrSalesStore = lazyRetry(() => import('./components/KrrSalesStore.tsx').t
 const KrrOrderTracking = lazyRetry(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
 const SiteMap = lazyRetry(() => import('./components/SiteMap.tsx'));
 const ClientPortal = lazyRetry(() => import('./components/ClientPortal.tsx'));
+const SharedDocumentViewer = lazyRetry(() => import('./components/SharedDocumentViewer.tsx').then(m => ({ default: m.SharedDocumentViewer })));
 
 // Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
 const SuperAdmin = lazyRetry(() => import('./components/SuperAdmin.tsx').then(m => ({ default: m.SuperAdmin })));
@@ -156,6 +158,21 @@ function AppContent({
     manualType: 'navigation_manual' | 'buyer_handover_manual';
     options?: any;
   } | null>(null);
+  const [activeDocShareToken, setActiveDocShareToken] = useState<string | null>(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('docShare')) return p.get('docShare');
+    const pathMatch = window.location.pathname.match(/^\/doc-share\/([^/]+)/i);
+    return pathMatch ? decodeURIComponent(pathMatch[1]) : null;
+  });
+
+  useEffect(() => {
+    const onOpenSharedDoc = (e: Event) => {
+      const tok = (e as CustomEvent<string>).detail;
+      if (tok) setActiveDocShareToken(tok);
+    };
+    window.addEventListener('madecc:open-shared-doc', onOpenSharedDoc);
+    return () => window.removeEventListener('madecc:open-shared-doc', onOpenSharedDoc);
+  }, []);
 
   useEffect(() => {
     const payParams = parsePaymentUrlParams();
@@ -245,6 +262,27 @@ function AppContent({
     );
   }
 
+  if (activeDocShareToken) {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <SharedDocumentViewer
+          token={activeDocShareToken}
+          onBackToHome={() => {
+            setActiveDocShareToken(null);
+            if (window.history && window.history.replaceState) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('docShare');
+              if (url.pathname.toLowerCase().startsWith('/doc-share/')) {
+                url.pathname = '/';
+              }
+              window.history.replaceState({}, '', url.toString());
+            }
+          }}
+        />
+      </Suspense>
+    );
+  }
+
   if (currentTab === 'saas-cloud') {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
@@ -292,6 +330,12 @@ function AppContent({
       case 'services':
         return (
           <Services 
+            onNavigateToTab={handleNavigateWithState}
+          />
+        );
+      case 'website-development':
+        return (
+          <WebsiteDevelopmentServices 
             onNavigateToTab={handleNavigateWithState}
           />
         );
@@ -667,6 +711,7 @@ function getTabFromPath(pathname: string, searchStr: string): string {
   if (path.includes('terms') || params.get('tab') === 'terms') return 'terms';
   if (path.includes('privacy') || params.get('tab') === 'privacy') return 'privacy';
   if (path.includes('safety') || path.includes('health') || path.includes('qhse') || params.get('tab') === 'safety') return 'safety';
+  if (path.includes('website-development') || path.includes('web-development') || params.get('tab') === 'website-development') return 'website-development';
   if (path.includes('services')) return 'services';
   if (path.includes('request-a-quote') || path.includes('request-quote')) return 'request-a-quote';
   if (path.includes('schedule-consultation') || path.includes('consultation')) return 'schedule-consultation';

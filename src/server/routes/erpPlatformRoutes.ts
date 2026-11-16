@@ -2040,6 +2040,333 @@ export function setupErpPlatformRoutes(app: express.Express) {
     }
   });
 
+  // ==========================================
+  // 12. CLIENT PORTAL WEB & QUOTE REQUESTS (NEON + SMTP)
+  // ==========================================
+
+  async function ensureClientQuoteTable(client: any) {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quote_requests (
+        id SERIAL PRIMARY KEY,
+        reference_number TEXT NOT NULL UNIQUE,
+        user_id INTEGER,
+        client_name TEXT NOT NULL,
+        client_company TEXT,
+        client_email TEXT NOT NULL,
+        client_phone TEXT NOT NULL,
+        whatsapp_number TEXT,
+        preferred_contact_method TEXT DEFAULT 'WhatsApp',
+        preferred_contact_time TEXT DEFAULT 'Any time',
+        project_type TEXT NOT NULL,
+        services_requested JSONB NOT NULL,
+        region TEXT NOT NULL,
+        city TEXT,
+        project_name TEXT NOT NULL,
+        project_description TEXT,
+        building_type TEXT,
+        storeys INTEGER DEFAULT 1,
+        budget_currency TEXT DEFAULT 'XAF',
+        budget_min NUMERIC,
+        budget_max NUMERIC,
+        budget_range_text TEXT,
+        desired_start_date TIMESTAMP,
+        urgency TEXT DEFAULT 'Standard',
+        additional_notes TEXT,
+        source TEXT DEFAULT 'Client Portal - Web Development',
+        source_metadata JSONB,
+        status TEXT DEFAULT 'NEW' NOT NULL,
+        priority TEXT DEFAULT 'NORMAL' NOT NULL,
+        activity_timeline JSONB,
+        admin_notification_status TEXT DEFAULT 'PENDING',
+        client_confirmation_status TEXT DEFAULT 'PENDING',
+        admin_notification_sent_at TIMESTAMP,
+        client_confirmation_sent_at TIMESTAMP,
+        email_error TEXT,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+    `);
+  }
+
+  router.get('/client/:id/quote-requests', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const clientRes = await client.query(
+        'SELECT id, client_code, full_name, company_name, email, phone, city FROM clients WHERE id = $1',
+        [req.params.id]
+      );
+      if (clientRes.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Client account not found' });
+      }
+      const c = clientRes.rows[0];
+      await ensureClientQuoteTable(client);
+
+      const qRes = await client.query(
+        `SELECT id, reference_number, client_name, client_company, client_email, client_phone,
+                project_type, services_requested, region, city, project_name, project_description,
+                budget_currency, budget_min, budget_max, budget_range_text, urgency,
+                TO_CHAR(desired_start_date, 'YYYY-MM-DD') as desired_start_date,
+                source, source_metadata, status, priority,
+                admin_notification_status, client_confirmation_status,
+                created_at, updated_at
+         FROM quote_requests
+         WHERE LOWER(client_email) = LOWER($1)
+            OR source_metadata::text ILIKE $2
+         ORDER BY created_at DESC`,
+        [c.email, `%${c.client_code}%`]
+      );
+
+      return res.json({ success: true, requests: qRes.rows });
+    } catch (err: any) {
+      console.error('[CLIENT_QUOTE_LIST_ERROR]', err);
+      return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  router.post('/client/:id/quote-requests', async (req, res) => {
+    let client;
+    try {
+      client = await getDbClient();
+      const clientRes = await client.query(
+        'SELECT * FROM clients WHERE id = $1 AND status = $2',
+        [req.params.id, 'ACTIVE']
+      );
+      if (clientRes.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Active client account not found' });
+      }
+      const c = clientRes.rows[0];
+      await ensureClientQuoteTable(client);
+
+      const {
+        projectName,
+        projectType,
+        servicesRequested,
+        budgetRangeText,
+        budgetCurrency,
+        budgetMin,
+        budgetMax,
+        urgency,
+        desiredStartDate,
+        projectDescription,
+        domainPreference,
+        hostingPreference,
+        paymentIntegration,
+        targetLaunchWindow,
+        preferredContactMethod
+      } = req.body || {};
+
+      if (!projectName || !String(projectName).trim()) {
+        return res.status(400).json({ success: false, message: 'Project title / website name is required.' });
+      }
+
+      const normalizedServices: string[] = Array.isArray(servicesRequested)
+        ? servicesRequested.map(s => String(s).trim()).filter(Boolean)
+        : servicesRequested
+          ? [String(servicesRequested).trim()]
+          : [];
+
+      if (normalizedServices.length === 0) {
+        return res.status(400).json({ success: false, message: 'Please select at least one Website Development service.' });
+      }
+
+      const year = new Date().getFullYear();
+      const maxIdRes = await client.query('SELECT COALESCE(MAX(id), 0)::int as max_id FROM quote_requests');
+      const seq = Number(maxIdRes.rows[0]?.max_id || 0) + 1;
+      const refNumber = `MADECC-REQ-${year}-${String(seq).padStart(4, '0')}`;
+
+      const cleanProjectName = String(projectName).trim();
+      const cleanProjectType = String(projectType || 'Website & Digital Platform').trim();
+      const cleanDescription = String(projectDescription || '').trim() || 'Website development request submitted from authenticated Client Portal.';
+      const cleanBudgetCurrency = String(budgetCurrency || 'XAF');
+      const cleanUrgency = String(urgency || 'Standard');
+      const contactMethod = String(preferredContactMethod || 'Email & WhatsApp');
+
+      const sourceMetaObj = {
+        submittedFrom: 'client-portal',
+        serviceCategory: 'Website & Digital Development',
+        clientId: c.id,
+        clientCode: c.client_code,
+        domainPreference: domainPreference || null,
+        hostingPreference: hostingPreference || null,
+        paymentIntegration: paymentIntegration || null,
+        targetLaunchWindow: targetLaunchWindow || null
+      };
+
+      const initialTimeline = [
+        {
+          date: new Date().toISOString(),
+          action: 'PORTAL_WEB_REQUEST_SUBMITTED',
+          user: `${c.full_name} (${c.client_code})`,
+          details: `Authenticated client portal submission for "${cleanProjectName}".`
+        }
+      ];
+
+      const insertRes = await client.query(
+        `INSERT INTO quote_requests (
+           reference_number, client_name, client_company, client_email, client_phone,
+           whatsapp_number, preferred_contact_method, project_type, services_requested,
+           region, city, project_name, project_description, building_type, storeys,
+           budget_currency, budget_min, budget_max, budget_range_text, desired_start_date,
+           urgency, additional_notes, source, source_metadata, status, priority,
+           activity_timeline, admin_notification_status, client_confirmation_status
+         ) VALUES (
+           $1, $2, $3, $4, $5,
+           $6, $7, $8, $9::jsonb,
+           $10, $11, $12, $13, $14, $15,
+           $16, $17, $18, $19, $20,
+           $21, $22, $23, $24::jsonb, 'NEW', 'NORMAL',
+           $25::jsonb, 'PENDING', 'PENDING'
+         )
+         RETURNING *`,
+        [
+          refNumber,
+          c.full_name,
+          c.company_name || null,
+          c.email,
+          c.phone || '+237 683 316 486',
+          c.phone || null,
+          contactMethod,
+          cleanProjectType,
+          JSON.stringify(normalizedServices),
+          c.city || 'Centre (Yaoundé)',
+          c.city || 'Yaoundé',
+          cleanProjectName,
+          cleanDescription,
+          'Web Platform',
+          1,
+          cleanBudgetCurrency,
+          budgetMin ? Number(budgetMin) : null,
+          budgetMax ? Number(budgetMax) : null,
+          budgetRangeText || null,
+          desiredStartDate ? new Date(desiredStartDate) : null,
+          cleanUrgency,
+          `Domain: ${domainPreference || 'TBD'} | Hosting: ${hostingPreference || 'Managed Cloud'} | Payments: ${paymentIntegration || 'None specified'} | Target Window: ${targetLaunchWindow || 'Standard'}`,
+          'Client Portal - Website Development',
+          JSON.stringify(sourceMetaObj),
+          JSON.stringify(initialTimeline)
+        ]
+      );
+
+      const createdRow = insertRes.rows[0];
+
+      // Staff In-App Notification
+      try {
+        await client.query(
+          `INSERT INTO staff_notifications (employee_number, title, message, category, action_url)
+           VALUES ('ALL', $1, $2, 'SYSTEM', '/#admin')`,
+          [
+            `New Client Portal Web Request: ${refNumber}`,
+            `${c.full_name} (${c.client_code}) requested Website Development: "${cleanProjectName}".`
+          ]
+        );
+      } catch (notifErr) {
+        console.warn('[CLIENT_WEB_REQ_NOTIF_WARN]', notifErr);
+      }
+
+      // Real SMTP Dispatch (Admin: kreboya603@gmail.com + Client confirmation)
+      const servicesJoined = normalizedServices.join(', ');
+      let adminEmailStatus = 'PENDING';
+      let clientEmailStatus = 'PENDING';
+      const emailErrors: string[] = [];
+
+      const adminHtml = buildBrandedHtmlTemplate({
+        title: `New Website Development Request — ${refNumber}`,
+        badge: 'CLIENT PORTAL • WEB ENGINEERING',
+        recipientName: 'MADECC Engineering & Digital Desk',
+        leadParagraph: `Authenticated client <strong>${c.full_name}</strong> (${c.client_code}) submitted a new Website Development request via the Client Portal.`,
+        sectionsHtml: `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;font-size:13px;line-height:1.7;">
+            <p style="margin:0 0 6px 0;"><strong>Reference:</strong> ${refNumber}</p>
+            <p style="margin:0 0 6px 0;"><strong>Client:</strong> ${c.full_name} (${c.company_name || 'Private Client'}) • ${c.email} • ${c.phone || 'N/A'}</p>
+            <p style="margin:0 0 6px 0;"><strong>Project Title:</strong> ${cleanProjectName}</p>
+            <p style="margin:0 0 6px 0;"><strong>Platform Type:</strong> ${cleanProjectType}</p>
+            <p style="margin:0 0 6px 0;"><strong>Services Requested:</strong> ${servicesJoined}</p>
+            <p style="margin:0 0 6px 0;"><strong>Domain / Hosting / Payments:</strong> ${domainPreference || 'TBD'} / ${hostingPreference || 'Managed Cloud'} / ${paymentIntegration || 'Standard'}</p>
+            <p style="margin:0 0 6px 0;"><strong>Budget / Urgency:</strong> ${budgetRangeText || 'TBD'} (${cleanBudgetCurrency}) • ${cleanUrgency}</p>
+            <p style="margin:8px 0 0 0;color:#334155;"><strong>Technical Brief:</strong><br/>${cleanDescription}</p>
+          </div>
+        `,
+        actionButton: { label: 'Review in Admin Dashboard', url: `${siteBaseUrl}/admin` }
+      });
+
+      try {
+        await sendNotificationEmail(
+          `Client Portal Web Request (${refNumber}) — ${cleanProjectName}`,
+          `New Website Development Request (${refNumber}) from ${c.full_name} (${c.email}): ${cleanProjectName} | Services: ${servicesJoined}`,
+          adminHtml,
+          { replyTo: c.email }
+        );
+        adminEmailStatus = 'SENT';
+      } catch (mailErr: any) {
+        adminEmailStatus = 'FAILED';
+        emailErrors.push(`Admin SMTP: ${mailErr?.message || mailErr}`);
+      }
+
+      const clientHtml = buildBrandedHtmlTemplate({
+        title: `Website Development Request Logged — ${refNumber}`,
+        badge: 'MADECC DIGITAL ENGINEERING',
+        recipientName: c.full_name,
+        leadParagraph: `Your website development specification <strong>"${cleanProjectName}"</strong> has been recorded in your MADECC Client Portal and routed to our engineering team.`,
+        sectionsHtml: `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:16px 0;font-size:13px;line-height:1.7;">
+            <p style="margin:0 0 6px 0;"><strong>Reference Number:</strong> <code style="background:#fef3c7;padding:2px 6px;border-radius:4px;color:#b45309;font-weight:700;">${refNumber}</code></p>
+            <p style="margin:0 0 6px 0;"><strong>Services Selected:</strong> ${servicesJoined}</p>
+            <p style="margin:0 0 6px 0;"><strong>Platform Category:</strong> ${cleanProjectType}</p>
+            <p style="margin:0;"><strong>Estimated Response Window:</strong> Within 24–48 business hours</p>
+          </div>
+        `,
+        actionButton: { label: 'Track in Client Portal', url: `${siteBaseUrl}/client-portal` }
+      });
+
+      try {
+        await sendEmail(
+          c.email,
+          `MADECC GROUP — Website Development Request Received (${refNumber})`,
+          `Dear ${c.full_name},\n\nWe received your Website Development request "${cleanProjectName}" (${refNumber}). Track status anytime in your Client Portal.\n`,
+          clientHtml,
+          { replyTo: SMTP_CANONICAL_USER }
+        );
+        clientEmailStatus = 'SENT';
+      } catch (mailErr: any) {
+        clientEmailStatus = 'FAILED';
+        emailErrors.push(`Client SMTP: ${mailErr?.message || mailErr}`);
+      }
+
+      await client.query(
+        `UPDATE quote_requests
+         SET admin_notification_status = $1,
+             client_confirmation_status = $2,
+             admin_notification_sent_at = CASE WHEN $1 = 'SENT' THEN NOW() ELSE NULL END,
+             client_confirmation_sent_at = CASE WHEN $2 = 'SENT' THEN NOW() ELSE NULL END,
+             email_error = $3,
+             updated_at = NOW()
+         WHERE id = $4`,
+        [adminEmailStatus, clientEmailStatus, emailErrors.length > 0 ? emailErrors.join(' | ') : null, createdRow.id]
+      );
+
+      return res.status(201).json({
+        success: true,
+        referenceNumber: refNumber,
+        request: {
+          ...createdRow,
+          admin_notification_status: adminEmailStatus,
+          client_confirmation_status: clientEmailStatus
+        },
+        adminEmailStatus,
+        clientEmailStatus,
+        message: `Website development request ${refNumber} saved to Neon PostgreSQL and dispatched via ${SMTP_CANONICAL_USER}.`
+      });
+    } catch (err: any) {
+      console.error('[CLIENT_WEB_REQUEST_ERROR]', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to submit web development request' });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
   app.use('/api', router);
   app.use(router);
 }

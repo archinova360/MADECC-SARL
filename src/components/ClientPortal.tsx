@@ -4,7 +4,8 @@ import {
   Calendar, CheckCircle2, Clock, AlertTriangle, ArrowRight,
   Download, Eye, DollarSign, CreditCard, RefreshCw,
   LogOut, FileText, Camera, Video, Layers, Check,
-  Share2, Printer, Search, Send, Copy, X, KeyRound, Save
+  Share2, Printer, Search, Send, Copy, X, KeyRound, Save,
+  Globe, Code, ShoppingBag, ExternalLink
 } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext.tsx';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
@@ -158,7 +159,7 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
   const [client, setClient] = useState<ClientUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'media' | 'milestones' | 'invoices' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'media' | 'milestones' | 'invoices' | 'web-services' | 'profile'>('overview');
   const [portalToast, setPortalToast] = useState<{ text: string; type?: 'success' | 'error' } | null>(null);
 
   // Auth form states
@@ -177,6 +178,24 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
   const [mediaList, setMediaList] = useState<ProjectMedia[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [webServicesCatalog, setWebServicesCatalog] = useState<any[]>([]);
+  const [clientQuoteRequests, setClientQuoteRequests] = useState<any[]>([]);
+
+  // Client Web Development Request Form state
+  const [webReqForm, setWebReqForm] = useState({
+    projectName: '',
+    projectType: 'Corporate / Business Website',
+    servicesRequested: [] as string[],
+    domainPreference: '',
+    hostingPreference: 'Managed Cloud (Netlify + Neon PostgreSQL)',
+    paymentIntegration: 'MTN MoMo & Orange Money',
+    budgetRangeText: '800,000 - 1,800,000 FCFA',
+    urgency: 'Standard (4-6 Weeks)',
+    projectDescription: ''
+  });
+  const [webReqSubmitting, setWebReqSubmitting] = useState(false);
+  const [webReqConfirmation, setWebReqConfirmation] = useState<{ referenceNumber: string; message: string } | null>(null);
+  const [webReqSearch, setWebReqSearch] = useState('');
 
   // Filters
   const [selectedPhase, setSelectedPhase] = useState<string>('ALL');
@@ -295,9 +314,11 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
   const syncAllClientData = useCallback(async (clientId: number, currentProjId?: number | null) => {
     setSyncing(true);
     try {
-      const [pRes, iRes] = await Promise.all([
+      const [pRes, iRes, qrRes, srvRes] = await Promise.all([
         fetch(`/api/client/${clientId}/projects`).then(r => r.json()).catch(() => ({})),
-        fetch(`/api/client/${clientId}/invoices`).then(r => r.json()).catch(() => ({}))
+        fetch(`/api/client/${clientId}/invoices`).then(r => r.json()).catch(() => ({})),
+        fetch(`/api/client/${clientId}/quote-requests`).then(r => r.json()).catch(() => ({})),
+        fetch('/api/services').then(r => r.json()).catch(() => [])
       ]);
 
       let targetProjId = currentProjId;
@@ -310,6 +331,18 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
       }
       if (iRes?.success && Array.isArray(iRes.invoices)) {
         setInvoices(iRes.invoices);
+      }
+      if (qrRes?.success && Array.isArray(qrRes.requests)) {
+        setClientQuoteRequests(qrRes.requests);
+      }
+      if (Array.isArray(srvRes)) {
+        const webOnly = srvRes
+          .filter((s: any) => {
+            const cat = (s.category || '').toLowerCase();
+            return cat.includes('website') || cat.includes('digital') || cat.includes('web');
+          })
+          .sort((a: any, b: any) => Number(a.displayOrder || 99) - Number(b.displayOrder || 99));
+        setWebServicesCatalog(webOnly);
       }
       if (targetProjId) {
         await fetchProjectDetails(targetProjId);
@@ -486,6 +519,77 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
       showToast(err.message, 'error');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const toggleWebServiceSelection = (serviceName: string) => {
+    setWebReqForm(prev => {
+      const exists = prev.servicesRequested.includes(serviceName);
+      return {
+        ...prev,
+        servicesRequested: exists
+          ? prev.servicesRequested.filter(s => s !== serviceName)
+          : [...prev.servicesRequested, serviceName]
+      };
+    });
+  };
+
+  const handleSubmitWebRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    if (!webReqForm.projectName.trim()) {
+      showToast('Please enter a project or website title.', 'error');
+      return;
+    }
+    if (webReqForm.servicesRequested.length === 0) {
+      showToast('Please select at least one Website Development service.', 'error');
+      return;
+    }
+    setWebReqSubmitting(true);
+    setWebReqConfirmation(null);
+    try {
+      const res = await fetch(`/api/client/${client.id}/quote-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          projectName: webReqForm.projectName.trim(),
+          projectType: webReqForm.projectType,
+          servicesRequested: webReqForm.servicesRequested,
+          domainPreference: webReqForm.domainPreference.trim() || undefined,
+          hostingPreference: webReqForm.hostingPreference,
+          paymentIntegration: webReqForm.paymentIntegration,
+          budgetRangeText: webReqForm.budgetRangeText,
+          budgetCurrency: 'XAF',
+          urgency: webReqForm.urgency,
+          projectDescription: webReqForm.projectDescription.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to submit Website Development request.');
+      }
+      setWebReqConfirmation({
+        referenceNumber: data.referenceNumber,
+        message: data.message
+      });
+      setWebReqForm({
+        projectName: '',
+        projectType: 'Corporate / Business Website',
+        servicesRequested: [],
+        domainPreference: '',
+        hostingPreference: 'Managed Cloud (Netlify + Neon PostgreSQL)',
+        paymentIntegration: 'MTN MoMo & Orange Money',
+        budgetRangeText: '800,000 - 1,800,000 FCFA',
+        urgency: 'Standard (4-6 Weeks)',
+        projectDescription: ''
+      });
+      showToast(`Request ${data.referenceNumber} saved & emailed via kreboya603@gmail.com!`);
+      await syncAllClientData(client.id, selectedProjectId);
+    } catch (err: any) {
+      showToast(err.message || 'Submission failed', 'error');
+    } finally {
+      setWebReqSubmitting(false);
     }
   };
 
@@ -768,6 +872,7 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
               { id: 'media', label: 'Photos & Videos', icon: Camera },
               { id: 'milestones', label: 'Milestones', icon: CheckCircle2 },
               { id: 'invoices', label: 'Invoices & Billing', icon: DollarSign },
+              { id: 'web-services', label: 'Web Services', icon: Globe },
               { id: 'profile', label: 'Profile', icon: User }
             ].map(tab => {
               const Icon = tab.icon;
@@ -1788,6 +1893,495 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 7: WEBSITE DEVELOPMENT SERVICES & PORTAL REQUESTS */}
+        {/* ========================================================= */}
+        {activeTab === 'web-services' && (
+          <div className="space-y-8">
+            {/* Header & Public Showcase Link */}
+            <div className={`p-6 sm:p-8 rounded-3xl border shadow-lg ${
+              theme === 'light'
+                ? 'bg-gradient-to-br from-amber-50 via-white to-slate-50 border-amber-200/70'
+                : 'bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/20 border-slate-800'
+            }`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="max-w-3xl">
+                  <span className="text-[11px] font-mono uppercase tracking-widest text-amber-500 font-bold bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                    MADECC Digital &amp; Web Engineering
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-3 font-serif">
+                    Website Development Services
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-2 leading-relaxed">
+                    Commission corporate websites, custom client portals, Mobile Money e-commerce platforms, or technical SEO directly under your {client.clientCode} client account. Every request saves live to PostgreSQL and triggers immediate engineering review via kreboya603@gmail.com.
+                  </p>
+                </div>
+                {_onNavigateToTab && (
+                  <button
+                    type="button"
+                    onClick={() => _onNavigateToTab('website-development')}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-400 hover:text-slate-950 font-bold text-xs border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Public Showcase Specs</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Live Database Catalog of Website Services */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold font-serif flex items-center gap-2">
+                  <Code className="w-4 h-4 text-amber-500" />
+                  <span>Select Website Development Capabilities</span>
+                </h3>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {webServicesCatalog.length} live package(s) loaded
+                </span>
+              </div>
+
+              {webServicesCatalog.length === 0 ? (
+                <div className={`p-6 rounded-2xl border text-xs text-slate-400 ${theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                  Loading Website Development offerings from Neon PostgreSQL...
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {webServicesCatalog.map(srv => {
+                    const isSelected = webReqForm.servicesRequested.includes(srv.name);
+                    return (
+                      <div
+                        key={srv.id}
+                        className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-amber-500 bg-amber-500/10 shadow-md'
+                            : theme === 'light'
+                              ? 'bg-white border-slate-200 hover:border-amber-400'
+                              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                isSelected ? 'bg-amber-500 text-slate-950' : 'bg-amber-500/15 text-amber-400'
+                              }`}>
+                                {srv.icon === 'ShoppingBag' ? <ShoppingBag className="w-4 h-4" /> : srv.icon === 'Code' ? <Code className="w-4 h-4" /> : srv.icon === 'Search' ? <Search className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                              </div>
+                              <div>
+                                <div className="font-bold text-sm">{srv.name}</div>
+                                {srv.serviceCode && (
+                                  <div className="text-[10px] font-mono text-slate-400">{srv.serviceCode}</div>
+                                )}
+                              </div>
+                            </div>
+                            {srv.priceRange && (
+                              <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded shrink-0">
+                                {srv.priceRange}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                            {srv.shortDescription || srv.description}
+                          </p>
+
+                          {Array.isArray(srv.whatWeDeliver) && srv.whatWeDeliver.length > 0 && (
+                            <ul className="space-y-1 mb-4">
+                              {srv.whatWeDeliver.slice(0, 3).map((d: string, i: number) => (
+                                <li key={i} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+                                  <Check className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                                  <span>{d}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleWebServiceSelection(srv.name)}
+                          className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500 text-slate-950'
+                              : theme === 'light'
+                                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                                : 'bg-slate-800 hover:bg-slate-700 text-white'
+                          }`}
+                        >
+                          {isSelected ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Selected in Project Brief</span>
+                            </>
+                          ) : (
+                            <>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                              <span>Include in Request</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Authenticated Client Web Request Submission Form */}
+            <div
+              id="client-web-request-form"
+              className={`p-6 sm:p-8 rounded-3xl border shadow-lg ${theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800/60 mb-6">
+                <div>
+                  <h3 className="text-lg font-bold font-serif">Submit Website Development Specification</h3>
+                  <p className="text-xs text-slate-400">
+                    Submitting as <strong className="text-amber-400">{client.fullName}</strong> ({client.email})
+                  </p>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400">
+                  Direct Neon DB + SMTP Dispatch
+                </span>
+              </div>
+
+              {webReqConfirmation && (
+                <div className="mb-6 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-sm text-emerald-300">
+                        Reference Logged: <span className="font-mono">{webReqConfirmation.referenceNumber}</span>
+                      </div>
+                      <p className="text-emerald-200/90 mt-0.5">{webReqConfirmation.message}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(webReqConfirmation.referenceNumber);
+                      showToast('Reference code copied!');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 font-mono font-bold text-[11px] flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copy Ref
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitWebRequest} className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="text-slate-400 block mb-1 font-semibold">
+                      Website / Platform Project Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={webReqForm.projectName}
+                      onChange={e => setWebReqForm({ ...webReqForm, projectName: e.target.value })}
+                      placeholder="e.g. SIC Real Estate Client Portal & Property Showcase"
+                      className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-amber-500 ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Platform Category</label>
+                    <select
+                      value={webReqForm.projectType}
+                      onChange={e => setWebReqForm({ ...webReqForm, projectType: e.target.value })}
+                      className={`w-full p-3 rounded-xl border outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    >
+                      <option value="Corporate / Business Website">Corporate / Business Website</option>
+                      <option value="Custom Web Application & Portal">Custom Web Application &amp; Portal</option>
+                      <option value="E-Commerce & Mobile Money Store">E-Commerce &amp; Mobile Money Store</option>
+                      <option value="Technical SEO & Cloud Upgrade">Technical SEO &amp; Cloud Upgrade</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Estimated Budget Allocation (XAF)</label>
+                    <select
+                      value={webReqForm.budgetRangeText}
+                      onChange={e => setWebReqForm({ ...webReqForm, budgetRangeText: e.target.value })}
+                      className={`w-full p-3 rounded-xl border outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    >
+                      <option value="350,000 - 800,000 FCFA">350,000 – 800,000 FCFA</option>
+                      <option value="800,000 - 1,800,000 FCFA">800,000 – 1,800,000 FCFA</option>
+                      <option value="1,800,000 - 4,500,000 FCFA">1,800,000 – 4,500,000 FCFA</option>
+                      <option value="4,500,000+ FCFA (Enterprise Portal / SaaS)">4,500,000+ FCFA (Enterprise Portal / SaaS)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Domain Name Preference</label>
+                    <input
+                      type="text"
+                      value={webReqForm.domainPreference}
+                      onChange={e => setWebReqForm({ ...webReqForm, domainPreference: e.target.value })}
+                      placeholder="e.g. mycompany.cm or already owned"
+                      className={`w-full p-3 rounded-xl border outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Payment Integration Needs</label>
+                    <select
+                      value={webReqForm.paymentIntegration}
+                      onChange={e => setWebReqForm({ ...webReqForm, paymentIntegration: e.target.value })}
+                      className={`w-full p-3 rounded-xl border outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    >
+                      <option value="None / Corporate Lead Generation">None / Corporate Lead Generation</option>
+                      <option value="MTN MoMo & Orange Money">MTN MoMo &amp; Orange Money</option>
+                      <option value="Cards + Mobile Money + Bank Wire">Cards + Mobile Money + Bank Wire</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Cloud Hosting Setup</label>
+                    <select
+                      value={webReqForm.hostingPreference}
+                      onChange={e => setWebReqForm({ ...webReqForm, hostingPreference: e.target.value })}
+                      className={`w-full p-3 rounded-xl border outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    >
+                      <option value="Managed Cloud (Netlify + Neon PostgreSQL)">Managed Cloud (Netlify + Neon PostgreSQL)</option>
+                      <option value="Client Cloud / Dedicated VPS">Client Cloud / Dedicated VPS</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Delivery Timeline</label>
+                    <select
+                      value={webReqForm.urgency}
+                      onChange={e => setWebReqForm({ ...webReqForm, urgency: e.target.value })}
+                      className={`w-full p-3 rounded-xl border outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    >
+                      <option value="Standard (4-6 Weeks)">Standard (4–6 Weeks)</option>
+                      <option value="Accelerated (2-3 Weeks)">Accelerated (2–3 Weeks)</option>
+                      <option value="Priority Urgent Launch">Priority Urgent Launch</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="text-slate-400 block mb-1 font-semibold">Selected Services ({webReqForm.servicesRequested.length})</label>
+                    <div className="flex flex-wrap gap-2">
+                      {webReqForm.servicesRequested.length === 0 ? (
+                        <span className="text-amber-400/90 text-[11px]">
+                          Click &ldquo;Include in Request&rdquo; on at least one Website Development package above.
+                        </span>
+                      ) : (
+                        webReqForm.servicesRequested.map(name => (
+                          <span
+                            key={name}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold text-[11px]"
+                          >
+                            <span>{name}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleWebServiceSelection(name)}
+                              className="hover:text-white cursor-pointer"
+                              aria-label={`Remove ${name}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="text-slate-400 block mb-1 font-semibold">Technical Brief, Pages &amp; Functional Goals</label>
+                    <textarea
+                      rows={4}
+                      value={webReqForm.projectDescription}
+                      onChange={e => setWebReqForm({ ...webReqForm, projectDescription: e.target.value })}
+                      placeholder="Describe target pages, bilingual EN/FR needs, CMS roles, client portal features, or SEO goals..."
+                      className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-amber-500 ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={webReqSubmitting}
+                    className="px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-lg"
+                  >
+                    {webReqSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Submitting to Neon &amp; SMTP...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Submit Website Development Request</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Live Client Quote & Web Requests History Table */}
+            <div className={`p-6 rounded-3xl border shadow-lg ${theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                <div>
+                  <h3 className="text-base font-bold font-serif">Your Submitted Website &amp; Quote Requests</h3>
+                  <p className="text-xs text-slate-400">
+                    Real-time records synced with MADECC Operations Queue ({clientQuoteRequests.length} total)
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={webReqSearch}
+                      onChange={e => setWebReqSearch(e.target.value)}
+                      placeholder="Filter reference or title..."
+                      className={`pl-8 pr-3 py-1.5 rounded-xl border text-xs outline-none ${
+                        theme === 'light' ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rows = clientQuoteRequests.map(r => [
+                        r.reference_number,
+                        r.project_name,
+                        r.project_type,
+                        Array.isArray(r.services_requested) ? r.services_requested.join(' | ') : String(r.services_requested || ''),
+                        r.budget_range_text || 'TBD',
+                        r.status,
+                        r.created_at ? new Date(r.created_at).toLocaleDateString() : ''
+                      ]);
+                      exportCsv(
+                        `madecc-requests-${client.clientCode}.csv`,
+                        ['Reference', 'Project Name', 'Category', 'Services', 'Budget', 'Status', 'Submitted'],
+                        rows
+                      );
+                      showToast('Requests exported as CSV!');
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {clientQuoteRequests.length === 0 ? (
+                <div className="p-8 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-400">
+                  No website or quote requests found yet under {client.email}. Use the form above to submit your first digital specification.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-slate-800 text-[10px] font-mono uppercase text-slate-400">
+                      <tr>
+                        <th className="py-2.5 pr-3">Reference</th>
+                        <th className="py-2.5 pr-3">Project &amp; Services</th>
+                        <th className="py-2.5 pr-3">Budget</th>
+                        <th className="py-2.5 pr-3">Status</th>
+                        <th className="py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/70">
+                      {clientQuoteRequests
+                        .filter(r => {
+                          if (!webReqSearch.trim()) return true;
+                          const q = webReqSearch.toLowerCase();
+                          return (
+                            (r.reference_number || '').toLowerCase().includes(q) ||
+                            (r.project_name || '').toLowerCase().includes(q) ||
+                            (r.status || '').toLowerCase().includes(q)
+                          );
+                        })
+                        .map(reqItem => {
+                          const servicesArr = Array.isArray(reqItem.services_requested)
+                            ? reqItem.services_requested
+                            : [];
+                          return (
+                            <tr key={reqItem.id} className="hover:bg-slate-800/30">
+                              <td className="py-3 pr-3 font-mono font-bold text-amber-400 whitespace-nowrap">
+                                {reqItem.reference_number}
+                                <div className="text-[10px] text-slate-500 font-normal">
+                                  {reqItem.created_at ? new Date(reqItem.created_at).toLocaleDateString() : ''}
+                                </div>
+                              </td>
+                              <td className="py-3 pr-3">
+                                <div className="font-bold text-sm">{reqItem.project_name}</div>
+                                <div className="text-[11px] text-slate-400">{reqItem.project_type}</div>
+                                {servicesArr.length > 0 && (
+                                  <div className="text-[11px] text-amber-500/90 mt-0.5">
+                                    {servicesArr.join(', ')}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 pr-3 font-mono whitespace-nowrap">
+                                {reqItem.budget_range_text || 'Per Quote'}
+                              </td>
+                              <td className="py-3 pr-3 whitespace-nowrap">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase ${
+                                  reqItem.status === 'WON' || reqItem.status === 'QUOTATION_SENT'
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : reqItem.status === 'ESTIMATING' || reqItem.status === 'UNDER_REVIEW'
+                                      ? 'bg-sky-500/20 text-sky-400'
+                                      : 'bg-amber-500/20 text-amber-400'
+                                }`}>
+                                  {reqItem.status}
+                                </span>
+                              </td>
+                              <td className="py-3 text-right whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShareModal({
+                                      open: true,
+                                      title: `Request ${reqItem.reference_number}`,
+                                      subject: `MADECC Website Request Summary — ${reqItem.reference_number}`,
+                                      summary: `${reqItem.project_name} (${reqItem.status})`,
+                                      detailsHtml: `<p><strong>Reference:</strong> ${reqItem.reference_number}</p><p><strong>Project:</strong> ${reqItem.project_name}</p><p><strong>Services:</strong> ${servicesArr.join(', ')}</p><p><strong>Status:</strong> ${reqItem.status}</p>`
+                                    });
+                                    setShareRecipient(client.email);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                  title="Share via SMTP Email"
+                                >
+                                  <Share2 className="w-3 h-3 text-amber-400" />
+                                  <span>Email Copy</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

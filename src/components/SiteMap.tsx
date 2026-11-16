@@ -45,6 +45,7 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
         { name: 'Home Landing Page', tab: 'home', desc: 'Hero video loop, value propositions, and live corporate coordinates' },
         { name: 'Client Portal (Progress, Media & Invoices)', tab: 'client-portal', desc: 'Dedicated login for project clients to monitor phases, photos, milestones & pay invoices' },
         { name: 'Engineering Services', tab: 'services', desc: 'Civil engineering, structural design, MEP, turnkey construction' },
+        { name: 'Website Development Services', tab: 'website-development', desc: 'Corporate websites, client portals, MTN MoMo e-commerce & technical SEO' },
         { name: 'Projects Portfolio', tab: 'projects', desc: 'Active construction sites, milestones, and completed landmarks' },
         { name: 'Request a Quote', tab: 'request-a-quote', desc: 'Custom construction quotation with automated BOQ calculations' },
         { name: 'Schedule Consultation', tab: 'schedule-consultation', desc: 'Direct appointment booking with Senior Civil Engineers in Yaoundé & Douala' },

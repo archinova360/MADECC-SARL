@@ -265,6 +265,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 { label: 'Track Order & Downloads', id: 'order-tracking' },
                 { label: 'Visitor & Client Walkthrough Guide', id: 'walkthrough-guide' },
                 { label: 'Our Services', id: 'services' },
+                { label: 'Website Development Services', id: 'website-development' },
                 { label: 'Tenders & Procurement', id: 'tenders' },
                 { label: 'FAQ / Help Centre', id: 'faq' },
                 { label: 'Projects Portfolio', id: 'projects' },

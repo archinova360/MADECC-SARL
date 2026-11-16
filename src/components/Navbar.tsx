@@ -43,7 +43,8 @@ import {
   Info,
   Compass,
   ShoppingBag,
-  PackageCheck
+  PackageCheck,
+  Globe
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
@@ -397,7 +398,7 @@ export default function Navbar({
     { id: 'blog', label: 'Insights' },
   ];
 
-  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'saas-cloud', 'developers', 'client-portal'].includes(currentTab);
+  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'saas-cloud', 'developers', 'client-portal', 'website-development'].includes(currentTab);
   const isCompanyActive = ['about', 'faq', 'contact', 'walkthrough-guide'].includes(currentTab);
 
   return (
@@ -690,6 +691,29 @@ export default function Navbar({
                             <span className="text-[9px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-bold">REST</span>
                           </div>
                           <div className="text-[11px] text-slate-400 leading-tight">Endpoints, BOQ calculators & webhooks</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('website-development');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'website-development' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Website Development</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-bold">WEB</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Corporate sites, portals, MoMo stores &amp; technical SEO</div>
                         </div>
                       </button>
 

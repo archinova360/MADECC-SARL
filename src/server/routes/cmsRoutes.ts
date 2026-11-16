@@ -13,6 +13,7 @@ import { deleteFileFromCloud } from '../storageService.js';
 import { seedDatabase } from '../../db/seed.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 import { getSiteSettings, upsertSiteSettings } from '../../db/ensureSiteSettings.ts';
+import { ensureWebsiteDevelopmentServices } from '../../db/ensureWebServices.ts';
 
   async function ensureFaqDefaults() {
     const existingCats = await db.select().from(faqCategories);
@@ -187,6 +188,7 @@ export function setupCmsRoutes(app: express.Express) {
   // ==========================================
   app.get('/api/services', async (req, res) => {
     try {
+      await ensureWebsiteDevelopmentServices();
       const { admin } = req.query;
       let allServices = await db.select().from(services);
 

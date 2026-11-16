@@ -1175,6 +1175,7 @@ export async function seedDatabase() {
       } catch (err) {
         console.warn('Could not run existing record migration:', err);
       }
+      await import('./ensureWebServices.ts').then(m => m.ensureWebsiteDevelopmentServices()).catch(() => {});
       return;
     }
 

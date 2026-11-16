@@ -95,6 +95,7 @@ import {
 } from '../types.ts';
 import DashboardCharts from './DashboardCharts.tsx';
 import DocumentStudio, { generateAnalyticsPDF } from './DocumentStudio.tsx';
+import { ProDocumentStudio } from './ProDocumentStudio.tsx';
 import CareerStudio from './CareerStudio.tsx';
 import ProposalStudio from './ProposalStudio.tsx';
 import LessonStudio from './LessonStudio.tsx';
@@ -2137,6 +2138,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       title: '📄 DOCUMENTS & COMMERCIAL',
       icon: FileText,
       items: [
+        { id: 'pro-document-studio', label: 'Document Studio', icon: FileText },
         { id: 'documents', label: 'Company Documents', icon: FileText },
         { id: 'legal-contracts', label: 'Contract Generator', icon: Scale },
         { id: 'proposal-studio', label: 'Proposal Manager', icon: FileText },
@@ -5757,6 +5759,16 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
           );
         })()}
+
+        {activeAdminTab === 'pro-document-studio' && (
+          <ProDocumentStudio
+            currentUser={dbUser}
+            showToast={showToast}
+            onOpenSharedLink={(token) => {
+              window.dispatchEvent(new CustomEvent('madecc:open-shared-doc', { detail: token }));
+            }}
+          />
+        )}
 
         {activeAdminTab === 'legal-contracts' && (
           <DocumentStudio

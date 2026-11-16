@@ -26,7 +26,8 @@ import {
   Wrench,
   Compass,
   ShoppingBag,
-  PackageCheck
+  PackageCheck,
+  Globe
 } from 'lucide-react';
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
@@ -160,6 +161,13 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
       desc: 'Track construction progress, site photos, milestones & invoices',
       icon: ShieldCheck,
       badge: 'CLIENT'
+    },
+    { 
+      id: 'website-development', 
+      label: 'Website Development Services', 
+      desc: 'Corporate websites, client portals, MTN MoMo checkouts & SEO',
+      icon: Globe,
+      badge: 'WEB'
     },
     { 
       id: 'store', 

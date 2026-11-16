@@ -49,6 +49,18 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         keywords: `civil engineering services, structural design ${city}, EPC contractor ${country}, ${brandName} services`,
         ogType: 'website'
       },
+      'website-development': {
+        title: `Website Development Services | ${brandName}`,
+        description: `Custom corporate websites, full-stack client portals, MTN MoMo and Orange Money e-commerce, and technical SEO engineered by ${brandName}.`,
+        keywords: `website development ${country}, web portal development ${city}, mobile money ecommerce, technical SEO, ${brandName}`,
+        ogType: 'website'
+      },
+      'client-portal': {
+        title: `Client Construction & Digital Portal | ${brandName}`,
+        description: `Secure client dashboard to monitor live construction progress, site photos, milestones, invoices, and website requests with ${brandName}.`,
+        keywords: `client portal, project tracking, construction invoices, website requests, ${brandName}`,
+        ogType: 'website'
+      },
       'request-a-quote': {
         title: `Request a Project Quote & Bill of Quantities | ${brandName}`,
         description: `Submit your architectural blueprints and project specifications to receive a verified, detailed engineering estimate from ${brandName}.`,
@@ -293,6 +305,62 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
           '@type': 'Organization',
           'name': brandName,
           'url': origin
+        }
+      };
+    } else if (currentTab === 'website-development' || currentTab === 'services') {
+      schemaObj = {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        'serviceType': currentTab === 'website-development'
+          ? 'Website & Full-Stack Web Portal Development'
+          : 'Civil Engineering, Construction & Digital Development Services',
+        'provider': {
+          '@type': 'Organization',
+          'name': brandName,
+          'legalName': legalName,
+          'url': origin,
+          'telephone': primaryPhone,
+          'email': primaryEmail
+        },
+        'areaServed': {
+          '@type': 'Country',
+          'name': country
+        },
+        'hasOfferCatalog': {
+          '@type': 'OfferCatalog',
+          'name': currentTab === 'website-development'
+            ? `${brandName} Website Development Packages`
+            : `${brandName} Engineering & Web Services Catalog`,
+          'itemListElement': [
+            {
+              '@type': 'Offer',
+              'itemOffered': {
+                '@type': 'Service',
+                'name': 'Corporate & Business Website Development'
+              }
+            },
+            {
+              '@type': 'Offer',
+              'itemOffered': {
+                '@type': 'Service',
+                'name': 'Custom Web Applications & Client Portals'
+              }
+            },
+            {
+              '@type': 'Offer',
+              'itemOffered': {
+                '@type': 'Service',
+                'name': 'E-Commerce & Mobile Money Platforms'
+              }
+            },
+            {
+              '@type': 'Offer',
+              'itemOffered': {
+                '@type': 'Service',
+                'name': 'Technical SEO, Performance & Cloud Hosting'
+              }
+            }
+          ]
         }
       };
     }

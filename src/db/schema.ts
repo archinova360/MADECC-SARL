@@ -2150,6 +2150,131 @@ export const saasPlatformSettings = pgTable('saas_platform_settings', {
   updatedBy: text('updated_by'),
 });
 
+// =========================================================================
+// 72. PROFESSIONAL DOCUMENT STUDIO TABLES
+// =========================================================================
+
+export const proDocumentTemplates = pgTable('pro_document_templates', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  category: text('category').notNull(),
+  description: text('description'),
+  contentJson: json('content_json').notNull(),
+  contentHtml: text('content_html').notNull(),
+  defaultOrientation: text('default_orientation').notNull().default('portrait'),
+  defaultVisibility: text('default_visibility').notNull().default('PRIVATE'),
+  defaultHeaderText: text('default_header_text'),
+  defaultFooterText: text('default_footer_text'),
+  isConfidential: boolean('is_confidential').notNull().default(true),
+  isSystem: boolean('is_system').notNull().default(false),
+  version: integer('version').notNull().default(1),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const proDocuments = pgTable('pro_documents', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  documentNumber: text('document_number').notNull().unique(),
+  category: text('category').notNull(),
+  description: text('description'),
+  contentJson: json('content_json').notNull(),
+  contentHtml: text('content_html').notNull(),
+  templateId: integer('template_id'),
+  status: text('status').notNull().default('DRAFT'),
+  visibility: text('visibility').notNull().default('PRIVATE'),
+  isConfidential: boolean('is_confidential').notNull().default(true),
+  pageSize: text('page_size').notNull().default('A4'),
+  orientation: text('orientation').notNull().default('portrait'),
+  marginMm: integer('margin_mm').notNull().default(20),
+  headerText: text('header_text'),
+  footerText: text('footer_text'),
+  showPageNumbers: boolean('show_page_numbers').notNull().default(true),
+  showConfidentialityFooter: boolean('show_confidentiality_footer').notNull().default(true),
+  signatureBlock: json('signature_block'),
+  metadata: json('metadata'),
+  storedPdfUrl: text('stored_pdf_url'),
+  storedDocxUrl: text('stored_docx_url'),
+  version: integer('version').notNull().default(1),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  publishedAt: timestamp('published_at'),
+  archivedAt: timestamp('archived_at'),
+});
+
+export const proDocumentVersions = pgTable('pro_document_versions', {
+  id: serial('id').primaryKey(),
+  documentId: integer('document_id').notNull(),
+  versionNumber: integer('version_number').notNull(),
+  title: text('title').notNull(),
+  category: text('category').notNull(),
+  status: text('status').notNull(),
+  contentJson: json('content_json').notNull(),
+  contentHtml: text('content_html').notNull(),
+  headerText: text('header_text'),
+  footerText: text('footer_text'),
+  signatureBlock: json('signature_block'),
+  metadata: json('metadata'),
+  changeSummary: text('change_summary'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const proDocumentShares = pgTable('pro_document_shares', {
+  id: serial('id').primaryKey(),
+  documentId: integer('document_id').notNull(),
+  shareTokenHash: text('share_token_hash').notNull().unique(),
+  tokenPrefix: text('token_prefix').notNull(),
+  accessType: text('access_type').notNull().default('VIEW_ONLY'),
+  recipientEmail: text('recipient_email'),
+  recipientName: text('recipient_name'),
+  expiresAt: timestamp('expires_at'),
+  revokedAt: timestamp('revoked_at'),
+  revokedBy: text('revoked_by'),
+  accessCount: integer('access_count').notNull().default(0),
+  lastAccessedAt: timestamp('last_accessed_at'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const proDocumentExports = pgTable('pro_document_exports', {
+  id: serial('id').primaryKey(),
+  documentId: integer('document_id').notNull(),
+  format: text('format').notNull(),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url'),
+  storageProvider: text('storage_provider').notNull().default('supabase'),
+  storagePath: text('storage_path'),
+  fileSizeBytes: integer('file_size_bytes').notNull().default(0),
+  orientation: text('orientation').notNull().default('portrait'),
+  versionAtExport: integer('version_at_export').notNull().default(1),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const proDocumentSettings = pgTable('pro_document_settings', {
+  id: serial('id').primaryKey(),
+  defaultPageSize: text('default_page_size').notNull().default('A4'),
+  defaultOrientation: text('default_orientation').notNull().default('portrait'),
+  defaultMarginMm: integer('default_margin_mm').notNull().default(20),
+  autoSaveIntervalSec: integer('auto_save_interval_sec').notNull().default(15),
+  defaultHeaderText: text('default_header_text').notNull().default('MADECC GROUP | Civil Engineering, Construction & Infrastructure'),
+  defaultFooterText: text('default_footer_text').notNull().default('CONFIDENTIAL — MADECC GROUP | Non-Binding Proposal Document'),
+  confidentialityNotice: text('confidentiality_notice').notNull().default('CONFIDENTIALITY NOTICE: This document contains proprietary commercial, financial, and engineering information prepared exclusively for authorized recipients. Unauthorized reproduction or distribution is strictly prohibited.'),
+  requireApprovalBeforePublish: boolean('require_approval_before_publish').notNull().default(true),
+  defaultConfidentialSharingPrivate: boolean('default_confidential_sharing_private').notNull().default(true),
+  brandPrimaryColor: text('brand_primary_color').notNull().default('#0F172A'),
+  brandAccentColor: text('brand_accent_color').notNull().default('#D97706'),
+  updatedBy: text('updated_by'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+
 
 
 

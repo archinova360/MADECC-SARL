@@ -277,29 +277,42 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (
-                id.includes('jspdf') ||
-                id.includes('html2canvas') ||
-                id.includes('docx') ||
-                id.includes('xlsx') ||
-                id.includes('mammoth') ||
-                id.includes('pdf-parse')
-              ) {
-                return 'vendor-docs-export';
-              }
-              if (id.includes('firebase')) {
-                return 'vendor-firebase';
-              }
-              if (id.includes('recharts') || id.includes('d3')) {
-                return 'vendor-charts';
-              }
-              if (id.includes('motion')) {
-                return 'vendor-motion';
-              }
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
-              }
+            if (!id.includes('node_modules')) return;
+
+            const parts = id.split(/node_modules[\\/]/);
+            const modPath = parts[parts.length - 1];
+            const pkgName = modPath.startsWith('@')
+              ? modPath.split(/[\\/]/).slice(0, 2).join('/')
+              : modPath.split(/[\\/]/)[0];
+
+            // Keep core React runtime strictly isolated so it never depends on UI/chart chunks
+            if (pkgName === 'react' || pkgName === 'react-dom' || pkgName === 'scheduler') {
+              return 'vendor-react';
+            }
+            if (
+              pkgName === 'jspdf' ||
+              pkgName === 'jspdf-autotable' ||
+              pkgName === 'html2canvas' ||
+              pkgName === 'docx' ||
+              pkgName === 'xlsx' ||
+              pkgName === 'mammoth' ||
+              pkgName === 'pdf-parse'
+            ) {
+              return 'vendor-docs-export';
+            }
+            if (pkgName === 'firebase' || pkgName.startsWith('@firebase/')) {
+              return 'vendor-firebase';
+            }
+            if (
+              pkgName === 'motion' ||
+              pkgName === 'framer-motion' ||
+              pkgName === 'motion-dom' ||
+              pkgName === 'motion-utils'
+            ) {
+              return 'vendor-motion';
+            }
+            if (pkgName === 'recharts' || pkgName === 'victory-vendor' || pkgName.startsWith('d3-')) {
+              return 'vendor-charts';
             }
           },
         },

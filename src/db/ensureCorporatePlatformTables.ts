@@ -1,9 +1,13 @@
 import { pool, getOrInitPool } from './index.ts';
+import {
+  TEN_BUSINESS_DIVISIONS_SEED,
+  CORPORATE_DESCRIPTION_DEFAULT,
+} from './corporateDivisionsSeedData.ts';
 
 let ensured = false;
 
 export const REGISTRATION_STATUS_LABELS: Record<string, string> = {
-  UNREGISTERED: 'Unregistered – formal registration pending',
+  UNREGISTERED: 'REGISTRATION PENDING (Unregistered – formal registration pending)',
   REGISTRATION_PREPARATION: 'Registration preparation',
   APPLICATION_SUBMITTED: 'Application submitted',
   UNDER_ADMINISTRATIVE_REVIEW: 'Under administrative review',
@@ -93,10 +97,11 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         founder_name TEXT NOT NULL DEFAULT 'Kasah Rodrick Reboya',
         ownership_percentage NUMERIC NOT NULL DEFAULT 100,
         motto TEXT NOT NULL DEFAULT 'Building Cameroon''s Future',
+        corporate_description TEXT,
         employee_count INTEGER NOT NULL DEFAULT 0,
         employee_count_note TEXT DEFAULT 'Founder-led venture; no salaried employees yet',
         is_reg_number_public BOOLEAN NOT NULL DEFAULT false,
-        is_tax_id_public BOOLEAN NOT NULL DEFAULT false,
+        is_tax_id_public BOOLEAN NOT NULL DEFAULT true,
         is_street_address_public BOOLEAN NOT NULL DEFAULT false,
         is_founder_public BOOLEAN NOT NULL DEFAULT true,
         is_employee_count_public BOOLEAN NOT NULL DEFAULT true,
@@ -112,6 +117,8 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
         updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS corporate_description TEXT;
 
       CREATE TABLE IF NOT EXISTS business_legal_entities (
         id SERIAL PRIMARY KEY,
@@ -172,9 +179,13 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         category TEXT NOT NULL,
         summary TEXT NOT NULL,
         full_description TEXT,
+        image_url TEXT,
+        investment_info TEXT,
+        compliance_disclaimer TEXT,
+        documents_json JSONB,
         operational_status TEXT NOT NULL DEFAULT 'PROPOSED',
         publish_status TEXT NOT NULL DEFAULT 'PUBLISHED',
-        country TEXT NOT NULL DEFAULT 'Cameroon',
+        country TEXT NOT NULL DEFAULT 'Republic of Cameroon',
         operating_countries JSONB,
         currency TEXT NOT NULL DEFAULT 'XAF',
         regulatory_body TEXT,
@@ -194,12 +205,22 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
       );
 
+      ALTER TABLE business_divisions ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE business_divisions ADD COLUMN IF NOT EXISTS investment_info TEXT;
+      ALTER TABLE business_divisions ADD COLUMN IF NOT EXISTS compliance_disclaimer TEXT;
+      ALTER TABLE business_divisions ADD COLUMN IF NOT EXISTS documents_json JSONB;
+
       CREATE TABLE IF NOT EXISTS division_services (
         id SERIAL PRIMARY KEY,
         division_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         slug TEXT NOT NULL,
+        category_group TEXT,
         short_description TEXT NOT NULL,
+        full_description TEXT,
+        image_url TEXT,
+        investment_info TEXT,
+        documents_json JSONB,
         scope_deliverables JSONB,
         pricing_model TEXT DEFAULT 'Custom quotation / milestone-based',
         currency TEXT NOT NULL DEFAULT 'XAF',
@@ -215,6 +236,12 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
         updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE division_services ADD COLUMN IF NOT EXISTS category_group TEXT;
+      ALTER TABLE division_services ADD COLUMN IF NOT EXISTS full_description TEXT;
+      ALTER TABLE division_services ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE division_services ADD COLUMN IF NOT EXISTS investment_info TEXT;
+      ALTER TABLE division_services ADD COLUMN IF NOT EXISTS documents_json JSONB;
 
       CREATE TABLE IF NOT EXISTS investors (
         id SERIAL PRIMARY KEY,
@@ -331,6 +358,86 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         details TEXT,
         created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS real_estate_projects (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        location TEXT NOT NULL,
+        description TEXT NOT NULL,
+        property_type TEXT NOT NULL,
+        land_area TEXT,
+        building_area TEXT,
+        floors INTEGER DEFAULT 1,
+        estimated_budget TEXT,
+        budget_currency TEXT NOT NULL DEFAULT 'XAF',
+        investment_requirements TEXT,
+        development_stage TEXT NOT NULL DEFAULT 'PROPOSED',
+        publish_status TEXT NOT NULL DEFAULT 'DRAFT',
+        visibility_public BOOLEAN NOT NULL DEFAULT true,
+        is_conceptual BOOLEAN NOT NULL DEFAULT true,
+        disclaimer_note TEXT NOT NULL DEFAULT 'Proposed real estate development / conceptual study. Architectural renders represent design intent only and are not completed buildings.',
+        photographs_json JSONB,
+        architectural_drawings_json JSONB,
+        renders_json JSONB,
+        feasibility_reports_json JSONB,
+        supporting_docs_json JSONB,
+        version INTEGER NOT NULL DEFAULT 1,
+        archived_at TIMESTAMP WITHOUT TIME ZONE,
+        created_by TEXT,
+        updated_by TEXT,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS pharma_regulatory_compliance (
+        id SERIAL PRIMARY KEY,
+        division_id INTEGER,
+        country TEXT NOT NULL DEFAULT 'Republic of Cameroon',
+        regulatory_authority TEXT NOT NULL,
+        licence_type TEXT NOT NULL,
+        licence_number TEXT,
+        licence_document_url TEXT,
+        licence_document_name TEXT,
+        storage_provider TEXT,
+        sha256_checksum TEXT,
+        issue_date TIMESTAMP WITHOUT TIME ZONE,
+        expiry_date TIMESTAMP WITHOUT TIME ZONE,
+        verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED',
+        responsible_professional TEXT,
+        professional_qualification TEXT,
+        approval_status TEXT NOT NULL DEFAULT 'NOT_APPLIED',
+        compliance_notes TEXT,
+        reviewed_by TEXT,
+        reviewed_at TIMESTAMP WITHOUT TIME ZONE,
+        archived_at TIMESTAMP WITHOUT TIME ZONE,
+        created_by TEXT,
+        updated_by TEXT,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS corporate_enquiries (
+        id SERIAL PRIMARY KEY,
+        enquiry_reference TEXT NOT NULL UNIQUE,
+        enquiry_type TEXT NOT NULL,
+        division_code TEXT,
+        full_name TEXT NOT NULL,
+        organization TEXT,
+        email TEXT NOT NULL,
+        phone TEXT,
+        country TEXT NOT NULL DEFAULT 'Cameroon',
+        proposed_budget TEXT,
+        currency TEXT NOT NULL DEFAULT 'XAF',
+        message TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'NEW',
+        admin_response TEXT,
+        responded_by TEXT,
+        responded_at TIMESTAMP WITHOUT TIME ZONE,
+        archived_at TIMESTAMP WITHOUT TIME ZONE,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
+      );
     `);
 
     // 3. Seed authoritative initial Business Profile if none exists
@@ -394,18 +501,27 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
       );
     }
 
-    // 4. Clean legacy synthetic RCCM/NIU/SARL placeholder strings and idempotently backfill functional NIU P030217852934P when empty/uninitialized
-    await client.query(`
+    // 4. Clean legacy synthetic RCCM/NIU/SARL placeholder strings and idempotently backfill functional NIU P030217852934P + corporate_description when empty
+    await client.query(
+      `
       UPDATE business_profiles
       SET
-        taxpayer_number = 'P030217852934P',
-        is_tax_id_public = true
-      WHERE (taxpayer_number IS NULL OR BTRIM(taxpayer_number) = '');
+        taxpayer_number = CASE WHEN (taxpayer_number IS NULL OR BTRIM(taxpayer_number) = '') THEN 'P030217852934P' ELSE taxpayer_number END,
+        is_tax_id_public = CASE WHEN (taxpayer_number IS NULL OR BTRIM(taxpayer_number) = '') THEN true ELSE is_tax_id_public END,
+        country = CASE WHEN country = 'Cameroon' THEN 'Republic of Cameroon' ELSE country END,
+        planned_legal_structure = CASE WHEN planned_legal_structure = 'SARL' THEN 'MADECC Group SARL' ELSE planned_legal_structure END,
+        corporate_description = CASE WHEN (corporate_description IS NULL OR BTRIM(corporate_description) = '') THEN $1 ELSE corporate_description END
+      `,
+      [CORPORATE_DESCRIPTION_DEFAULT]
+    );
 
+    await client.query(`
       UPDATE business_legal_entities
       SET taxpayer_number = 'P030217852934P'
       WHERE is_current = true AND (taxpayer_number IS NULL OR BTRIM(taxpayer_number) = '');
+    `);
 
+    await client.query(`
       UPDATE site_settings
       SET
         rccm_number = CASE
@@ -425,215 +541,31 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
           ELSE developer_name
         END
       WHERE id = 1;
+    `);
 
+    await client.query(`
       UPDATE tenants
       SET settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{taxNumber}', '"P030217852934P"'::jsonb, true)
       WHERE slug = 'madecc-construction'
         AND (settings->>'taxNumber' IS NULL OR BTRIM(settings->>'taxNumber') = '' OR settings->>'taxNumber' = 'M051812728192K');
     `);
 
-    // 5. Seed All 9 Business Divisions + Key Sub-Services Idempotently (ON CONFLICT DO NOTHING)
-    const divisionsSeed = [
-      {
-        code: 'DIV-01',
-        slug: 'construction-building-services',
-        name: 'Division 1 — Construction & Building Services',
-        category: 'Construction & Building',
-        summary: 'Residential, commercial, industrial, mixed-use developments, renovations, and project management in Cameroon.',
-        fullDescription: 'Turnkey building execution, residential villas & apartments, commercial/mixed-use developments, renovations, site supervision, and digital quantity surveying.',
-        operationalStatus: 'PROPOSED',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINHDU / Municipal Building Permit Authorities (CUY/CUD)',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 1,
-        services: [
-          { name: 'Residential & Commercial Turnkey Building', slug: 'residential-commercial-turnkey', desc: 'Feasibility, structural framing, masonry, MEP systems, and handover coordination subject to municipal building permits.' },
-          { name: 'Renovation & Structural Rehabilitation', slug: 'renovation-rehabilitation', desc: 'Modernization, waterproofing, and structural reinforcement of existing residential and commercial properties.' },
-          { name: 'Digital BOQ & Construction Cost Advisory', slug: 'digital-boq-cost-advisory', desc: 'Itemized Bill of Quantities preparation, unit-rate benchmarking in FCFA, and project supervision planning.' },
-        ],
-      },
-      {
-        code: 'DIV-02',
-        slug: 'civil-engineering-infrastructure',
-        name: 'Division 2 — Civil Engineering & Infrastructure',
-        category: 'Civil Engineering',
-        summary: 'Structural design review, site grading, drainage works, retaining walls, rural access roads, and engineering supervision.',
-        fullDescription: 'Core civil engineering preparation covering earthworks, stormwater drainage, structural calculation modeling (Eurocode 2 / BAEL 91), culverts, and technical inspection workflows.',
-        operationalStatus: 'UNDER_FEASIBILITY',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINTP / Ordre National des Ingénieurs de Génie Civil (ONIGC)',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 2,
-        services: [
-          { name: 'Structural Analysis & Reinforcement Modeling', slug: 'structural-analysis-modeling', desc: 'Preliminary reinforced concrete beam, column, slab, and footing calculations under Eurocode 2 guidance.' },
-          { name: 'Drainage, Culverts & Earthworks Planning', slug: 'drainage-earthworks-planning', desc: 'Site grading, retaining walls, stormwater channels, and geotechnical testing coordination with accredited labs.' },
-        ],
-      },
-      {
-        code: 'DIV-03',
-        slug: 'real-estate-property-development',
-        name: 'Division 3 — Real Estate & Property Development',
-        category: 'Real Estate',
-        summary: 'Residential & mixed-use real estate development, land feasibility evaluation, investment structuring, and property advisory in Cameroon.',
-        fullDescription: 'Strategic property development pipeline targeting urban housing and mixed-use commercial spaces in Yaoundé, Douala, and secondary growth hubs, open to structured joint-venture and cross-border co-investment.',
-        operationalStatus: 'SEEKING_INVESTMENT',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon', 'Ghana (Investor Origination)'],
-        currency: 'XAF',
-        regulatoryBody: 'MINDCAF (Land Title Verification) / MINHDU',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 3,
-        services: [
-          { name: 'Land Feasibility & Development Packaging', slug: 'land-feasibility-packaging', desc: 'Topographical review, preliminary yield modeling, and construction cost feasibility for residential estates.' },
-          { name: 'Joint-Venture Real Estate Co-Development', slug: 'jv-real-estate-development', desc: 'Structured partnership scoping for cross-border diaspora and regional investors targeting Cameroonian real estate.' },
-        ],
-      },
-      {
-        code: 'DIV-04',
-        slug: 'pharmaceuticals-healthcare-business',
-        name: 'Division 4 — Pharmaceuticals & Healthcare Business',
-        category: 'Pharmaceuticals & Healthcare',
-        summary: 'Proposed pharmaceutical distribution, medical supply, and healthcare venture subject strictly to MINSANTE & DPML regulatory licensing.',
-        fullDescription: 'Planned healthcare and pharmaceutical enterprise division in Cameroon, currently in pre-registration / regulatory preparation. No dispensing, wholesale distribution, or clinical operations may proceed without formal MINSANTE / DPML authorization and qualified pharmacist oversight.',
-        operationalStatus: 'AWAITING_REGULATORY_APPROVAL',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINSANTE / DPML (Direction de la Pharmacie, du Médicament et des Laboratoires) / ONPC',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 4,
-        services: [
-          { name: 'Healthcare Facility & Pharma Infrastructure Advisory', slug: 'pharma-infrastructure-advisory', desc: 'Facility planning, clean-zone layout scoping, and investment feasibility subject to MINSANTE regulatory clearance.' },
-          { name: 'Pharmaceutical Supply & Distribution Venture (Proposed)', slug: 'pharma-supply-venture-proposed', desc: 'Cross-border investment concept under feasibility evaluation; operations strictly contingent on MINSANTE licensing.' },
-        ],
-      },
-      {
-        code: 'DIV-05',
-        slug: 'agriculture-agribusiness',
-        name: 'Division 5 — Agriculture & Agribusiness',
-        category: 'Agriculture & Agribusiness',
-        summary: 'Proposed commercial crop production, cold-chain farm infrastructure, and agricultural value-chain partnerships.',
-        fullDescription: 'Planned agribusiness division exploring arable crop farming, farm civil infrastructure, irrigation layout, and out-grower partnerships across fertile Cameroonian agricultural zones.',
-        operationalStatus: 'PROPOSED',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINADER / MINEPIA',
-        licenceRequired: false,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 5,
-        services: [
-          { name: 'Agricultural Infrastructure & Irrigation Scoping', slug: 'agri-infrastructure-scoping', desc: 'Feasibility planning for greenhouses, farm storage buildings, and water retention basins.' },
-        ],
-      },
-      {
-        code: 'DIV-06',
-        slug: 'agro-processing-food-manufacturing',
-        name: 'Division 6 — Agro-Processing & Food Manufacturing',
-        category: 'Agro-Processing',
-        summary: 'Proposed food processing facility engineering, post-harvest transformation concepts, and industrial unit planning.',
-        fullDescription: 'Concept-stage industrial food transformation division focused on reducing post-harvest losses through compliant processing facility design and partnership formation.',
-        operationalStatus: 'PROPOSED',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINMIDT / ANOR (Standards & Quality Agency)',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 6,
-        services: [
-          { name: 'Food Processing Plant Concept & Civil Layout', slug: 'food-plant-concept', desc: 'Preliminary plant workflow, civil building specs, and ANOR compliance roadmap.' },
-        ],
-      },
-      {
-        code: 'DIV-07',
-        slug: 'warehousing-logistics-distribution',
-        name: 'Division 7 — Warehousing, Logistics & Distribution',
-        category: 'Logistics & Warehousing',
-        summary: 'Proposed storage depots, construction supply logistics, and regional freight coordination corridors.',
-        fullDescription: 'Planned logistics and warehousing division designed to support industrial storage, steel/cement inventory staging, and regional trade corridors.',
-        operationalStatus: 'PROPOSED',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINT (Ministry of Transport) / Customs & Port Authorities',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 7,
-        services: [
-          { name: 'Industrial Warehouse Construction & Staging', slug: 'warehouse-staging-concepts', desc: 'Design-build planning for portal-frame depots and regional supply hubs.' },
-        ],
-      },
-      {
-        code: 'DIV-08',
-        slug: 'renewable-energy-solar-solutions',
-        name: 'Division 8 — Renewable Energy & Solar Solutions',
-        category: 'Renewable Energy',
-        summary: 'Hybrid solar PV backup concepts for residential villas, construction sites, clinics, and commercial estates.',
-        fullDescription: 'Clean energy integration unit evaluating commercial rooftop solar PV, hybrid inverter sizing, and off-grid borehole pumping for building developments.',
-        operationalStatus: 'UNDER_FEASIBILITY',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINEE / ARSEL',
-        licenceRequired: false,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 8,
-        services: [
-          { name: 'Building-Integrated Solar PV Sizing', slug: 'solar-pv-sizing', desc: 'Load profiling and hybrid battery backup design integrated into new residential and commercial construction.' },
-        ],
-      },
-      {
-        code: 'DIV-09',
-        slug: 'building-materials-manufacturing',
-        name: 'Division 9 — Building Materials & Manufacturing',
-        category: 'Building Materials',
-        summary: 'Proposed local fabrication of interlocking compressed blocks, precast concrete elements, and aggregate sourcing.',
-        fullDescription: 'Strategic backward-integration initiative evaluating precast pavers, vibrated hollow blocks, and standardized reinforcement prefabrication to lower project input costs.',
-        operationalStatus: 'PROPOSED',
-        publishStatus: 'PUBLISHED',
-        country: 'Cameroon',
-        operatingCountries: ['Cameroon'],
-        currency: 'XAF',
-        regulatoryBody: 'MINMIDT / MINEPDED',
-        licenceRequired: true,
-        licenceStatus: 'NOT_APPLIED',
-        displayOrder: 9,
-        services: [
-          { name: 'Precast Concrete & Masonry Supply Concept', slug: 'precast-masonry-concept', desc: 'Quality-tested block and kerbstone production feasibility for urban construction developments.' },
-        ],
-      },
-    ];
-
-    for (const div of divisionsSeed) {
-      const res = await client.query(
+    // 5. Idempotently Seed All 10 Business Divisions & All 146 Services (NEVER overwrites existing custom edits)
+    for (const div of TEN_BUSINESS_DIVISIONS_SEED) {
+      let divRes = await client.query(
         `
         INSERT INTO business_divisions (
           code, slug, name, category, summary, full_description,
+          image_url, investment_info, compliance_disclaimer,
           operational_status, publish_status, country, operating_countries,
           currency, regulatory_body, licence_required, licence_status,
           visibility_public, is_featured, display_order, version, created_by, updated_by
         ) VALUES (
           $1, $2, $3, $4, $5, $6,
-          $7, $8, $9, $10::jsonb,
-          $11, $12, $13, $14,
-          true, true, $15, 1, 'kreboya603@gmail.com', 'kreboya603@gmail.com'
+          $7, $8, $9,
+          $10, $11, $12, $13::jsonb,
+          $14, $15, $16, $17,
+          true, true, $18, 1, 'kreboya603@gmail.com', 'kreboya603@gmail.com'
         )
         ON CONFLICT (code) DO NOTHING
         RETURNING id
@@ -645,6 +577,9 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
           div.category,
           div.summary,
           div.fullDescription,
+          div.imageUrl,
+          div.investmentInfo || null,
+          div.complianceDisclaimer || null,
           div.operationalStatus,
           div.publishStatus,
           div.country,
@@ -657,24 +592,88 @@ export async function ensureCorporatePlatformTables(): Promise<void> {
         ]
       );
 
-      if (res.rows[0]?.id) {
-        const divId = res.rows[0].id;
-        for (let idx = 0; idx < div.services.length; idx++) {
-          const svc = div.services[idx];
+      let divId = divRes.rows[0]?.id;
+      if (!divId) {
+        const existingDiv = await client.query(
+          `SELECT id, image_url, investment_info, compliance_disclaimer FROM business_divisions WHERE code = $1 LIMIT 1`,
+          [div.code]
+        );
+        divId = existingDiv.rows[0]?.id;
+        if (divId) {
+          // Non-destructively fill empty image/investment/disclaimer on already-seeded divisions
           await client.query(
             `
-            INSERT INTO division_services (
-              division_id, name, slug, short_description, pricing_model, currency,
-              operational_status, publish_status, visibility_public, display_order, version, created_by, updated_by
-            ) VALUES (
-              $1, $2, $3, $4, 'Project-specific feasibility & custom quote (subject to applicable licensing)', $5,
-              $6, 'PUBLISHED', true, $7, 1, 'kreboya603@gmail.com', 'kreboya603@gmail.com'
-            )
+            UPDATE business_divisions
+            SET
+              image_url = COALESCE(NULLIF(BTRIM(image_url), ''), $2),
+              investment_info = COALESCE(NULLIF(BTRIM(investment_info), ''), $3),
+              compliance_disclaimer = COALESCE(NULLIF(BTRIM(compliance_disclaimer), ''), $4)
+            WHERE id = $1
             `,
-            [divId, svc.name, svc.slug, svc.desc, div.currency, div.operationalStatus, idx + 1]
+            [divId, div.imageUrl, div.investmentInfo || null, div.complianceDisclaimer || null]
           );
         }
       }
+
+      if (divId) {
+        for (let idx = 0; idx < div.services.length; idx++) {
+          const svc = div.services[idx];
+          const existingSvc = await client.query(
+            `SELECT id FROM division_services WHERE division_id = $1 AND slug = $2 LIMIT 1`,
+            [divId, svc.slug]
+          );
+          if (existingSvc.rows.length === 0) {
+            await client.query(
+              `
+              INSERT INTO division_services (
+                division_id, name, slug, category_group, short_description, full_description,
+                investment_info, pricing_model, currency,
+                operational_status, publish_status, visibility_public, display_order, version, created_by, updated_by
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6,
+                $7, $8, $9,
+                $10, 'PUBLISHED', true, $11, 1, 'kreboya603@gmail.com', 'kreboya603@gmail.com'
+              )
+              `,
+              [
+                divId,
+                svc.name,
+                svc.slug,
+                svc.categoryGroup || div.category,
+                svc.desc,
+                svc.desc,
+                svc.investmentInfo || div.investmentInfo || null,
+                svc.pricingModel || 'Project-specific feasibility & custom quote (subject to applicable licensing)',
+                div.currency,
+                div.operationalStatus,
+                idx + 1,
+              ]
+            );
+          }
+        }
+      }
+    }
+
+    // 5b. Seed initial truthful Pharmaceutical & Healthcare compliance tracking item if empty (UNVERIFIED / NOT_APPLIED)
+    const pharmaCheck = await client.query(`SELECT COUNT(*)::int AS cnt FROM pharma_regulatory_compliance`);
+    if ((pharmaCheck.rows[0]?.cnt || 0) === 0) {
+      const pharmaDiv = await client.query(`SELECT id FROM business_divisions WHERE code = 'DIV-04' LIMIT 1`);
+      await client.query(
+        `
+        INSERT INTO pharma_regulatory_compliance (
+          division_id, country, regulatory_authority, licence_type, licence_number,
+          verification_status, approval_status, compliance_notes, created_by, updated_by
+        ) VALUES (
+          $1, 'Republic of Cameroon', 'MINSANTE / DPML / ONPC',
+          'Pharmaceutical Wholesale & Healthcare Facility Establishment Authorization',
+          NULL,
+          'UNVERIFIED', 'NOT_APPLIED',
+          'Pre-application compliance record. MADECC Group is NOT a licensed pharmacy or pharmaceutical distributor. Unlicensed medicine sales or dispensing are strictly prohibited.',
+          'kreboya603@gmail.com', 'kreboya603@gmail.com'
+        )
+        `,
+        [pharmaDiv.rows[0]?.id || null]
+      );
     }
 
     // 6. Seed Initial Ghanaian Investor Interest Record (Truthful, Zero Fake Commitments)

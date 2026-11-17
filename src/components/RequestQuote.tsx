@@ -65,7 +65,16 @@ const SERVICE_OPTIONS = [
   'Corporate & Business Website Development',
   'Custom Web Applications & Client Portals',
   'E-Commerce & Mobile Money Platforms',
-  'Technical SEO, Performance & Cloud Hosting'
+  'Technical SEO, Performance & Cloud Hosting',
+  'Real Estate & Property Development',
+  'Pharmaceutical & Healthcare Infrastructure Development',
+  'Agriculture & Agribusiness Development',
+  'Agro-Processing & Food Manufacturing',
+  'Logistics, Warehousing & Supply Chain',
+  'Renewable Energy & Solar Solutions',
+  'Building Materials & Industrial Manufacturing',
+  'Consultancy, Procurement & Project Development',
+  'Investor & Partnership Enquiry'
 ];
 
 const PROJECT_TYPES = [

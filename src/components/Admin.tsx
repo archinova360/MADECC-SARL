@@ -131,6 +131,8 @@ import { CorporateProfileRegistrationHub } from './CorporateProfileRegistrationH
 import { BusinessDivisionsHub } from './BusinessDivisionsHub.tsx';
 import { InvestorPartnershipHub } from './InvestorPartnershipHub.tsx';
 import { CorporateAuditGovernanceHub } from './CorporateAuditGovernanceHub.tsx';
+import { RealEstateProjectsHub } from './RealEstateProjectsHub.tsx';
+import { PharmaComplianceHub } from './PharmaComplianceHub.tsx';
 import { 
   ReceiptPaymentRecord, 
   STANDARD_RECEIPT_FEE_XAF, 
@@ -2054,7 +2056,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       icon: Scale,
       items: [
         { id: 'corporate-profile', label: 'Business Profile & Legal Registration', icon: Building2 },
-        { id: 'corporate-divisions', label: 'Business Divisions & Services (9)', icon: Layers },
+        { id: 'corporate-divisions', label: 'Business Divisions & Services (10)', icon: Layers },
+        { id: 'corporate-real-estate', label: 'Real Estate Projects Hub', icon: Building2 },
+        { id: 'corporate-pharma', label: 'Pharma & Healthcare Compliance', icon: Shield },
         { id: 'corporate-investors', label: 'Investors & Partnerships (Ghana/CM)', icon: Briefcase },
         { id: 'corporate-governance', label: 'Governance, Shares & Audit Trail', icon: ShieldCheck }
       ]
@@ -2932,12 +2936,18 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           <AdminSalesHub />
         )}
 
-        {/* CORPORATE GOVERNANCE: PROFILE, LEGAL REGISTRATION, 9 DIVISIONS, INVESTORS & AUDIT */}
+        {/* CORPORATE GOVERNANCE: PROFILE, LEGAL REGISTRATION, 10 DIVISIONS, REAL ESTATE, PHARMA, INVESTORS & AUDIT */}
         {activeAdminTab === 'corporate-profile' && (
           <CorporateProfileRegistrationHub onNavigatePublicPreview={() => setCurrentTab('about')} />
         )}
         {activeAdminTab === 'corporate-divisions' && (
           <BusinessDivisionsHub />
+        )}
+        {activeAdminTab === 'corporate-real-estate' && (
+          <RealEstateProjectsHub />
+        )}
+        {activeAdminTab === 'corporate-pharma' && (
+          <PharmaComplianceHub />
         )}
         {activeAdminTab === 'corporate-investors' && (
           <InvestorPartnershipHub />

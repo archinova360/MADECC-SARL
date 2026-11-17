@@ -450,6 +450,7 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
     profile: publicCorporateProfile,
     divisions: corporateDivisions,
     opportunities: corporateOpportunities,
+    realEstateProjects,
   } = usePublicCorporateData();
 
   useEffect(() => {
@@ -549,6 +550,14 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
               className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-2xl shadow-lg transition-all flex items-center gap-2"
             >
               Schedule Consultation
+            </button>
+
+            <button
+              type="button"
+              onClick={() => document.getElementById('business-divisions')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-6 py-4 bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-sm rounded-2xl border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Layers className="w-4 h-4" /> Explore 10 Business Divisions &darr;
             </button>
           </div>
         </div>
@@ -772,12 +781,13 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
           </div>
         </FadeIn>
 
-        {/* Dynamic 9 Business Divisions & Investment Opportunities */}
-        <section className="py-12 border-t border-slate-200 space-y-8">
+        {/* Dynamic 10 Business Divisions, Services & Investment Opportunities */}
+        <section id="business-divisions" className="py-12 border-t border-slate-200 space-y-8 scroll-mt-20">
           <CorporateRegistrationStatusCard profile={publicCorporateProfile} compact />
           <CorporateDivisionsDirectory
             divisions={corporateDivisions}
             opportunities={corporateOpportunities}
+            realEstateProjects={realEstateProjects}
             onInquire={(divName) => onNavigateToTab('request-a-quote', { prefillService: divName })}
             theme="light"
           />

@@ -17,6 +17,9 @@ import {
   corporateContentVersions,
   corporateShares,
   corporateAuditLogs,
+  realEstateProjects,
+  pharmaRegulatoryCompliance,
+  corporateEnquiries,
 } from '../../db/schema.ts';
 import {
   AuthRequest,
@@ -26,11 +29,17 @@ import {
 } from '../../middleware/auth.ts';
 import { getCloudinary, upload } from '../storageService.ts';
 import {
+  sendNotificationEmail,
+  sendEmail,
+  buildBrandedHtmlTemplate,
+} from '../mailService.ts';
+import {
   REGISTRATION_STATUS_LABELS,
   LEGAL_STRUCTURE_LABELS,
   INVESTOR_STAGES,
   INVESTOR_STAGE_LABELS,
 } from '../../db/ensureCorporatePlatformTables.ts';
+import { CORPORATE_DESCRIPTION_DEFAULT } from '../../db/corporateDivisionsSeedData.ts';
 
 function computeSha256FromFile(filePath: string): string | null {
   try {
@@ -166,10 +175,10 @@ function formatPublicCorporateStatus(profile: any, verifiedDocsCount: number) {
   const isVerified = status === 'REGISTERED_VERIFIED' && verifiedDocsCount > 0;
 
   let statusHeadline = 'MADECC Group is currently undergoing formal business registration.';
-  let legalStatusBadge = 'Legal status: Individual establishment registration pending.';
+  let legalStatusBadge = 'Legal status: REGISTRATION PENDING (Individual establishment planned, subject to formal registration).';
   if (status === 'APPLICATION_SUBMITTED' || status === 'UNDER_ADMINISTRATIVE_REVIEW') {
     statusHeadline = 'MADECC Group formal business registration is currently under administrative review.';
-    legalStatusBadge = 'Legal status: Registration application submitted & under review.';
+    legalStatusBadge = 'Legal status: REGISTRATION PENDING — application submitted & under review.';
   } else if (status === 'REGISTERED_AWAITING_DOC_VERIFICATION') {
     statusHeadline = 'Registration record filed — awaiting documentary verification.';
     legalStatusBadge = 'Legal status: Registered — documentary verification pending.';
@@ -178,7 +187,7 @@ function formatPublicCorporateStatus(profile: any, verifiedDocsCount: number) {
     legalStatusBadge = `Legal status: ${LEGAL_STRUCTURE_LABELS[legalStructure] || legalStructure} (Verified)`;
   } else if (status === 'REJECTED_OR_REQUIRES_CORRECTION') {
     statusHeadline = 'Business registration filing is currently undergoing correction.';
-    legalStatusBadge = 'Legal status: Registration update pending.';
+    legalStatusBadge = 'Legal status: REGISTRATION PENDING — update required.';
   } else if (status === 'SUSPENDED' || status === 'EXPIRED') {
     statusHeadline = 'Business registration status requires renewal / clearance.';
     legalStatusBadge = `Legal status: ${REGISTRATION_STATUS_LABELS[status] || status}`;
@@ -189,6 +198,7 @@ function formatPublicCorporateStatus(profile: any, verifiedDocsCount: number) {
     companyName: profile.companyName,
     tradeName: profile.tradeName,
     motto: profile.motto,
+    corporateDescription: profile.corporateDescription || CORPORATE_DESCRIPTION_DEFAULT,
     country: profile.country,
     city: profile.city,
     streetAddress: profile.isStreetAddressPublic ? profile.streetAddress : null,
@@ -201,7 +211,7 @@ function formatPublicCorporateStatus(profile: any, verifiedDocsCount: number) {
     employeeCountNote: profile.isEmployeeCountPublic ? profile.employeeCountNote : null,
     legalStructure,
     legalStructureLabel: LEGAL_STRUCTURE_LABELS[legalStructure] || legalStructure,
-    plannedLegalStructure: profile.plannedLegalStructure || 'SARL',
+    plannedLegalStructure: profile.plannedLegalStructure || 'MADECC Group SARL',
     registrationStatus: status,
     registrationStatusLabel: REGISTRATION_STATUS_LABELS[status] || status,
     isLegallyVerified: isVerified,
@@ -242,10 +252,11 @@ export function setupCorporateRoutes(app: express.Express) {
             companyName: 'MADECC Group',
             tradeName: 'MADECC GROUP',
             motto: "Building Cameroon's Future",
-            country: 'Cameroon',
+            corporateDescription: CORPORATE_DESCRIPTION_DEFAULT,
+            country: 'Republic of Cameroon',
             city: 'Yaoundé',
             streetAddress: null,
-            displayLocation: 'Yaoundé, Cameroon',
+            displayLocation: 'Yaoundé, Republic of Cameroon',
             founderName: 'Kasah Rodrick Reboya',
             ownershipPercentage: 100,
             employeeCount: 0,
@@ -254,7 +265,7 @@ export function setupCorporateRoutes(app: express.Express) {
             registrationStatusLabel: REGISTRATION_STATUS_LABELS.UNREGISTERED,
             isLegallyVerified: false,
             statusHeadline: 'MADECC Group is currently undergoing formal business registration.',
-            legalStatusBadge: 'Legal status: Individual establishment registration pending.',
+            legalStatusBadge: 'Legal status: REGISTRATION PENDING (Individual establishment planned, subject to formal registration).',
             registrationNumber: null,
             taxpayerNumber: 'P030217852934P',
           },
@@ -365,6 +376,107 @@ export function setupCorporateRoutes(app: express.Express) {
     }
   });
 
+  // Public Real Estate Development Showcase (Only PUBLISHED + public + conceptual warnings preserved)
+  app.get('/api/public/real-estate-projects', async (_req, res) => {
+    try {
+      if (!db) return res.status(503).json({ error: 'Database unavailable' });
+      const rows = await db
+        .select()
+        .from(realEstateProjects)
+        .where(
+          and(
+            eq(realEstateProjects.publishStatus, 'PUBLISHED'),
+            eq(realEstateProjects.visibilityPublic, true),
+            isNull(realEstateProjects.archivedAt)
+          )
+        )
+        .orderBy(desc(realEstateProjects.updatedAt), desc(realEstateProjects.id));
+      res.json({ success: true, projects: rows });
+    } catch (err: any) {
+      console.error('[PUBLIC_REAL_ESTATE_ERROR]', err);
+      res.status(500).json({ error: 'Failed to load real estate projects' });
+    }
+  });
+
+  // Public Investor & Partnership Enquiries Submission (Saved to Neon + SMTP Admin Notification)
+  app.post('/api/public/corporate-enquiries', async (req, res) => {
+    try {
+      if (!db) return res.status(503).json({ error: 'Database unavailable' });
+      const b = req.body || {};
+      const fullName = String(b.fullName || '').trim();
+      const email = String(b.email || '').trim();
+      const enquiryType = String(b.enquiryType || '').trim();
+      const message = String(b.message || '').trim();
+
+      if (!fullName || !email || !enquiryType || !message) {
+        return res.status(400).json({ error: 'Full name, email, enquiry category, and message are required.' });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Please provide a valid email address.' });
+      }
+
+      const refCode = `INQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const [created] = await db
+        .insert(corporateEnquiries)
+        .values({
+          enquiryReference: refCode,
+          enquiryType,
+          divisionCode: b.divisionCode || null,
+          fullName,
+          organization: b.organization ? String(b.organization).trim() : null,
+          email,
+          phone: b.phone ? String(b.phone).trim() : null,
+          country: b.country ? String(b.country).trim() : 'Republic of Cameroon',
+          proposedBudget: b.proposedBudget ? String(b.proposedBudget).trim() : null,
+          currency: b.currency || 'XAF',
+          message,
+          status: 'NEW',
+        })
+        .returning();
+
+      // Non-blocking SMTP emails via configured kreboya603@gmail.com
+      sendNotificationEmail(
+        `[MADECC Enquiry ${refCode}] ${enquiryType} — ${fullName}`,
+        `New Investor/Partnership Enquiry (${refCode})\nCategory: ${enquiryType}\nName: ${fullName}\nOrganization: ${created.organization || 'N/A'}\nEmail: ${email}\nPhone: ${created.phone || 'N/A'}\nCountry: ${created.country}\nBudget/Commitment Intent: ${created.proposedBudget || 'Not specified'} ${created.currency}\n\nMessage:\n${message}`,
+        buildBrandedHtmlTemplate({
+          title: `New Corporate & Investment Enquiry (${refCode})`,
+          badge: enquiryType,
+          leadParagraph: `A new ${enquiryType} enquiry was submitted through the MADECC Group portal.`,
+          sectionsHtml: `
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <tr><td style="padding:6px 0; color:#64748b;">Reference:</td><td style="padding:6px 0; font-weight:700;">${refCode}</td></tr>
+              <tr><td style="padding:6px 0; color:#64748b;">Category:</td><td style="padding:6px 0; font-weight:700;">${enquiryType}</td></tr>
+              <tr><td style="padding:6px 0; color:#64748b;">Enquirer:</td><td style="padding:6px 0;">${fullName} (${created.organization || 'Individual'})</td></tr>
+              <tr><td style="padding:6px 0; color:#64748b;">Contact:</td><td style="padding:6px 0;">${email} | ${created.phone || 'No phone'}</td></tr>
+              <tr><td style="padding:6px 0; color:#64748b;">Country:</td><td style="padding:6px 0;">${created.country}</td></tr>
+              <tr><td style="padding:6px 0; color:#64748b;">Proposed Scale:</td><td style="padding:6px 0;">${created.proposedBudget || 'Not specified'} ${created.currency}</td></tr>
+            </table>
+            <div style="margin-top:16px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; white-space:pre-wrap;">${message}</div>
+          `,
+        }),
+        { replyTo: email }
+      ).catch((e) => console.warn('[ENQUIRY_ADMIN_MAIL_WARN]', e?.message || e));
+
+      sendEmail(
+        email,
+        `MADECC Group Enquiry Confirmation (${refCode})`,
+        `Dear ${fullName},\n\nThank you for your ${enquiryType} enquiry with MADECC Group.\nReference: ${refCode}\n\nNote: Proposed developments and partnerships are reviewed strictly subject to formal feasibility, legal registration, and regulatory requirements where applicable.\n\nFounder & Executive Desk\nMADECC Group`,
+        buildBrandedHtmlTemplate({
+          title: `Enquiry Received — ${refCode}`,
+          badge: 'MADECC Group Corporate Desk',
+          recipientName: fullName,
+          leadParagraph: `Thank you for reaching out regarding <strong>${enquiryType}</strong>. Your enquiry has been recorded in our corporate portal for review.`,
+          sectionsHtml: `<p style="font-size:13px; color:#334155;"><strong>Reference:</strong> ${refCode}<br/><strong>Notice:</strong> All projects and partnership discussions remain subject to formal feasibility, due diligence, and applicable statutory authorizations.</p>`,
+        })
+      ).catch((e) => console.warn('[ENQUIRY_CLIENT_MAIL_WARN]', e?.message || e));
+
+      res.json({ success: true, enquiry: created });
+    } catch (err: any) {
+      console.error('[CORPORATE_ENQUIRY_SUBMIT_ERROR]', err);
+      res.status(500).json({ error: err.message || 'Failed to submit enquiry' });
+    }
+  });
+
   // Tokenized Controlled Share Access (Public)
   app.get('/api/public/corporate-share/:token', async (req, res) => {
     try {
@@ -423,8 +535,19 @@ export function setupCorporateRoutes(app: express.Express) {
           const svcs = await db
             .select()
             .from(divisionServices)
-            .where(and(eq(divisionServices.divisionId, div[0].id), isNull(divisionServices.archivedAt)));
+            .where(and(eq(divisionServices.divisionId, div[0].id), isNull(divisionServices.archivedAt)))
+            .orderBy(divisionServices.displayOrder, divisionServices.id);
           payload = { ...div[0], services: svcs };
+        }
+      } else if (share.entityType === 'SERVICE') {
+        const svc = await db.select().from(divisionServices).where(eq(divisionServices.id, share.entityId)).limit(1);
+        if (svc[0]) {
+          payload = svc[0];
+        }
+      } else if (share.entityType === 'REAL_ESTATE') {
+        const proj = await db.select().from(realEstateProjects).where(eq(realEstateProjects.id, share.entityId)).limit(1);
+        if (proj[0]) {
+          payload = proj[0];
         }
       } else if (share.entityType === 'INVESTOR_OPPORTUNITY') {
         const inv = await db.select().from(investors).where(eq(investors.id, share.entityId)).limit(1);
@@ -674,6 +797,7 @@ export function setupCorporateRoutes(app: express.Express) {
           founderName: body.founderName ?? existing.founderName,
           ownershipPercentage: body.ownershipPercentage !== undefined ? String(body.ownershipPercentage) : existing.ownershipPercentage,
           motto: body.motto ?? existing.motto,
+          corporateDescription: body.corporateDescription !== undefined ? body.corporateDescription : existing.corporateDescription,
           employeeCount: body.employeeCount !== undefined ? Math.max(0, Number(body.employeeCount)) : existing.employeeCount,
           employeeCountNote: body.employeeCountNote ?? existing.employeeCountNote,
           isRegNumberPublic: body.isRegNumberPublic !== undefined ? Boolean(body.isRegNumberPublic) : existing.isRegNumberPublic,
@@ -1118,10 +1242,14 @@ export function setupCorporateRoutes(app: express.Express) {
             category: b.category || 'Enterprise Division',
             summary: b.summary.trim(),
             fullDescription: b.fullDescription || null,
+            imageUrl: b.imageUrl || null,
+            investmentInfo: b.investmentInfo || null,
+            complianceDisclaimer: b.complianceDisclaimer || null,
+            documentsJson: b.documentsJson || [],
             operationalStatus: b.operationalStatus || 'PROPOSED',
             publishStatus: b.publishStatus || 'DRAFT',
-            country: b.country || 'Cameroon',
-            operatingCountries: b.operatingCountries || [b.country || 'Cameroon'],
+            country: b.country || 'Republic of Cameroon',
+            operatingCountries: b.operatingCountries || [b.country || 'Republic of Cameroon'],
             currency: b.currency || 'XAF',
             regulatoryBody: b.regulatoryBody || null,
             licenceRequired: Boolean(b.licenceRequired),
@@ -1198,6 +1326,10 @@ export function setupCorporateRoutes(app: express.Express) {
             category: b.category ?? existing.category,
             summary: b.summary ?? existing.summary,
             fullDescription: b.fullDescription !== undefined ? b.fullDescription : existing.fullDescription,
+            imageUrl: b.imageUrl !== undefined ? b.imageUrl : existing.imageUrl,
+            investmentInfo: b.investmentInfo !== undefined ? b.investmentInfo : existing.investmentInfo,
+            complianceDisclaimer: b.complianceDisclaimer !== undefined ? b.complianceDisclaimer : existing.complianceDisclaimer,
+            documentsJson: b.documentsJson !== undefined ? b.documentsJson : existing.documentsJson,
             operationalStatus: nextOpStatus,
             publishStatus: b.publishStatus ?? existing.publishStatus,
             country: b.country ?? existing.country,
@@ -1245,6 +1377,66 @@ export function setupCorporateRoutes(app: express.Express) {
     }
   );
 
+  // Cloudinary / Storage Upload for Division Images & Supporting Documents
+  app.post(
+    '/api/corporate/divisions/:id/upload-media',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    safeDocMulter,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const divId = Number(req.params.id);
+        const rows = await db.select().from(businessDivisions).where(eq(businessDivisions.id, divId)).limit(1);
+        const existing = rows[0];
+        if (!existing) return res.status(404).json({ error: 'Division not found' });
+        if (!req.file) return res.status(400).json({ error: 'File is required' });
+
+        const kind = req.body?.kind === 'document' ? 'document' : 'image';
+        const stored = await storeUploadedFile(req.file, `madecc_divisions/${divId}`);
+
+        let updatedRow = existing;
+        if (kind === 'image') {
+          const [upd] = await db
+            .update(businessDivisions)
+            .set({ imageUrl: stored.fileUrl, version: existing.version + 1, updatedBy: req.dbUser?.email || 'admin', updatedAt: new Date() })
+            .where(eq(businessDivisions.id, divId))
+            .returning();
+          updatedRow = upd;
+        } else {
+          const prevDocs = Array.isArray(existing.documentsJson) ? existing.documentsJson : [];
+          const newDoc = {
+            id: `doc_${Date.now()}`,
+            title: req.body?.title || req.file.originalname,
+            fileName: req.file.originalname,
+            fileUrl: stored.fileUrl,
+            storageProvider: stored.storageProvider,
+            mimeType: req.file.mimetype,
+            uploadedAt: new Date().toISOString(),
+          };
+          const [upd] = await db
+            .update(businessDivisions)
+            .set({ documentsJson: [...prevDocs, newDoc], version: existing.version + 1, updatedBy: req.dbUser?.email || 'admin', updatedAt: new Date() })
+            .where(eq(businessDivisions.id, divId))
+            .returning();
+          updatedRow = upd;
+        }
+
+        await logCorporateAudit({
+          req,
+          action: kind === 'image' ? 'UPLOAD_DIVISION_IMAGE' : 'UPLOAD_DIVISION_DOCUMENT',
+          entityType: 'DIVISION',
+          entityId: divId,
+          entityTitle: existing.name,
+          afterJson: stored,
+        });
+
+        res.json({ success: true, division: updatedRow, uploaded: stored });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
   app.patch(
     '/api/corporate/divisions/:id/archive',
     requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
@@ -1280,7 +1472,7 @@ export function setupCorporateRoutes(app: express.Express) {
     }
   );
 
-  // Division Services CRUD
+  // Division Services CRUD (With Image/Doc Uploads, Versioning, Safe Delete & Independent Statuses)
   app.post(
     '/api/corporate/divisions/:divisionId/services',
     requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
@@ -1292,20 +1484,25 @@ export function setupCorporateRoutes(app: express.Express) {
         if (!b.name || !b.shortDescription) {
           return res.status(400).json({ error: 'name and shortDescription are required' });
         }
-        const slug = (b.slug || b.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const slug = (b.slug || `${b.name}-${Date.now()}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const [created] = await db
           .insert(divisionServices)
           .values({
             divisionId,
             name: b.name.trim(),
             slug,
+            categoryGroup: b.categoryGroup || null,
             shortDescription: b.shortDescription.trim(),
+            fullDescription: b.fullDescription || b.shortDescription.trim(),
+            imageUrl: b.imageUrl || null,
+            investmentInfo: b.investmentInfo || null,
+            documentsJson: b.documentsJson || [],
             scopeDeliverables: b.scopeDeliverables || [],
             pricingModel: b.pricingModel || 'Custom quotation / milestone-based',
             currency: b.currency || 'XAF',
             regulatoryNotes: b.regulatoryNotes || null,
             operationalStatus: b.operationalStatus || 'PROPOSED',
-            publishStatus: b.publishStatus || 'PUBLISHED',
+            publishStatus: b.publishStatus || 'DRAFT',
             visibilityPublic: b.visibilityPublic !== false,
             displayOrder: Number(b.displayOrder || 1),
             version: 1,
@@ -1313,6 +1510,16 @@ export function setupCorporateRoutes(app: express.Express) {
             updatedBy: req.dbUser?.email || 'admin',
           })
           .returning();
+
+        await createVersionSnapshot({
+          entityType: 'SERVICE',
+          entityId: created.id,
+          versionNumber: 1,
+          entityTitle: created.name,
+          changeSummary: 'Created division service',
+          snapshotJson: created,
+          createdBy: req.dbUser?.email || 'admin',
+        });
 
         await logCorporateAudit({
           req,
@@ -1342,11 +1549,18 @@ export function setupCorporateRoutes(app: express.Express) {
         if (!existing) return res.status(404).json({ error: 'Service not found' });
 
         const b = req.body || {};
+        const nextVer = existing.version + 1;
         const [updated] = await db
           .update(divisionServices)
           .set({
+            divisionId: b.divisionId !== undefined ? Number(b.divisionId) : existing.divisionId,
             name: b.name ?? existing.name,
+            categoryGroup: b.categoryGroup !== undefined ? b.categoryGroup : existing.categoryGroup,
             shortDescription: b.shortDescription ?? existing.shortDescription,
+            fullDescription: b.fullDescription !== undefined ? b.fullDescription : existing.fullDescription,
+            imageUrl: b.imageUrl !== undefined ? b.imageUrl : existing.imageUrl,
+            investmentInfo: b.investmentInfo !== undefined ? b.investmentInfo : existing.investmentInfo,
+            documentsJson: b.documentsJson !== undefined ? b.documentsJson : existing.documentsJson,
             scopeDeliverables: b.scopeDeliverables ?? existing.scopeDeliverables,
             pricingModel: b.pricingModel ?? existing.pricingModel,
             currency: b.currency ?? existing.currency,
@@ -1354,12 +1568,23 @@ export function setupCorporateRoutes(app: express.Express) {
             operationalStatus: b.operationalStatus ?? existing.operationalStatus,
             publishStatus: b.publishStatus ?? existing.publishStatus,
             visibilityPublic: b.visibilityPublic !== undefined ? Boolean(b.visibilityPublic) : existing.visibilityPublic,
-            version: existing.version + 1,
+            displayOrder: b.displayOrder !== undefined ? Number(b.displayOrder) : existing.displayOrder,
+            version: nextVer,
             updatedBy: req.dbUser?.email || 'admin',
             updatedAt: new Date(),
           })
           .where(eq(divisionServices.id, svcId))
           .returning();
+
+        await createVersionSnapshot({
+          entityType: 'SERVICE',
+          entityId: svcId,
+          versionNumber: nextVer,
+          entityTitle: updated.name,
+          changeSummary: b.changeSummary || `Updated service (${updated.operationalStatus} / ${updated.publishStatus})`,
+          snapshotJson: updated,
+          createdBy: req.dbUser?.email || 'admin',
+        });
 
         await logCorporateAudit({
           req,
@@ -1372,6 +1597,65 @@ export function setupCorporateRoutes(app: express.Express) {
         });
 
         res.json({ success: true, service: updated });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.post(
+    '/api/corporate/services/:id/upload-media',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    safeDocMulter,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const svcId = Number(req.params.id);
+        const rows = await db.select().from(divisionServices).where(eq(divisionServices.id, svcId)).limit(1);
+        const existing = rows[0];
+        if (!existing) return res.status(404).json({ error: 'Service not found' });
+        if (!req.file) return res.status(400).json({ error: 'File is required' });
+
+        const kind = req.body?.kind === 'document' ? 'document' : 'image';
+        const stored = await storeUploadedFile(req.file, `madecc_services/${svcId}`);
+
+        let updatedRow = existing;
+        if (kind === 'image') {
+          const [upd] = await db
+            .update(divisionServices)
+            .set({ imageUrl: stored.fileUrl, version: existing.version + 1, updatedBy: req.dbUser?.email || 'admin', updatedAt: new Date() })
+            .where(eq(divisionServices.id, svcId))
+            .returning();
+          updatedRow = upd;
+        } else {
+          const prevDocs = Array.isArray(existing.documentsJson) ? existing.documentsJson : [];
+          const newDoc = {
+            id: `doc_${Date.now()}`,
+            title: req.body?.title || req.file.originalname,
+            fileName: req.file.originalname,
+            fileUrl: stored.fileUrl,
+            storageProvider: stored.storageProvider,
+            mimeType: req.file.mimetype,
+            uploadedAt: new Date().toISOString(),
+          };
+          const [upd] = await db
+            .update(divisionServices)
+            .set({ documentsJson: [...prevDocs, newDoc], version: existing.version + 1, updatedBy: req.dbUser?.email || 'admin', updatedAt: new Date() })
+            .where(eq(divisionServices.id, svcId))
+            .returning();
+          updatedRow = upd;
+        }
+
+        await logCorporateAudit({
+          req,
+          action: kind === 'image' ? 'UPLOAD_SERVICE_IMAGE' : 'UPLOAD_SERVICE_DOCUMENT',
+          entityType: 'SERVICE',
+          entityId: svcId,
+          entityTitle: existing.name,
+          afterJson: stored,
+        });
+
+        res.json({ success: true, service: updatedRow, uploaded: stored });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -1396,7 +1680,65 @@ export function setupCorporateRoutes(app: express.Express) {
           .where(eq(divisionServices.id, svcId))
           .returning();
         if (!updated) return res.status(404).json({ error: 'Service not found' });
+
+        await logCorporateAudit({
+          req,
+          action: archive ? 'ARCHIVE_SERVICE' : 'RESTORE_SERVICE',
+          entityType: 'SERVICE',
+          entityId: svcId,
+          entityTitle: updated.name,
+        });
+
         res.json({ success: true, service: updated });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // Safe Service Delete (Archives or removes cleanly with audit log)
+  app.delete(
+    '/api/corporate/services/:id',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const svcId = Number(req.params.id);
+        const existingRows = await db.select().from(divisionServices).where(eq(divisionServices.id, svcId)).limit(1);
+        const existing = existingRows[0];
+        if (!existing) return res.status(404).json({ error: 'Service not found' });
+
+        if (req.query.hardDelete === 'true') {
+          await db.delete(divisionServices).where(eq(divisionServices.id, svcId));
+          await logCorporateAudit({
+            req,
+            action: 'DELETE_DIVISION_SERVICE',
+            entityType: 'SERVICE',
+            entityId: svcId,
+            entityTitle: existing.name,
+            beforeJson: existing,
+            details: `Permanently removed service "${existing.name}"`,
+          });
+          return res.json({ success: true, deleted: true });
+        }
+
+        const [archived] = await db
+          .update(divisionServices)
+          .set({ archivedAt: new Date(), publishStatus: 'ARCHIVED', visibilityPublic: false, updatedAt: new Date() })
+          .where(eq(divisionServices.id, svcId))
+          .returning();
+
+        await logCorporateAudit({
+          req,
+          action: 'SAFE_DELETE_ARCHIVE_SERVICE',
+          entityType: 'SERVICE',
+          entityId: svcId,
+          entityTitle: existing.name,
+          beforeJson: existing,
+          afterJson: archived,
+        });
+
+        res.json({ success: true, service: archived, archived: true });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -1916,6 +2258,88 @@ export function setupCorporateRoutes(app: express.Express) {
           return res.json({ success: true, restored });
         }
 
+        if (ver.entityType === 'SERVICE') {
+          const curRows = await db.select().from(divisionServices).where(eq(divisionServices.id, ver.entityId)).limit(1);
+          const cur = curRows[0];
+          if (!cur) return res.status(404).json({ error: 'Service not found' });
+          const nextVer = cur.version + 1;
+          const [restored] = await db
+            .update(divisionServices)
+            .set({
+              name: snap.name ?? cur.name,
+              categoryGroup: snap.categoryGroup ?? cur.categoryGroup,
+              shortDescription: snap.shortDescription ?? cur.shortDescription,
+              fullDescription: snap.fullDescription ?? cur.fullDescription,
+              imageUrl: snap.imageUrl ?? cur.imageUrl,
+              investmentInfo: snap.investmentInfo ?? cur.investmentInfo,
+              operationalStatus: snap.operationalStatus ?? cur.operationalStatus,
+              publishStatus: snap.publishStatus ?? cur.publishStatus,
+              displayOrder: snap.displayOrder ?? cur.displayOrder,
+              version: nextVer,
+              updatedBy: req.dbUser?.email || 'admin',
+              updatedAt: new Date(),
+            })
+            .where(eq(divisionServices.id, cur.id))
+            .returning();
+
+          await createVersionSnapshot({
+            entityType: 'SERVICE',
+            entityId: cur.id,
+            versionNumber: nextVer,
+            entityTitle: restored.name,
+            changeSummary: `Non-destructive restore from v${ver.versionNumber}`,
+            snapshotJson: restored,
+            createdBy: req.dbUser?.email || 'admin',
+          });
+
+          await logCorporateAudit({
+            req,
+            action: 'RESTORE_VERSION',
+            entityType: 'SERVICE',
+            entityId: cur.id,
+            entityTitle: restored.name,
+            details: `Restored service from v${ver.versionNumber} -> new v${nextVer}`,
+          });
+
+          return res.json({ success: true, restored });
+        }
+
+        if (ver.entityType === 'REAL_ESTATE') {
+          const curRows = await db.select().from(realEstateProjects).where(eq(realEstateProjects.id, ver.entityId)).limit(1);
+          const cur = curRows[0];
+          if (!cur) return res.status(404).json({ error: 'Real estate project not found' });
+          const nextVer = cur.version + 1;
+          const [restored] = await db
+            .update(realEstateProjects)
+            .set({
+              name: snap.name ?? cur.name,
+              location: snap.location ?? cur.location,
+              description: snap.description ?? cur.description,
+              propertyType: snap.propertyType ?? cur.propertyType,
+              developmentStage: snap.developmentStage ?? cur.developmentStage,
+              publishStatus: snap.publishStatus ?? cur.publishStatus,
+              estimatedBudget: snap.estimatedBudget ?? cur.estimatedBudget,
+              investmentRequirements: snap.investmentRequirements ?? cur.investmentRequirements,
+              version: nextVer,
+              updatedBy: req.dbUser?.email || 'admin',
+              updatedAt: new Date(),
+            })
+            .where(eq(realEstateProjects.id, cur.id))
+            .returning();
+
+          await createVersionSnapshot({
+            entityType: 'REAL_ESTATE',
+            entityId: cur.id,
+            versionNumber: nextVer,
+            entityTitle: restored.name,
+            changeSummary: `Non-destructive restore from v${ver.versionNumber}`,
+            snapshotJson: restored,
+            createdBy: req.dbUser?.email || 'admin',
+          });
+
+          return res.json({ success: true, restored });
+        }
+
         res.status(400).json({ error: `Version restore not supported for entityType ${ver.entityType}` });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
@@ -2090,6 +2514,34 @@ export function setupCorporateRoutes(app: express.Express) {
               i.ownershipImplicationNote,
             ])
           );
+        } else if (moduleName === 'services') {
+          const svcs = await db.select().from(divisionServices).where(isNull(divisionServices.archivedAt)).orderBy(divisionServices.divisionId, divisionServices.displayOrder);
+          data = { services: svcs };
+          csvString = toCsv(
+            ['ID', 'Division ID', 'Service Name', 'Sub-Category', 'Business Status', 'Publish Status', 'Description'],
+            svcs.map((s) => [s.id, s.divisionId, s.name, s.categoryGroup || 'General', s.operationalStatus, s.publishStatus, s.shortDescription])
+          );
+        } else if (moduleName === 'real-estate') {
+          const projs = await db.select().from(realEstateProjects).where(isNull(realEstateProjects.archivedAt)).orderBy(desc(realEstateProjects.id));
+          data = { projects: projs };
+          csvString = toCsv(
+            ['Name', 'Location', 'Property Type', 'Stage', 'Publish Status', 'Conceptual', 'Floors', 'Estimated Budget'],
+            projs.map((p) => [p.name, p.location, p.propertyType, p.developmentStage, p.publishStatus, p.isConceptual ? 'Yes (Proposed/Conceptual)' : 'No', p.floors, p.estimatedBudget || 'Pending feasibility'])
+          );
+        } else if (moduleName === 'pharma') {
+          const regs = await db.select().from(pharmaRegulatoryCompliance).where(isNull(pharmaRegulatoryCompliance.archivedAt)).orderBy(desc(pharmaRegulatoryCompliance.id));
+          data = { compliance: regs };
+          csvString = toCsv(
+            ['Country', 'Authority', 'Licence Type', 'Licence Number', 'Verification Status', 'Approval Status', 'Qualified Professional'],
+            regs.map((r) => [r.country, r.regulatoryAuthority, r.licenceType, r.licenceNumber || 'Unissued', r.verificationStatus, r.approvalStatus, r.responsibleProfessional || 'Pending appointment'])
+          );
+        } else if (moduleName === 'enquiries') {
+          const enqs = await db.select().from(corporateEnquiries).where(isNull(corporateEnquiries.archivedAt)).orderBy(desc(corporateEnquiries.createdAt));
+          data = { enquiries: enqs };
+          csvString = toCsv(
+            ['Reference', 'Type', 'Name', 'Organization', 'Email', 'Country', 'Status', 'Created'],
+            enqs.map((e) => [e.enquiryReference, e.enquiryType, e.fullName, e.organization || 'Individual', e.email, e.country, e.status, e.createdAt.toISOString()])
+          );
         } else if (moduleName === 'audit') {
           const logs = await db.select().from(corporateAuditLogs).orderBy(desc(corporateAuditLogs.createdAt)).limit(500);
           data = { auditLogs: logs };
@@ -2115,6 +2567,521 @@ export function setupCorporateRoutes(app: express.Express) {
         }
 
         res.json({ success: true, exportedAt: new Date().toISOString(), module: moduleName, data });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // =========================================================================
+  // 9. REAL ESTATE DEVELOPMENT PROJECTS MANAGEMENT
+  // =========================================================================
+  app.get(
+    '/api/corporate/real-estate',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER', 'CONTENT_ADMIN']),
+    async (req, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const includeArchived = req.query.includeArchived === 'true';
+        const rows = await db
+          .select()
+          .from(realEstateProjects)
+          .where(includeArchived ? undefined : isNull(realEstateProjects.archivedAt))
+          .orderBy(desc(realEstateProjects.updatedAt), desc(realEstateProjects.id));
+        res.json({ success: true, projects: rows });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.post(
+    '/api/corporate/real-estate',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const b = req.body || {};
+        if (!b.name || !b.location || !b.description || !b.propertyType) {
+          return res.status(400).json({ error: 'Project name, location, property type, and description are required.' });
+        }
+        const slug = (b.slug || `${b.name}-${Date.now()}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const stage = b.developmentStage || 'PROPOSED';
+        const isConceptual = stage !== 'COMPLETED' && stage !== 'UNDER_CONSTRUCTION' ? b.isConceptual !== false : Boolean(b.isConceptual);
+
+        const [created] = await db
+          .insert(realEstateProjects)
+          .values({
+            name: b.name.trim(),
+            slug,
+            location: b.location.trim(),
+            description: b.description.trim(),
+            propertyType: b.propertyType.trim(),
+            landArea: b.landArea || null,
+            buildingArea: b.buildingArea || null,
+            floors: Number(b.floors || 1),
+            estimatedBudget: b.estimatedBudget || null,
+            budgetCurrency: b.budgetCurrency || 'XAF',
+            investmentRequirements: b.investmentRequirements || null,
+            developmentStage: stage,
+            publishStatus: b.publishStatus || 'DRAFT',
+            visibilityPublic: b.visibilityPublic !== false,
+            isConceptual,
+            disclaimerNote:
+              b.disclaimerNote ||
+              'Proposed real estate development / conceptual study. Architectural renders represent design intent only and are not completed buildings.',
+            photographsJson: b.photographsJson || [],
+            architecturalDrawingsJson: b.architecturalDrawingsJson || [],
+            rendersJson: b.rendersJson || [],
+            feasibilityReportsJson: b.feasibilityReportsJson || [],
+            supportingDocsJson: b.supportingDocsJson || [],
+            version: 1,
+            createdBy: req.dbUser?.email || 'admin',
+            updatedBy: req.dbUser?.email || 'admin',
+          })
+          .returning();
+
+        await createVersionSnapshot({
+          entityType: 'REAL_ESTATE',
+          entityId: created.id,
+          versionNumber: 1,
+          entityTitle: created.name,
+          changeSummary: `Created real estate project (${created.developmentStage})`,
+          snapshotJson: created,
+          createdBy: req.dbUser?.email || 'admin',
+        });
+
+        await logCorporateAudit({
+          req,
+          action: 'CREATE_REAL_ESTATE_PROJECT',
+          entityType: 'REAL_ESTATE',
+          entityId: created.id,
+          entityTitle: created.name,
+          afterJson: created,
+        });
+
+        res.json({ success: true, project: created });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.put(
+    '/api/corporate/real-estate/:id',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const projId = Number(req.params.id);
+        const rows = await db.select().from(realEstateProjects).where(eq(realEstateProjects.id, projId)).limit(1);
+        const existing = rows[0];
+        if (!existing) return res.status(404).json({ error: 'Real estate project not found' });
+
+        const b = req.body || {};
+        const nextStage = b.developmentStage ?? existing.developmentStage;
+        const nextPhotos = b.photographsJson ?? existing.photographsJson ?? [];
+
+        // Guard against misrepresenting renders as completed buildings
+        if (nextStage === 'COMPLETED' && (!Array.isArray(nextPhotos) || nextPhotos.length === 0)) {
+          return res.status(400).json({
+            error: 'Verification Guard: Cannot mark a real estate project as COMPLETED without uploaded verified photographs of the completed property.',
+          });
+        }
+
+        const nextVer = existing.version + 1;
+        const [updated] = await db
+          .update(realEstateProjects)
+          .set({
+            name: b.name ?? existing.name,
+            location: b.location ?? existing.location,
+            description: b.description ?? existing.description,
+            propertyType: b.propertyType ?? existing.propertyType,
+            landArea: b.landArea !== undefined ? b.landArea : existing.landArea,
+            buildingArea: b.buildingArea !== undefined ? b.buildingArea : existing.buildingArea,
+            floors: b.floors !== undefined ? Number(b.floors) : existing.floors,
+            estimatedBudget: b.estimatedBudget !== undefined ? b.estimatedBudget : existing.estimatedBudget,
+            budgetCurrency: b.budgetCurrency ?? existing.budgetCurrency,
+            investmentRequirements: b.investmentRequirements !== undefined ? b.investmentRequirements : existing.investmentRequirements,
+            developmentStage: nextStage,
+            publishStatus: b.publishStatus ?? existing.publishStatus,
+            visibilityPublic: b.visibilityPublic !== undefined ? Boolean(b.visibilityPublic) : existing.visibilityPublic,
+            isConceptual: nextStage === 'COMPLETED' ? false : b.isConceptual !== undefined ? Boolean(b.isConceptual) : existing.isConceptual,
+            disclaimerNote: b.disclaimerNote ?? existing.disclaimerNote,
+            photographsJson: b.photographsJson ?? existing.photographsJson,
+            architecturalDrawingsJson: b.architecturalDrawingsJson ?? existing.architecturalDrawingsJson,
+            rendersJson: b.rendersJson ?? existing.rendersJson,
+            feasibilityReportsJson: b.feasibilityReportsJson ?? existing.feasibilityReportsJson,
+            supportingDocsJson: b.supportingDocsJson ?? existing.supportingDocsJson,
+            version: nextVer,
+            updatedBy: req.dbUser?.email || 'admin',
+            updatedAt: new Date(),
+          })
+          .where(eq(realEstateProjects.id, projId))
+          .returning();
+
+        await createVersionSnapshot({
+          entityType: 'REAL_ESTATE',
+          entityId: projId,
+          versionNumber: nextVer,
+          entityTitle: updated.name,
+          changeSummary: b.changeSummary || `Updated project (${updated.developmentStage} / ${updated.publishStatus})`,
+          snapshotJson: updated,
+          createdBy: req.dbUser?.email || 'admin',
+        });
+
+        await logCorporateAudit({
+          req,
+          action: 'UPDATE_REAL_ESTATE_PROJECT',
+          entityType: 'REAL_ESTATE',
+          entityId: projId,
+          entityTitle: updated.name,
+          beforeJson: existing,
+          afterJson: updated,
+        });
+
+        res.json({ success: true, project: updated });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.post(
+    '/api/corporate/real-estate/:id/upload-asset',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    safeDocMulter,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const projId = Number(req.params.id);
+        const rows = await db.select().from(realEstateProjects).where(eq(realEstateProjects.id, projId)).limit(1);
+        const existing = rows[0];
+        if (!existing) return res.status(404).json({ error: 'Project not found' });
+        if (!req.file) return res.status(400).json({ error: 'File is required' });
+
+        const category = String(req.body?.category || 'renders');
+        const stored = await storeUploadedFile(req.file, `madecc_real_estate/${projId}/${category}`);
+
+        const asset = {
+          id: `re_${Date.now()}`,
+          title: req.body?.title || req.file.originalname,
+          fileName: req.file.originalname,
+          fileUrl: stored.fileUrl,
+          storageProvider: stored.storageProvider,
+          mimeType: req.file.mimetype,
+          label: category === 'renders' ? 'Conceptual Render — Not a Completed Building' : req.body?.title || category,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        const patch: any = { version: existing.version + 1, updatedBy: req.dbUser?.email || 'admin', updatedAt: new Date() };
+        if (category === 'photographs') patch.photographsJson = [...(Array.isArray(existing.photographsJson) ? existing.photographsJson : []), asset];
+        else if (category === 'drawings') patch.architecturalDrawingsJson = [...(Array.isArray(existing.architecturalDrawingsJson) ? existing.architecturalDrawingsJson : []), asset];
+        else if (category === 'feasibility') patch.feasibilityReportsJson = [...(Array.isArray(existing.feasibilityReportsJson) ? existing.feasibilityReportsJson : []), asset];
+        else if (category === 'supporting') patch.supportingDocsJson = [...(Array.isArray(existing.supportingDocsJson) ? existing.supportingDocsJson : []), asset];
+        else patch.rendersJson = [...(Array.isArray(existing.rendersJson) ? existing.rendersJson : []), asset];
+
+        const [updated] = await db.update(realEstateProjects).set(patch).where(eq(realEstateProjects.id, projId)).returning();
+
+        await logCorporateAudit({
+          req,
+          action: 'UPLOAD_REAL_ESTATE_ASSET',
+          entityType: 'REAL_ESTATE',
+          entityId: projId,
+          entityTitle: existing.name,
+          afterJson: { category, asset },
+        });
+
+        res.json({ success: true, project: updated, asset });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.patch(
+    '/api/corporate/real-estate/:id/archive',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'CONTENT_ADMIN']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const projId = Number(req.params.id);
+        const archive = req.body?.archive !== false;
+        const [updated] = await db
+          .update(realEstateProjects)
+          .set({
+            archivedAt: archive ? new Date() : null,
+            publishStatus: archive ? 'ARCHIVED' : 'DRAFT',
+            updatedAt: new Date(),
+          })
+          .where(eq(realEstateProjects.id, projId))
+          .returning();
+        if (!updated) return res.status(404).json({ error: 'Project not found' });
+        res.json({ success: true, project: updated });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // =========================================================================
+  // 10. PHARMACEUTICAL & HEALTHCARE REGULATORY COMPLIANCE
+  // =========================================================================
+  app.get(
+    '/api/corporate/pharma-compliance',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER']),
+    async (_req, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const rows = await db
+          .select()
+          .from(pharmaRegulatoryCompliance)
+          .where(isNull(pharmaRegulatoryCompliance.archivedAt))
+          .orderBy(desc(pharmaRegulatoryCompliance.id));
+        res.json({ success: true, records: rows });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.post(
+    '/api/corporate/pharma-compliance',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const b = req.body || {};
+        if (!b.country || !b.regulatoryAuthority || !b.licenceType) {
+          return res.status(400).json({ error: 'country, regulatoryAuthority, and licenceType are required.' });
+        }
+
+        // Strict Compliance Gate on creation: never create pre-approved without proof
+        const [created] = await db
+          .insert(pharmaRegulatoryCompliance)
+          .values({
+            country: b.country.trim(),
+            regulatoryAuthority: b.regulatoryAuthority.trim(),
+            licenceType: b.licenceType.trim(),
+            licenceNumber: b.licenceNumber || null,
+            issueDate: b.issueDate ? new Date(b.issueDate) : null,
+            expiryDate: b.expiryDate ? new Date(b.expiryDate) : null,
+            verificationStatus: 'UNVERIFIED',
+            responsibleProfessional: b.responsibleProfessional || null,
+            professionalQualification: b.professionalQualification || null,
+            approvalStatus: b.approvalStatus === 'APPROVED' ? 'UNDER_INSPECTION' : b.approvalStatus || 'NOT_APPLIED',
+            complianceNotes: b.complianceNotes || null,
+            createdBy: req.dbUser?.email || 'admin',
+            updatedBy: req.dbUser?.email || 'admin',
+          })
+          .returning();
+
+        await logCorporateAudit({
+          req,
+          action: 'CREATE_PHARMA_COMPLIANCE_RECORD',
+          entityType: 'PHARMA_COMPLIANCE',
+          entityId: created.id,
+          entityTitle: `${created.country} — ${created.licenceType}`,
+          afterJson: created,
+        });
+
+        res.json({ success: true, record: created });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.put(
+    '/api/corporate/pharma-compliance/:id',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const recId = Number(req.params.id);
+        const rows = await db.select().from(pharmaRegulatoryCompliance).where(eq(pharmaRegulatoryCompliance.id, recId)).limit(1);
+        const existing = rows[0];
+        if (!existing) return res.status(404).json({ error: 'Compliance record not found' });
+
+        const b = req.body || {};
+        const effectiveRole = resolveEffectiveCorporateRole(req.dbUser);
+        const targetVerification = b.verificationStatus ?? existing.verificationStatus;
+        const targetApproval = b.approvalStatus ?? existing.approvalStatus;
+        const nextDocUrl = b.licenceDocumentUrl !== undefined ? b.licenceDocumentUrl : existing.licenceDocumentUrl;
+        const nextLicenceNum = String(b.licenceNumber !== undefined ? b.licenceNumber : existing.licenceNumber || '').trim();
+        const nextResponsible = String(b.responsibleProfessional !== undefined ? b.responsibleProfessional : existing.responsibleProfessional || '').trim();
+
+        // Mandatory Documentary + Authorized Reviewer Gate
+        if (targetVerification === 'VERIFIED' || targetApproval === 'APPROVED') {
+          if (effectiveRole !== 'SUPER_ADMIN' && effectiveRole !== 'LEGAL_REVIEWER') {
+            return res.status(403).json({ error: 'Only Super Admin or Legal/Compliance Reviewer may approve pharmaceutical licences.' });
+          }
+          if (!nextDocUrl) {
+            return res.status(400).json({
+              error: 'Compliance Gate: Upload a genuine official licence document before marking verification or approval as APPROVED/VERIFIED.',
+            });
+          }
+          if (!nextLicenceNum || !nextResponsible) {
+            return res.status(400).json({
+              error: 'Compliance Gate: Official licence number and responsible qualified professional (pharmacist/regulator contact) are required before approval.',
+            });
+          }
+        }
+
+        const [updated] = await db
+          .update(pharmaRegulatoryCompliance)
+          .set({
+            country: b.country ?? existing.country,
+            regulatoryAuthority: b.regulatoryAuthority ?? existing.regulatoryAuthority,
+            licenceType: b.licenceType ?? existing.licenceType,
+            licenceNumber: nextLicenceNum || null,
+            issueDate: b.issueDate ? new Date(b.issueDate) : existing.issueDate,
+            expiryDate: b.expiryDate ? new Date(b.expiryDate) : existing.expiryDate,
+            verificationStatus: targetVerification,
+            responsibleProfessional: nextResponsible || null,
+            professionalQualification: b.professionalQualification !== undefined ? b.professionalQualification : existing.professionalQualification,
+            approvalStatus: targetApproval,
+            complianceNotes: b.complianceNotes !== undefined ? b.complianceNotes : existing.complianceNotes,
+            reviewedBy: targetVerification === 'VERIFIED' ? req.dbUser?.email || 'reviewer' : existing.reviewedBy,
+            reviewedAt: targetVerification === 'VERIFIED' ? new Date() : existing.reviewedAt,
+            updatedBy: req.dbUser?.email || 'admin',
+            updatedAt: new Date(),
+          })
+          .where(eq(pharmaRegulatoryCompliance.id, recId))
+          .returning();
+
+        await logCorporateAudit({
+          req,
+          action: 'UPDATE_PHARMA_COMPLIANCE',
+          entityType: 'PHARMA_COMPLIANCE',
+          entityId: recId,
+          entityTitle: updated.licenceType,
+          beforeJson: existing,
+          afterJson: updated,
+        });
+
+        res.json({ success: true, record: updated });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.post(
+    '/api/corporate/pharma-compliance/:id/upload-licence',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER']),
+    safeDocMulter,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const recId = Number(req.params.id);
+        if (!req.file) return res.status(400).json({ error: 'Licence document file is required' });
+
+        const stored = await storeUploadedFile(req.file, `madecc_confidential_docs/pharma/${recId}`);
+        const [updated] = await db
+          .update(pharmaRegulatoryCompliance)
+          .set({
+            licenceDocumentUrl: stored.fileUrl,
+            licenceDocumentName: req.file.originalname,
+            storageProvider: stored.storageProvider,
+            sha256Checksum: stored.sha256Checksum,
+            verificationStatus: 'PENDING_VERIFICATION',
+            updatedBy: req.dbUser?.email || 'admin',
+            updatedAt: new Date(),
+          })
+          .where(eq(pharmaRegulatoryCompliance.id, recId))
+          .returning();
+
+        await logCorporateAudit({
+          req,
+          action: 'UPLOAD_PHARMA_LICENCE_DOCUMENT',
+          entityType: 'PHARMA_COMPLIANCE',
+          entityId: recId,
+          entityTitle: req.file.originalname,
+          afterJson: { sha256Checksum: stored.sha256Checksum },
+        });
+
+        res.json({ success: true, record: updated });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // =========================================================================
+  // 11. INVESTOR & PARTNERSHIP ENQUIRIES ADMIN MANAGEMENT
+  // =========================================================================
+  app.get(
+    '/api/corporate/enquiries',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER']),
+    async (_req, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const rows = await db
+          .select()
+          .from(corporateEnquiries)
+          .where(isNull(corporateEnquiries.archivedAt))
+          .orderBy(desc(corporateEnquiries.createdAt));
+        res.json({ success: true, enquiries: rows });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  app.patch(
+    '/api/corporate/enquiries/:id',
+    requireCorporateRoles(['SUPER_ADMIN', 'BUSINESS_ADMIN', 'LEGAL_REVIEWER']),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!db) return res.status(503).json({ error: 'Database unavailable' });
+        const enqId = Number(req.params.id);
+        const rows = await db.select().from(corporateEnquiries).where(eq(corporateEnquiries.id, enqId)).limit(1);
+        const existing = rows[0];
+        if (!existing) return res.status(404).json({ error: 'Enquiry not found' });
+
+        const b = req.body || {};
+        const nextStatus = b.status ?? existing.status;
+        const nextResponse = b.adminResponse !== undefined ? b.adminResponse : existing.adminResponse;
+
+        const [updated] = await db
+          .update(corporateEnquiries)
+          .set({
+            status: nextStatus,
+            adminResponse: nextResponse,
+            respondedBy: nextResponse ? req.dbUser?.email || 'admin' : existing.respondedBy,
+            respondedAt: nextResponse ? new Date() : existing.respondedAt,
+            updatedAt: new Date(),
+          })
+          .where(eq(corporateEnquiries.id, enqId))
+          .returning();
+
+        if (b.sendEmailReply && nextResponse && existing.email) {
+          await sendEmail(
+            existing.email,
+            `Re: MADECC Group Enquiry (${existing.enquiryReference}) — ${existing.enquiryType}`,
+            `Dear ${existing.fullName},\n\n${nextResponse}\n\nReference: ${existing.enquiryReference}\nMADECC Group Executive Desk`,
+            buildBrandedHtmlTemplate({
+              title: `Response to Your ${existing.enquiryType} Enquiry`,
+              badge: existing.enquiryReference,
+              recipientName: existing.fullName,
+              leadParagraph: `Our corporate development desk has reviewed your enquiry (${existing.enquiryReference}):`,
+              sectionsHtml: `<div style="padding:14px; background:#f8fafc; border-left:4px solid #f59e0b; font-size:14px; white-space:pre-wrap;">${nextResponse}</div>`,
+            })
+          ).catch((e) => console.warn('[ENQUIRY_REPLY_EMAIL_WARN]', e?.message || e));
+        }
+
+        await logCorporateAudit({
+          req,
+          action: 'UPDATE_CORPORATE_ENQUIRY',
+          entityType: 'CORPORATE_ENQUIRY',
+          entityId: enqId,
+          entityTitle: existing.enquiryReference,
+          beforeJson: { status: existing.status },
+          afterJson: { status: updated.status, responded: Boolean(nextResponse) },
+        });
+
+        res.json({ success: true, enquiry: updated });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }

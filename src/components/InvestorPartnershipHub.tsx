@@ -23,14 +23,25 @@ import {
 } from '../lib/corporateApi.ts';
 import { useToast } from './Toast.tsx';
 
+const ENQUIRY_STATUSES = ['NEW', 'IN_REVIEW', 'RESPONDED', 'QUALIFIED', 'ARCHIVED'];
+
 export const InvestorPartnershipHub: React.FC = () => {
   const { showToast } = useToast();
+  const [activeSubTab, setActiveSubTab] = useState<'pipeline' | 'enquiries'>('pipeline');
   const [investors, setInvestors] = useState<any[]>([]);
   const [stages, setStages] = useState<{ code: string; label: string }[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Enquiries Inbox state
+  const [enquiries, setEnquiries] = useState<any[]>([]);
+  const [enquiryFilter, setEnquiryFilter] = useState<string>('ALL');
+  const [selectedEnq, setSelectedEnq] = useState<any>(null);
+  const [replyText, setReplyText] = useState('');
+  const [sendReplyEmail, setSendReplyEmail] = useState(true);
+  const [savingEnq, setSavingEnq] = useState(false);
 
   const [newInvModal, setNewInvModal] = useState(false);
   const [newInv, setNewInv] = useState({
@@ -57,10 +68,14 @@ export const InvestorPartnershipHub: React.FC = () => {
   const loadInvestors = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await corporateFetch('/api/corporate/investors');
+      const [res, enqRes] = await Promise.all([
+        corporateFetch('/api/corporate/investors'),
+        corporateFetch('/api/corporate/enquiries').catch(() => ({ enquiries: [] })),
+      ]);
       const list = res.investors || [];
       setInvestors(list);
       setStages(res.stages || []);
+      setEnquiries(enqRes.enquiries || []);
       if (list.length > 0 && (!selectedId || !list.some((i: any) => i.id === selectedId))) {
         setSelectedId(list[0].id);
         setEditForm(list[0]);
@@ -74,6 +89,34 @@ export const InvestorPartnershipHub: React.FC = () => {
       setLoading(false);
     }
   }, [selectedId, showToast]);
+
+  const handleSaveEnquiry = async (nextStatus?: string) => {
+    if (!selectedEnq) return;
+    setSavingEnq(true);
+    try {
+      const res = await corporateFetch(`/api/corporate/enquiries/${selectedEnq.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: nextStatus || selectedEnq.status,
+          adminResponse: replyText || selectedEnq.adminResponse,
+          sendEmailReply: Boolean(sendReplyEmail && replyText.trim()),
+        }),
+      });
+      setSelectedEnq(res.enquiry);
+      showToast(
+        sendReplyEmail && replyText.trim()
+          ? `Enquiry updated & SMTP reply dispatched to ${selectedEnq.email}`
+          : 'Enquiry status updated',
+        'success'
+      );
+      setReplyText('');
+      await loadInvestors();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    } finally {
+      setSavingEnq(false);
+    }
+  };
 
   useEffect(() => {
     loadInvestors();
@@ -204,6 +247,26 @@ export const InvestorPartnershipHub: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-900 p-0.5 mr-2">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('pipeline')}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold cursor-pointer ${
+                activeSubTab === 'pipeline' ? 'bg-amber-500 text-slate-950' : 'text-slate-300'
+              }`}
+            >
+              Investor Pipeline ({investors.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('enquiries')}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold cursor-pointer ${
+                activeSubTab === 'enquiries' ? 'bg-amber-500 text-slate-950' : 'text-slate-300'
+              }`}
+            >
+              Enquiries Inbox ({enquiries.length})
+            </button>
+          </div>
           <button
             type="button"
             onClick={() =>
@@ -244,7 +307,7 @@ export const InvestorPartnershipHub: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => downloadCorporateServerExport('investors', 'csv')}
+            onClick={() => downloadCorporateServerExport(activeSubTab === 'enquiries' ? 'enquiries' : 'investors', 'csv')}
             className="px-3 py-2 rounded-lg border border-slate-800 bg-slate-900 text-xs text-slate-200 hover:border-amber-500/50 cursor-pointer"
           >
             CSV
@@ -259,7 +322,132 @@ export const InvestorPartnershipHub: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Layout */}
+      {activeSubTab === 'enquiries' ? (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <select
+              value={enquiryFilter}
+              onChange={(e) => setEnquiryFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+            >
+              <option value="ALL">All Enquiry Categories ({enquiries.length})</option>
+              {[
+                'Real estate investment',
+                'Pharmaceutical partnerships',
+                'Construction project financing',
+                'Agricultural investments',
+                'Manufacturing investments',
+                'Infrastructure partnerships',
+                'International business collaboration',
+              ].map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              {enquiries
+                .filter((e) => enquiryFilter === 'ALL' || e.enquiryType === enquiryFilter)
+                .map((enq) => (
+                  <button
+                    key={enq.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedEnq(enq);
+                      setReplyText(enq.adminResponse || '');
+                    }}
+                    className={`w-full text-left p-3.5 rounded-xl border transition-colors cursor-pointer ${
+                      selectedEnq?.id === enq.id ? 'bg-slate-900 border-amber-500' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-amber-400 font-bold">{enq.enquiryReference}</span>
+                      <span className={enq.status === 'RESPONDED' ? 'text-emerald-400' : 'text-sky-300'}>{enq.status}</span>
+                    </div>
+                    <div className="text-xs font-bold text-white mt-1">{enq.fullName} · {enq.organization || 'Individual'}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">{enq.enquiryType} · {enq.country}</div>
+                  </button>
+                ))}
+              {enquiries.length === 0 && (
+                <div className="p-6 text-center text-xs text-slate-500">No investor/partnership enquiries submitted yet.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="xl:col-span-7 bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4">
+            {!selectedEnq ? (
+              <div className="p-8 text-center text-xs text-slate-500">Select an enquiry on the left to review details or send an SMTP email reply.</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="text-xs font-mono text-amber-400">{selectedEnq.enquiryReference} · {selectedEnq.enquiryType}</div>
+                    <h3 className="text-lg font-bold text-white">{selectedEnq.fullName}</h3>
+                  </div>
+                  <select
+                    value={selectedEnq.status}
+                    onChange={(e) => handleSaveEnquiry(e.target.value)}
+                    className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                  >
+                    {ENQUIRY_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs text-slate-300">
+                  <div>Email: <span className="text-white">{selectedEnq.email}</span></div>
+                  <div>Phone: <span className="text-white">{selectedEnq.phone || 'Not provided'}</span></div>
+                  <div>Organization: <span className="text-white">{selectedEnq.organization || 'Individual'}</span></div>
+                  <div>Country: <span className="text-white">{selectedEnq.country}</span></div>
+                  <div>Indicative Budget: <span className="text-white">{selectedEnq.proposedBudget || 'Not specified'} {selectedEnq.currency}</span></div>
+                  <div>Submitted: <span className="text-white">{new Date(selectedEnq.createdAt).toLocaleString()}</span></div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 whitespace-pre-wrap">
+                  {selectedEnq.message}
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <label className="block space-y-1 text-xs">
+                    <span className="text-slate-400 font-medium">Executive Response / Follow-up Message</span>
+                    <textarea
+                      rows={4}
+                      placeholder="Write your official response to this enquiry..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white"
+                    />
+                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={sendReplyEmail}
+                        onChange={(e) => setSendReplyEmail(e.target.checked)}
+                        className="w-4 h-4 accent-amber-500"
+                      />
+                      <span>Send SMTP email reply to {selectedEnq.email}</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={savingEnq}
+                      onClick={() => handleSaveEnquiry('RESPONDED')}
+                      className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer"
+                    >
+                      {savingEnq ? 'Saving...' : 'Save & Send Reply'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+      /* Main Layout */
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-4 bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
           {loading ? (
@@ -547,6 +735,7 @@ export const InvestorPartnershipHub: React.FC = () => {
           )}
         </div>
       </div>
+      )}
 
       {/* Add Prospect Modal */}
       {newInvModal && (

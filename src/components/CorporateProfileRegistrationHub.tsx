@@ -521,6 +521,15 @@ export const CorporateProfileRegistrationHub: React.FC<CorporateProfileRegistrat
                 className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white focus:border-amber-500 focus:outline-none"
               />
             </label>
+            <label className="space-y-1.5 text-xs sm:col-span-2">
+              <span className="text-slate-400 font-medium">Corporate Description (Multi-paragraph disclosure shown on About &amp; Governance pages)</span>
+              <textarea
+                rows={6}
+                value={form.corporateDescription || ''}
+                onChange={(e) => updateField('corporateDescription', e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white leading-relaxed focus:border-amber-500 focus:outline-none"
+              />
+            </label>
             <label className="space-y-1.5 text-xs">
               <span className="text-slate-400 font-medium">Country</span>
               <input

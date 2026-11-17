@@ -30,7 +30,7 @@ import {
 
 export default function About() {
   const { settings } = useSiteSettings();
-  const { profile: corporateProfile, divisions, opportunities } = usePublicCorporateData();
+  const { profile: corporateProfile, divisions, opportunities, realEstateProjects } = usePublicCorporateData();
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
@@ -104,12 +104,22 @@ export default function About() {
               </h2>
               <CorporateRegistrationStatusCard profile={corporateProfile} />
 
-              <p className="text-slate-300 text-sm leading-relaxed">
-                {corporateProfile?.companyName || settings?.siteName || 'MADECC Group'} is a founder-led construction, engineering, real estate, and enterprise development company based in {corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}. Founded by {corporateProfile?.founderName || 'Kasah Rodrick Reboya'} (100% ownership), our motto is "{corporateProfile?.motto || "Building Cameroon's Future"}".
-              </p>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                We address the critical need for technical precision, transparent pricing, and regulatory honesty across Cameroon's construction and enterprise sectors—applying Eurocode 2 engineering modeling, detailed Bills of Quantities (BOQ), and verifiable legal compliance before advancing commercial operations.
-              </p>
+              {corporateProfile?.corporateDescription ? (
+                corporateProfile.corporateDescription.split(/\n\n+/).map((para, idx) => (
+                  <p key={idx} className={`${idx === 0 ? 'text-slate-200' : 'text-slate-300'} text-sm leading-relaxed`}>
+                    {para}
+                  </p>
+                ))
+              ) : (
+                <>
+                  <p className="text-slate-300 text-sm leading-relaxed">
+                    {corporateProfile?.companyName || settings?.siteName || 'MADECC Group'} is a founder-led construction, engineering, real estate, and enterprise development company based in {corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}. Founded by {corporateProfile?.founderName || 'Kasah Rodrick Reboya'} (100% ownership), our motto is "{corporateProfile?.motto || "Building Cameroon's Future"}".
+                  </p>
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    We address the critical need for technical precision, transparent pricing, and regulatory honesty across Cameroon's construction and enterprise sectors—applying Eurocode 2 engineering modeling, detailed Bills of Quantities (BOQ), and verifiable legal compliance before advancing commercial operations.
+                  </p>
+                </>
+              )}
             </FadeIn>
 
             {/* Our Geographical Footprint in Cameroon */}
@@ -356,9 +366,14 @@ export default function About() {
 
         </div>
 
-        {/* All 9 Business Divisions & Investment Opportunities */}
+        {/* All 10 Business Divisions & Investment Opportunities */}
         <div className="mt-20 border-t border-slate-900 pt-16">
-          <CorporateDivisionsDirectory divisions={divisions} opportunities={opportunities} theme="dark" />
+          <CorporateDivisionsDirectory
+            divisions={divisions}
+            opportunities={opportunities}
+            realEstateProjects={realEstateProjects}
+            theme="dark"
+          />
         </div>
 
         {/* Our Team Section */}

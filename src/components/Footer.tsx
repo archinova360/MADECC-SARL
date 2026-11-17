@@ -449,13 +449,11 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <p>
               {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} MADECC GROUP. All rights reserved.`}
             </p>
-            {(settings?.rccmNumber || settings?.niuTaxId) && (
-              <p className="text-[10px] font-mono text-slate-600">
-                {settings.rccmNumber && <span>RCCM: {settings.rccmNumber} </span>}
-                {settings.niuTaxId && <span>• NIU: {settings.niuTaxId} </span>}
-                {settings.legalStatus && <span>• {settings.legalStatus}</span>}
-              </p>
-            )}
+            <p className="text-[11px] font-mono text-slate-500">
+              {settings?.rccmNumber ? <span>RCCM: {settings.rccmNumber} · </span> : null}
+              {settings?.niuTaxId ? <span>NIU: {settings.niuTaxId} · </span> : null}
+              <span>{settings?.legalStatus || 'Individual establishment registration pending'}</span>
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <button 

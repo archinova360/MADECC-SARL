@@ -7,6 +7,13 @@ import { eq, and } from 'drizzle-orm';
 import { verifyReviewerToken } from '../lib/reviewerAuth.ts';
 import { validateDatabaseSession } from '../lib/sessionService.ts';
 
+export type CorporateAdminRole =
+  | 'SUPER_ADMIN'
+  | 'BUSINESS_ADMIN'
+  | 'LEGAL_REVIEWER'
+  | 'CONTENT_ADMIN'
+  | 'STANDARD';
+
 export interface AuthRequest extends Request {
   user?: DecodedIdToken | any;
   dbUser?: {
@@ -15,6 +22,8 @@ export interface AuthRequest extends Request {
     email: string;
     name: string;
     role: string;
+    adminRole?: string | null;
+    corporatePermissions?: any;
     theme?: string;
     createdAt: Date;
   };
@@ -341,4 +350,51 @@ export const requireSocialMediaReviewerOrAdmin = async (
     next();
   });
 };
+
+export function resolveEffectiveCorporateRole(dbUser?: AuthRequest['dbUser']): CorporateAdminRole {
+  if (!dbUser) return 'STANDARD';
+  const emailLower = (dbUser.email || '').toLowerCase().trim();
+  const explicitAdminRole = (dbUser.adminRole || '').toUpperCase().trim();
+
+  // Explicit sub-roles override for delegated staff or explicitly downgraded secondary admin accounts
+  if (
+    explicitAdminRole === 'SUPER_ADMIN' ||
+    explicitAdminRole === 'BUSINESS_ADMIN' ||
+    explicitAdminRole === 'LEGAL_REVIEWER' ||
+    explicitAdminRole === 'CONTENT_ADMIN'
+  ) {
+    return explicitAdminRole as CorporateAdminRole;
+  }
+
+  // Primary founder / existing admins always preserve SUPER_ADMIN authority
+  if (dbUser.role === 'admin' || emailLower === 'kreboya603@gmail.com') {
+    return 'SUPER_ADMIN';
+  }
+
+  if (dbUser.role === 'staff') {
+    return 'CONTENT_ADMIN';
+  }
+
+  return 'STANDARD';
+}
+
+export function requireCorporateRoles(allowedRoles: CorporateAdminRole[]) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    await requireAuth(req, res, () => {
+      if (!req.dbUser) {
+        return res.status(401).json({ error: 'Unauthorized: Authenticated administrator profile required' });
+      }
+      const effectiveRole = resolveEffectiveCorporateRole(req.dbUser);
+      if (effectiveRole === 'SUPER_ADMIN' || allowedRoles.includes(effectiveRole)) {
+        return next();
+      }
+      return res.status(403).json({
+        error: `Forbidden: Requires one of roles [${allowedRoles.join(', ')}]. Your effective corporate role is ${effectiveRole}.`,
+        requiredRoles: allowedRoles,
+        effectiveRole,
+      });
+    });
+  };
+}
+
 

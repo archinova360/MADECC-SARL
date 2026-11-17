@@ -240,16 +240,16 @@ export async function ensureSaasTables(): Promise<void> {
           (
             'MADECC GROUP',
             'madecc-construction',
-            'MADECC Construction & Civil Engineering Group SARL',
+            'MADECC Group (Individual establishment registration pending)',
             '/logo.png',
             'madecc-construction.madecccloud.com',
             'madeccgroup.online',
             'ACTIVE', 'PUBLISHED', 1, 'ENTERPRISE', 'XAF', 'Africa/Douala',
             '+237 671 063 511 / +237 683 316 486',
             'kreboya603@gmail.com',
-            'Commercial Avenue, Bamenda & Douala, Cameroon',
+            'Yaoundé, Cameroon',
             'Cameroon',
-            '{"primaryColor":"#0f172a","secondaryColor":"#f59e0b","accentColor":"#2563eb","fontFamily":"Plus Jakarta Sans","tagline":"Premier Civil Engineering, Structural Design & Turnkey EPC Contractor","companyAddress":"Commercial Avenue, Bamenda & Boulevard de la Liberté, Douala","phone":"+237 671 063 511","email":"kreboya603@gmail.com","whatsappNumber":"+237671063511","currency":"XAF","taxNumber":"M051812728192K","registrationNumber":"RC/YAO/2018/B/1429"}'::jsonb,
+            '{"primaryColor":"#0f172a","secondaryColor":"#f59e0b","accentColor":"#2563eb","fontFamily":"Plus Jakarta Sans","tagline":"Building Cameroon''s Future — Civil Engineering, Construction & Multi-Division Enterprise","companyAddress":"Yaoundé, Cameroon","phone":"+237 671 063 511","email":"kreboya603@gmail.com","whatsappNumber":"+237671063511","taxNumber":"P030217852934P","currency":"XAF"}'::jsonb,
             50000, 3435973836, true
           ),
           (

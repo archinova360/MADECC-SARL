@@ -22,9 +22,15 @@ import {
 } from 'lucide-react';
 import { CompanyDocument, TeamMember } from '../types.ts';
 import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import {
+  usePublicCorporateData,
+  CorporateRegistrationStatusCard,
+  CorporateDivisionsDirectory,
+} from './CorporatePublicOverview.tsx';
 
 export default function About() {
   const { settings } = useSiteSettings();
+  const { profile: corporateProfile, divisions, opportunities } = usePublicCorporateData();
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
@@ -96,11 +102,13 @@ export default function About() {
               <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
                 <Building2 className="w-6 h-6 text-amber-500" /> Who We Are
               </h2>
+              <CorporateRegistrationStatusCard profile={corporateProfile} />
+
               <p className="text-slate-300 text-sm leading-relaxed">
-                {settings?.siteName || 'MADECC GROUP'} is a full-service construction, civil engineering, and enterprise consulting company headquartered in {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'}. We were established to address the critical need for technical precision, transparent pricing, and rigorous on-site execution in the Central African construction sector.
+                {corporateProfile?.companyName || settings?.siteName || 'MADECC Group'} is a founder-led construction, engineering, real estate, and enterprise development company based in {corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}. Founded by {corporateProfile?.founderName || 'Kasah Rodrick Reboya'} (100% ownership), our motto is "{corporateProfile?.motto || "Building Cameroon's Future"}".
               </p>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Too many property developers, diaspora builders, and institutional investors in Cameroon experience unexpected cost overruns, substandard concrete pours, foundation cracking, or permit disputes. MADECC GROUP bridges this gap by applying disciplined engineering standards (Eurocode 2 and BAEL 91), verified geotechnical testing, and detailed Bills of Quantities (BOQ) with fixed unit rates.
+                We address the critical need for technical precision, transparent pricing, and regulatory honesty across Cameroon's construction and enterprise sectors—applying Eurocode 2 engineering modeling, detailed Bills of Quantities (BOQ), and verifiable legal compliance before advancing commercial operations.
               </p>
             </FadeIn>
 
@@ -346,6 +354,11 @@ export default function About() {
 
           </FadeIn>
 
+        </div>
+
+        {/* All 9 Business Divisions & Investment Opportunities */}
+        <div className="mt-20 border-t border-slate-900 pt-16">
+          <CorporateDivisionsDirectory divisions={divisions} opportunities={opportunities} theme="dark" />
         </div>
 
         {/* Our Team Section */}

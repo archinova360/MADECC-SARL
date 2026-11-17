@@ -26,6 +26,7 @@ import {
   Check
 } from 'lucide-react';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { usePublicCorporateData } from './CorporatePublicOverview.tsx';
 
 interface LegalPageProps {
   type: 'terms' | 'privacy' | 'safety';
@@ -34,6 +35,7 @@ interface LegalPageProps {
 
 export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
   const { settings } = useSiteSettings();
+  const { profile: corporateProfile } = usePublicCorporateData();
   const [copiedLink, setCopiedLink] = useState(false);
 
   const handleCopyPageUrl = () => {
@@ -50,12 +52,18 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
     }
   };
 
-  const companyName = settings?.siteName || 'MADECC GROUP';
+  const companyName = corporateProfile?.companyName || settings?.siteName || 'MADECC Group';
   const siteUrl = 'https://madeccgroup.online';
-  const officeAddress = settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Centre Region, Republic of Cameroon';
-  const primaryEmail = settings?.email || 'contact@madeccgroup.online';
+  const officeAddress = corporateProfile?.displayLocation || 'Yaoundé, Centre Region, Republic of Cameroon';
+  const primaryEmail = settings?.email || 'kreboya603@gmail.com';
   const secondaryEmail = settings?.secondaryEmail || 'Infomadeccconstruction@gmail.com';
   const primaryPhone = settings?.phone || '+237 671 06 35 11';
+  const legalFormText = corporateProfile?.legalStatusBadge || 'Individual establishment registration pending';
+  const rccmText = corporateProfile?.registrationNumber || 'Pending formal registration';
+  const niuText =
+    corporateProfile !== null
+      ? corporateProfile.taxpayerNumber || 'Private / Pending disclosure'
+      : settings?.niuTaxId || 'P030217852934P';
 
   return (
     <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
@@ -199,24 +207,24 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
           {type === 'terms' && (
             <>
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
-                <strong>Legal Agreement Overview:</strong> Welcome to the official web portal of {companyName} SARL (<a href={siteUrl} className="text-amber-400 hover:underline font-mono">{siteUrl}</a>). These Terms of Service constitute a legally binding agreement between you ("Client", "User", or "Visitor") and {companyName} regarding access to our engineering calculators, architectural galleries, tender submissions, and contracting services. By accessing or using this website, you unconditionally accept and agree to comply with these terms.
+                <strong>Legal Agreement Overview:</strong> Welcome to the official web portal of {companyName} (<a href={siteUrl} className="text-amber-400 hover:underline font-mono">{siteUrl}</a>). These Terms of Service govern access to our engineering calculators, architectural galleries, tender submissions, and business development services. By accessing or using this website, you accept and agree to comply with these terms.
               </div>
 
               {/* 01 */}
               <section className="space-y-3">
                 <h2 className="text-base font-bold text-white font-mono uppercase tracking-wider flex items-center gap-2">
-                  <span className="text-amber-400 font-extrabold">01.</span> Corporate Entity &amp; Professional Accreditations
+                  <span className="text-amber-400 font-extrabold">01.</span> Corporate Entity &amp; Registration Disclosure
                 </h2>
                 <p>
-                  {companyName} is a legally registered civil engineering, construction management, and architectural enterprise incorporated under the laws of the Republic of Cameroon, governed by the OHADA Uniform Act on Commercial Companies:
+                  {companyName} is a founder-led Cameroonian enterprise headquartered in {officeAddress} ({corporateProfile?.statusHeadline || 'currently undergoing formal business registration'}):
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-300">
-                  <div><strong>Company Legal Form:</strong> Société à Responsabilité Limitée (SARL)</div>
-                  <div><strong>Headquarters:</strong> {officeAddress}</div>
-                  <div><strong>Trade &amp; Personal Property Credit Register (RCCM):</strong> RC/YAO/2020/B/1429</div>
-                  <div><strong>Unique Taxpayer Identification Number (NIU):</strong> M022012845610W</div>
-                  <div><strong>Engineering Accreditation:</strong> Ordre National des Ingénieurs de Génie Civil (ONIGC)</div>
-                  <div><strong>Contract Conditions:</strong> FIDIC Red Book / MDB Harmonized Edition</div>
+                  <div><strong>Legal Status:</strong> {legalFormText}</div>
+                  <div><strong>Location:</strong> {officeAddress}</div>
+                  <div><strong>Trade &amp; Credit Register (RCCM):</strong> {rccmText}</div>
+                  <div><strong>Taxpayer Identification (NIU):</strong> {niuText}</div>
+                  <div><strong>Founder / Owner:</strong> {corporateProfile?.founderName || 'Kasah Rodrick Reboya'} (100%)</div>
+                  <div><strong>Planned Transition:</strong> {corporateProfile?.plannedLegalStructure || 'SARL'} (upon registration)</div>
                 </div>
               </section>
 
@@ -348,9 +356,9 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   <span className="text-amber-400 font-extrabold">11.</span> Official Legal Notice &amp; Contact Information
                 </h2>
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1.5 text-slate-300">
-                  <p><strong>Corporate Entity:</strong> {companyName} SARL</p>
-                  <p><strong>Corporate Affairs &amp; Legal Directorate:</strong> General Contracting &amp; Civil Engineering Division</p>
-                  <p><strong>Physical Headquarters:</strong> {officeAddress}</p>
+                  <p><strong>Enterprise Name:</strong> {companyName} ({legalFormText})</p>
+                  <p><strong>Founder / Principal:</strong> {corporateProfile?.founderName || 'Kasah Rodrick Reboya'}</p>
+                  <p><strong>Location:</strong> {officeAddress}</p>
                   <p><strong>Official Inquiries:</strong> <a href={`mailto:${primaryEmail}`} className="text-amber-400 underline">{primaryEmail}</a> / <a href={`mailto:${secondaryEmail}`} className="text-amber-400 underline">{secondaryEmail}</a></p>
                   <p><strong>Telephone / WhatsApp Hotline:</strong> {primaryPhone}</p>
                 </div>
@@ -376,10 +384,10 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
                   The legal entity responsible for the collection, storage, and processing of personal data across <a href={siteUrl} className="text-amber-400 hover:underline">{siteUrl}</a> is:
                 </p>
                 <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
-                  <p><strong>Data Controller:</strong> {companyName} SARL</p>
-                  <p><strong>Headquarters:</strong> {officeAddress}</p>
-                  <p><strong>Data Protection Officer (DPO):</strong> Compliance &amp; Information Security Directorate</p>
-                  <p><strong>Direct DPO Email:</strong> <a href={`mailto:${primaryEmail}`} className="text-amber-400 underline">{primaryEmail}</a></p>
+                  <p><strong>Data Controller:</strong> {companyName} ({legalFormText})</p>
+                  <p><strong>Location:</strong> {officeAddress}</p>
+                  <p><strong>Data Protection Contact:</strong> {corporateProfile?.founderName || 'Kasah Rodrick Reboya'}</p>
+                  <p><strong>Direct Email:</strong> <a href={`mailto:${primaryEmail}`} className="text-amber-400 underline">{primaryEmail}</a></p>
                   <p><strong>Self-Service Erasure Portal:</strong> <button onClick={() => setCurrentTab('data-deletion')} className="text-amber-400 underline cursor-pointer font-bold">https://madeccgroup.online/data-deletion</button></p>
                 </div>
               </section>

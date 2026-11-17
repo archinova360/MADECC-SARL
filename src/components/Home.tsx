@@ -43,6 +43,11 @@ import { InteractiveQuickEstimator } from './InteractiveQuickEstimator.tsx';
 import { InteractiveBlueprintPreview } from './InteractiveBlueprintPreview.tsx';
 import RotatingMovingText from './RotatingMovingText.tsx';
 import { motion } from 'motion/react';
+import {
+  usePublicCorporateData,
+  CorporateRegistrationStatusCard,
+  CorporateDivisionsDirectory,
+} from './CorporatePublicOverview.tsx';
 
 interface HomeProps {
   setCurrentTab: (tab: string) => void;
@@ -53,6 +58,7 @@ interface HomeProps {
 export default function Home({ setCurrentTab, setSelectedProjectId, currentTenant }: HomeProps) {
   const { t } = useLanguage();
   const { settings } = useSiteSettings();
+  const { profile: corporateProfile, divisions, opportunities } = usePublicCorporateData();
   const tenantId = currentTenant?.id || 1;
   const tenantProfile = TenantContentService.getProfile(tenantId);
   const tenant = currentTenant || tenantProfile.tenant;
@@ -325,7 +331,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 <Building2 className="w-3.5 h-3.5" /> Construction & Civil Engineering — Cameroon
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md shadow-sm">
-                <MapPin className="w-3 h-3 text-amber-500" /> HQ: {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'}
+                <MapPin className="w-3 h-3 text-amber-500" /> Base: {corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}
               </span>
             </div>
 
@@ -446,11 +452,11 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-white">
-                  <AnimatedCounter value={150} suffix="+" />
+                <div className="text-2xl sm:text-3xl font-extrabold text-white tabular-nums">
+                  {divisions.length || 9}
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-                  Engineered Builds Handed Over
+                  Planned Business Divisions
                 </div>
               </div>
             </StaggerItem>
@@ -460,11 +466,11 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-white">
-                  <AnimatedCounter value={100} suffix="%" />
+                <div className="text-2xl sm:text-3xl font-extrabold text-white tabular-nums">
+                  100%
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-                  Eurocode 2 & Lab Verified
+                  Founder-Owned · Kasah Rodrick Reboya
                 </div>
               </div>
             </StaggerItem>
@@ -475,10 +481,10 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               </div>
               <div>
                 <div className="text-2xl sm:text-3xl font-extrabold text-white">
-                  <AnimatedCounter value={2.8} suffix="M+" decimals={1} />
+                  Eurocode 2
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-                  Safe Man-Hours Zero LTI
+                  Engineering Calculation Basis
                 </div>
               </div>
             </StaggerItem>
@@ -488,15 +494,19 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 <MapPin className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-white">
-                  <AnimatedCounter value={10} suffix=" Regions" />
+                <div className="text-xl sm:text-2xl font-extrabold text-white">
+                  {corporateProfile?.city || 'Yaoundé'}
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-                  Cameroon-Wide Deployment
+                  {corporateProfile?.isLegallyVerified ? 'Verified Enterprise' : 'Registration Pending'}
                 </div>
               </div>
             </StaggerItem>
           </StaggerContainer>
+
+          <div className="mt-6">
+            <CorporateRegistrationStatusCard profile={corporateProfile} />
+          </div>
         </div>
 
         {/* Continuous Architectural & Engineering Moving Text Ribbon */}
@@ -690,8 +700,17 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               onClick={() => setCurrentTab('services')}
               className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-xl text-xs uppercase tracking-wider border border-slate-800 hover:border-amber-500 transition-all"
             >
-              Explore Full 9-Module Services Directory <ArrowRight className="w-4 h-4 text-amber-500" />
+              Explore Full Divisions &amp; Services Directory <ArrowRight className="w-4 h-4 text-amber-500" />
             </button>
+          </div>
+
+          <div className="mt-16 pt-16 border-t border-slate-800/80">
+            <CorporateDivisionsDirectory
+              divisions={divisions}
+              opportunities={opportunities}
+              onInquire={() => setCurrentTab('request-a-quote')}
+              theme="dark"
+            />
           </div>
 
         </div>

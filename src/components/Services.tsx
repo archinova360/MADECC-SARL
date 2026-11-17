@@ -32,6 +32,11 @@ import {
   Leaf
 } from 'lucide-react';
 import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import {
+  usePublicCorporateData,
+  CorporateRegistrationStatusCard,
+  CorporateDivisionsDirectory,
+} from './CorporatePublicOverview.tsx';
 
 interface ServicesProps {
   onNavigateToTab: (tab: string, extraState?: any) => void;
@@ -441,6 +446,11 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [dbServicesList, setDbServicesList] = useState<ServiceItem[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'CONSTRUCTION' | 'WEBSITE'>('ALL');
+  const {
+    profile: publicCorporateProfile,
+    divisions: corporateDivisions,
+    opportunities: corporateOpportunities,
+  } = usePublicCorporateData();
 
   useEffect(() => {
     const loadServicesFromDb = async () => {
@@ -761,6 +771,17 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             ))}
           </div>
         </FadeIn>
+
+        {/* Dynamic 9 Business Divisions & Investment Opportunities */}
+        <section className="py-12 border-t border-slate-200 space-y-8">
+          <CorporateRegistrationStatusCard profile={publicCorporateProfile} compact />
+          <CorporateDivisionsDirectory
+            divisions={corporateDivisions}
+            opportunities={corporateOpportunities}
+            onInquire={(divName) => onNavigateToTab('request-a-quote', { prefillService: divName })}
+            theme="light"
+          />
+        </section>
 
         {/* 6. BOTTOM CTA BANNER */}
         <FadeIn className="bg-gradient-to-r from-amber-500 via-amber-600 to-slate-950 text-slate-950 rounded-3xl p-8 sm:p-12 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">

@@ -127,6 +127,10 @@ import { AdminMaintenanceAndHandoverHub } from './AdminMaintenanceAndHandoverHub
 import { AdminPlaystoreAndCpanelHub } from './AdminPlaystoreAndCpanelHub.tsx';
 import { SuperAdmin } from './SuperAdmin.tsx';
 import { TenantService } from '../services/tenantService.ts';
+import { CorporateProfileRegistrationHub } from './CorporateProfileRegistrationHub.tsx';
+import { BusinessDivisionsHub } from './BusinessDivisionsHub.tsx';
+import { InvestorPartnershipHub } from './InvestorPartnershipHub.tsx';
+import { CorporateAuditGovernanceHub } from './CorporateAuditGovernanceHub.tsx';
 import { 
   ReceiptPaymentRecord, 
   STANDARD_RECEIPT_FEE_XAF, 
@@ -215,6 +219,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   // Expanded navigation groups state
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     'command-center-group': true,
+    'corporate-governance-group': true,
     'sales-group': true,
     'analytics-group': true,
     'construction-erp-group': true,
@@ -2044,6 +2049,17 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       ]
     },
     {
+      id: 'corporate-governance-group',
+      title: '🏛️ CORPORATE LEGAL & DIVISIONS',
+      icon: Scale,
+      items: [
+        { id: 'corporate-profile', label: 'Business Profile & Legal Registration', icon: Building2 },
+        { id: 'corporate-divisions', label: 'Business Divisions & Services (9)', icon: Layers },
+        { id: 'corporate-investors', label: 'Investors & Partnerships (Ghana/CM)', icon: Briefcase },
+        { id: 'corporate-governance', label: 'Governance, Shares & Audit Trail', icon: ShieldCheck }
+      ]
+    },
+    {
       id: 'sales-group',
       title: '🛒 KRR BOOKSTORE & SALES',
       icon: ShoppingBag,
@@ -2914,6 +2930,20 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         {/* KRR BOOKSTORE, SALES, ORDERS & VERIFICATION HUB */}
         {activeAdminTab === 'sales-hub' && (
           <AdminSalesHub />
+        )}
+
+        {/* CORPORATE GOVERNANCE: PROFILE, LEGAL REGISTRATION, 9 DIVISIONS, INVESTORS & AUDIT */}
+        {activeAdminTab === 'corporate-profile' && (
+          <CorporateProfileRegistrationHub onNavigatePublicPreview={() => setCurrentTab('about')} />
+        )}
+        {activeAdminTab === 'corporate-divisions' && (
+          <BusinessDivisionsHub />
+        )}
+        {activeAdminTab === 'corporate-investors' && (
+          <InvestorPartnershipHub />
+        )}
+        {activeAdminTab === 'corporate-governance' && (
+          <CorporateAuditGovernanceHub />
         )}
 
         {/* WEBSITE LIVE OPTIMIZER & MASTER CUSTOMIZER */}

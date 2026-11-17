@@ -11,6 +11,7 @@ import { ensureSalesTables } from '../db/ensureSalesTables.ts';
 import { ensureErpTables } from '../db/ensureErpTables.ts';
 import { ensureSaasTables } from '../db/ensureSaasTables.ts';
 import { ensureProDocStudioTables } from '../db/ensureProDocStudioTables.ts';
+import { ensureCorporatePlatformTables } from '../db/ensureCorporatePlatformTables.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
@@ -30,6 +31,7 @@ import { setupOptimizerRoutes } from './routes/optimizerRoutes.ts';
 import { setupSalesRoutes } from './routes/salesRoutes.ts';
 import { setupErpPlatformRoutes } from './routes/erpPlatformRoutes.ts';
 import { setupProDocStudioRoutes } from './routes/proDocStudioRoutes.ts';
+import { setupCorporateRoutes } from './routes/corporateRoutes.ts';
 import apiPlatformRoutes from './routes/apiPlatformRoutes.ts';
 
 let isDatabaseSeeded = false;
@@ -44,6 +46,7 @@ export async function getApp(): Promise<express.Express> {
       await ensureErpTables();
       await ensureSaasTables();
       await ensureProDocStudioTables();
+      await ensureCorporatePlatformTables();
       if (!process.env.NETLIFY) {
         await seedDatabase();
       } else {
@@ -193,6 +196,8 @@ export async function getApp(): Promise<express.Express> {
       req.path.startsWith('/client') ||
       req.path.startsWith('/erp') ||
       req.path.startsWith('/doc-studio') ||
+      req.path.startsWith('/corporate') ||
+      req.path.startsWith('/public/corporate') ||
       req.path.startsWith('/health') ||
       req.path.startsWith('/upload') ||
       req.path.startsWith('/public/upload') ||
@@ -276,6 +281,7 @@ export async function getApp(): Promise<express.Express> {
   setupOptimizerRoutes(app);
   setupSalesRoutes(app);
   setupProDocStudioRoutes(app);
+  setupCorporateRoutes(app);
   app.use('/api/v1', apiPlatformRoutes);
   app.use('/api', apiPlatformRoutes);
 

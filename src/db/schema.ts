@@ -8,6 +8,8 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   role: text('role').notNull().default('client'), // admin, staff, client
+  adminRole: text('admin_role').default('STANDARD'), // SUPER_ADMIN, BUSINESS_ADMIN, LEGAL_REVIEWER, CONTENT_ADMIN, STANDARD
+  corporatePermissions: json('corporate_permissions'),
   theme: text('theme').notNull().default('dark'), // dark, light
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -1533,9 +1535,9 @@ export const siteSettings = pgTable('site_settings', {
   shareDescription: text('share_description').default('Leading Cameroonian construction, civil engineering and project management firm.'),
   logoUrl: text('logo_url'),
   faviconUrl: text('favicon_url'),
-  legalStatus: text('legal_status').default('SARL (Société à Responsabilité Limitée)'),
-  rccmNumber: text('rccm_number').default('RC/YAO/2023/B/1458'),
-  niuTaxId: text('niu_tax_id').default('M072318492019A'),
+  legalStatus: text('legal_status').default('Individual establishment registration pending'),
+  rccmNumber: text('rccm_number').default(''),
+  niuTaxId: text('niu_tax_id').default('P030217852934P'),
   themeSettings: json('theme_settings'), // { primaryColor, accentColor, fontHeading, fontBody, borderRadius, containerWidth }
   globalSeo: json('global_seo'), // { seoTitle, metaDescription, canonicalBase, ogImage, keywords }
   navigationLinks: json('navigation_links'), // Array of nav items
@@ -2273,6 +2275,273 @@ export const proDocumentSettings = pgTable('pro_document_settings', {
   updatedBy: text('updated_by'),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// =========================================================================
+// 73. CORPORATE PROFILE, LEGAL REGISTRATION & COMPLIANCE
+// =========================================================================
+export const businessProfiles = pgTable('business_profiles', {
+  id: serial('id').primaryKey(),
+  companyName: text('company_name').notNull().default('MADECC Group'),
+  tradeName: text('trade_name').notNull().default('MADECC GROUP'),
+  legalStructure: text('legal_structure').notNull().default('INDIVIDUAL_ESTABLISHMENT_PLANNED'),
+  plannedLegalStructure: text('planned_legal_structure').default('SARL'),
+  registrationStatus: text('registration_status').notNull().default('UNREGISTERED'),
+  registrationNumber: text('registration_number'),
+  taxpayerNumber: text('taxpayer_number').default('P030217852934P'),
+  country: text('country').notNull().default('Cameroon'),
+  city: text('city').notNull().default('Yaoundé'),
+  streetAddress: text('street_address').default('Mbankolo'),
+  founderName: text('founder_name').notNull().default('Kasah Rodrick Reboya'),
+  ownershipPercentage: numeric('ownership_percentage').notNull().default('100'),
+  motto: text('motto').notNull().default("Building Cameroon's Future"),
+  employeeCount: integer('employee_count').notNull().default(0),
+  employeeCountNote: text('employee_count_note').default('Founder-led venture; no salaried employees yet'),
+  isRegNumberPublic: boolean('is_reg_number_public').notNull().default(false),
+  isTaxIdPublic: boolean('is_tax_id_public').notNull().default(true),
+  isStreetAddressPublic: boolean('is_street_address_public').notNull().default(false),
+  isFounderPublic: boolean('is_founder_public').notNull().default(true),
+  isEmployeeCountPublic: boolean('is_employee_count_public').notNull().default(true),
+  verificationNotes: text('verification_notes'),
+  verifiedBy: text('verified_by'),
+  verifiedAt: timestamp('verified_at'),
+  publishStatus: text('publish_status').notNull().default('PUBLISHED'),
+  version: integer('version').notNull().default(1),
+  draftPayload: json('draft_payload'),
+  publishedPayload: json('published_payload'),
+  scheduledPublishAt: timestamp('scheduled_publish_at'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const businessLegalEntities = pgTable('business_legal_entities', {
+  id: serial('id').primaryKey(),
+  profileId: integer('profile_id').notNull(),
+  entityName: text('entity_name').notNull(),
+  legalForm: text('legal_form').notNull().default('INDIVIDUAL_ESTABLISHMENT_PLANNED'),
+  plannedForm: text('planned_form').default('SARL'),
+  jurisdiction: text('jurisdiction').notNull().default('Cameroon'),
+  registrationNumber: text('registration_number'),
+  taxpayerNumber: text('taxpayer_number'),
+  status: text('status').notNull().default('PLANNED'),
+  effectiveFrom: timestamp('effective_from'),
+  effectiveTo: timestamp('effective_to'),
+  supersededById: integer('superseded_by_id'),
+  transitionNotes: text('transition_notes'),
+  isCurrent: boolean('is_current').notNull().default(true),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const registrationDocuments = pgTable('registration_documents', {
+  id: serial('id').primaryKey(),
+  profileId: integer('profile_id').notNull(),
+  entityId: integer('entity_id'),
+  title: text('title').notNull(),
+  category: text('category').notNull().default('REGISTRATION'),
+  docType: text('doc_type').notNull(),
+  issuer: text('issuer'),
+  referenceNumber: text('reference_number'),
+  issuedAt: timestamp('issued_at'),
+  expiresAt: timestamp('expires_at'),
+  fileUrl: text('file_url').notNull(),
+  storageProvider: text('storage_provider').notNull().default('cloudinary'),
+  storagePublicId: text('storage_public_id'),
+  storagePath: text('storage_path'),
+  fileName: text('file_name').notNull(),
+  mimeType: text('mime_type'),
+  fileSizeBytes: integer('file_size_bytes').default(0),
+  sha256Checksum: text('sha256_checksum'),
+  version: integer('version').notNull().default(1),
+  status: text('status').notNull().default('UPLOADED'),
+  isConfidential: boolean('is_confidential').notNull().default(true),
+  reviewNotes: text('review_notes'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at'),
+  uploadedBy: text('uploaded_by'),
+  archivedAt: timestamp('archived_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 74. MULTI-DIVISION BUSINESS ARCHITECTURE & SERVICES
+// =========================================================================
+export const businessDivisions = pgTable('business_divisions', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  summary: text('summary').notNull(),
+  fullDescription: text('full_description'),
+  operationalStatus: text('operational_status').notNull().default('PROPOSED'),
+  publishStatus: text('publish_status').notNull().default('PUBLISHED'),
+  country: text('country').notNull().default('Cameroon'),
+  operatingCountries: json('operating_countries'),
+  currency: text('currency').notNull().default('XAF'),
+  regulatoryBody: text('regulatory_body'),
+  licenceRequired: boolean('licence_required').notNull().default(false),
+  licenceStatus: text('licence_status').notNull().default('NOT_APPLIED'),
+  licenceNumber: text('licence_number'),
+  visibilityPublic: boolean('visibility_public').notNull().default(true),
+  isFeatured: boolean('is_featured').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  metadata: json('metadata'),
+  version: integer('version').notNull().default(1),
+  scheduledPublishAt: timestamp('scheduled_publish_at'),
+  archivedAt: timestamp('archived_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const divisionServices = pgTable('division_services', {
+  id: serial('id').primaryKey(),
+  divisionId: integer('division_id').notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  shortDescription: text('short_description').notNull(),
+  scopeDeliverables: json('scope_deliverables'),
+  pricingModel: text('pricing_model').default('Custom quotation / milestone-based'),
+  currency: text('currency').notNull().default('XAF'),
+  regulatoryNotes: text('regulatory_notes'),
+  operationalStatus: text('operational_status').notNull().default('PROPOSED'),
+  publishStatus: text('publish_status').notNull().default('PUBLISHED'),
+  visibilityPublic: boolean('visibility_public').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  archivedAt: timestamp('archived_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 75. INVESTOR & PARTNERSHIP PIPELINE (GHANA -> CAMEROON & GLOBAL)
+// =========================================================================
+export const investors = pgTable('investors', {
+  id: serial('id').primaryKey(),
+  investorName: text('investor_name').notNull(),
+  organization: text('organization'),
+  investorType: text('investor_type').notNull().default('STRATEGIC_PARTNER'),
+  email: text('email'),
+  phone: text('phone'),
+  investorCountry: text('investor_country').notNull().default('Ghana'),
+  targetCountry: text('target_country').notNull().default('Cameroon'),
+  registrationJurisdiction: text('registration_jurisdiction').notNull().default('Cameroon'),
+  sectorFocus: json('sector_focus'),
+  ticketSizeMin: numeric('ticket_size_min'),
+  ticketSizeMax: numeric('ticket_size_max'),
+  currency: text('currency').notNull().default('USD'),
+  stage: text('stage').notNull().default('POTENTIAL_INVESTOR'),
+  summary: text('summary'),
+  confidentialNotes: text('confidential_notes'),
+  publishAsOpportunity: boolean('publish_as_opportunity').notNull().default(false),
+  opportunityTitle: text('opportunity_title'),
+  opportunityDescription: text('opportunity_description'),
+  complianceStatus: text('compliance_status').notNull().default('KYC_PENDING'),
+  ownershipImplicationNote: text('ownership_implication_note').notNull().default('No existing shareholding, signed investment agreement, or capital commitment implied.'),
+  version: integer('version').notNull().default(1),
+  archivedAt: timestamp('archived_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const investorInteractions = pgTable('investor_interactions', {
+  id: serial('id').primaryKey(),
+  investorId: integer('investor_id').notNull(),
+  interactionType: text('interaction_type').notNull().default('NOTE'),
+  subject: text('subject').notNull(),
+  summary: text('summary').notNull(),
+  participants: text('participants'),
+  nextSteps: text('next_steps'),
+  interactionDate: timestamp('interaction_date').defaultNow().notNull(),
+  isConfidential: boolean('is_confidential').notNull().default(true),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const investorDocuments = pgTable('investor_documents', {
+  id: serial('id').primaryKey(),
+  investorId: integer('investor_id').notNull(),
+  title: text('title').notNull(),
+  docType: text('doc_type').notNull().default('PROPOSAL'),
+  fileUrl: text('file_url').notNull(),
+  storageProvider: text('storage_provider').notNull().default('cloudinary'),
+  storagePublicId: text('storage_public_id'),
+  storagePath: text('storage_path'),
+  fileName: text('file_name').notNull(),
+  mimeType: text('mime_type'),
+  fileSizeBytes: integer('file_size_bytes').default(0),
+  sha256Checksum: text('sha256_checksum'),
+  status: text('status').notNull().default('UPLOADED'),
+  isConfidential: boolean('is_confidential').notNull().default(true),
+  reviewNotes: text('review_notes'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at'),
+  uploadedBy: text('uploaded_by'),
+  archivedAt: timestamp('archived_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 76. CORPORATE GOVERNANCE: VERSIONING, CONTROLLED SHARES & AUDIT LOGS
+// =========================================================================
+export const corporateContentVersions = pgTable('corporate_content_versions', {
+  id: serial('id').primaryKey(),
+  entityType: text('entity_type').notNull(),
+  entityId: integer('entity_id').notNull(),
+  versionNumber: integer('version_number').notNull(),
+  entityTitle: text('entity_title').notNull(),
+  changeSummary: text('change_summary'),
+  snapshotJson: json('snapshot_json').notNull(),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const corporateShares = pgTable('corporate_shares', {
+  id: serial('id').primaryKey(),
+  shareTokenHash: text('share_token_hash').notNull().unique(),
+  tokenPrefix: text('token_prefix').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: integer('entity_id').notNull(),
+  title: text('title').notNull(),
+  permissions: text('permissions').notNull().default('VIEW_ONLY'),
+  allowPublic: boolean('allow_public').notNull().default(true),
+  includeConfidential: boolean('include_confidential').notNull().default(false),
+  recipientEmail: text('recipient_email'),
+  recipientName: text('recipient_name'),
+  expiresAt: timestamp('expires_at'),
+  revokedAt: timestamp('revoked_at'),
+  revokedBy: text('revoked_by'),
+  accessCount: integer('access_count').notNull().default(0),
+  lastAccessedAt: timestamp('last_accessed_at'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const corporateAuditLogs = pgTable('corporate_audit_logs', {
+  id: serial('id').primaryKey(),
+  actorId: integer('actor_id'),
+  actorEmail: text('actor_email'),
+  actorRole: text('actor_role'),
+  action: text('action').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: integer('entity_id'),
+  entityTitle: text('entity_title'),
+  beforeJson: json('before_json'),
+  afterJson: json('after_json'),
+  ipAddress: text('ip_address'),
+  details: text('details'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 
 
 

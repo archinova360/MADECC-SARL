@@ -117,7 +117,7 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
       id: 1,
       name: 'MADECC GROUP',
       slug: 'madecc-construction',
-      legalName: 'MADECC GROUP SARL',
+      legalName: 'MADECC Group (Individual establishment registration pending)',
       logoUrl: '/logo.png',
       faviconUrl: '/app_favicon.jpg',
       primaryDomain: 'madecc-construction.madecccloud.com',
@@ -127,22 +127,21 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
       currency: 'XAF',
       timezone: 'Africa/Douala',
       phone: '+237 671 063 511 / +237 683 316 486',
-      email: 'contact@madeccgroup.online',
-      address: 'Commercial Avenue, Bamenda & Douala, Cameroon',
+      email: 'kreboya603@gmail.com',
+      address: 'Yaoundé, Cameroon',
       country: 'Cameroon',
       settings: {
         primaryColor: '#0f172a',
         secondaryColor: '#f59e0b',
         accentColor: '#2563eb',
         fontFamily: 'Plus Jakarta Sans',
-        tagline: 'Premier Civil Engineering, Structural Design & Turnkey EPC Contractor',
-        companyAddress: 'Commercial Avenue, Bamenda & Boulevard de la Liberté, Douala',
+        tagline: "Building Cameroon's Future — Construction, Engineering & Multi-Division Enterprise",
+        companyAddress: 'Yaoundé, Cameroon',
         phone: '+237 671 063 511',
-        email: 'contact@madeccgroup.online',
+        email: 'kreboya603@gmail.com',
         whatsappNumber: '+237671063511',
+        taxNumber: 'P030217852934P',
         currency: 'XAF',
-        taxNumber: 'M051812728192K',
-        registrationNumber: 'RC/YAO/2018/B/1429',
         socialLinks: {
           facebook: 'https://facebook.com/madeccgroup',
           linkedin: 'https://linkedin.com/company/madecc-group',
@@ -158,54 +157,40 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
       updatedAt: new Date().toISOString()
     },
     hero: {
-      title: 'Engineered Precision & Turnkey Construction in Central Africa',
-      subtitle: 'MADECC GROUP delivers certified structural engineering, high-end residential estates, commercial complexes, and transparent quantity surveying across Cameroon and CEMAC.',
-      tagline: 'Mastering Blueprints. Building Legacies.',
+      title: "Building Cameroon's Future Across Construction, Real Estate & Enterprise",
+      subtitle: 'MADECC GROUP is a founder-led Cameroonian enterprise headquartered in Yaoundé, developing multi-division capabilities in construction, civil engineering, real estate, and partner-ready sectors.',
+      tagline: "Building Cameroon's Future.",
       primaryCtaText: 'Request Detailed BOQ Quote',
       primaryCtaTab: 'request-a-quote',
-      secondaryCtaText: 'Explore Landmark Portfolio',
-      secondaryCtaTab: 'projects',
+      secondaryCtaText: 'Explore Divisions & Services',
+      secondaryCtaTab: 'services',
       bannerImage: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
       stats: [
-        { value: '180+', label: 'Delivered Projects', description: 'Turnkey residential, institutional and commercial assets' },
-        { value: '100%', label: 'Eurocode 2 Compliance', description: 'Certified structural stability and seismic safety' },
-        { value: '15+ Yrs', label: 'Engineering Excellence', description: 'Continuous operations in Central African infrastructure' },
-        { value: '24/7', label: 'Digital Project Tracking', description: 'Real-time client progress and transparent BOQ auditing' }
+        { value: '9 Divisions', label: 'Planned Business Scope', description: 'Construction, Civil Engineering, Real Estate, Healthcare & Industrial Sectors' },
+        { value: 'Eurocode 2', label: 'Technical Reference', description: 'Algorithmic structural & BOQ estimation tools' },
+        { value: '100%', label: 'Founder-Owned', description: 'Founded and wholly owned by Kasah Rodrick Reboya' },
+        { value: '24/7', label: 'Digital Client Portal', description: 'Transparent BOQ quoting, project tracking & document workflows' }
       ],
-      trustBadges: ['ISO 9001:2015 Certified', 'Eurocode EN 1992-1-1', 'Order of Civil Engineers Registered', 'FIDIC Compliant']
+      trustBadges: ['Eurocode EN 1992-1-1 Reference', 'FIDIC Contract Templates', 'Transparent Registration Tracking']
     },
     about: {
-      headline: 'A Decadal Legacy of Structural Integrity & Architectural Craftsmanship',
-      story: 'Founded with the mission to bring precision engineering, zero-compromise structural calculations, and transparent cost accounting to African construction, MADECC GROUP has grown into an elite EPC general contractor. We combine on-site craftsmanship with algorithmic CAD takeoff, Eurocode structural models, and verifiable blockchain-grade contract systems.',
-      vision: 'To be the benchmark of engineering integrity, resilient urban infrastructure, and sustainable smart buildings across Sub-Saharan Africa.',
-      mission: 'Delivering uncompromised structural quality on schedule and within verified budgets through algorithmic quantity surveying and skilled project governance.',
-      certifications: [
-        { title: 'Quality Management Systems (ISO 9001:2015)', issuer: 'International Standards Bureau', year: '2021-Present', badge: 'ISO 9001' },
-        { title: 'Registered Engineering Practice License', issuer: 'National Order of Civil Engineers (ONIGC)', year: '2018-Present', badge: 'ONIGC' },
-        { title: 'Occupational Health & Safety (ISO 45001)', issuer: 'Regional Safety Council', year: '2022-Present', badge: 'ISO 45001' }
-      ],
+      headline: "Building Cameroon's Future with Engineering Discipline & Institutional Transparency",
+      story: 'Founded by Kasah Rodrick Reboya in Yaoundé, Cameroon, MADECC Group is establishing a transparent, technology-driven multi-service platform spanning construction, civil engineering, real estate development, and partner-backed industrial ventures. We publish truthful corporate registration disclosures and advance operations strictly in step with statutory licensing.',
+      vision: "Building Cameroon's Future through accountable infrastructure, real estate development, and regulated cross-border enterprise partnerships.",
+      mission: 'Delivering transparent quantity surveying, digital engineering tools, and disciplined project structuring while maintaining verifiable regulatory compliance.',
+      certifications: [],
       executives: [
         {
-          name: 'Eng. K. Robinson, M.Sc., P.E.',
-          role: 'Managing Director & Lead Structural Consultant',
-          qualifications: 'M.Sc. Structural Engineering, B.Eng. Civil Works',
-          experienceYears: 18,
-          bio: 'Specialist in reinforced concrete design, deep foundation geotechnics, and high-rise commercial structures under Eurocode 2.',
-          avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80'
-        },
-        {
-          name: 'Dr. Helene Mbarga, Ph.D.',
-          role: 'Head of Quantity Surveying & Estimations',
-          qualifications: 'Ph.D. Construction Economics, RICS Fellow',
-          experienceYears: 14,
-          bio: 'Oversees algorithmic takeoff, procurement logistics, and parametric BOQ verification models.',
-          avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80'
+          name: 'Kasah Rodrick Reboya',
+          role: 'Founder & Sole Owner (100%)',
+          qualifications: 'Founder, MADECC Group',
+          experienceYears: 0,
+          bio: 'Founder and sole proprietor leading corporate formation, construction platform architecture, and strategic partnership scoping in Cameroon.',
+          avatarUrl: ''
         }
       ],
       officeLocations: [
-        { city: 'Douala (Headquarters)', address: 'Boulevard de la Liberté, Akwa Business District', phone: '+237 671 063 511', email: 'douala@madeccgroup.online', isHq: true },
-        { city: 'Yaoundé (Operations Hub)', address: 'Avenue Kennedy, Centre-Ville', phone: '+237 683 316 486', email: 'yaounde@madeccgroup.online', isHq: false },
-        { city: 'Bamenda (Regional Bureau)', address: 'Commercial Avenue, Up Station', phone: '+237 671 063 511', email: 'bamenda@madeccgroup.online', isHq: false }
+        { city: 'Yaoundé (Primary Base)', address: 'Yaoundé, Centre Region, Cameroon', phone: '+237 683 316 486', email: 'kreboya603@gmail.com', isHq: true }
       ]
     },
     services: [

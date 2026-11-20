@@ -1,14 +1,9 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './lib/firebase.ts';
 import { User, Tenant, PlanCode } from './types.ts';
-import { AnimatePresence } from 'motion/react';
-import { PageTransition } from './components/MotionReveal.tsx';
 
 // Layout & Core Global Components (Critical path for instant paint)
 import Navbar from './components/Navbar.tsx';
 import Footer from './components/Footer.tsx';
-import FloatingContactHub from './components/FloatingContactHub.tsx';
 import SEOHandler from './components/SEOHandler.tsx';
 import LiveTickerMarquee from './components/LiveTickerMarquee.tsx';
 import Home from './components/Home.tsx';
@@ -79,16 +74,18 @@ const TenantBillingModal = lazyRetry(() => import('./components/TenantBillingMod
 const TenantThankYouModal = lazyRetry(() => import('./components/TenantThankYouModal.tsx').then(m => ({ default: m.TenantThankYouModal })));
 const TenantOnboardingModal = lazyRetry(() => import('./components/TenantOnboardingModal.tsx').then(m => ({ default: m.TenantOnboardingModal })));
 const FloatingVoiceAssistant = lazyRetry(() => import('./components/FloatingVoiceAssistant.tsx'));
+const FloatingContactHub = lazyRetry(() => import('./components/FloatingContactHub.tsx'));
+const FollowUsModal = lazyRetry(() => import('./components/FollowUsModal.tsx'));
+const ReceiptPaymentGateModal = lazyRetry(() => import('./components/ReceiptPaymentGateModal.tsx').then(m => ({ default: m.ReceiptPaymentGateModal })));
+const VisitorMaintenanceNotice = lazyRetry(() => import('./components/VisitorMaintenanceNotice.tsx').then(m => ({ default: m.VisitorMaintenanceNotice })));
+const VisitorAnnouncementBanner = lazyRetry(() => import('./components/VisitorAnnouncementBanner.tsx'));
+const CookieConsentBanner = lazyRetry(() => import('./components/CookieConsentBanner.tsx'));
 
 
 import { TenantService } from './services/tenantService.ts';
 import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';
 import { LanguageProvider } from './lib/LanguageContext.tsx';
 import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext.tsx';
-import FollowUsModal from './components/FollowUsModal.tsx';
-import { ReceiptPaymentGateModal } from './components/ReceiptPaymentGateModal.tsx';
-import { VisitorMaintenanceNotice } from './components/VisitorMaintenanceNotice.tsx';
-import CookieConsentBanner from './components/CookieConsentBanner.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import {
   parsePaymentUrlParams,
@@ -97,8 +94,6 @@ import {
   NAVIGATION_MANUAL_RECEIPT_NO,
   BUYER_HANDOVER_MANUAL_RECEIPT_NO
 } from './utils/paymentDomain.ts';
-import { forceDownloadWebsiteNavigationGuidePdf } from './utils/navigationGuidePdf.ts';
-import { forceDownloadBuyerHandoverManualPdf } from './utils/buyerHandoverPdf.ts';
 
 function RouteLoadingFallback() {
   return (
@@ -174,6 +169,28 @@ function AppContent({
     return () => window.removeEventListener('madecc:open-shared-doc', onOpenSharedDoc);
   }, []);
 
+  const [showFloatingWidgets, setShowFloatingWidgets] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const enable = () => {
+      if (!cancelled) setShowFloatingWidgets(true);
+    };
+    const w = window as any;
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(enable, { timeout: 2200 });
+      return () => {
+        cancelled = true;
+        w.cancelIdleCallback?.(id);
+      };
+    }
+    const timer = setTimeout(enable, 1800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
+
   useEffect(() => {
     const payParams = parsePaymentUrlParams();
     if (payParams) {
@@ -193,9 +210,13 @@ function AppContent({
       // Admin does not need to pay before downloading
       if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
         if (detail.manualType === 'navigation_manual') {
-          forceDownloadWebsiteNavigationGuidePdf(detail.options || {});
+          import('./utils/navigationGuidePdf.ts').then((m) =>
+            m.forceDownloadWebsiteNavigationGuidePdf(detail.options || {})
+          ).catch(() => {});
         } else {
-          forceDownloadBuyerHandoverManualPdf(detail.options || {});
+          import('./utils/buyerHandoverPdf.ts').then((m) =>
+            m.forceDownloadBuyerHandoverManualPdf(detail.options || {})
+          ).catch(() => {});
         }
         return;
       }
@@ -391,11 +412,17 @@ function AppContent({
           />
         );
       case 'terms':
-        return <LegalPage type="terms" setCurrentTab={setCurrentTab} />;
       case 'privacy':
-        return <LegalPage type="privacy" setCurrentTab={setCurrentTab} />;
       case 'safety':
-        return <LegalPage type="safety" setCurrentTab={setCurrentTab} />;
+      case 'cookies':
+      case 'disclaimer':
+      case 'copyright':
+      case 'acceptable-use':
+      case 'data-protection':
+      case 'api-terms':
+      case 'investor-disclaimer':
+      case 'legal':
+        return <LegalPage type={currentTab === 'legal' ? 'privacy' : (currentTab as any)} setCurrentTab={setCurrentTab} />;
       case 'data-deletion':
         return <DataDeletion onNavigateToTab={handleNavigateWithState} setCurrentTab={setCurrentTab} />;
       case 'faq':
@@ -505,8 +532,11 @@ function AppContent({
 
       <SEOHandler currentTab={currentTab} selectedProjectId={selectedProjectId} currentTenant={currentTenant} />
 
-      {/* Non-Intrusive Website Maintenance Notification (Triggered from Admin Dashboard + SMTP kreboya603@gmail.com) */}
-      <VisitorMaintenanceNotice />
+      {/* Non-Intrusive Website Maintenance Notification & Visitor Announcements */}
+      <Suspense fallback={null}>
+        <VisitorMaintenanceNotice />
+        <VisitorAnnouncementBanner currentTab={currentTab} onNavigate={(tab) => setCurrentTab(tab)} />
+      </Suspense>
       
       {/* Header Navigation Section */}
       <Navbar 
@@ -541,13 +571,9 @@ function AppContent({
             <span className={`text-xs font-mono uppercase tracking-widest ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>Verifying secure profile...</span>
           </div>
         ) : (
-          <AnimatePresence mode="wait">
-            <PageTransition key={currentTab}>
-              <Suspense fallback={<RouteLoadingFallback />}>
-                {renderActiveScreen()}
-              </Suspense>
-            </PageTransition>
-          </AnimatePresence>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            {renderActiveScreen()}
+          </Suspense>
         )}
       </main>
 
@@ -559,13 +585,13 @@ function AppContent({
         }} 
       />
 
-      {/* Floating Interactive Live Hub widget */}
-      <FloatingContactHub />
-
-      {/* Enterprise AI Voice Assistant Narrator */}
-      <Suspense fallback={null}>
-        <FloatingVoiceAssistant />
-      </Suspense>
+      {/* Floating Interactive Live Hub widget & AI Voice Assistant (deferred past initial paint) */}
+      {showFloatingWidgets && (
+        <Suspense fallback={null}>
+          <FloatingContactHub />
+          <FloatingVoiceAssistant />
+        </Suspense>
+      )}
 
       {/* Multi-Tenant SaaS Modals */}
       <Suspense fallback={null}>
@@ -613,89 +639,98 @@ function AppContent({
         )}
       </Suspense>
 
-      {/* Global Follow Us on Social Media Modal */}
-      <FollowUsModal 
-        isOpen={isFollowModalOpen} 
-        onClose={closeFollowModal}
-        isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
-        onNavigateToAdminCms={() => setCurrentTab('admin')}
-      />
+      {/* Global Follow Us & Pay-Before-Download Modals (Code-Split) */}
+      <Suspense fallback={null}>
+        {isFollowModalOpen && (
+          <FollowUsModal 
+            isOpen={isFollowModalOpen} 
+            onClose={closeFollowModal}
+            isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
+            onNavigateToAdminCms={() => setCurrentTab('admin')}
+          />
+        )}
 
-      {/* Global Client Pay-Before-Download Modal (via https://madeccgroup.online or auto-detected domain) */}
-      {clientPaymentRequest && (
-        <ReceiptPaymentGateModal
-          isOpen={Boolean(clientPaymentRequest)}
-          isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
-          onClose={() => {
-            setClientPaymentRequest(null);
-            // Clean URL query parameter without full reload
-            if (window.history && window.history.replaceState) {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('pay');
-              url.searchParams.delete('checkout');
-              url.searchParams.delete('receipt');
-              window.history.replaceState({}, '', url.toString());
-            }
-          }}
-          receiptDetails={{
-            receiptNo: clientPaymentRequest.receiptNo,
-            projectName: clientPaymentRequest.projectName || 'Tender & Infrastructure Project',
-            clientName: clientPaymentRequest.clientName || 'Valued Client',
-            totalAmount: Number(clientPaymentRequest.amount) || 2199,
-            customFeeAmount: 2199,
-            currency: clientPaymentRequest.currency || 'XAF',
-            docType: clientPaymentRequest.docType || 'boq_receipt',
-            language: 'en'
-          }}
-        />
-      )}
+        {clientPaymentRequest && (
+          <ReceiptPaymentGateModal
+            isOpen={Boolean(clientPaymentRequest)}
+            isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
+            onClose={() => {
+              setClientPaymentRequest(null);
+              if (window.history && window.history.replaceState) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('pay');
+                url.searchParams.delete('checkout');
+                url.searchParams.delete('receipt');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }}
+            receiptDetails={{
+              receiptNo: clientPaymentRequest.receiptNo,
+              projectName: clientPaymentRequest.projectName || 'Tender & Infrastructure Project',
+              clientName: clientPaymentRequest.clientName || 'Valued Client',
+              totalAmount: Number(clientPaymentRequest.amount) || 2199,
+              customFeeAmount: 2199,
+              currency: clientPaymentRequest.currency || 'XAF',
+              docType: clientPaymentRequest.docType || 'boq_receipt',
+              language: 'en'
+            }}
+          />
+        )}
 
-      {/* 999 XAF Pay-Before-Download Modal for Navigation Manual (A4 PDF) & Buyer Brand Handover Manual (PDF) */}
-      {manualPaymentGate && (
-        <ReceiptPaymentGateModal
-          isOpen={Boolean(manualPaymentGate)}
-          isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
-          onClose={() => setManualPaymentGate(null)}
-          receiptDetails={{
-            receiptNo:
+        {manualPaymentGate && (
+          <ReceiptPaymentGateModal
+            isOpen={Boolean(manualPaymentGate)}
+            isAdmin={Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'))}
+            onClose={() => setManualPaymentGate(null)}
+            receiptDetails={{
+              receiptNo:
+                manualPaymentGate.manualType === 'navigation_manual'
+                  ? NAVIGATION_MANUAL_RECEIPT_NO
+                  : BUYER_HANDOVER_MANUAL_RECEIPT_NO,
+              projectName:
+                manualPaymentGate.manualType === 'navigation_manual'
+                  ? 'Navigation Manual (A4 PDF)'
+                  : 'Buyer Brand Handover Manual (PDF)',
+              clientName: dbUser?.name || 'Website Visitor / Client',
+              clientEmail: dbUser?.email || '',
+              totalAmount: MANUAL_DOWNLOAD_FEE_XAF,
+              customFeeAmount: MANUAL_DOWNLOAD_FEE_XAF,
+              currency: 'XAF',
+              docType:
+                manualPaymentGate.manualType === 'navigation_manual'
+                  ? 'navigation_manual_pdf'
+                  : 'buyer_handover_pdf',
+              language: 'en'
+            }}
+            customDownloadLabel={
               manualPaymentGate.manualType === 'navigation_manual'
-                ? NAVIGATION_MANUAL_RECEIPT_NO
-                : BUYER_HANDOVER_MANUAL_RECEIPT_NO,
-            projectName:
-              manualPaymentGate.manualType === 'navigation_manual'
-                ? 'Navigation Manual (A4 PDF)'
-                : 'Buyer Brand Handover Manual (PDF)',
-            clientName: dbUser?.name || 'Website Visitor / Client',
-            clientEmail: dbUser?.email || '',
-            totalAmount: MANUAL_DOWNLOAD_FEE_XAF,
-            customFeeAmount: MANUAL_DOWNLOAD_FEE_XAF,
-            currency: 'XAF',
-            docType:
-              manualPaymentGate.manualType === 'navigation_manual'
-                ? 'navigation_manual_pdf'
-                : 'buyer_handover_pdf',
-            language: 'en'
-          }}
-          customDownloadLabel={
-            manualPaymentGate.manualType === 'navigation_manual'
-              ? 'Download Navigation Manual (A4 PDF)'
-              : 'Download Buyer Brand Handover Manual (PDF)'
-          }
-          onUnlockCustomDownload={() => {
-            if (manualPaymentGate.manualType === 'navigation_manual') {
-              forceDownloadWebsiteNavigationGuidePdf(manualPaymentGate.options || {});
-            } else {
-              forceDownloadBuyerHandoverManualPdf(manualPaymentGate.options || {});
+                ? 'Download Navigation Manual (A4 PDF)'
+                : 'Download Buyer Brand Handover Manual (PDF)'
             }
-          }}
-        />
-      )}
+            onUnlockCustomDownload={() => {
+              if (manualPaymentGate.manualType === 'navigation_manual') {
+                import('./utils/navigationGuidePdf.ts').then((m) =>
+                  m.forceDownloadWebsiteNavigationGuidePdf(manualPaymentGate.options || {})
+                ).catch(() => {});
+              } else {
+                import('./utils/buyerHandoverPdf.ts').then((m) =>
+                  m.forceDownloadBuyerHandoverManualPdf(manualPaymentGate.options || {})
+                ).catch(() => {});
+              }
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* PWA Network Connectivity Indicator */}
       <OfflineIndicator />
 
-      {/* Global GDPR & Google AdSense Compliant Cookie Consent Banner */}
-      <CookieConsentBanner onOpenPrivacyPolicy={() => setCurrentTab('privacy')} />
+      {/* Global GDPR & Google AdSense Compliant Cookie Consent Banner (deferred past initial paint) */}
+      {showFloatingWidgets && (
+        <Suspense fallback={null}>
+          <CookieConsentBanner onOpenPrivacyPolicy={() => setCurrentTab('privacy')} />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -708,8 +743,15 @@ function getTabFromPath(pathname: string, searchStr: string): string {
   if (path.includes('data-deletion') || path.includes('data_deletion') || params.get('tab') === 'data-deletion' || params.get('tracking')) return 'data-deletion';
   if (path.includes('store') || path.includes('bookstore') || path.includes('textbook') || path.includes('shop') || params.get('tab') === 'store') return 'store';
   if (path.includes('order-tracking') || path.includes('track-order') || (path.includes('order') && !path.includes('onboarding')) || params.get('tab') === 'order-tracking') return 'order-tracking';
-  if (path.includes('terms') || params.get('tab') === 'terms') return 'terms';
-  if (path.includes('privacy') || params.get('tab') === 'privacy') return 'privacy';
+  if ((path.includes('terms') && !path.includes('api-terms')) || params.get('tab') === 'terms') return 'terms';
+  if (path.includes('api-terms') || params.get('tab') === 'api-terms') return 'api-terms';
+  if (path.includes('cookies') || params.get('tab') === 'cookies') return 'cookies';
+  if (path.includes('investor-disclaimer') || params.get('tab') === 'investor-disclaimer') return 'investor-disclaimer';
+  if (path.includes('disclaimer') || params.get('tab') === 'disclaimer') return 'disclaimer';
+  if (path.includes('copyright') || params.get('tab') === 'copyright') return 'copyright';
+  if (path.includes('acceptable-use') || params.get('tab') === 'acceptable-use') return 'acceptable-use';
+  if (path.includes('data-protection') || params.get('tab') === 'data-protection') return 'data-protection';
+  if (path.includes('privacy') || path === '/legal' || params.get('tab') === 'privacy' || params.get('tab') === 'legal') return 'privacy';
   if (path.includes('safety') || path.includes('health') || path.includes('qhse') || params.get('tab') === 'safety') return 'safety';
   if (path.includes('website-development') || path.includes('web-development') || params.get('tab') === 'website-development') return 'website-development';
   if (path.includes('services')) return 'services';
@@ -784,78 +826,92 @@ export default function App() {
     }
   }, []);
 
-  // Sync backend session (via secure cookies) and Firebase authentication with our database user roles
+  // Sync backend session (via secure cookies) and optional Firebase authentication cleanly without 401 console errors
   useEffect(() => {
+    let active = true;
     setLoadingAuth(true);
 
-    // 1. First check if a valid server session exists via HTTP-only cookie or stored token
+    // 1. Check backend session silently (/api/auth/session always returns 200 OK)
     let storedToken: string | null = null;
+    let hasFirebaseHint = false;
     try {
       storedToken = localStorage.getItem('madecc_auth_token') || sessionStorage.getItem('madecc_auth_token');
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('firebase:authUser:')) {
+          hasFirebaseHint = true;
+          break;
+        }
+      }
     } catch (_) {}
 
-    fetch('/api/auth/me', {
+    fetch('/api/auth/session', {
       credentials: 'include',
-      headers: storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}
+      headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {}
     })
-      .then(res => {
-        if (res.ok) return res.json();
-        return null;
-      })
-      .then(data => {
-        if (data?.user) {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data?.user) {
           setDbUser(data.user);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.warn('Session check notice:', err);
       })
       .finally(() => {
-        setLoadingAuth(false);
+        if (active) setLoadingAuth(false);
       });
 
-    // Fallback safety timer: ensure loadingAuth resolves within 1.5s even if network is slow
+    // Fallback safety timer: ensure loadingAuth resolves quickly even on slow connections
     const fallbackTimer = setTimeout(() => {
-      setLoadingAuth(false);
-    }, 1500);
+      if (active) setLoadingAuth(false);
+    }, 1200);
 
+    // 2. Only dynamically load Firebase Auth SDK if user has an existing Firebase login session
     let unsubscribe = () => {};
-    try {
-      unsubscribe = onAuthStateChanged(
-        auth,
-        async (firebaseUser) => {
-          if (firebaseUser) {
-            try {
-              const token = await firebaseUser.getIdToken();
-              const response = await fetch('/api/auth/me', {
-                credentials: 'include',
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              if (response.ok) {
-                const data = await response.json();
-                if (data.user) {
-                  setDbUser(data.user);
+    if (hasFirebaseHint) {
+      Promise.all([import('./lib/firebase.ts'), import('firebase/auth')])
+        .then(async ([{ getFirebaseAuth }, { onAuthStateChanged }]) => {
+          if (!active) return;
+          const firebaseAuth = await getFirebaseAuth();
+          if (!active) return;
+          unsubscribe = onAuthStateChanged(
+            firebaseAuth,
+            async (firebaseUser) => {
+              if (firebaseUser) {
+                try {
+                  const token = await firebaseUser.getIdToken();
+                  const response = await fetch('/api/auth/me', {
+                    credentials: 'include',
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    if (active && data.user) {
+                      setDbUser(data.user);
+                    }
+                  }
+                } catch (error) {
+                  console.warn('Error synchronizing authenticated profile:', error);
                 }
               }
-            } catch (error) {
-              console.warn('Error synchronizing authenticated profile:', error);
+              if (active) setLoadingAuth(false);
+              clearTimeout(fallbackTimer);
+            },
+            (error) => {
+              console.warn('Firebase onAuthStateChanged network notice:', error?.message || error);
+              if (active) setLoadingAuth(false);
+              clearTimeout(fallbackTimer);
             }
-          }
-          setLoadingAuth(false);
-          clearTimeout(fallbackTimer);
-        },
-        (error) => {
-          console.warn('Firebase onAuthStateChanged network notice:', error?.message || error);
-          setLoadingAuth(false);
-          clearTimeout(fallbackTimer);
-        }
-      );
-    } catch (err) {
-      console.warn('Firebase auth initialization warning:', err);
-      setLoadingAuth(false);
+          );
+        })
+        .catch(() => {
+          if (active) setLoadingAuth(false);
+        });
     }
 
     return () => {
+      active = false;
       clearTimeout(fallbackTimer);
       unsubscribe();
     };
@@ -876,6 +932,33 @@ export default function App() {
 
     if (window.location.pathname !== targetPath && !isMatchingAlias) {
       window.history.pushState({ tab: currentTab }, '', targetPath + window.location.search);
+    }
+
+    // Non-blocking visitor page-view beacon for Security & Threat Monitoring telemetry
+    try {
+      let sessionKey = sessionStorage.getItem('madecc_visit_sid');
+      if (!sessionKey) {
+        sessionKey = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        sessionStorage.setItem('madecc_visit_sid', sessionKey);
+      }
+      const payload = JSON.stringify({
+        path: `${targetPath}${selectedProjectId ? `#project-${selectedProjectId}` : ''}`,
+        tab: currentTab,
+        referrer: document.referrer || '',
+        sessionId: sessionKey,
+        screenWidth: window.innerWidth || 0
+      });
+      fetch('/api/security/beacon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+        credentials: 'include'
+      }).catch(() => {});
+    } catch {
+      // Non-fatal
     }
   }, [currentTab, selectedProjectId]);
 

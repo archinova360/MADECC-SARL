@@ -16,7 +16,7 @@ export default defineConfig(() => {
           'favicon.ico',
           'apple-touch-icon.png',
           'icon.svg',
-          'logo.png',
+          'logo.webp',
           'pwa-192x192.png',
           'pwa-512x512.png',
           'screenshot-wide.png',
@@ -26,6 +26,8 @@ export default defineConfig(() => {
           'robots.txt',
           'sitemap.xml',
           'ads.txt',
+          'llms.txt',
+          'ai-catalog.json',
           '.well-known/assetlinks.json'
         ],
         manifest: {
@@ -195,7 +197,16 @@ export default defineConfig(() => {
           skipWaiting: true,
           clientsClaim: true,
           cleanupOutdatedCaches: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
+          globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2,webp,json}'],
+          globIgnores: [
+            '**/madecc_logo_*.jpg',
+            '**/madecc_favicon_*.jpg',
+            '**/madecc_premium_logo_*.jpg',
+            '**/logo.png',
+            '**/pwa-*.png',
+            '**/screenshot-*.png',
+            '**/apple-touch-icon*.png'
+          ],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [
             /^\/api\//,
@@ -204,6 +215,8 @@ export default defineConfig(() => {
             /^\/app-ads\.txt$/,
             /^\/sitemap\.xml$/,
             /^\/robots\.txt$/,
+            /^\/llms\.txt$/,
+            /^\/ai-catalog\.json$/,
             /^\/\.well-known\//,
             /^\/uploads\//
           ],
@@ -277,6 +290,9 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) {
+              return 'vendor-react';
+            }
             if (!id.includes('node_modules')) return;
 
             const parts = id.split(/node_modules[\\/]/);

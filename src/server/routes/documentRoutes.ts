@@ -1,10 +1,12 @@
 import express from 'express';
 import crypto from 'crypto';
 import { db } from '../../db/index.ts';
-import { signedContracts, signedReceipts, exportHistoryLogs, projects, lessonPlans, drawingTakeoffs, companyDocuments } from '../../db/schema.ts';
+import { signedContracts, signedReceipts, exportHistoryLogs, projects, lessonPlans, drawingTakeoffs, companyDocuments, maintenanceSchedules, publicationHistory } from '../../db/schema.ts';
 import { eq, desc, sql } from 'drizzle-orm';
 import { requireStaffOrAdmin } from '../../middleware/auth.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
+import { ensureCmsTables } from '../../db/ensureCmsTables.ts';
+import { getActiveMaintenanceForPublic } from './cmsPublishingRoutes.ts';
 
 let documentTablesChecked = false;
 async function ensureDocumentTablesExist() {
@@ -885,15 +887,24 @@ export function setupDocumentRoutes(app: express.Express) {
     ]
   };
 
-  app.get('/api/maintenance/status', (_req, res) => {
-    res.json({
-      success: true,
-      maintenance: currentMaintenanceState
-    });
+  app.get('/api/maintenance/status', async (_req, res) => {
+    try {
+      const maintenance = await getActiveMaintenanceForPublic();
+      res.json({
+        success: true,
+        maintenance
+      });
+    } catch (err: any) {
+      res.json({
+        success: true,
+        maintenance: currentMaintenanceState
+      });
+    }
   });
 
-  app.post('/api/maintenance/toggle', async (req, res) => {
+  app.post('/api/maintenance/toggle', requireStaffOrAdmin, async (req: any, res) => {
     try {
+      await ensureCmsTables();
       const {
         enabled,
         mode,
@@ -904,73 +915,68 @@ export function setupDocumentRoutes(app: express.Express) {
         recipientEmails
       } = req.body || {};
 
-      const nowIso = new Date().toISOString();
-      currentMaintenanceState = {
-        ...currentMaintenanceState,
-        enabled: typeof enabled === 'boolean' ? enabled : !currentMaintenanceState.enabled,
-        mode: mode || currentMaintenanceState.mode || 'non_intrusive_banner',
-        title: title || currentMaintenanceState.title,
-        message: message || currentMaintenanceState.message,
-        estimatedCompletion: estimatedCompletion || currentMaintenanceState.estimatedCompletion,
-        affectedModules: affectedModules || currentMaintenanceState.affectedModules,
-        allowFullBrowsing: true,
-        smtpUser: ADMIN_SMTP_USER,
-        lastTriggeredAt: nowIso,
-        lastSmtpDispatchAt: nowIso
-      };
+      const existingRows = await db.select().from(maintenanceSchedules).orderBy(desc(maintenanceSchedules.updatedAt)).limit(1);
+      const curRow = existingRows[0];
+      const nextEnabled = typeof enabled === 'boolean' ? enabled : !(curRow?.status === 'ACTIVE' || curRow?.status === 'EMERGENCY');
+      const now = new Date();
+      const nowIso = now.toISOString();
 
-      const statusLabel = currentMaintenanceState.enabled
+      const resolvedTitle = title || curRow?.title || currentMaintenanceState.title;
+      const resolvedMessage = message || curRow?.message || currentMaintenanceState.message;
+      const resolvedMode = mode || curRow?.mode || 'non_intrusive_banner';
+      const resolvedEst = estimatedCompletion || curRow?.estimatedCompletion || currentMaintenanceState.estimatedCompletion;
+      const resolvedScope = affectedModules || curRow?.affectedScope || currentMaintenanceState.affectedModules;
+      const currentSubscribers: MaintenanceSubscriber[] = Array.isArray(curRow?.subscribersJson)
+        ? (curRow!.subscribersJson as MaintenanceSubscriber[])
+        : currentMaintenanceState.subscribers;
+
+      const statusLabel = nextEnabled
         ? 'ACTIVE (Non-Intrusive Visitor Notification Enabled)'
         : 'COMPLETED / NORMAL OPERATIONS RESTORED';
 
-      const smtpSubject = currentMaintenanceState.enabled
-        ? `[MADECC MAINTENANCE NOTICE] ${currentMaintenanceState.title} (Non-Intrusive Mode Active)`
+      const smtpSubject = nextEnabled
+        ? `[MADECC MAINTENANCE NOTICE] ${resolvedTitle} (Non-Intrusive Mode Active)`
         : `[MADECC MAINTENANCE COMPLETE] Scheduled Maintenance Finished — All Systems 100% Optimal`;
 
-      const smtpText = `OFFICIAL WEBSITE MAINTENANCE NOTIFICATION\nDispatched via SMTP User: ${ADMIN_SMTP_USER}\n\nStatus: ${statusLabel}\nNotice Title: ${currentMaintenanceState.title}\nVisitor Message: ${currentMaintenanceState.message}\nEstimated Completion: ${currentMaintenanceState.estimatedCompletion}\nModules Note: ${currentMaintenanceState.affectedModules}\nVisitor Experience: Non-Intrusive (Visitors can browse, calculate budgets, and use the website without inconvenience).\nTriggered At: ${nowIso}\n\nFor immediate assistance, contact ${ADMIN_SMTP_USER} or WhatsApp +237 671 063 511.`;
+      const smtpText = `OFFICIAL WEBSITE MAINTENANCE NOTIFICATION\nDispatched via SMTP User: ${ADMIN_SMTP_USER}\n\nStatus: ${statusLabel}\nNotice Title: ${resolvedTitle}\nVisitor Message: ${resolvedMessage}\nEstimated Completion: ${resolvedEst}\nModules Note: ${resolvedScope}\nVisitor Experience: Non-Intrusive (Visitors can browse, calculate budgets, and use the website without inconvenience).\nTriggered At: ${nowIso}\n\nFor immediate assistance, contact ${ADMIN_SMTP_USER} or WhatsApp +237 671 063 511.`;
 
       const smtpHtml = `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 28px; border: 2px solid ${currentMaintenanceState.enabled ? '#f59e0b' : '#10b981'}; border-radius: 14px; background-color: #ffffff; color: #0f172a;">
-          <div style="background-color: #0f172a; padding: 18px 24px; border-radius: 10px; margin-bottom: 20px; border-bottom: 3px solid ${currentMaintenanceState.enabled ? '#f59e0b' : '#10b981'};">
-            <h2 style="color: ${currentMaintenanceState.enabled ? '#f59e0b' : '#10b981'}; margin: 0; font-size: 18px; text-transform: uppercase;">
-              ${currentMaintenanceState.enabled ? '⚙️ Non-Intrusive Maintenance Mode Activated' : '✓ Scheduled Maintenance Completed'}
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 28px; border: 2px solid ${nextEnabled ? '#f59e0b' : '#10b981'}; border-radius: 14px; background-color: #ffffff; color: #0f172a;">
+          <div style="background-color: #0f172a; padding: 18px 24px; border-radius: 10px; margin-bottom: 20px; border-bottom: 3px solid ${nextEnabled ? '#f59e0b' : '#10b981'};">
+            <h2 style="color: ${nextEnabled ? '#f59e0b' : '#10b981'}; margin: 0; font-size: 18px; text-transform: uppercase;">
+              ${nextEnabled ? '⚙️ Non-Intrusive Maintenance Mode Activated' : '✓ Scheduled Maintenance Completed'}
             </h2>
             <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px; font-family: monospace;">
               Triggered in Admin Dashboard &bull; Dispatched via SMTP User: ${ADMIN_SMTP_USER}
             </p>
           </div>
-          <p style="font-size: 14px; line-height: 1.6; color: #334155;">
-            ${currentMaintenanceState.message}
-          </p>
+          <p style="font-size: 14px; line-height: 1.6; color: #334155;">${resolvedMessage}</p>
           <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; margin: 18px 0; font-size: 13px; line-height: 1.8;">
-            <div><strong>Current Status:</strong> <span style="color: ${currentMaintenanceState.enabled ? '#d97706' : '#16a34a'}; font-weight: bold;">${statusLabel}</span></div>
-            <div><strong>Display Mode:</strong> ${currentMaintenanceState.mode === 'soft_dismissible_modal' ? 'Polite Dismissible Welcome Notice + Top Status Bar' : 'Non-Intrusive Top Status Bar & Floating Badge'}</div>
-            <div><strong>Estimated Completion:</strong> ${currentMaintenanceState.estimatedCompletion}</div>
-            <div><strong>Scope:</strong> ${currentMaintenanceState.affectedModules}</div>
-            <div><strong>Visitor Convenience Guarantee:</strong> <span style="color: #16a34a; font-weight: bold;">Zero Interruption — Full Website &amp; Calculators Remain Accessible</span></div>
+            <div><strong>Current Status:</strong> <span style="color: ${nextEnabled ? '#d97706' : '#16a34a'}; font-weight: bold;">${statusLabel}</span></div>
+            <div><strong>Estimated Completion:</strong> ${resolvedEst}</div>
+            <div><strong>Scope:</strong> ${resolvedScope}</div>
             <div><strong>Authorized SMTP User:</strong> <span style="font-family: monospace;">${ADMIN_SMTP_USER}</span></div>
           </div>
-          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0;">
-            MADECC GROUP S.A.R.L. &bull; Official Maintenance Advisory via ${ADMIN_SMTP_USER}
-          </p>
         </div>
       `;
 
-      // 1. Dispatch to Admin SMTP user kreboya603@gmail.com
-      await sendNotificationEmail(smtpSubject, smtpText, smtpHtml, {
-        to: ADMIN_SMTP_USER,
-        replyTo: ADMIN_SMTP_USER
-      });
+      let smtpStatusText = `Dispatched via ${ADMIN_SMTP_USER}`;
+      try {
+        await sendNotificationEmail(smtpSubject, smtpText, smtpHtml, {
+          to: ADMIN_SMTP_USER,
+          replyTo: ADMIN_SMTP_USER
+        });
+      } catch (smtpErr: any) {
+        smtpStatusText = `SMTP notice failed: ${smtpErr?.message || 'Transport unavailable'}`;
+      }
 
-      // 2. Dispatch to any subscribed visitors or extra recipient emails specified by Admin
       const extraEmails: string[] = Array.isArray(recipientEmails)
         ? recipientEmails
         : typeof recipientEmails === 'string'
         ? recipientEmails.split(',').map((e: string) => e.trim()).filter(Boolean)
         : [];
 
-      const subscriberEmails = currentMaintenanceState.subscribers
+      const subscriberEmails = currentSubscribers
         .map(s => s.email.trim())
         .filter(e => e.includes('@') && e.toLowerCase() !== ADMIN_SMTP_USER.toLowerCase());
 
@@ -982,12 +988,58 @@ export function setupDocumentRoutes(app: express.Express) {
         });
       }
 
+      const actor = req.dbUser?.email || 'Admin';
+      if (curRow) {
+        await db.update(maintenanceSchedules).set({
+          title: resolvedTitle,
+          message: resolvedMessage,
+          status: nextEnabled ? 'ACTIVE' : 'COMPLETED',
+          mode: resolvedMode,
+          estimatedCompletion: resolvedEst,
+          affectedScope: resolvedScope,
+          lastSmtpDispatchAt: now,
+          lastSmtpStatus: smtpStatusText,
+          updatedBy: actor,
+          updatedAt: now
+        }).where(eq(maintenanceSchedules.id, curRow.id));
+      } else {
+        await db.insert(maintenanceSchedules).values({
+          title: resolvedTitle,
+          message: resolvedMessage,
+          status: nextEnabled ? 'ACTIVE' : 'COMPLETED',
+          mode: resolvedMode,
+          timezone: 'Africa/Douala',
+          estimatedCompletion: resolvedEst,
+          affectedScope: resolvedScope,
+          subscribersJson: currentSubscribers,
+          lastSmtpDispatchAt: now,
+          lastSmtpStatus: smtpStatusText,
+          createdBy: actor,
+          updatedBy: actor
+        });
+      }
+
+      await db.insert(publicationHistory).values({
+        targetType: 'maintenance',
+        targetSlug: String(curRow?.id || 1),
+        targetTitle: resolvedTitle,
+        action: nextEnabled ? 'ACTIVATE' : 'COMPLETE',
+        fromStatus: curRow?.status || 'CANCELLED',
+        toStatus: nextEnabled ? 'ACTIVE' : 'COMPLETED',
+        success: true,
+        performedBy: actor,
+        details: smtpStatusText
+      }).catch(() => {});
+
+      const maintenance = await getActiveMaintenanceForPublic();
+
       res.json({
         success: true,
-        maintenance: currentMaintenanceState,
+        maintenance,
         smtpDispatchedTo: ADMIN_SMTP_USER,
+        smtpStatus: smtpStatusText,
         clientRecipientsCount: allTargetClients.length,
-        message: `Maintenance mode ${currentMaintenanceState.enabled ? 'ACTIVATED (Non-Intrusive)' : 'DEACTIVATED'} and SMTP notification dispatched via ${ADMIN_SMTP_USER}!`
+        message: `Maintenance mode ${nextEnabled ? 'ACTIVATED (Non-Intrusive)' : 'DEACTIVATED'} and saved to Neon PostgreSQL.`
       });
     } catch (error: any) {
       console.error('Error toggling maintenance status:', error);
@@ -997,6 +1049,7 @@ export function setupDocumentRoutes(app: express.Express) {
 
   app.post('/api/maintenance/visitor-subscribe', async (req, res) => {
     try {
+      await ensureCmsTables();
       const { email, name, phone, note } = req.body || {};
       if (!email || !String(email).includes('@')) {
         return res.status(400).json({ error: 'Please provide a valid email address.' });
@@ -1011,44 +1064,57 @@ export function setupDocumentRoutes(app: express.Express) {
         subscribedAt: new Date().toISOString()
       };
 
-      const exists = currentMaintenanceState.subscribers.some(
-        s => s.email.toLowerCase() === cleanEmail.toLowerCase()
-      );
-      if (!exists) {
-        currentMaintenanceState.subscribers.unshift(subRecord);
+      const existingRows = await db.select().from(maintenanceSchedules).orderBy(desc(maintenanceSchedules.updatedAt)).limit(1);
+      const curRow = existingRows[0];
+      const existingSubs: MaintenanceSubscriber[] = Array.isArray(curRow?.subscribersJson)
+        ? (curRow!.subscribersJson as MaintenanceSubscriber[])
+        : [];
+      const exists = existingSubs.some(s => s.email.toLowerCase() === cleanEmail.toLowerCase());
+      const updatedSubs = exists ? existingSubs : [subRecord, ...existingSubs];
+
+      if (curRow) {
+        await db.update(maintenanceSchedules)
+          .set({ subscribersJson: updatedSubs, updatedAt: new Date() })
+          .where(eq(maintenanceSchedules.id, curRow.id));
       }
 
-      // Dispatch immediate polite confirmation via SMTP user kreboya603@gmail.com
+      const activeMaint = await getActiveMaintenanceForPublic();
       const visitorSubject = `[MADECC GROUP] Maintenance Status & Priority Support Confirmation`;
-      const visitorText = `Hello ${subRecord.name},\n\nThank you for visiting MADECC GROUP. We have registered your email (${cleanEmail}) for live maintenance updates from our SMTP desk (${ADMIN_SMTP_USER}).\n\nCurrent Notice: ${currentMaintenanceState.title}\nDetails: ${currentMaintenanceState.message}\nEstimated Completion: ${currentMaintenanceState.estimatedCompletion}\n\nYou can continue browsing and using all calculators on our website without any inconvenience. Our team will notify you as soon as scheduled maintenance is complete.\n\nWarm regards,\nMADECC GROUP Engineering Desk (${ADMIN_SMTP_USER})`;
+      const visitorText = `Hello ${subRecord.name},\n\nThank you for visiting MADECC GROUP. We have registered your email (${cleanEmail}) for live maintenance updates from our SMTP desk (${ADMIN_SMTP_USER}).\n\nCurrent Notice: ${activeMaint.title}\nDetails: ${activeMaint.message}\nEstimated Completion: ${activeMaint.estimatedCompletion}\n\nWarm regards,\nMADECC GROUP Engineering Desk (${ADMIN_SMTP_USER})`;
 
       const visitorHtml = `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #f59e0b; border-radius: 12px; background-color: #ffffff; color: #0f172a;">
           <h3 style="color: #d97706; margin-top: 0;">✓ You're Subscribed to Live Maintenance Updates</h3>
           <p style="font-size: 14px; color: #334155; line-height: 1.6;">
-            Hello <strong>${subRecord.name}</strong>, thank you for visiting <strong>MADECC GROUP</strong>. While our team completes background maintenance (<em>${currentMaintenanceState.estimatedCompletion}</em>), all website pages and calculators remain open for your convenience.
+            Hello <strong>${subRecord.name}</strong>, thank you for visiting <strong>MADECC GROUP</strong>. While our team completes background maintenance (<em>${activeMaint.estimatedCompletion}</em>), all website pages and calculators remain open for your convenience.
           </p>
-          ${subRecord.note ? `<p style="font-size: 13px; background: #f8fafc; padding: 12px; border-radius: 8px;"><strong>Your Note:</strong> ${subRecord.note}</p>` : ''}
           <p style="font-size: 12px; color: #64748b;">
             Dispatched via Official Admin SMTP: <strong>${ADMIN_SMTP_USER}</strong> &bull; WhatsApp: +237 671 063 511
           </p>
         </div>
       `;
 
-      await sendNotificationEmail(
-        `[MADECC VISITOR MAINTENANCE SUBSCRIPTION] ${subRecord.name} (${cleanEmail})`,
-        `Visitor ${subRecord.name} (${cleanEmail}, Phone: ${subRecord.phone || 'N/A'}) subscribed to maintenance updates.\nNote: ${subRecord.note}`,
-        visitorHtml,
-        { to: ADMIN_SMTP_USER, replyTo: cleanEmail }
-      );
-
-      sendEmail(cleanEmail, visitorSubject, visitorText, visitorHtml).catch(() => {});
+      let emailSent = true;
+      try {
+        await sendNotificationEmail(
+          `[MADECC VISITOR MAINTENANCE SUBSCRIPTION] ${subRecord.name} (${cleanEmail})`,
+          `Visitor ${subRecord.name} (${cleanEmail}, Phone: ${subRecord.phone || 'N/A'}) subscribed to maintenance updates.\nNote: ${subRecord.note}`,
+          visitorHtml,
+          { to: ADMIN_SMTP_USER, replyTo: cleanEmail }
+        );
+        sendEmail(cleanEmail, visitorSubject, visitorText, visitorHtml).catch(() => {});
+      } catch {
+        emailSent = false;
+      }
 
       res.json({
         success: true,
         subscriber: subRecord,
         smtpDispatchedBy: ADMIN_SMTP_USER,
-        message: `Thank you! Confirmation dispatched via ${ADMIN_SMTP_USER}. You may continue using the website freely.`
+        smtpDelivered: emailSent,
+        message: emailSent
+          ? `Thank you! Saved in Neon DB and confirmation dispatched via ${ADMIN_SMTP_USER}.`
+          : `Saved your subscription in Neon DB (SMTP dispatch queued / offline).`
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to subscribe for updates' });

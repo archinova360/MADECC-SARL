@@ -43,7 +43,7 @@ const defaultSettings: SiteSettings = {
   legalStatus: 'Individual establishment registration pending',
   shareHeadline: 'MADECC GROUP — Premier Construction & Civil Engineering in Central Africa',
   shareDescription: 'Explore certified civil engineering, structural calculations, digital BOQs, and heavy construction services across Cameroon with MADECC GROUP.',
-  logoUrl: '/logo.png',
+  logoUrl: '/logo.webp',
   faviconUrl: '/favicon.ico',
   themeSettings: {
     primaryColor: '#f59e0b',

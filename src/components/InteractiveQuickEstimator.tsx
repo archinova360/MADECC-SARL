@@ -97,9 +97,9 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
             <Calculator className="w-3.5 h-3.5" />
             <span>Interactive Live Cost Estimator</span>
           </div>
-          <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Calculate Your Build Estimate in Real-Time
-          </h3>
+          </h2>
           <p className="text-sm text-slate-400 mt-1 max-w-xl">
             Calibrated with official 2026 Central Africa market benchmarks, concrete Eurocode standards, and vetted contractor rates.
           </p>
@@ -121,10 +121,10 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
         <div className="lg:col-span-7 space-y-6">
           {/* Step 1: Building Typology Selection */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
+            <span id="estimator-project-type-label" className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
               1. Select Project Type
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3" role="group" aria-labelledby="estimator-project-type-label">
               {PROJECT_TYPES.map((type) => {
                 const Icon = type.icon;
                 const isSelected = selectedType === type.id;
@@ -133,7 +133,8 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
                     key={type.id}
                     type="button"
                     onClick={() => setSelectedType(type.id)}
-                    className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                    aria-pressed={isSelected}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
                       isSelected
                         ? 'bg-amber-500/15 border-amber-500 text-white shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/50'
                         : 'bg-slate-800/60 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
@@ -157,15 +158,17 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
           {/* Step 2: Surface Area Slider */}
           <div className="bg-slate-800/50 border border-slate-700/70 p-5 rounded-2xl">
             <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-400">
+              <label htmlFor="estimator-area-range" className="text-xs font-mono uppercase tracking-wider text-slate-400">
                 2. Total Built Surface Area
               </label>
               <div className="flex items-center gap-2">
                 <input
+                  id="estimator-area-input"
                   type="number"
                   min="50"
                   max="5000"
                   step="10"
+                  aria-label="Total built surface area in square meters"
                   value={areaM2}
                   onChange={(e) => setAreaM2(Math.max(20, Math.min(10000, Number(e.target.value) || 20)))}
                   className="w-24 px-2.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-right font-mono font-bold text-amber-400 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
@@ -175,6 +178,7 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
             </div>
             
             <input
+              id="estimator-area-range"
               type="range"
               min="50"
               max="1500"
@@ -184,7 +188,7 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
               className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
             />
 
-            <div className="flex justify-between text-[11px] font-mono text-slate-500 mt-2">
+            <div className="flex justify-between text-[11px] font-mono text-slate-400 mt-2">
               <span>50 m² (Compact)</span>
               <span>250 m² (Standard)</span>
               <span>750 m² (Large Estate)</span>

@@ -1,4 +1,93 @@
-import * as Icons from 'lucide-react';
+import React from 'react';
+import {
+  Activity,
+  Award,
+  BookOpen,
+  Briefcase,
+  Building,
+  Building2,
+  Calculator,
+  CheckCircle2,
+  Code,
+  Compass,
+  Cpu,
+  DraftingCompass,
+  Eye,
+  Factory,
+  FileCheck,
+  FileText,
+  Globe,
+  Hammer,
+  HardHat,
+  HeartPulse,
+  HelpCircle,
+  Home,
+  Landmark,
+  Layers,
+  Leaf,
+  MapPin,
+  Package,
+  Pill,
+  Ruler,
+  Scale,
+  Search,
+  Server,
+  Settings,
+  Shield,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Truck,
+  UserCheck,
+  Users,
+  Wrench,
+  Zap,
+} from 'lucide-react';
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
+  Activity,
+  Award,
+  BookOpen,
+  Briefcase,
+  Building,
+  Building2,
+  Calculator,
+  CheckCircle2,
+  Code,
+  Compass,
+  Cpu,
+  DraftingCompass,
+  Eye,
+  Factory,
+  FileCheck,
+  FileText,
+  Globe,
+  Hammer,
+  HardHat,
+  HeartPulse,
+  HelpCircle,
+  Home,
+  Landmark,
+  Layers,
+  Leaf,
+  MapPin,
+  Package,
+  Pill,
+  Ruler,
+  Scale,
+  Search,
+  Server,
+  Settings,
+  Shield,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Truck,
+  UserCheck,
+  Users,
+  Wrench,
+  Zap,
+};
 
 interface LucideIconProps {
   name: string;
@@ -7,9 +96,6 @@ interface LucideIconProps {
 }
 
 export default function LucideIcon({ name, className = '', size = 24 }: LucideIconProps) {
-  const IconComponent = (Icons as any)[name];
-  if (!IconComponent) {
-    return <Icons.HardHat className={className} size={size} />;
-  }
+  const IconComponent = ICON_MAP[name] || HardHat;
   return <IconComponent className={className} size={size} />;
 }

@@ -36,7 +36,7 @@ export const DEFAULT_HERO_VIDEOS: HeroVideoItem[] = [
     category: 'Heavy Infrastructure & Bridges',
     location: 'Yaoundé - Douala Expressway Corridor',
     videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=75&fm=webp',
+    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=75&fm=webp',
     accent: '#f59e0b'
   },
   {
@@ -154,20 +154,9 @@ export default function HeroVideoPlayer({
     return true;
   });
   const [isMuted, setIsMuted] = useState(true);
-  const [slideProgress, setSlideProgress] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [canLoadVideo, setCanLoadVideo] = useState(false);
-
-  // Defer heavy video streams to ensure instant LCP paint; on mobile, only load video if user interacts or on high-speed desktop
-  useEffect(() => {
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    // On desktop, load after FCP; on mobile defer longer to protect cellular data and CPU
-    const timer = setTimeout(() => {
-      setCanLoadVideo(true);
-    }, isMobile ? 3000 : 1200);
-    return () => clearTimeout(timer);
-  }, []);
+  const [videoRequested, setVideoRequested] = useState(Boolean(isPreview));
 
   const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
 
@@ -188,7 +177,7 @@ export default function HeroVideoPlayer({
     setCurrentIndex(index);
   }, []);
 
-  // 1. Continuous Auto Sliding Timer
+  // 1. Continuous Auto Sliding Timer (progress bar is GPU-composited via CSS keyframes)
   useEffect(() => {
     if (!isPlaying || slides.length <= 1) return;
 
@@ -199,26 +188,9 @@ export default function HeroVideoPlayer({
     return () => clearInterval(timer);
   }, [isPlaying, slides.length, handleNext]);
 
-  // 2. Smooth Slide Progress Bar
+  // 2. Play active video and pause inactive videos when user has requested video playback
   useEffect(() => {
-    if (!isPlaying || slides.length <= 1) {
-      setSlideProgress(0);
-      return;
-    }
-
-    setSlideProgress(0);
-    const startMs = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startMs;
-      const pct = Math.min(100, (elapsed / SLIDE_INTERVAL_MS) * 100);
-      setSlideProgress(pct);
-    }, 40);
-
-    return () => clearInterval(interval);
-  }, [currentIndex, isPlaying, slides.length]);
-
-  // 3. Play active video and pause inactive videos
-  useEffect(() => {
+    if (!videoRequested) return;
     Object.keys(videoRefs.current).forEach((key) => {
       const idx = Number(key);
       const vid = videoRefs.current[idx];
@@ -232,7 +204,6 @@ export default function HeroVideoPlayer({
             if (playPromise && typeof playPromise.catch === 'function') {
               playPromise.catch((err: any) => {
                 if (err && (err.name === 'AbortError' || err.code === 20)) return;
-                // Autoplay policy fallback: guarantee muted
                 vid.muted = true;
                 const retryPromise = vid.play();
                 if (retryPromise && typeof retryPromise.catch === 'function') {
@@ -240,17 +211,17 @@ export default function HeroVideoPlayer({
                 }
               });
             }
-          } catch (e) {
+          } catch {
             // Ignore synchronous play errors
           }
         } else {
-          try { vid.pause(); } catch (e) {}
+          try { vid.pause(); } catch {}
         }
       } else {
-        try { vid.pause(); } catch (e) {}
+        try { vid.pause(); } catch {}
       }
     });
-  }, [currentIndex, isPlaying, isMuted]);
+  }, [currentIndex, isPlaying, isMuted, videoRequested]);
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -280,10 +251,8 @@ export default function HeroVideoPlayer({
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
     if (distance > 50) {
-      // Swiped left -> Next slide
       handleNext();
     } else if (distance < -50) {
-      // Swiped right -> Prev slide
       handlePrev();
     }
     setTouchStart(null);
@@ -291,6 +260,7 @@ export default function HeroVideoPlayer({
   };
 
   const currentSlide = slides[currentIndex] || slides[0];
+  const hasCurrentVideo = Boolean(currentSlide?.videoUrl);
 
   return (
     <div 
@@ -322,6 +292,7 @@ export default function HeroVideoPlayer({
               style={{ width: `${100 / slides.length}%` }}
               role="group"
               aria-roledescription="slide"
+              aria-hidden={!isActive}
               aria-label={`Slide ${idx + 1} of ${slides.length}: ${item.title}`}
             >
               {/* Cinematic Background Poster Image - LCP optimized with responsive srcSet & priority for first slide */}
@@ -339,13 +310,11 @@ export default function HeroVideoPlayer({
                 decoding={idx === 0 ? 'sync' : 'async'}
                 loading={idx === 0 ? 'eager' : 'lazy'}
                 {...({ fetchPriority: idx === 0 ? 'high' : 'low' } as any)}
-                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] ease-out will-change-transform ${
-                  isActive ? 'scale-105' : 'scale-100'
-                }`}
+                className="absolute inset-0 w-full h-full object-cover"
               />
 
-              {/* YouTube Video Player Embed - only active slide when deferred */}
-              {ytId && isActive && canLoadVideo && (
+              {/* YouTube Video Player Embed - only active slide on explicit user request */}
+              {ytId && isActive && videoRequested && (
                 <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none opacity-80">
                   <iframe
                     className="w-full h-full object-cover scale-125"
@@ -357,8 +326,8 @@ export default function HeroVideoPlayer({
                 </div>
               )}
 
-              {/* HTML5 Video Player for MP4 / WebM / Cloud Uploads - only mounted for active slide */}
-              {canLoadVideo && isActive && item.videoUrl && !ytId && (
+              {/* HTML5 Video Player - mounted only when user opts in to play reel video */}
+              {videoRequested && isActive && item.videoUrl && !ytId && (
                 <video
                   ref={el => { videoRefs.current[idx] = el; }}
                   className="absolute inset-0 w-full h-full object-cover opacity-80 transition-opacity duration-500"
@@ -370,7 +339,6 @@ export default function HeroVideoPlayer({
                   preload="metadata"
                   crossOrigin="anonymous"
                   onError={(e) => {
-                    // Fail gracefully to image poster
                     const target = e.currentTarget;
                     target.style.display = 'none';
                   }}
@@ -407,7 +375,7 @@ export default function HeroVideoPlayer({
       <button
         type="button"
         onClick={handlePrev}
-        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-slate-900/85 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700/80 flex items-center justify-center transition-all backdrop-blur-md shadow-xl cursor-pointer active:scale-95 group"
+        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-slate-900/90 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700/80 flex items-center justify-center transition-colors backdrop-blur-md shadow-xl cursor-pointer active:scale-95 group"
         title="Previous Construction Reel (Slide Left)"
         aria-label="Previous Slide"
       >
@@ -418,7 +386,7 @@ export default function HeroVideoPlayer({
       <button
         type="button"
         onClick={handleNext}
-        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-slate-900/85 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700/80 flex items-center justify-center transition-all backdrop-blur-md shadow-xl cursor-pointer active:scale-95 group"
+        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-slate-900/90 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700/80 flex items-center justify-center transition-colors backdrop-blur-md shadow-xl cursor-pointer active:scale-95 group"
         title="Next Construction Reel (Slide Right)"
         aria-label="Next Slide"
       >
@@ -426,8 +394,8 @@ export default function HeroVideoPlayer({
       </button>
 
       {/* 6. Active Reel Identification Badge (Top-Right) */}
-      <div className="hidden md:flex absolute top-6 right-6 z-30 items-center gap-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-4 py-2 rounded-full text-xs shadow-xl animate-in fade-in duration-300">
-        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+      <div className="hidden md:flex absolute top-6 right-6 z-30 items-center gap-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-4 py-2 rounded-full text-xs shadow-xl">
+        <span className="w-2.5 h-2.5 rounded-full bg-amber-400" aria-hidden="true" />
         <span className="font-mono text-[11px] font-bold tracking-wide text-amber-300">
           SLIDE {currentIndex + 1}/{slides.length}:
         </span>
@@ -436,37 +404,62 @@ export default function HeroVideoPlayer({
         </span>
       </div>
 
-      {/* 7. Bottom Navigation Bar with Progress Bars, Play/Pause, & Mute Controls */}
-      <div className="absolute bottom-6 right-4 sm:right-6 z-30 flex flex-wrap items-center gap-2.5 sm:gap-3.5 bg-slate-900/95 backdrop-blur-md border border-slate-800 text-slate-200 px-3.5 sm:px-4 py-2 rounded-full text-xs shadow-2xl animate-in fade-in duration-300">
+      {/* 7. Bottom Navigation Bar with GPU Progress Bar, Play/Pause, Video Opt-In & Mute Controls */}
+      <div className="absolute bottom-6 right-4 sm:right-6 z-30 flex flex-wrap items-center gap-2 sm:gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-800 text-slate-200 px-3.5 sm:px-4 py-1.5 rounded-full text-xs shadow-2xl">
         {/* Live Site Status Tag */}
         <div className="flex items-center gap-1.5 pr-2 border-r border-slate-800">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
           <span className="font-mono text-[10px] font-bold tracking-wider text-slate-300 uppercase">
-            LIVE REEL {currentIndex + 1}/{slides.length}
+            REEL {currentIndex + 1}/{slides.length}
           </span>
         </div>
 
-        {/* Video Reel Slides Dots / Progress Bars */}
-        <div className="flex items-center gap-1.5">
+        {/* Opt-in Video Playback Toggle (avoids 24MB auto-download on initial load) */}
+        {hasCurrentVideo && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setVideoRequested(prev => !prev);
+            }}
+            className={`min-h-[44px] px-2.5 rounded-full flex items-center gap-1.5 text-[11px] font-mono font-bold transition-colors cursor-pointer ${
+              videoRequested
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'hover:bg-slate-800 text-slate-200'
+            }`}
+            aria-label={videoRequested ? 'Stop background reel video' : 'Play background reel video'}
+            title={videoRequested ? 'Stop reel video' : 'Load & Play reel video'}
+          >
+            <Video className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">{videoRequested ? 'Video On' : 'Play Video'}</span>
+          </button>
+        )}
+
+        {/* Video Reel Slides Dots / GPU Progress Bars */}
+        <div className="flex items-center gap-0.5">
           {slides.map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => handleGoToSlide(i)}
-              className={`relative h-2 rounded-full overflow-hidden transition-all duration-300 cursor-pointer ${
-                i === currentIndex 
-                  ? 'w-9 bg-slate-800 ring-1 ring-amber-500/60' 
-                  : 'w-2 bg-slate-700 hover:bg-slate-500'
-              }`}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
               title={`Jump to slide ${i + 1}`}
               aria-label={`Slide ${i + 1}`}
             >
-              {i === currentIndex && (
-                <div 
-                  className="absolute inset-y-0 left-0 bg-amber-500 transition-all ease-linear"
-                  style={{ width: `${slideProgress}%` }}
-                />
-              )}
+              <span
+                className={`relative block h-2 rounded-full overflow-hidden transition-[width,background-color] duration-300 ${
+                  i === currentIndex 
+                    ? 'w-9 bg-slate-800 ring-1 ring-amber-500/60' 
+                    : 'w-2 bg-slate-600 hover:bg-slate-400'
+                }`}
+              >
+                {i === currentIndex && (
+                  <span
+                    key={`${currentIndex}-${isPlaying ? 'play' : 'pause'}`}
+                    className={`absolute inset-0 bg-amber-500 ${isPlaying ? 'animate-hero-progress' : 'scale-x-0'}`}
+                  />
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -475,23 +468,25 @@ export default function HeroVideoPlayer({
         <button
           type="button"
           onClick={togglePlay}
-          className="p-1.5 hover:bg-slate-800 rounded-full transition-colors text-slate-300 hover:text-white cursor-pointer"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-800 rounded-full transition-colors text-slate-300 hover:text-white cursor-pointer"
           title={isPlaying ? 'Pause Auto-Slide' : 'Resume Auto-Slide'}
-          aria-label="Toggle Playback"
+          aria-label={isPlaying ? 'Pause auto-slide' : 'Resume auto-slide'}
         >
-          {isPlaying ? <Pause className="w-3.5 h-3.5 text-amber-400" /> : <Play className="w-3.5 h-3.5 text-white" />}
+          {isPlaying ? <Pause className="w-4 h-4 text-amber-400" /> : <Play className="w-4 h-4 text-white" />}
         </button>
 
         {/* Audio Mute/Unmute Button */}
-        <button
-          type="button"
-          onClick={toggleMute}
-          className="p-1.5 hover:bg-slate-800 rounded-full transition-colors text-slate-300 hover:text-white cursor-pointer"
-          title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
-          aria-label="Toggle Mute"
-        >
-          {isMuted ? <VolumeX className="w-3.5 h-3.5 text-slate-400" /> : <Volume2 className="w-3.5 h-3.5 text-amber-400" />}
-        </button>
+        {videoRequested && (
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-800 rounded-full transition-colors text-slate-300 hover:text-white cursor-pointer"
+            title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+            aria-label={isMuted ? 'Unmute video audio' : 'Mute video audio'}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-slate-300" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
+          </button>
+        )}
       </div>
 
       {/* 8. CMS Preview Tag if enabled */}

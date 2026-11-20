@@ -23,6 +23,9 @@ export interface MaintenanceStatusData {
   affectedModules: string;
   allowFullBrowsing: boolean;
   smtpUser: string;
+  timezone?: string;
+  status?: string;
+  fullSiteAdvisory?: boolean;
   lastTriggeredAt: string;
   lastSmtpDispatchAt?: string;
   subscribers?: Array<{
@@ -184,9 +187,15 @@ export const VisitorMaintenanceNotice: React.FC = () => {
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-amber-400" />
                         Est. Completion: <strong>{maintenance.estimatedCompletion}</strong>
+                        {maintenance.timezone ? ` (${maintenance.timezone})` : ''}
                       </span>
                       <span>• Scope: {maintenance.affectedModules}</span>
                       <span>• SMTP Desk: {maintenance.smtpUser || ADMIN_SMTP_USER_EMAIL}</span>
+                      {maintenance.fullSiteAdvisory && (
+                        <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                          FULL-SITE ADVISORY
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

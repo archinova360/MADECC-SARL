@@ -300,6 +300,14 @@ export interface MediaItem {
   dimensions?: string;
   altText?: string;
   caption?: string;
+  description?: string;
+  creditSource?: string;
+  folder?: string;
+  subtitlesUrl?: string;
+  transcript?: string;
+  thumbnailUrl?: string;
+  durationSeconds?: number;
+  isPublic?: boolean;
   category: string;
   tags?: string[];
   usedIn?: string[];
@@ -788,5 +796,158 @@ export interface ApiPlatformAuditLog {
   ipAddress?: string;
   timestamp: string;
 }
+
+// =========================================================================
+// WEBSITE CONTENT & PUBLISHING MANAGEMENT CENTRE TYPES
+// =========================================================================
+
+export type CmsWorkflowStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'APPROVED'
+  | 'SCHEDULED'
+  | 'PUBLISHED'
+  | 'UNPUBLISHED'
+  | 'ARCHIVED';
+
+export type HumanReviewStatus =
+  | 'NOT_REVIEWED'
+  | 'REVIEW_REQUIRED'
+  | 'CHANGES_RECOMMENDED'
+  | 'APPROVED_BY_ADMIN';
+
+export interface CmsLegalDocument {
+  id: number;
+  slug: string;
+  docType: string;
+  title: string;
+  summary?: string;
+  contentHtml: string;
+  status: CmsWorkflowStatus;
+  version: number;
+  effectiveDate?: string;
+  lastUpdatedDate?: string;
+  reviewStatus: HumanReviewStatus;
+  legalReviewWarning?: string;
+  requiresProfessionalReview: boolean;
+  draftData?: any;
+  publishedData?: any;
+  scheduledPublishAt?: string | null;
+  publishedAt?: string | null;
+  archivedAt?: string | null;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsContentReviewReport {
+  id?: number;
+  targetType: string;
+  targetSlug: string;
+  reviewStatus: HumanReviewStatus;
+  grammarIssuesCount: number;
+  readabilityScore: number;
+  repeatedPhrasesCount: number;
+  hypeFlagsCount: number;
+  factCheckIssues: Array<{
+    severity: 'ERROR' | 'WARNING' | 'INFO';
+    field: string;
+    message: string;
+    verifiedFact: string;
+  }>;
+  reportJson: {
+    wordCount: number;
+    sentenceCount: number;
+    avgWordsPerSentence: number;
+    readingEaseLabel: string;
+    grammarNotes: string[];
+    repeatedPhrases: Array<{ phrase: string; count: number }>;
+    hypeMatches: string[];
+    recommendations: string[];
+    disclaimer: string;
+  };
+  reviewerNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+export interface CmsPublicationHistoryEntry {
+  id: number;
+  targetType: string;
+  targetSlug: string;
+  targetTitle?: string;
+  action: string;
+  fromStatus?: string;
+  toStatus?: string;
+  version?: number;
+  scheduledFor?: string | null;
+  success: boolean;
+  errorMessage?: string | null;
+  performedBy?: string;
+  details?: string;
+  createdAt: string;
+}
+
+export interface CmsMaintenanceSchedule {
+  id: number;
+  title: string;
+  message: string;
+  status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'EMERGENCY';
+  mode: 'non_intrusive_banner' | 'soft_dismissible_modal' | 'scoped_notice' | 'full_site_advisory';
+  timezone: string;
+  startAt?: string | null;
+  endAt?: string | null;
+  estimatedCompletion?: string;
+  affectedScope?: string;
+  allowAdminBypass: boolean;
+  requireManualConfirm: boolean;
+  fullSiteAdvisory: boolean;
+  subscribersJson?: any[];
+  lastSmtpDispatchAt?: string | null;
+  lastSmtpStatus?: string | null;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsVisitorAnnouncement {
+  id: number;
+  title: string;
+  message: string;
+  category: 'NOTICE' | 'ENGINEERING' | 'LEGAL' | 'API_PLATFORM' | 'URGENT' | 'PROMOTION';
+  priority: number;
+  displayLocation: 'homepage_banner' | 'site_wide_banner' | 'maintenance_notice' | 'selected_page' | 'api_platform';
+  targetPages: string[];
+  ctaText?: string;
+  ctaLink?: string;
+  dismissible: boolean;
+  active: boolean;
+  publishAt?: string | null;
+  expireAt?: string | null;
+  timezone: string;
+  notifySubscribersSmtp: boolean;
+  lastSmtpStatus?: string | null;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsSiteRouteConfig {
+  id: number;
+  path: string;
+  pageGroup: string;
+  title: string;
+  metaDescription?: string;
+  robotsIndex: boolean;
+  robotsFollow: boolean;
+  includeInSitemap: boolean;
+  priority: string;
+  changefreq: string;
+  isSystemRoute: boolean;
+  status: string;
+  updatedAt: string;
+}
+
 
 

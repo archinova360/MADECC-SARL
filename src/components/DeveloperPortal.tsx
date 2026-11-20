@@ -81,8 +81,9 @@ export default function DeveloperPortal({ onNavigateToTab }: DeveloperPortalProp
   const [generatedSecretModal, setGeneratedSecretModal] = useState<any | null>(null);
   const [newKeyName, setNewKeyName] = useState('');
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [portalCms, setPortalCms] = useState<any | null>(null);
 
-  // Load products & plans
+  // Load products, plans & public portal CMS copy
   useEffect(() => {
     fetch('/api/v1/products')
       .then(r => r.json())
@@ -98,6 +99,15 @@ export default function DeveloperPortal({ onNavigateToTab }: DeveloperPortalProp
       .then(r => r.json())
       .then(data => data && setPaymentConfig(data))
       .catch(console.error);
+
+    fetch('/api/cms/developer-portal')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.success && data.portalContent) {
+          setPortalCms(data.portalContent);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Update default payload when endpoint changes
@@ -359,12 +369,29 @@ export default function DeveloperPortal({ onNavigateToTab }: DeveloperPortalProp
                 <Cpu className="w-3.5 h-3.5" />
                 <span>MADECC Cloud High-Performance Engineering Engine v1.0</span>
               </div>
+              {portalCms?.announcementNotice && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
+                  {portalCms.announcementNotice}
+                </div>
+              )}
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-                Integrate Cameroon's Premier <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">Construction & BOQ APIs</span>
+                {portalCms?.heroTitle ? (
+                  portalCms.heroTitle
+                ) : (
+                  <>
+                    Integrate Cameroon's Premier <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">Construction &amp; BOQ APIs</span>
+                  </>
+                )}
               </h1>
               <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
-                Empower your ERP, prop-tech platform, or architectural tool with programmatic access to bill of quantities, structural Eurocode bearing capacities, concrete mix designs, and localized Central African material unit rates.
+                {portalCms?.heroSubtitle ||
+                  "Empower your ERP, prop-tech platform, or architectural tool with programmatic access to bill of quantities, structural Eurocode bearing capacities, concrete mix designs, and localized Central African material unit rates."}
               </p>
+              {portalCms?.documentationOverview && (
+                <p className="text-xs text-slate-400 leading-relaxed border-l-2 border-amber-500/40 pl-3">
+                  {portalCms.documentationOverview}
+                </p>
+              )}
 
               {/* Navigation Pill Switcher */}
               <div className="flex flex-wrap items-center gap-3 pt-4">

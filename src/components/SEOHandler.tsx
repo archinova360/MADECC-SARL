@@ -127,6 +127,48 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         keywords: `QHSE policy, construction safety, PPE requirements, zero harm, ${brandName}`,
         ogType: 'article'
       },
+      cookies: {
+        title: `Cookie Policy & Tracking Notice | ${brandName}`,
+        description: `Cookie preferences, essential session cookies, and consent disclosures for ${brandName}.`,
+        keywords: `cookie policy, tracking notice, ${brandName}`,
+        ogType: 'article'
+      },
+      disclaimer: {
+        title: `Legal & Engineering Estimates Disclaimer | ${brandName}`,
+        description: `Disclaimer regarding automated cost calculators, feasibility estimates, and engineering services at ${brandName}.`,
+        keywords: `engineering disclaimer, calculator estimates, ${brandName}`,
+        ogType: 'article'
+      },
+      copyright: {
+        title: `Copyright & Intellectual Property Notice | ${brandName}`,
+        description: `Intellectual property ownership and OAPI protection notice for ${brandName}.`,
+        keywords: `copyright notice, OAPI intellectual property, ${brandName}`,
+        ogType: 'article'
+      },
+      'acceptable-use': {
+        title: `Acceptable Use Policy | ${brandName}`,
+        description: `Acceptable use standards for ${brandName} portals, APIs, and public services.`,
+        keywords: `acceptable use policy, platform rules, ${brandName}`,
+        ogType: 'article'
+      },
+      'data-protection': {
+        title: `Data Protection & Cybersecurity Compliance | ${brandName}`,
+        description: `Data protection safeguards under Cameroon Law No. 2010/012 and international privacy frameworks at ${brandName}.`,
+        keywords: `data protection, Cameroon Law 2010/012, GDPR, ${brandName}`,
+        ogType: 'article'
+      },
+      'api-terms': {
+        title: `Developer & Paid API Platform Terms | ${brandName}`,
+        description: `Commercial terms, rate limits, and API key responsibilities for ${brandName} Developer Portal.`,
+        keywords: `API terms of use, developer agreement, ${brandName}`,
+        ogType: 'article'
+      },
+      'investor-disclaimer': {
+        title: `Investor & Partnership Disclosure Disclaimer | ${brandName}`,
+        description: `Transparent registration disclosure and partnership terms for ${brandName}.`,
+        keywords: `investor disclaimer, partnership terms, ${brandName}`,
+        ogType: 'article'
+      },
       'data-deletion': {
         title: `User Data Deletion & Privacy Rights | ${brandName}`,
         description: `Official Data Erasure & Compliance Request Portal for ${brandName} in compliance with Google AdSense, Meta Platform, and GDPR.`,
@@ -183,7 +225,9 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
     const path = currentTab === 'home' ? '' : currentTab;
     const canonicalUrl = `${PRODUCTION_ORIGIN}/${path}`;
     const currentUrl = `${origin}/${path}`;
-    const shareImage = profile.seo.ogImage || `${PRODUCTION_ORIGIN}/logo.png`;
+    const shareImage = profile.seo.ogImage && !profile.seo.ogImage.endsWith('/logo.png')
+      ? profile.seo.ogImage
+      : `${PRODUCTION_ORIGIN}/logo.webp`;
 
     // Always ensure production canonical tag is set correctly
     setCanonicalTag(canonicalUrl);
@@ -211,11 +255,14 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
     // 5. Generate Dynamic JSON-LD Structured Schema
     const primaryPhone = tenant.phone || tenant.settings?.phone || '+237671063511';
     const primaryEmail = tenant.email || tenant.settings?.email || 'contact@madeccgroup.online';
-    const primaryAddress = tenant.address || tenant.settings?.companyAddress || 'Commercial Avenue, Cameroon';
+    const primaryAddress = tenant.address || tenant.settings?.companyAddress || 'Yaoundé, Cameroon';
 
     let schemaObj: any = null;
 
     if (currentTab === 'home') {
+      const resolvedLogo = tenant.logoUrl && tenant.logoUrl !== '/logo.png'
+        ? (tenant.logoUrl.startsWith('http') ? tenant.logoUrl : `${origin}${tenant.logoUrl}`)
+        : `${origin}/logo.webp`;
       schemaObj = {
         '@context': 'https://schema.org',
         '@graph': [
@@ -224,8 +271,13 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
             '@id': `${origin}/#organization`,
             'name': brandName,
             'legalName': legalName,
+            'taxID': tenant.settings?.taxNumber || 'P030217852934P',
+            'founder': {
+              '@type': 'Person',
+              'name': 'Kasah Rodrick Reboya'
+            },
             'url': origin,
-            'logo': tenant.logoUrl ? (tenant.logoUrl.startsWith('http') ? tenant.logoUrl : `${origin}${tenant.logoUrl}`) : `${origin}/logo.png`,
+            'logo': resolvedLogo,
             'description': profile.seo.metaDescription,
             'email': primaryEmail,
             'telephone': primaryPhone,
@@ -381,6 +433,48 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         jsonLdScript.remove();
       }
     }
+
+    // 6. Non-blocking Live CMS SEO Override Hydration (from Neon DB /api/cms/pages/:slug?mode=live)
+    let cancelled = false;
+    const slug = (currentTab || 'home').toLowerCase();
+    if (slug !== 'admin' && slug !== 'super-admin') {
+      fetch(`/api/cms/pages/${encodeURIComponent(slug)}?mode=live`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (cancelled || !data || !data.seo) return;
+          const cmsSeo = data.seo;
+          if (cmsSeo.seoTitle) {
+            document.title = cmsSeo.seoTitle;
+            setMetaTag('property', 'og:title', cmsSeo.ogTitle || cmsSeo.seoTitle);
+            setMetaTag('name', 'twitter:title', cmsSeo.ogTitle || cmsSeo.seoTitle);
+          }
+          if (cmsSeo.metaDescription) {
+            setMetaTag('name', 'description', cmsSeo.metaDescription);
+            setMetaTag('property', 'og:description', cmsSeo.ogDescription || cmsSeo.metaDescription);
+            setMetaTag('name', 'twitter:description', cmsSeo.ogDescription || cmsSeo.metaDescription);
+          }
+          if (cmsSeo.keywords) {
+            setMetaTag('name', 'keywords', cmsSeo.keywords);
+          }
+          if (cmsSeo.canonicalUrl) {
+            setCanonicalTag(cmsSeo.canonicalUrl);
+          }
+          if (cmsSeo.ogImage) {
+            setMetaTag('property', 'og:image', cmsSeo.ogImage);
+            setMetaTag('name', 'twitter:image', cmsSeo.ogImage);
+          }
+          const idx = cmsSeo.robotsIndex === false ? 'noindex' : 'index';
+          const flw = cmsSeo.robotsFollow === false ? 'nofollow' : 'follow';
+          setMetaTag('name', 'robots', `${idx}, ${flw}, max-snippet:-1, max-image-preview:large, max-video-preview:-1`);
+        })
+        .catch(() => {
+          // Non-blocking fallback keeps static TAB_META intact
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentTab, selectedProjectId, tenantId, tenant]);
 
   return null; // Renderless helper

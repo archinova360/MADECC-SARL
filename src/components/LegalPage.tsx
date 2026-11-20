@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   FileText,
@@ -27,9 +27,35 @@ import {
 } from 'lucide-react';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 import { usePublicCorporateData } from './CorporatePublicOverview.tsx';
+import { sanitizeCmsHtml } from '../lib/sanitizeHtml.ts';
+
+export type LegalDocRouteType =
+  | 'terms'
+  | 'privacy'
+  | 'safety'
+  | 'cookies'
+  | 'disclaimer'
+  | 'copyright'
+  | 'acceptable-use'
+  | 'data-protection'
+  | 'api-terms'
+  | 'investor-disclaimer';
+
+const ALL_LEGAL_LINKS: Array<{ slug: LegalDocRouteType; label: string }> = [
+  { slug: 'privacy', label: 'Privacy Policy' },
+  { slug: 'terms', label: 'Terms & Conditions' },
+  { slug: 'cookies', label: 'Cookie Policy' },
+  { slug: 'disclaimer', label: 'Disclaimer' },
+  { slug: 'copyright', label: 'Copyright Notice' },
+  { slug: 'acceptable-use', label: 'Acceptable Use' },
+  { slug: 'data-protection', label: 'Data Protection' },
+  { slug: 'api-terms', label: 'API Terms of Use' },
+  { slug: 'investor-disclaimer', label: 'Investor & Partnership' },
+  { slug: 'safety', label: 'Health & Safety (QHSE)' }
+];
 
 interface LegalPageProps {
-  type: 'terms' | 'privacy' | 'safety';
+  type: LegalDocRouteType;
   setCurrentTab: (tab: string) => void;
 }
 
@@ -37,6 +63,29 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
   const { settings } = useSiteSettings();
   const { profile: corporateProfile } = usePublicCorporateData();
   const [copiedLink, setCopiedLink] = useState(false);
+  const [cmsDoc, setCmsDoc] = useState<any | null>(null);
+  const [cmsLoaded, setCmsLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setCmsDoc(null);
+    setCmsLoaded(false);
+    fetch(`/api/cms/legal/${encodeURIComponent(type)}?mode=live`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active) return;
+        if (data?.success && data.published && data.document) {
+          setCmsDoc(data.document);
+        }
+        setCmsLoaded(true);
+      })
+      .catch(() => {
+        if (active) setCmsLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [type]);
 
   const handleCopyPageUrl = () => {
     if (typeof window !== 'undefined') {
@@ -155,6 +204,23 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
         </button>
       </div>
 
+      {/* Additional Legal & Governance Document Selector (All 10 Policies) */}
+      <div className="mb-8 flex flex-wrap gap-1.5 justify-center">
+        {ALL_LEGAL_LINKS.map((item) => (
+          <button
+            key={item.slug}
+            onClick={() => setCurrentTab(item.slug)}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition cursor-pointer ${
+              type === item.slug
+                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
+                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       {/* Main Document Card */}
       <article className="bg-slate-900/70 backdrop-blur-md border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
         {/* Banner Section */}
@@ -162,18 +228,21 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner shrink-0">
-                {type === 'terms' && <FileText className="w-7 h-7" />}
-                {type === 'privacy' && <Lock className="w-7 h-7" />}
-                {type === 'safety' && <HardHat className="w-7 h-7" />}
+                {type === 'terms' ? <FileText className="w-7 h-7" /> : type === 'privacy' ? <Lock className="w-7 h-7" /> : type === 'safety' ? <HardHat className="w-7 h-7" /> : <Scale className="w-7 h-7" />}
               </div>
               <div>
                 <span className="text-[11px] font-mono tracking-widest uppercase text-amber-400 font-bold block mb-1">
                   Official Corporate Governance Document
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-                  {type === 'terms' && 'Terms of Service & Civil Engineering Master Agreement'}
-                  {type === 'privacy' && 'Comprehensive Privacy Policy & Advertising Cookie Statement'}
-                  {type === 'safety' && 'Quality, Health, Safety & Environmental (QHSE) Directive'}
+                  {cmsDoc?.title ||
+                    (type === 'terms'
+                      ? 'Terms of Service & Civil Engineering Master Agreement'
+                      : type === 'privacy'
+                      ? 'Comprehensive Privacy Policy & Advertising Cookie Statement'
+                      : type === 'safety'
+                      ? 'Quality, Health, Safety & Environmental (QHSE) Directive'
+                      : ALL_LEGAL_LINKS.find((l) => l.slug === type)?.label || 'Legal & Compliance Policy')}
                 </h1>
               </div>
             </div>
@@ -187,24 +256,84 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
             <span>•</span>
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-              Effective Date: February 2026 (Annual Review Cycle)
+              {cmsDoc?.effectiveDate
+                ? `Effective: ${cmsDoc.effectiveDate}${cmsDoc.lastUpdatedDate ? ` • Updated: ${cmsDoc.lastUpdatedDate}` : ''}`
+                : 'Effective Date: February 2026 (Annual Review Cycle)'}
             </span>
             <span>•</span>
             <span className="text-emerald-400 flex items-center gap-1 font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              {type === 'terms' && 'FIDIC / OHADA Compliant'}
-              {type === 'privacy' && 'GDPR / Law No. 2010/012 / Google AdSense Compliant'}
-              {type === 'safety' && 'ISO 45001:2018 & ISO 14001:2015 Compliant'}
+              {cmsDoc
+                ? `Published Live CMS Version v${cmsDoc.version || 1}`
+                : type === 'terms'
+                ? 'FIDIC / OHADA Compliant'
+                : type === 'privacy'
+                ? 'GDPR / Law No. 2010/012 / Google AdSense Compliant'
+                : type === 'safety'
+                ? 'ISO 45001:2018 & ISO 14001:2015 Compliant'
+                : 'MADECC Governance Framework'}
             </span>
           </div>
         </header>
 
         {/* Content Body */}
         <div className="p-6 sm:p-10 space-y-10 text-slate-300 text-sm leading-relaxed">
-          {/* ================================================================= */}
-          {/* TERMS OF SERVICE EXPANSION */}
-          {/* ================================================================= */}
-          {type === 'terms' && (
+          {/* LIVE PUBLISHED CMS LEGAL DOCUMENT OVERRIDE */}
+          {cmsDoc?.contentHtml ? (
+            <div className="space-y-6">
+              {cmsDoc.requiresProfessionalReview && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Legal Review Notice:</strong>{' '}
+                    {cmsDoc.legalReviewWarning ||
+                      'Legal documents should be reviewed by qualified legal counsel before public reliance.'}
+                  </div>
+                </div>
+              )}
+              {cmsDoc.summary && (
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300">
+                  {cmsDoc.summary}
+                </div>
+              )}
+              <div
+                className="prose prose-invert prose-sm max-w-none text-slate-200 leading-relaxed space-y-4"
+                dangerouslySetInnerHTML={{ __html: sanitizeCmsHtml(cmsDoc.contentHtml) }}
+              />
+            </div>
+          ) : (
+            <>
+              {/* FALLBACK FOR ADDITIONAL 7 DOCUMENT TYPES WHEN IN DRAFT */}
+              {type !== 'terms' && type !== 'privacy' && type !== 'safety' && (
+                <div className="space-y-6">
+                  <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-2">
+                    <div className="font-bold flex items-center gap-2 text-amber-300">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>
+                        {cmsLoaded
+                          ? 'Document Draft Awaiting Administrative Publication'
+                          : 'Loading Governance Document...'}
+                      </span>
+                    </div>
+                    <p>
+                      This governance policy (<strong>/{type}</strong>) is managed in the MADECC GROUP Legal Pages Manager and has not yet been formally published by an authorized administrator. Legal documents should be reviewed by qualified legal counsel before public reliance.
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs space-y-2 font-mono text-slate-300">
+                    <div><strong>Enterprise:</strong> {companyName} ({legalFormText})</div>
+                    <div><strong>Founder:</strong> {corporateProfile?.founderName || 'Kasah Rodrick Reboya'}</div>
+                    <div><strong>Location:</strong> {officeAddress}</div>
+                    <div><strong>Taxpayer Identification (NIU):</strong> {niuText}</div>
+                    <div><strong>Compliance Desk:</strong> <a href={`mailto:${primaryEmail}`} className="text-amber-400 underline">{primaryEmail}</a> • {primaryPhone}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* ================================================================= */}
+              {/* TERMS OF SERVICE EXPANSION */}
+              {/* ================================================================= */}
+              {type === 'terms' && (
             <>
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
                 <strong>Legal Agreement Overview:</strong> Welcome to the official web portal of {companyName} (<a href={siteUrl} className="text-amber-400 hover:underline font-mono">{siteUrl}</a>). These Terms of Service govern access to our engineering calculators, architectural galleries, tender submissions, and business development services. By accessing or using this website, you accept and agree to comply with these terms.
@@ -769,6 +898,8 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
               </section>
             </>
           )}
+            </>
+          )}
         </div>
 
         {/* Footer Info & Verification Bar */}
@@ -776,7 +907,7 @@ export default function LegalPage({ type, setCurrentTab }: LegalPageProps) {
           <div className="flex flex-wrap items-center gap-2">
             <span>Official Legal Route:</span>
             <span className="font-mono text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-              {siteUrl}/{type === 'terms' ? 'terms' : type === 'privacy' ? 'privacy' : 'safety'}
+              {siteUrl}/{type}
             </span>
           </div>
 

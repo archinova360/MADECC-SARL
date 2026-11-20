@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
 import { useLanguage } from '../lib/LanguageContext.tsx';
 import { 
@@ -9,9 +9,6 @@ import {
   CheckCircle, 
   Quote, 
   ShieldCheck, 
-  Truck, 
-  Cpu, 
-  Hammer,
   ChevronDown,
   ChevronUp,
   HelpCircle,
@@ -19,35 +16,32 @@ import {
   Building2,
   HardHat,
   MapPin,
-  FileCheck2,
-  Phone,
-  MessageSquare,
-  Sparkles,
-  Award,
   Layers,
-  Ruler,
   CheckCircle2,
   X,
   Compass
 } from 'lucide-react';
-import { Service, Project, Review, HeroBanner, PageContent, HeroSectionConfig, Tenant } from '../types.ts';
+import { Service, Project, Review, HeroBanner, PageContent, Tenant } from '../types.ts';
 import LucideIcon from './LucideIcon.tsx';
 import { getOptimizedImageUrl, formatCurrency } from '../lib/utils.ts';
-import { HeroBannerSkeleton, ProjectListSkeleton } from './Skeleton.tsx';
+import { ProjectListSkeleton } from './Skeleton.tsx';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import { TenantContentService } from '../services/tenantContentService.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
-import AnimatedCounter from './AnimatedCounter.tsx';
-import { FadeIn, FadeInDirection, ScaleIn, StaggerContainer, StaggerItem, InteractiveCard, FloatElement, PulseBeacon } from './MotionReveal.tsx';
-import { InteractiveQuickEstimator } from './InteractiveQuickEstimator.tsx';
-import { InteractiveBlueprintPreview } from './InteractiveBlueprintPreview.tsx';
+import { FadeIn, StaggerContainer, StaggerItem } from './MotionReveal.tsx';
 import RotatingMovingText from './RotatingMovingText.tsx';
-import { motion } from 'motion/react';
 import {
   usePublicCorporateData,
   CorporateRegistrationStatusCard,
   CorporateDivisionsDirectory,
 } from './CorporatePublicOverview.tsx';
+
+const InteractiveQuickEstimator = lazy(() =>
+  import('./InteractiveQuickEstimator.tsx').then((m) => ({ default: m.InteractiveQuickEstimator }))
+);
+const InteractiveBlueprintPreview = lazy(() =>
+  import('./InteractiveBlueprintPreview.tsx').then((m) => ({ default: m.InteractiveBlueprintPreview }))
+);
 
 interface HomeProps {
   setCurrentTab: (tab: string) => void;
@@ -160,80 +154,57 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
   const estimatedTotalCost = calcArea * estimatedRatePerSqm;
 
   useEffect(() => {
-    // Fetch home data from backend APIs with robust individual handling
+    let mounted = true;
     const fetchHomeData = async () => {
       setLoading(true);
-      
-      // 0. Fetch CMS Page Content & Hero Config
-      try {
-        const cmsRes = await fetch('/api/cms/pages/home');
-        if (cmsRes.ok) {
-          const cmsData = await cmsRes.json();
-          if (cmsData.success) {
-            setCmsPageData(cmsData);
-            if (cmsData.seo?.metaTitle) {
-              document.title = cmsData.seo.metaTitle;
-            }
-            if (cmsData.seo?.metaDescription) {
-              const metaDesc = document.querySelector('meta[name="description"]');
-              if (metaDesc) {
-                metaDesc.setAttribute('content', cmsData.seo.metaDescription);
-              }
-            }
+      const [cmsResult, bannersResult, servicesResult, projectsResult, reviewsResult] =
+        await Promise.allSettled([
+          fetch('/api/cms/pages/home').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/banners').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/services').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/projects').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/reviews').then((r) => (r.ok ? r.json() : null)),
+        ]);
+
+      if (!mounted) return;
+
+      if (cmsResult.status === 'fulfilled' && cmsResult.value?.success) {
+        const cmsData = cmsResult.value;
+        setCmsPageData(cmsData);
+        if (cmsData.seo?.metaTitle) {
+          document.title = cmsData.seo.metaTitle;
+        }
+        if (cmsData.seo?.metaDescription) {
+          const metaDesc = document.querySelector('meta[name="description"]');
+          if (metaDesc) {
+            metaDesc.setAttribute('content', cmsData.seo.metaDescription);
           }
         }
-      } catch (err) {
-        console.warn('Non-fatal: Error fetching CMS page contents.', err);
       }
 
-      // 1. Fetch Banners
-      try {
-        const bannersRes = await fetch('/api/banners');
-        if (bannersRes.ok) {
-          const bannersData = await bannersRes.json();
-          if (bannersData && bannersData.length > 0) {
-            setBanners(bannersData);
-          }
-        }
-      } catch (err) {
-        console.warn('Non-fatal: Error fetching banners, using default local assets.', err);
+      if (bannersResult.status === 'fulfilled' && Array.isArray(bannersResult.value) && bannersResult.value.length > 0) {
+        setBanners(bannersResult.value);
       }
 
-      // 2. Fetch Services
-      try {
-        const servicesRes = await fetch('/api/services');
-        if (servicesRes.ok) {
-          setServices(await servicesRes.json());
-        }
-      } catch (err) {
-        console.warn('Non-fatal: Error fetching services.', err);
+      if (servicesResult.status === 'fulfilled' && Array.isArray(servicesResult.value)) {
+        setServices(servicesResult.value);
       }
 
-      // 3. Fetch Projects
-      try {
-        const projectsRes = await fetch('/api/projects');
-        if (projectsRes.ok) {
-          const allProjs = await projectsRes.json();
-          setFeaturedProjects(allProjs.slice(0, 3)); // Grab first 3 as featured
-        }
-      } catch (err) {
-        console.warn('Non-fatal: Error fetching projects.', err);
+      if (projectsResult.status === 'fulfilled' && Array.isArray(projectsResult.value)) {
+        setFeaturedProjects(projectsResult.value.slice(0, 3));
       }
 
-      // 4. Fetch Reviews
-      try {
-        const reviewsRes = await fetch('/api/reviews');
-        if (reviewsRes.ok) {
-          setApprovedReviews(await reviewsRes.json());
-        }
-      } catch (err) {
-        console.warn('Non-fatal: Error fetching reviews.', err);
+      if (reviewsResult.status === 'fulfilled' && Array.isArray(reviewsResult.value)) {
+        setApprovedReviews(reviewsResult.value);
       }
 
       setLoading(false);
     };
 
     fetchHomeData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Auto transition hero banners every 6s
@@ -324,11 +295,8 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           <div className="max-w-3xl text-white space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-                <Building2 className="w-3.5 h-3.5" /> Construction & Civil Engineering — Cameroon
+                <span className="inline-flex rounded-full h-2 w-2 bg-amber-500" aria-hidden="true" />
+                <Building2 className="w-3.5 h-3.5" /> Construction &amp; Civil Engineering — Cameroon
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md shadow-sm">
                 <MapPin className="w-3 h-3 text-amber-500" /> Base: {corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}
@@ -354,55 +322,50 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-3">
-              <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                type="button"
                 onClick={() => setCurrentTab('request-a-quote')}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 flex items-center gap-2 cursor-pointer"
+                className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-7 py-3.5 rounded-xl text-sm transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] shadow-lg shadow-amber-500/25 flex items-center gap-2 cursor-pointer"
                 id="hero-cta-quote"
               >
                 Request a Free Quote <ArrowRight className="w-4 h-4" />
-              </motion.button>
+              </button>
 
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                type="button"
                 onClick={() => setCurrentTab('budget-calculator')}
-                className="bg-slate-900/90 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/60 hover:text-amber-400 transition-all flex items-center gap-2 shadow-md cursor-pointer"
+                className="min-h-[44px] bg-slate-900/90 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/60 hover:text-amber-400 transition-[transform,background-color,border-color,color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] flex items-center gap-2 shadow-md cursor-pointer"
                 id="hero-cta-calculator"
               >
                 <Calculator className="w-4 h-4 text-amber-500" /> Calculate Budget (FCFA)
-              </motion.button>
+              </button>
 
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                type="button"
                 onClick={() => setCurrentTab('schedule-consultation')}
-                className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[44px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
                 id="hero-cta-consultation"
               >
                 Schedule Consultation →
-              </motion.button>
+              </button>
 
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                type="button"
                 onClick={() => setCurrentTab('client-portal')}
-                className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/40 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[44px] bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/40 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
                 id="hero-cta-client-portal"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-400" /> Client Portal
-              </motion.button>
+              </button>
 
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                type="button"
                 onClick={() => setCurrentTab('walkthrough-guide')}
-                className="bg-slate-900/75 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[44px] bg-slate-900/75 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
                 id="hero-cta-walkthrough-guide"
               >
                 <Compass className="w-4 h-4 text-amber-400" /> Walkthrough Guide
-              </motion.button>
+              </button>
             </div>
 
             {/* Quick Trust Highlights with Interactive Modals */}
@@ -602,27 +565,31 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           ========================================== */}
       <section className="py-16 bg-[#0A0A0B] border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeIn>
-            <InteractiveBlueprintPreview onNavigateToTab={setCurrentTab} />
-          </FadeIn>
+          <Suspense fallback={<div className="min-h-[420px] rounded-3xl bg-slate-900/60 border border-slate-800" />}>
+            <FadeIn>
+              <InteractiveBlueprintPreview onNavigateToTab={setCurrentTab} />
+            </FadeIn>
+          </Suspense>
         </div>
       </section>
 
       {/* ==========================================
           INTERACTIVE HOMEPAGE COST ESTIMATOR WIDGET
           ========================================== */}
-      <section className="py-20 bg-gradient-to-b from-[#0A0A0B] via-[#0D0D10] to-[#0A0A0B] border-b border-slate-800/80" id="instant-cost-estimator">
+      <section className="cv-auto py-20 bg-gradient-to-b from-[#0A0A0B] via-[#0D0D10] to-[#0A0A0B] border-b border-slate-800/80" id="instant-cost-estimator">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeIn>
-            <InteractiveQuickEstimator onNavigateToTab={setCurrentTab} currency={tenant.currency || 'XAF'} />
-          </FadeIn>
+          <Suspense fallback={<div className="min-h-[520px] rounded-3xl bg-slate-900/60 border border-slate-800" />}>
+            <FadeIn>
+              <InteractiveQuickEstimator onNavigateToTab={setCurrentTab} currency={tenant.currency || 'XAF'} />
+            </FadeIn>
+          </Suspense>
         </div>
       </section>
 
       {/* ==========================================
           OUR CORE CONSTRUCTION & ENTERPRISE SERVICES
           ========================================== */}
-      <section className="py-24 bg-[#0A0A0B]" id="services-section">
+      <section className="cv-auto py-24 bg-[#0A0A0B]" id="services-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="max-w-3xl mx-auto text-center space-y-3 mb-16">
@@ -662,7 +629,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     {/* Expandable details */}
                     {expandedServiceId === service.id && service.details && (
                       <div className="pt-4 border-t border-slate-850 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Scope of Operations:</h4>
+                        <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Scope of Operations:</h4>
                         <div className="grid grid-cols-1 gap-1.5">
                           {service.details.split(',').map((item, idx) => (
                             <div key={idx} className="flex items-center gap-2 text-xs text-slate-300">
@@ -676,14 +643,17 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                     <div className="pt-3 flex items-center justify-between">
                       <button
-                        onClick={() => setCurrentTab('request-quote')}
-                        className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors"
+                        type="button"
+                        onClick={() => setCurrentTab('request-a-quote')}
+                        className="text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                       >
                         Inquire for this Service →
                       </button>
                       <button
+                        type="button"
                         onClick={() => setExpandedServiceId(expandedServiceId === service.id ? null : service.id)}
-                        className="text-xs font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1 focus:outline-none"
+                        aria-expanded={expandedServiceId === service.id}
+                        className="text-xs font-semibold text-slate-300 hover:text-white transition-colors flex items-center gap-1 focus:outline-none cursor-pointer"
                       >
                         {expandedServiceId === service.id ? 'Collapse' : 'View Scope'}
                         <ArrowRight className={`w-3.5 h-3.5 transition-transform ${expandedServiceId === service.id ? 'rotate-90' : ''}`} />
@@ -779,7 +749,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
       {/* ==========================================
           FEATURED PROJECTS PORTFOLIO
           ========================================== */}
-      <section className="py-24 bg-[#0A0A0B]" id="featured-projects">
+      <section className="cv-auto py-24 bg-[#0A0A0B]" id="featured-projects">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-16">
@@ -844,7 +814,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                     <div className="pt-4 border-t border-slate-850 flex items-center justify-between text-xs">
                       <div>
-                        <span className="block text-[10px] text-slate-500 uppercase tracking-wider font-mono">Contract Budget</span>
+                        <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-mono">Contract Budget</span>
                         <span className="block font-bold text-white">
                           {project.budget ? formatCurrency(project.budget, project.currency || project.currency_code || 'XAF') : 'Confidential'}
                         </span>
@@ -864,7 +834,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
       {/* ==========================================
           REVIEWS & TESTIMONIALS + SUBMISSION
           ========================================== */}
-      <section className="py-24 bg-[#0E0E10]/80 border-y border-slate-800/80" id="testimonials-section">
+      <section className="cv-auto py-24 bg-[#0E0E10]/80 border-y border-slate-800/80" id="testimonials-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
@@ -924,7 +894,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                                 {review.authorName}
                               </span>
                               {review.projectName && (
-                                <span className="text-[10px] text-slate-500 font-mono tracking-wider block uppercase mt-0.5">
+                                <span className="text-[10px] text-slate-400 font-mono tracking-wider block uppercase mt-0.5">
                                   Project: <span itemProp="itemReviewed">{review.projectName}</span>
                                 </span>
                               )}
@@ -943,27 +913,32 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                   {approvedReviews.length > 1 && (
                     <div className="flex items-center justify-between mt-4 px-2 pt-4 border-t border-slate-900">
                       <button
+                        type="button"
                         onClick={() => setCurrentReviewIndex((prev) => (prev - 1 + approvedReviews.length) % approvedReviews.length)}
-                        className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-white transition-colors"
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
                         aria-label="Previous review"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
 
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1">
                         {approvedReviews.map((_, idx) => (
                           <button
                             key={idx}
+                            type="button"
                             onClick={() => setCurrentReviewIndex(idx)}
-                            className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentReviewIndex ? 'w-5 bg-amber-500' : 'w-1.5 bg-slate-800'}`}
-                            aria-label={`Slide ${idx + 1}`}
-                          />
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
+                            aria-label={`Review slide ${idx + 1}`}
+                          >
+                            <span className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${idx === currentReviewIndex ? 'w-5 bg-amber-500' : 'w-1.5 bg-slate-600'}`} />
+                          </button>
                         ))}
                       </div>
 
                       <button
+                        type="button"
                         onClick={() => setCurrentReviewIndex((prev) => (prev + 1) % approvedReviews.length)}
-                        className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-white transition-colors"
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
                         aria-label="Next review"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -1003,7 +978,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     <input
                       id="review-author"
                       type="text"
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-600 outline-none transition-all"
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-400 outline-none transition-colors"
                       placeholder="e.g. Richard Ndip"
                       value={newAuthor}
                       onChange={(e) => setNewAuthor(e.target.value)}
@@ -1034,7 +1009,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                       <input
                         id="review-project"
                         type="text"
-                        className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-600 outline-none transition-all"
+                        className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-400 outline-none transition-colors"
                         placeholder="e.g. Odza Duplex"
                         value={newProject}
                         onChange={(e) => setNewProject(e.target.value)}
@@ -1047,7 +1022,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     <textarea
                       id="review-text"
                       rows={3}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-600 outline-none transition-all resize-none"
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-400 outline-none transition-colors resize-none"
                       placeholder="Describe your experience with our construction execution..."
                       value={newText}
                       onChange={(e) => setNewText(e.target.value)}
@@ -1069,7 +1044,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                       type="text"
                       id="home-review-captcha"
                       aria-label="Solve mathematical equation to post review"
-                      className={`w-full bg-slate-950 border ${reviewCaptchaError ? 'border-red-500' : 'border-slate-800'} focus:border-amber-500 rounded-xl py-2 px-3 text-xs text-white placeholder-slate-600 outline-none`}
+                      className={`w-full bg-slate-950 border ${reviewCaptchaError ? 'border-red-500' : 'border-slate-800'} focus:border-amber-500 rounded-xl py-2 px-3 text-xs text-white placeholder-slate-400 outline-none`}
                       placeholder="What is x? (e.g. 5)"
                       value={reviewCaptcha}
                       onChange={(e) => {
@@ -1120,7 +1095,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
       {/* ==========================================
           SEO FAQ SECTION (CAMEROON BUILDING CODES)
           ========================================== */}
-      <section className="py-24 bg-[#0A0A0C]" id="seo-faq-section">
+      <section className="cv-auto py-24 bg-[#0A0A0C]" id="seo-faq-section">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center space-y-3 mb-16">
@@ -1166,8 +1141,11 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                   id={`faq-item-${idx}`}
                 >
                   <button
+                    type="button"
                     onClick={() => setExpandedFaqIndex(isExpanded ? null : idx)}
-                    className="w-full text-left p-5 flex items-center justify-between gap-4 focus:outline-none hover:bg-slate-900/80 transition-colors"
+                    aria-expanded={isExpanded}
+                    aria-controls={`faq-panel-${idx}`}
+                    className="w-full text-left p-5 flex items-center justify-between gap-4 focus:outline-none hover:bg-slate-900/80 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <HelpCircle className="w-5 h-5 text-amber-500 shrink-0" />
@@ -1176,12 +1154,16 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4 text-amber-500 shrink-0" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
+                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
                     )}
                   </button>
                   
                   {isExpanded && (
-                    <div className="px-5 pb-5 pt-1 text-xs text-slate-300 border-t border-slate-850/60 bg-slate-950/30 leading-relaxed font-sans animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div
+                      id={`faq-panel-${idx}`}
+                      role="region"
+                      className="px-5 pb-5 pt-1 text-xs text-slate-300 border-t border-slate-850/60 bg-slate-950/30 leading-relaxed font-sans animate-in fade-in slide-in-from-top-2 duration-200"
+                    >
                       {faq.a}
                     </div>
                   )}
@@ -1225,7 +1207,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setActiveTechnicalModal(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition-colors"
+              className="absolute top-3 right-3 text-slate-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-slate-800/80 hover:bg-slate-800 transition-colors"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />

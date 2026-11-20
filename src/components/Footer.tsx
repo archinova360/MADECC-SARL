@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
-import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
-import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
 import { 
   HardHat, 
   Mail, 
@@ -112,8 +110,11 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
                 <img 
-                  src={settings?.logoUrl || "/logo.png"} 
+                  src={settings?.logoUrl && settings.logoUrl !== '/logo.png' ? settings.logoUrl : '/logo.webp'} 
                   alt={`${settings?.siteName || 'MADECC GROUP'} Logo`} 
+                  width={40}
+                  height={40}
+                  loading="lazy"
                   className="h-full w-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -129,11 +130,11 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 )}
               </span>
             </div>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-sm text-slate-300 leading-relaxed">
               {settings?.footerContent?.aboutText || 
                 "MADECC GROUP is a premier multi-disciplinary construction, design-build, and civil engineering firm. We construct landmarks of absolute structural integrity, sustainability, and architectural excellence."}
             </p>
-            <div className="flex items-center gap-2 pt-1 text-xs font-mono text-slate-500">
+            <div className="flex items-center gap-2 pt-1 text-xs font-mono text-slate-400">
               <Clock className="w-4 h-4 text-amber-500" />
               <span>{settings?.businessHours || "Mon - Fri: 08:00 - 18:00"}</span>
             </div>
@@ -172,7 +173,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="MADECC Facebook Profile"
-                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-[#1877F2] hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-[#1877F2] hover:text-white text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
                     title="Facebook"
                   >
                     fb
@@ -184,7 +185,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="MADECC YouTube Channel"
-                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-[#FF0000] hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-[#FF0000] hover:text-white text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
                     title="YouTube"
                   >
                     yt
@@ -196,7 +197,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="MADECC Twitter Profile"
-                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-white hover:text-black text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-white hover:text-black text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
                     title="X (Twitter)"
                   >
                     𝕏
@@ -208,7 +209,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="MADECC Instagram Profile"
-                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-gradient-to-tr hover:from-amber-500 hover:to-pink-500 hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-gradient-to-tr hover:from-amber-500 hover:to-pink-500 hover:text-white text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
                     title="Instagram"
                   >
                     ig
@@ -220,7 +221,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="MADECC WhatsApp Desk"
-                    className="w-8 h-8 rounded-lg bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-800/60 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-800/60 transition-colors flex items-center justify-center text-xs font-bold font-mono"
                     title="WhatsApp"
                   >
                     wa
@@ -229,7 +230,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 <button
                   type="button"
                   onClick={() => setShowShareModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 transition-all text-xs font-bold cursor-pointer"
+                  className="min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 transition-colors text-xs font-bold cursor-pointer"
                   id="footer-share-website-btn"
                   title="Share MADECC Website"
                 >
@@ -242,10 +243,10 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               <button
                 type="button"
                 onClick={openFollowModal}
-                className="w-full mt-2 py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 hover:border-amber-500 transition-all text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
+                className="w-full mt-2 py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 hover:border-amber-500 transition-colors text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
                 id="footer-follow-us-cta-btn"
               >
-                <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <Radio className="w-3.5 h-3.5 text-amber-400" />
                 <span>Follow Us on Social Media</span>
                 <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded font-mono">
                   LIVE
@@ -256,7 +257,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
 
           {/* Column 2: Quick Links */}
           <div>
-            <h3 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Quick Links</h3>
+            <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Quick Links</h2>
             <ul className="space-y-3.5 text-sm">
               {[
                 { label: 'Home Page', id: 'home' },
@@ -291,7 +292,10 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               ))}
               <li>
                 <button
-                  onClick={() => downloadWebsiteNavigationGuidePdf()}
+                  onClick={async () => {
+                    const { downloadWebsiteNavigationGuidePdf } = await import('../utils/navigationGuidePdf.ts');
+                    downloadWebsiteNavigationGuidePdf();
+                  }}
                   className="text-amber-400 hover:text-amber-300 transition-colors text-left font-bold flex items-center gap-1.5"
                   id="footer-download-navigation-guide"
                 >
@@ -301,7 +305,10 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               </li>
               <li>
                 <button
-                  onClick={() => downloadBuyerHandoverManualPdf()}
+                  onClick={async () => {
+                    const { downloadBuyerHandoverManualPdf } = await import('../utils/buyerHandoverPdf.ts');
+                    downloadBuyerHandoverManualPdf();
+                  }}
                   className="text-emerald-400 hover:text-emerald-300 transition-colors text-left font-bold flex items-center gap-1.5"
                   id="footer-download-buyer-handover-guide"
                 >
@@ -314,7 +321,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
 
           {/* Column 3: Contact Details */}
           <div>
-            <h3 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Contact Details</h3>
+            <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Contact Details</h2>
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -343,8 +350,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     )}
                   </div>
                 </div>
-                <div className="pl-8 text-xs text-slate-500 font-mono">
-                  General, Engineering & MoMo/OM Desk
+                <div className="pl-8 text-xs text-slate-400 font-mono">
+                  General, Engineering &amp; MoMo/OM Desk
                 </div>
               </li>
               <li className="flex flex-col gap-1.5">
@@ -367,9 +374,9 @@ export default function Footer({ setCurrentTab }: FooterProps) {
 
           {/* Column 4: Newsletter Subscriber */}
           <div>
-            <h3 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Newsletter</h3>
-            <p className="text-sm text-slate-400 mb-4 leading-relaxed">
-              Subscribe to recieve latest construction insights, green building research, and project case studies.
+            <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Newsletter</h2>
+            <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+              Subscribe to receive latest construction insights, green building research, and project case studies.
             </p>
 
             <form onSubmit={handleSubscribe} className="space-y-3">
@@ -381,7 +388,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   placeholder="Enter email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg py-2.5 pl-3 pr-10 text-sm text-white placeholder-slate-500 outline-none transition-all"
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg py-2.5 pl-3 pr-10 text-sm text-white placeholder-slate-400 outline-none transition-all"
                   required
                 />
               </div>
@@ -392,14 +399,14 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">
                     Human Verification
                   </span>
-                  <span className="text-[9px] font-mono text-amber-500 font-bold">
+                  <span className="text-[9px] font-mono text-amber-400 font-bold">
                     Anti-Bot
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-300">
                   Solve: <span className="text-white font-mono font-bold bg-slate-950 px-1.5 py-0.5 rounded">15x + 5x - 10 = 90</span>. What is x?
                 </p>
-                <div className="relative">
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
                     id="footer-newsletter-captcha"
@@ -410,18 +417,18 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                       setCaptcha(e.target.value);
                       setCaptchaError(false);
                     }}
-                    className={`w-full bg-slate-950 border ${captchaError ? 'border-red-500' : 'border-slate-800'} focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg py-2 pl-3 pr-10 text-xs text-white placeholder-slate-600 outline-none transition-all`}
+                    className={`flex-1 min-h-[44px] bg-slate-950 border ${captchaError ? 'border-red-500' : 'border-slate-800'} focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-400 outline-none transition-colors`}
                     required
                   />
                   <button
                     type="submit"
                     disabled={status === 'loading'}
-                    className="absolute right-1.5 top-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 p-1 rounded transition-colors disabled:opacity-50"
+                    className="min-w-[44px] min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center shrink-0 cursor-pointer"
                     id="footer-subscribe-btn"
                     title="Subscribe to Newsletter"
                     aria-label="Submit newsletter subscription"
                   >
-                    <Send className="w-3 h-3" />
+                    <Send className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -444,12 +451,12 @@ export default function Footer({ setCurrentTab }: FooterProps) {
         </div>
 
         {/* Bottom copyright line */}
-        <div className="border-t border-slate-800/60 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4" id="footer-bottom-nav">
+        <div className="border-t border-slate-800/60 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4" id="footer-bottom-nav">
           <div className="space-y-1 text-center sm:text-left">
             <p>
               {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} MADECC GROUP. All rights reserved.`}
             </p>
-            <p className="text-[11px] font-mono text-slate-500">
+            <p className="text-[11px] font-mono text-slate-400">
               {settings?.rccmNumber ? <span>RCCM: {settings.rccmNumber} · </span> : null}
               {settings?.niuTaxId ? <span>NIU: {settings.niuTaxId} · </span> : null}
               <span>{settings?.legalStatus || 'Individual establishment registration pending'}</span>
@@ -502,8 +509,9 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               </h3>
               <button 
                 onClick={() => setModalType(null)}
-                className="text-slate-400 hover:text-white bg-slate-850 hover:bg-slate-800 p-1.5 rounded-lg transition-all"
+                className="text-slate-400 hover:text-white bg-slate-850 hover:bg-slate-800 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors"
                 id="close-legal-modal"
+                aria-label="Close legal modal"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -592,8 +600,9 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               </div>
               <button 
                 onClick={() => setShowShareModal(false)}
-                className="text-slate-400 hover:text-white bg-slate-850 hover:bg-slate-800 p-1.5 rounded-lg transition-all"
+                className="text-slate-400 hover:text-white bg-slate-850 hover:bg-slate-800 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors"
                 id="close-share-modal"
+                aria-label="Close share modal"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -658,12 +667,18 @@ export default function Footer({ setCurrentTab }: FooterProps) {
 
               {/* Copy URL Link Bar */}
               <div className="pt-2 border-t border-slate-850 space-y-1.5">
-                <label className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">Official Canonical Link</label>
+                <label htmlFor="footer-canonical-url" className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">Official Canonical Link</label>
                 <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1.5 pl-3">
-                  <span className="text-xs text-slate-300 font-mono truncate flex-1">{websiteUrl}</span>
+                  <input
+                    id="footer-canonical-url"
+                    type="text"
+                    readOnly
+                    value={websiteUrl}
+                    className="text-xs text-slate-300 font-mono bg-transparent outline-none flex-1 min-w-0"
+                  />
                   <button
                     onClick={handleCopyLink}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0"
+                    className="min-h-[40px] flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
                   >
                     {copiedLink ? (
                       <>

@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "organization": {
+    "name": "MADECC GROUP",
+    "url": "https://madeccgroup.online",
+    "founder": "Kasah Rodrick Reboya",
+    "taxID": "P030217852934P",
+    "registrationStatus": "Individual establishment registration pending (formal RCCM completion pending)",
+    "headquarters": {
+      "city": "Yaounde",
+      "region": "Centre",
+      "country": "Cameroon"
+    },
+    "contact": {
+      "email": "kreboya603@gmail.com",
+      "secondaryEmail": "Infomadeccconstruction@gmail.com",
+      "phone": "+237 683 316 486",
+      "secondaryPhone": "+237 671 063 511"
+    }
+  },
+  "publicTools": [
+    {
+      "name": "Construction Budget Calculator",
+      "url": "https://madeccgroup.online/budget-calculator",
+      "currency": "XAF"
+    },
+    {
+      "name": "Construction Cost Guide 2026",
+      "url": "https://madeccgroup.online/construction-cost-guide",
+      "currency": "XAF"
+    },
+    {
+      "name": "Request a Project Quote & BOQ",
+      "url": "https://madeccgroup.online/request-a-quote"
+    },
+    {
+      "name": "Schedule Engineering Consultation",
+      "url": "https://madeccgroup.online/schedule-consultation"
+    },
+    {
+      "name": "Website Development Services",
+      "url": "https://madeccgroup.online/website-development"
+    },
+    {
+      "name": "KRR Bookstore",
+      "url": "https://madeccgroup.online/store",
+      "currency": "XAF"
+    },
+    {
+      "name": "Developer REST API Portal",
+      "url": "https://madeccgroup.online/developers"
+    }
+  ],
+  "publicApiEndpoints": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "description": "Service health check"
+    },
+    {
+      "path": "/api/public/corporate-profile",
+      "method": "GET",
+      "description": "Official corporate profile and registration disclosures"
+    },
+    {
+      "path": "/api/public/corporate-divisions",
+      "method": "GET",
+      "description": "Published MADECC business divisions and services"
+    },
+    {
+      "path": "/api/public/real-estate-projects",
+      "method": "GET",
+      "description": "Published real estate concept and development portfolios"
+    }
+  ],
+  "excludedPaths": ["/admin", "/api/admin", "/login"]
+}

@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useToast } from './Toast.tsx';
-import { 
-  auth, 
-  googleAuthProvider,
+import {
   getAuthToken,
   setStoredAuthToken,
   logoutUser
 } from '../lib/firebase.ts';
-import { signInWithPopup } from 'firebase/auth';
 import { 
   Building2, 
   Plus, 
@@ -72,7 +69,11 @@ import {
   Camera,
   CheckCircle2,
   Package,
-  Truck
+  Truck,
+  SearchCheck,
+  Network,
+  Edit3,
+  GitCompare
 } from 'lucide-react';
 import AdminSalesHub from './AdminSalesHub.tsx';
 import { 
@@ -119,6 +120,16 @@ import { AdminTenders } from './AdminTenders.tsx';
 import CmsPageBuilder from './CmsPageBuilder.tsx';
 import CmsMediaLibrary from './CmsMediaLibrary.tsx';
 import CmsSiteSettings from './CmsSiteSettings.tsx';
+import WebsiteOverviewPanel from './cms/WebsiteOverviewPanel.tsx';
+import CmsPublishingRevisionsPanel from './cms/CmsPublishingRevisionsPanel.tsx';
+import CmsHumanReviewPanel from './cms/CmsHumanReviewPanel.tsx';
+import CmsSeoManagerPanel from './cms/CmsSeoManagerPanel.tsx';
+import CmsLegalPagesPanel from './cms/CmsLegalPagesPanel.tsx';
+import CmsDeveloperPortalPanel from './cms/CmsDeveloperPortalPanel.tsx';
+import CmsSitemapArchitecturePanel from './cms/CmsSitemapArchitecturePanel.tsx';
+import CmsMaintenanceSchedulerPanel from './cms/CmsMaintenanceSchedulerPanel.tsx';
+import CmsAnnouncementsPanel from './cms/CmsAnnouncementsPanel.tsx';
+import CmsActivityLogsPanel from './cms/CmsActivityLogsPanel.tsx';
 import { WebsiteLiveOptimizer } from './WebsiteLiveOptimizer.tsx';
 import AdminApiPlatform from './AdminApiPlatform.tsx';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
@@ -133,6 +144,7 @@ import { InvestorPartnershipHub } from './InvestorPartnershipHub.tsx';
 import { CorporateAuditGovernanceHub } from './CorporateAuditGovernanceHub.tsx';
 import { RealEstateProjectsHub } from './RealEstateProjectsHub.tsx';
 import { PharmaComplianceHub } from './PharmaComplianceHub.tsx';
+const SecurityThreatMonitoringHub = lazy(() => import('./SecurityThreatMonitoringHub.tsx'));
 import { 
   ReceiptPaymentRecord, 
   STANDARD_RECEIPT_FEE_XAF, 
@@ -202,6 +214,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   // Navigation internal to admin
   const [activeAdminTab, setActiveAdminTab] = useState<string>(() => dbUser?.role === 'social_media_reviewer' ? 'social-studio' : 'command-center');
   const [activeSyllabus, setActiveSyllabus] = useState<any | null>(null);
+  const [cmsEditorSlug, setCmsEditorSlug] = useState<string>('home');
+  const [cmsReviewSlug, setCmsReviewSlug] = useState<string>('home');
 
   // Lock and default reviewer to Social Media Studio
   useEffect(() => {
@@ -2170,13 +2184,26 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     },
     {
       id: 'cms-group',
-      title: '🌐 WEBSITE & CONTENT CMS',
+      title: '🌐 WEBSITE MANAGEMENT',
       icon: Globe,
       items: [
+        { id: 'cms-overview', label: '1. Website Overview', icon: Globe },
+        { id: 'cms-publishing', label: '2. Page Management & Publishing', icon: Layers },
+        { id: 'cms-editor', label: '3. Content Editor', icon: Edit3 },
+        { id: 'cms-media', label: '4. Media Library', icon: ImageIcon },
+        { id: 'cms-videos', label: '5. Video Library', icon: Video },
+        { id: 'cms-seo', label: '6. SEO Manager', icon: SearchCheck },
+        { id: 'cms-human-review', label: '7. Human Content Review', icon: ShieldCheck },
+        { id: 'cms-revisions', label: '8. Revision History', icon: GitCompare },
+        { id: 'cms-legal', label: '9. Legal Pages Manager', icon: Scale },
+        { id: 'cms-developer-api', label: '10. Developer & API Portal CMS', icon: Code },
+        { id: 'cms-sitemap', label: '11. Sitemap & Architecture', icon: Network },
+        { id: 'cms-maintenance', label: '12. Maintenance Scheduler', icon: Wrench },
+        { id: 'cms-announcements', label: '13. Visitor Announcements', icon: Megaphone },
+        { id: 'cms-logs', label: '14. Publishing Activity Logs', icon: History },
+        { id: 'cms-settings', label: '15. Website Settings', icon: Settings },
         { id: 'website-optimizer', label: '⚡ Live Website Optimizer & Customizer', icon: Sparkles },
         { id: 'cms-pages', label: 'Frontend Page & Hero Studio', icon: Globe },
-        { id: 'cms-media', label: 'Media & Video Asset Library', icon: Video },
-        { id: 'cms-settings', label: 'Global Branding & Site Settings', icon: Settings },
         { id: 'services-cms', label: 'Services CMS Management', icon: Layers },
         { id: 'sustainability-cms', label: 'Sustainability & ESG CMS', icon: Layers },
         { id: 'faq-cms', label: 'FAQ / Help Centre CMS', icon: FileText },
@@ -2237,6 +2264,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       title: '🗃️ DATA, SECURITY & SYSTEM',
       icon: Shield,
       items: [
+        { id: 'security-monitoring', label: 'Security & Threat Monitoring', icon: Shield },
         { id: 'audit', label: 'Database Audit Logs', icon: History },
         { id: 'db-architecture', label: 'DB & API Documentation', icon: Database }
       ]
@@ -2966,14 +2994,68 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           <AdminQuoteRequests />
         )}
 
-        {/* CMS FRONTEND PAGE & HERO BUILDER */}
-        {activeAdminTab === 'cms-pages' && (
-          <CmsPageBuilder />
+        {/* WEBSITE MANAGEMENT — 16-SECTION CMS SUITE */}
+        {activeAdminTab === 'cms-overview' && (
+          <WebsiteOverviewPanel onNavigateCmsTab={(tabId) => setActiveAdminTab(tabId)} />
         )}
 
-        {/* CMS MEDIA & VIDEO ASSET LIBRARY */}
+        {(activeAdminTab === 'cms-publishing' || activeAdminTab === 'cms-revisions') && (
+          <CmsPublishingRevisionsPanel
+            key={activeAdminTab}
+            initialMode={activeAdminTab === 'cms-revisions' ? 'revisions' : 'publishing'}
+            onOpenEditor={(slug) => {
+              setCmsEditorSlug(slug);
+              setActiveAdminTab('cms-editor');
+            }}
+            onOpenReview={(slug) => {
+              setCmsReviewSlug(slug);
+              setActiveAdminTab('cms-human-review');
+            }}
+          />
+        )}
+
+        {(activeAdminTab === 'cms-pages' || activeAdminTab === 'cms-editor') && (
+          <CmsPageBuilder initialSlug={cmsEditorSlug} />
+        )}
+
         {activeAdminTab === 'cms-media' && (
-          <CmsMediaLibrary />
+          <CmsMediaLibrary key="media-all" filterType="all" />
+        )}
+
+        {activeAdminTab === 'cms-videos' && (
+          <CmsMediaLibrary key="media-videos" filterType="video" />
+        )}
+
+        {activeAdminTab === 'cms-seo' && (
+          <CmsSeoManagerPanel />
+        )}
+
+        {activeAdminTab === 'cms-human-review' && (
+          <CmsHumanReviewPanel initialSlug={cmsReviewSlug} />
+        )}
+
+        {activeAdminTab === 'cms-legal' && (
+          <CmsLegalPagesPanel />
+        )}
+
+        {activeAdminTab === 'cms-developer-api' && (
+          <CmsDeveloperPortalPanel onOpenApiPlatformConsole={() => setActiveAdminTab('api-platform')} />
+        )}
+
+        {activeAdminTab === 'cms-sitemap' && (
+          <CmsSitemapArchitecturePanel />
+        )}
+
+        {activeAdminTab === 'cms-maintenance' && (
+          <CmsMaintenanceSchedulerPanel />
+        )}
+
+        {activeAdminTab === 'cms-announcements' && (
+          <CmsAnnouncementsPanel />
+        )}
+
+        {activeAdminTab === 'cms-logs' && (
+          <CmsActivityLogsPanel />
         )}
 
         {/* CMS GLOBAL SITE SETTINGS & BRANDING */}
@@ -5212,6 +5294,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             )}
 
           </div>
+        )}
+
+        {/* 9B. SECURITY & THREAT MONITORING SOC */}
+        {activeAdminTab === 'security-monitoring' && String(dbUser?.role || '') !== 'social_media_reviewer' && (
+          <Suspense fallback={<div className="p-8 text-center text-xs font-mono text-slate-400">Loading Security Operations Center...</div>}>
+            <SecurityThreatMonitoringHub />
+          </Suspense>
         )}
 
         {/* 10. DATABASE AUDIT LOGS VIEWER */}

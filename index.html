@@ -103,14 +103,14 @@
     <meta property="og:description" content="A production-ready full-stack website and administrative platform for MADECC GROUP, a premier construction and project management company." />
     <meta property="og:url" content="https://madeccgroup.online/" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://madeccgroup.online/logo.png" />
+    <meta property="og:image" content="https://madeccgroup.online/logo.webp" />
     <meta property="og:site_name" content="MADECC GROUP" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="MADECC GROUP" />
     <meta name="twitter:description" content="A production-ready full-stack website and administrative platform for MADECC GROUP, a premier construction and project management company." />
-    <meta name="twitter:image" content="https://madeccgroup.online/logo.png" />
+    <meta name="twitter:image" content="https://madeccgroup.online/logo.webp" />
 
     <!-- PWA & Mobile Web App Meta -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -128,6 +128,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="canonical" href="https://madeccgroup.online/" />
+    <link rel="alternate" type="text/plain" title="LLMs Context" href="/llms.txt" />
+    <link rel="alternate" type="application/json" title="AI Service Catalog" href="/ai-catalog.json" />
 
     <!-- Performance Preconnections & Resource Hints -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -136,13 +138,13 @@
     <link rel="dns-prefetch" href="https://images.unsplash.com" />
 
     <!-- Non-Blocking Asynchronous Google Fonts Loading (Prevents 510ms render-blocking penalty) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" media="print" onload="this.media='all'" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" media="print" onload="this.media='all'" />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
     </noscript>
 
-    <!-- Preload Mobile Hero LCP Image to slash LCP from 14.8s to < 2.5s -->
+    <!-- Preload Mobile Hero LCP Image to slash LCP -->
     <link rel="preload" as="image" href="https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=75&fm=webp" fetchpriority="high" />
 
     <!-- Structured Data (JSON-LD) for LocalBusiness / GeneralContractor -->
@@ -152,9 +154,14 @@
       "@type": "GeneralContractor",
       "name": "MADECC GROUP",
       "url": "https://madeccgroup.online/",
-      "logo": "https://madeccgroup.online/logo.png",
-      "image": "https://madeccgroup.online/logo.png",
-      "description": "MADECC GROUP is a premier civil engineering, construction management, and architectural enterprise headquartered in Cameroon, delivering world-class infrastructure, commercial complexes, and turn-key residential works.",
+      "logo": "https://madeccgroup.online/logo.webp",
+      "image": "https://madeccgroup.online/logo.webp",
+      "taxID": "P030217852934P",
+      "founder": {
+        "@type": "Person",
+        "name": "Kasah Rodrick Reboya"
+      },
+      "description": "MADECC GROUP is a civil engineering, construction management, quantity surveying, and construction SaaS enterprise headquartered in Cameroon (individual establishment planned; formal registration pending; NIU P030217852934P).",
       "telephone": "+237671063511",
       "email": "contact@madeccgroup.online",
       "address": {
@@ -179,6 +186,7 @@
     }
     </script>
 
+    <style>html,body{background-color:#0a0a0b;color:#e2e8f0;margin:0}main{min-height:100vh}</style>
     <!-- Google AdSense Account Config & Performance-Optimized Idle Loading (Eliminates main-thread blocking during initial paint) -->
     <meta name="google-adsense-account" content="ca-pub-7227721489757915" />
     <script>
@@ -188,8 +196,9 @@
           if (adsLoaded) return;
           adsLoaded = true;
           window.removeEventListener('scroll', loadAdSense);
-          window.removeEventListener('mousemove', loadAdSense);
+          window.removeEventListener('pointerdown', loadAdSense);
           window.removeEventListener('touchstart', loadAdSense);
+          window.removeEventListener('keydown', loadAdSense);
           var s = document.createElement('script');
           s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7227721489757915';
           s.crossOrigin = 'anonymous';
@@ -197,13 +206,16 @@
           document.head.appendChild(s);
         }
         window.addEventListener('scroll', loadAdSense, { passive: true, once: true });
-        window.addEventListener('mousemove', loadAdSense, { passive: true, once: true });
+        window.addEventListener('pointerdown', loadAdSense, { passive: true, once: true });
         window.addEventListener('touchstart', loadAdSense, { passive: true, once: true });
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(loadAdSense, { timeout: 3500 });
-        } else {
-          setTimeout(loadAdSense, 3000);
-        }
+        window.addEventListener('keydown', loadAdSense, { passive: true, once: true });
+        window.addEventListener('load', function() {
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(loadAdSense, { timeout: 8500 });
+          } else {
+            setTimeout(loadAdSense, 8500);
+          }
+        }, { once: true });
       })();
     </script>
   </head>
@@ -211,46 +223,46 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Hidden forms for Netlify static detection with Full Accessibility Labels -->
+    <!-- Hidden forms for Netlify static detection with collision-free nf-* IDs -->
     <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <label for="contact-name">Contact Name</label>
-      <input type="text" id="contact-name" name="name" aria-label="Contact Name" />
-      <label for="contact-email">Contact Email</label>
-      <input type="email" id="contact-email" name="email" aria-label="Contact Email" />
-      <label for="contact-subject">Contact Subject</label>
-      <input type="text" id="contact-subject" name="subject" aria-label="Contact Subject" />
-      <label for="contact-message">Contact Message</label>
-      <textarea id="contact-message" name="message" aria-label="Contact Message"></textarea>
+      <label for="nf-contact-name">Contact Name</label>
+      <input type="text" id="nf-contact-name" name="name" aria-label="Contact Name" />
+      <label for="nf-contact-email">Contact Email</label>
+      <input type="email" id="nf-contact-email" name="email" aria-label="Contact Email" />
+      <label for="nf-contact-subject">Contact Subject</label>
+      <input type="text" id="nf-contact-subject" name="subject" aria-label="Contact Subject" />
+      <label for="nf-contact-message">Contact Message</label>
+      <textarea id="nf-contact-message" name="message" aria-label="Contact Message"></textarea>
     </form>
     <form name="booking" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <label for="booking-client">Booking Client Name</label>
-      <input type="text" id="booking-client" name="clientName" aria-label="Booking Client Name" />
-      <label for="booking-email">Booking Email</label>
-      <input type="email" id="booking-email" name="email" aria-label="Booking Email" />
-      <label for="booking-phone">Booking Phone</label>
-      <input type="text" id="booking-phone" name="phone" aria-label="Booking Phone" />
-      <label for="booking-date">Booking Date</label>
-      <input type="date" id="booking-date" name="date" aria-label="Booking Date" />
-      <label for="booking-time">Booking Time</label>
-      <input type="text" id="booking-time" name="time" aria-label="Booking Time" />
-      <label for="booking-service">Booking Service Type</label>
-      <input type="text" id="booking-service" name="service" aria-label="Booking Service Type" />
-      <label for="booking-notes">Booking Consultation Notes</label>
-      <textarea id="booking-notes" name="notes" aria-label="Booking Consultation Notes"></textarea>
+      <label for="nf-booking-client">Booking Client Name</label>
+      <input type="text" id="nf-booking-client" name="clientName" aria-label="Booking Client Name" />
+      <label for="nf-booking-email">Booking Email</label>
+      <input type="email" id="nf-booking-email" name="email" aria-label="Booking Email" />
+      <label for="nf-booking-phone">Booking Phone</label>
+      <input type="text" id="nf-booking-phone" name="phone" aria-label="Booking Phone" />
+      <label for="nf-booking-date">Booking Date</label>
+      <input type="date" id="nf-booking-date" name="date" aria-label="Booking Date" />
+      <label for="nf-booking-time">Booking Time</label>
+      <input type="text" id="nf-booking-time" name="time" aria-label="Booking Time" />
+      <label for="nf-booking-service">Booking Service Type</label>
+      <input type="text" id="nf-booking-service" name="service" aria-label="Booking Service Type" />
+      <label for="nf-booking-notes">Booking Consultation Notes</label>
+      <textarea id="nf-booking-notes" name="notes" aria-label="Booking Consultation Notes"></textarea>
     </form>
     <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <label for="newsletter-email">Newsletter Subscription Email</label>
-      <input type="email" id="newsletter-email" name="email" aria-label="Newsletter Subscription Email" />
+      <label for="nf-newsletter-email">Newsletter Subscription Email</label>
+      <input type="email" id="nf-newsletter-email" name="email" aria-label="Newsletter Subscription Email" />
     </form>
     <form name="reviews" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
-      <label for="review-author">Review Author Name</label>
-      <input type="text" id="review-author" name="authorName" aria-label="Review Author Name" />
-      <label for="review-rating">Review Numerical Rating</label>
-      <input type="number" id="review-rating" name="rating" aria-label="Review Numerical Rating" />
-      <label for="review-text">Review Text Description</label>
-      <textarea id="review-text" name="text" aria-label="Review Text Description"></textarea>
-      <label for="review-project">Reviewed Project Name</label>
-      <input type="text" id="review-project" name="projectName" aria-label="Reviewed Project Name" />
+      <label for="nf-review-author">Review Author Name</label>
+      <input type="text" id="nf-review-author" name="authorName" aria-label="Review Author Name" />
+      <label for="nf-review-rating">Review Numerical Rating</label>
+      <input type="number" id="nf-review-rating" name="rating" aria-label="Review Numerical Rating" />
+      <label for="nf-review-text">Review Text Description</label>
+      <textarea id="nf-review-text" name="text" aria-label="Review Text Description"></textarea>
+      <label for="nf-review-project">Reviewed Project Name</label>
+      <input type="text" id="nf-review-project" name="projectName" aria-label="Reviewed Project Name" />
     </form>
   </body>
 </html>

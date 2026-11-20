@@ -40,6 +40,9 @@ export interface SiteSettingsData {
   navigationLinks?: any;
   footerContent?: any;
   emergencyBanner?: any;
+  timezone?: string;
+  developerPortalConfig?: any;
+  discoveryConfig?: any;
   updatedBy?: string;
   updatedAt?: string | Date;
 }
@@ -97,6 +100,37 @@ export const CANONICAL_SITE_SETTINGS: Required<Omit<SiteSettingsData, 'id' | 'up
     enabled: false,
     message: '',
     badgeType: 'INFO'
+  },
+  timezone: 'Africa/Douala',
+  developerPortalConfig: {
+    heroTitle: 'MADECC Civil & Structural Engineering API Platform',
+    heroSubtitle: 'Integrate verified Cameroon BoQ estimators, concrete mix calculations, reinforcement design, and regional cost indices into your applications.',
+    documentationIntro: 'Authenticate using issued API keys after manual verification. Never embed private secrets in client browsers.',
+    accessInstructions: '1. Select a tier. 2. Submit transfer via MTN MoMo or Orange Money. 3. Upload transaction reference. 4. Admin verifies payment before activating production keys.',
+    supportEmail: 'kreboya603@gmail.com',
+    supportPhone: '+237 683 31 64 86',
+    statusNotice: 'Live endpoints verified against Neon PostgreSQL.',
+    announcementText: '',
+    categories: ['Structural Calculations', 'BoQ & Quantities', 'Construction Cost Indices', 'Eurocode Bearings'],
+    keyFeatures: ['Scoped API Keys', 'Usage Telemetry', 'Cameroon XAF Billing', 'Manual Receipt Verification'],
+    faqItems: [
+      { q: 'How are API keys activated?', a: 'All paid plans require transaction verification before production keys are enabled.' }
+    ],
+    guides: [
+      { title: 'Quickstart Authentication', summary: 'Pass your issued bearer token via the Authorization header from your backend server.' }
+    ],
+    sampleSnippets: {
+      curl: "curl -X POST https://madeccgroup.online/api/v1/concrete/calculate-mix -H 'Authorization: Bearer YOUR_ISSUED_API_KEY' -H 'Content-Type: application/json' -d '{\"targetStrengthMpa\":25,\"volumeM3\":10}'",
+      javascript: "const res = await fetch('https://madeccgroup.online/api/v1/concrete/calculate-mix', { method: 'POST', headers: { Authorization: 'Bearer ' + process.env.MADECC_API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ targetStrengthMpa: 25, volumeM3: 10 }) });"
+    },
+    apiTermsSummary: 'Use subject to rate limits, lawful engineering verification, and non-redistribution of raw proprietary datasets.'
+  },
+  discoveryConfig: {
+    robotsDisallow: ['/admin', '/api/', '/login'],
+    robotsAllow: ['/', '/ads.txt', '/llms.txt', '/ai-catalog.json'],
+    includeAiDiscovery: true,
+    llmsSummary: 'MADECC GROUP — Cameroon civil engineering, building construction, cost estimation, legal governance, and developer API platform based in Yaoundé.',
+    customRobotsDirectives: ''
   },
   updatedBy: 'Kasah Rodrick Reboya'
 };
@@ -157,6 +191,9 @@ export async function ensureSiteSettingsTable(): Promise<void> {
           navigation_links JSONB DEFAULT '[]'::jsonb,
           footer_content JSONB DEFAULT '{"aboutText":"MADECC GROUP is a premier engineering, construction and project delivery conglomerate in Cameroon.","copyrightText":"© 2026 MADECC GROUP. All Rights Reserved."}'::jsonb,
           emergency_banner JSONB DEFAULT '{"enabled":false,"message":"","badgeType":"INFO"}'::jsonb,
+          timezone TEXT DEFAULT 'Africa/Douala',
+          developer_portal_config JSONB DEFAULT '{}'::jsonb,
+          discovery_config JSONB DEFAULT '{}'::jsonb,
           updated_by TEXT DEFAULT 'Kasah Rodrick Reboya',
           updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
         );
@@ -200,6 +237,9 @@ export async function ensureSiteSettingsTable(): Promise<void> {
         "navigation_links JSONB DEFAULT '[]'::jsonb",
         "footer_content JSONB DEFAULT '{\"aboutText\":\"MADECC GROUP is a premier engineering, construction and project delivery conglomerate in Cameroon.\",\"copyrightText\":\"© 2026 MADECC GROUP. All Rights Reserved.\"}'::jsonb",
         "emergency_banner JSONB DEFAULT '{\"enabled\":false,\"message\":\"\",\"badgeType\":\"INFO\"}'::jsonb",
+        "timezone TEXT DEFAULT 'Africa/Douala'",
+        "developer_portal_config JSONB DEFAULT '{}'::jsonb",
+        "discovery_config JSONB DEFAULT '{}'::jsonb",
         "updated_by TEXT DEFAULT 'Kasah Rodrick Reboya'",
         "updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()"
       ];
@@ -318,6 +358,13 @@ export function formatSiteSettingsRow(row: any): SiteSettingsData {
     navigationLinks: row.navigation_links ?? row.navigationLinks ?? CANONICAL_SITE_SETTINGS.navigationLinks,
     footerContent: row.footer_content ?? row.footerContent ?? CANONICAL_SITE_SETTINGS.footerContent,
     emergencyBanner: row.emergency_banner ?? row.emergencyBanner ?? CANONICAL_SITE_SETTINGS.emergencyBanner,
+    timezone: row.timezone ?? CANONICAL_SITE_SETTINGS.timezone,
+    developerPortalConfig: (row.developer_portal_config && Object.keys(row.developer_portal_config).length > 0)
+      ? row.developer_portal_config
+      : (row.developerPortalConfig ?? CANONICAL_SITE_SETTINGS.developerPortalConfig),
+    discoveryConfig: (row.discovery_config && Object.keys(row.discovery_config).length > 0)
+      ? row.discovery_config
+      : (row.discoveryConfig ?? CANONICAL_SITE_SETTINGS.discoveryConfig),
     updatedBy: row.updated_by ?? row.updatedBy ?? CANONICAL_SITE_SETTINGS.updatedBy,
     updatedAt: row.updated_at ?? row.updatedAt ?? new Date()
   };
@@ -411,6 +458,9 @@ export async function upsertSiteSettings(
     navigationLinks: inputData.navigationLinks !== undefined ? inputData.navigationLinks : current.navigationLinks,
     footerContent: inputData.footerContent !== undefined ? inputData.footerContent : current.footerContent,
     emergencyBanner: inputData.emergencyBanner !== undefined ? inputData.emergencyBanner : current.emergencyBanner,
+    timezone: inputData.timezone !== undefined ? inputData.timezone : current.timezone,
+    developerPortalConfig: inputData.developerPortalConfig !== undefined ? inputData.developerPortalConfig : current.developerPortalConfig,
+    discoveryConfig: inputData.discoveryConfig !== undefined ? inputData.discoveryConfig : current.discoveryConfig,
     updatedBy: updatedBy || current.updatedBy,
   };
 
@@ -425,11 +475,12 @@ export async function upsertSiteSettings(
         instagram_url, youtube_url, twitter_url, tiktok_url, pinterest_url,
         share_headline, share_description, logo_url, favicon_url, legal_status,
         rccm_number, niu_tax_id, theme_settings, global_seo, navigation_links,
-        footer_content, emergency_banner, updated_by, updated_at
+        footer_content, emergency_banner, timezone, developer_portal_config, discovery_config,
+        updated_by, updated_at
       ) VALUES (
         1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
         $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34,
-        $35, $36, $37, NOW()
+        $35, $36, $37, $38, $39, $40, NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         site_name = EXCLUDED.site_name,
@@ -468,6 +519,9 @@ export async function upsertSiteSettings(
         navigation_links = EXCLUDED.navigation_links,
         footer_content = EXCLUDED.footer_content,
         emergency_banner = EXCLUDED.emergency_banner,
+        timezone = EXCLUDED.timezone,
+        developer_portal_config = EXCLUDED.developer_portal_config,
+        discovery_config = EXCLUDED.discovery_config,
         updated_by = EXCLUDED.updated_by,
         updated_at = NOW()
       RETURNING *;
@@ -510,6 +564,9 @@ export async function upsertSiteSettings(
       typeof merged.navigationLinks === 'object' ? JSON.stringify(merged.navigationLinks) : merged.navigationLinks,
       typeof merged.footerContent === 'object' ? JSON.stringify(merged.footerContent) : merged.footerContent,
       typeof merged.emergencyBanner === 'object' ? JSON.stringify(merged.emergencyBanner) : merged.emergencyBanner,
+      merged.timezone || 'Africa/Douala',
+      typeof merged.developerPortalConfig === 'object' ? JSON.stringify(merged.developerPortalConfig) : (merged.developerPortalConfig || '{}'),
+      typeof merged.discoveryConfig === 'object' ? JSON.stringify(merged.discoveryConfig) : (merged.discoveryConfig || '{}'),
       merged.updatedBy
     ];
 

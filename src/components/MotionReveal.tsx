@@ -1,7 +1,6 @@
-import React from 'react';
-import { motion, useReducedMotion, HTMLMotionProps, Variants } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
 
-interface MotionProps extends HTMLMotionProps<'div'> {
+interface MotionProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   delay?: number;
@@ -9,46 +8,91 @@ interface MotionProps extends HTMLMotionProps<'div'> {
   direction?: 'up' | 'down' | 'left' | 'right';
 }
 
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const listener = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener?.('change', listener);
+    return () => mq.removeEventListener?.('change', listener);
+  }, []);
+  return reduced;
+}
+
+function useInViewOnce(ref: React.RefObject<HTMLDivElement | null>): boolean {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || visible) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.disconnect();
+            break;
+          }
+        }
+      },
+      { rootMargin: '-40px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, visible]);
+  return visible;
+}
+
 export function FadeIn({
   children,
   className = '',
   delay = 0,
-  duration = 0.5,
+  duration = 0.45,
   direction = 'up',
+  style,
   ...props
 }: MotionProps) {
-  const shouldReduceMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const reduced = usePrefersReducedMotion();
+  const inView = useInViewOnce(ref);
 
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
+  if (reduced) {
+    return (
+      <div className={className} style={style} {...props}>
+        {children}
+      </div>
+    );
   }
 
-  const getInitial = () => {
-    switch (direction) {
-      case 'left':
-        return { opacity: 0, x: 30 };
-      case 'right':
-        return { opacity: 0, x: -30 };
-      case 'down':
-        return { opacity: 0, y: -24 };
-      case 'up':
-      default:
-        return { opacity: 0, y: 24 };
-    }
-  };
+  const hiddenTransform =
+    direction === 'left'
+      ? 'translate3d(24px, 0, 0)'
+      : direction === 'right'
+        ? 'translate3d(-24px, 0, 0)'
+        : direction === 'down'
+          ? 'translate3d(0, -20px, 0)'
+          : 'translate3d(0, 20px, 0)';
 
   return (
-    <motion.div
-      initial={getInitial()}
-      whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
+    <div
+      ref={ref}
       className={className}
-      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
+      style={{
+        opacity: inView ? 1 : 0,
+        transform: inView ? 'translate3d(0, 0, 0)' : hiddenTransform,
+        transition: `opacity ${duration}s cubic-bezier(0.21, 0.47, 0.32, 0.98) ${delay}s, transform ${duration}s cubic-bezier(0.21, 0.47, 0.32, 0.98) ${delay}s`,
+        willChange: inView ? 'auto' : 'transform, opacity',
+        ...style,
+      }}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -57,41 +101,21 @@ export function FadeInDirection({
   className = '',
   direction = 'up',
   delay = 0,
-  duration = 0.55,
+  duration = 0.5,
+  style,
   ...props
 }: MotionProps & { direction?: 'up' | 'down' | 'left' | 'right' }) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
-  const getInitial = () => {
-    switch (direction) {
-      case 'left':
-        return { opacity: 0, x: -30 };
-      case 'right':
-        return { opacity: 0, x: 30 };
-      case 'down':
-        return { opacity: 0, y: -24 };
-      case 'up':
-      default:
-        return { opacity: 0, y: 24 };
-    }
-  };
-
   return (
-    <motion.div
-      initial={getInitial()}
-      whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
+    <FadeIn
       className={className}
-      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
+      direction={direction}
+      delay={delay}
+      duration={duration}
+      style={style}
       {...props}
     >
       {children}
-    </motion.div>
+    </FadeIn>
   );
 }
 
@@ -99,126 +123,85 @@ export function ScaleIn({
   children,
   className = '',
   delay = 0,
-  duration = 0.45,
+  duration = 0.4,
+  style,
   ...props
 }: MotionProps) {
-  const shouldReduceMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const reduced = usePrefersReducedMotion();
+  const inView = useInViewOnce(ref);
 
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
+  if (reduced) {
+    return (
+      <div className={className} style={style} {...props}>
+        {children}
+      </div>
+    );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.92 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true, margin: '-30px' }}
-      transition={{ duration, delay, ease: [0.175, 0.885, 0.32, 1.275] }}
+    <div
+      ref={ref}
       className={className}
-      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
+      style={{
+        opacity: inView ? 1 : 0,
+        transform: inView ? 'scale3d(1, 1, 1)' : 'scale3d(0.94, 0.94, 1)',
+        transition: `opacity ${duration}s ease-out ${delay}s, transform ${duration}s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+        willChange: inView ? 'auto' : 'transform, opacity',
+        ...style,
+      }}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 export function StaggerContainer({
   children,
   className = '',
-  staggerDelay = 0.08,
-  delayChildren = 0.1,
+  staggerDelay: _staggerDelay,
+  delayChildren: _delayChildren,
+  style,
   ...props
 }: MotionProps & { staggerDelay?: number; delayChildren?: number }) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: staggerDelay,
-        delayChildren: delayChildren,
-      },
-    },
-  };
-
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-40px' }}
-      className={className}
-      {...props}
-    >
+    <div className={className} style={style} {...props}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 export function StaggerItem({
   children,
   className = '',
+  delay = 0,
+  duration = 0.45,
+  style,
   ...props
 }: MotionProps) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: [0.21, 0.47, 0.32, 0.98],
-      },
-    },
-  };
-
   return (
-    <motion.div
-      variants={itemVariants}
-      className={className}
-      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', ...(props.style || {}) }}
-      {...props}
-    >
+    <FadeIn className={className} delay={delay} duration={duration} style={style} {...props}>
       {children}
-    </motion.div>
+    </FadeIn>
   );
 }
 
 export function InteractiveCard({
   children,
   className = '',
-  hoverScale = 1.02,
+  hoverScale: _hoverScale = 1.02,
+  style,
   ...props
 }: MotionProps & { hoverScale?: number }) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: hoverScale }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      style={{ willChange: 'transform', transform: 'translateZ(0)', ...(props.style || {}) }}
-      className={className}
+    <div
+      className={`transition-transform duration-200 ease-out hover:-translate-y-1 active:scale-[0.98] ${className}`}
+      style={style}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -229,55 +212,21 @@ export function PageTransition({
   children: React.ReactNode;
   className?: string;
 }) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -16 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      style={{ willChange: 'transform, opacity', transform: 'translateZ(0)' }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={className}>{children}</div>;
 }
 
 export function FloatElement({
   children,
   className = '',
-  offset = 8,
-  duration = 3.5,
+  offset: _offset = 8,
+  duration: _duration = 3.5,
+  style,
   ...props
 }: MotionProps & { offset?: number; duration?: number }) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
   return (
-    <motion.div
-      animate={{
-        y: [-offset, offset, -offset],
-      }}
-      transition={{
-        duration,
-        repeat: Infinity,
-        ease: 'easeInOut',
-      }}
-      style={{ willChange: 'transform', transform: 'translateZ(0)', ...(props.style || {}) }}
-      className={className}
-      {...props}
-    >
+    <div className={`animate-float-gentle ${className}`} style={style} {...props}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 

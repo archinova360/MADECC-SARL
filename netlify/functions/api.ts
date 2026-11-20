@@ -1,6 +1,7 @@
 process.env.NETLIFY = 'true';
 import serverless from 'serverless-http';
 import { getApp } from '../../src/server/app.ts';
+import { buildCorsHeadersForOrigin, isOriginAllowed } from '../../src/server/corsOrigins.ts';
 
 let cachedHandler: any;
 
@@ -11,19 +12,14 @@ export const handler = async (event: any, context: any) => {
     context.callbackWaitsForEmptyEventLoop = false;
   }
 
-  const origin = event.headers?.origin || event.headers?.Origin || '*';
+  const origin = event.headers?.origin || event.headers?.Origin || undefined;
+  const corsHeaders = buildCorsHeadersForOrigin(origin);
 
   // Handle CORS OPTIONS preflight requests immediately
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
-      headers: {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-api-key, x-admin-key, Accept',
-        'Access-Control-Max-Age': '86400'
-      },
+      headers: corsHeaders,
       body: ''
     };
   }
@@ -59,10 +55,15 @@ export const handler = async (event: any, context: any) => {
 
     const response = await cachedHandler(event, context);
 
-    // Ensure CORS headers on all Netlify responses
+    // Apply strict CORS headers on Netlify responses (no blind wildcard or untrusted origin reflection)
     if (response && response.headers) {
-      response.headers['Access-Control-Allow-Origin'] = origin;
-      response.headers['Access-Control-Allow-Credentials'] = 'true';
+      delete response.headers['Access-Control-Allow-Origin'];
+      delete response.headers['Access-Control-Allow-Credentials'];
+      response.headers['Vary'] = 'Origin';
+      if (origin && isOriginAllowed(origin)) {
+        response.headers['Access-Control-Allow-Origin'] = origin;
+        response.headers['Access-Control-Allow-Credentials'] = 'true';
+      }
     }
 
     return response;
@@ -72,8 +73,7 @@ export const handler = async (event: any, context: any) => {
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Credentials': 'true'
+        ...corsHeaders,
       },
       body: JSON.stringify({
         success: false,

@@ -18,6 +18,7 @@ import {
   Info,
 } from 'lucide-react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
+import { getOptimizedImageUrl } from '../lib/utils.ts';
 
 export interface PublicCorporateProfile {
   id?: number;
@@ -442,11 +443,12 @@ export const CorporateDivisionsDirectory: React.FC<{
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search corporate divisions and services"
               placeholder="Search divisions or specific services (e.g. Apartments, Solar, Roads)..."
               className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs focus:outline-none focus:border-amber-500 ${
                 isLight
-                  ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400'
-                  : 'bg-slate-900 border-slate-700 text-white placeholder:text-slate-500'
+                  ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-500'
+                  : 'bg-slate-900 border-slate-700 text-white placeholder:text-slate-400'
               }`}
             />
           </div>
@@ -513,9 +515,12 @@ export const CorporateDivisionsDirectory: React.FC<{
                   {div.imageUrl && (
                     <div className="aspect-[16/9] w-full bg-slate-950 relative overflow-hidden">
                       <img
-                        src={div.imageUrl}
+                        src={getOptimizedImageUrl(div.imageUrl, 800, 75)}
                         alt={div.name}
+                        width={640}
+                        height={360}
                         loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
@@ -705,7 +710,15 @@ export const CorporateDivisionsDirectory: React.FC<{
                   <div>
                     {previewImg && (
                       <div className="aspect-[16/10] bg-slate-900 relative overflow-hidden">
-                        <img src={previewImg} alt={proj.name} className="w-full h-full object-cover" />
+                        <img
+                          src={getOptimizedImageUrl(previewImg, 800, 75)}
+                          alt={proj.name}
+                          width={640}
+                          height={400}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
                         {proj.isConceptual && (
                           <div className="absolute top-3 left-3 px-2.5 py-1 rounded bg-slate-950/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-400">
                             Proposed / Conceptual Study
@@ -817,12 +830,20 @@ export const CorporateDivisionsDirectory: React.FC<{
           <div className="bg-slate-950 text-slate-200 border border-slate-800 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {activeDivision.imageUrl && (
               <div className="aspect-[21/7] w-full relative bg-slate-900 overflow-hidden">
-                <img src={activeDivision.imageUrl} alt={activeDivision.name} className="w-full h-full object-cover" />
+                <img
+                  src={getOptimizedImageUrl(activeDivision.imageUrl, 1200, 80)}
+                  alt={activeDivision.name}
+                  width={1024}
+                  height={340}
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                 <button
                   type="button"
                   onClick={() => setActiveDivision(null)}
-                  className="absolute right-4 top-4 w-9 h-9 rounded-full bg-slate-950/80 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer border border-slate-700"
+                  aria-label="Close division details"
+                  className="absolute right-4 top-4 w-10 h-10 rounded-full bg-slate-950/80 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer border border-slate-700"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -845,7 +866,8 @@ export const CorporateDivisionsDirectory: React.FC<{
                   <button
                     type="button"
                     onClick={() => setActiveDivision(null)}
-                    className="w-9 h-9 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+                    aria-label="Close division details"
+                    className="w-10 h-10 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1010,7 +1032,8 @@ export const CorporateDivisionsDirectory: React.FC<{
               <button
                 type="button"
                 onClick={() => setEnquiryModal((p) => ({ ...p, open: false }))}
-                className="w-8 h-8 rounded-full bg-slate-900 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                aria-label="Close investor enquiry modal"
+                className="w-10 h-10 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

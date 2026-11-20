@@ -164,7 +164,7 @@ export const TENANT_PROFILES: Record<number, TenantFullProfile> = {
       primaryCtaTab: 'request-a-quote',
       secondaryCtaText: 'Explore Divisions & Services',
       secondaryCtaTab: 'services',
-      bannerImage: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
+      bannerImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=75&fm=webp',
       stats: [
         { value: '9 Divisions', label: 'Planned Business Scope', description: 'Construction, Civil Engineering, Real Estate, Healthcare & Industrial Sectors' },
         { value: 'Eurocode 2', label: 'Technical Reference', description: 'Algorithmic structural & BOQ estimation tools' },

@@ -6,6 +6,7 @@ import { users, reviewerCredentials, authSessions } from '../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
 import { verifyReviewerToken } from '../lib/reviewerAuth.ts';
 import { validateDatabaseSession } from '../lib/sessionService.ts';
+import { recordAuthSecurityEvent } from '../server/securityMonitorService.ts';
 
 export type CorporateAdminRole =
   | 'SUPER_ADMIN'
@@ -176,6 +177,12 @@ export const requireAuth = async (
 
   // 2. If token is a database session token (e.g. MADECC_AUTH_...) that has expired or been revoked, reject immediately
   if (trimmedToken.startsWith('MADECC_AUTH_')) {
+    void recordAuthSecurityEvent(req, {
+      eventCategory: 'AUTH_FAILURE',
+      threatType: 'EXPIRED_OR_REVOKED_SESSION',
+      httpStatus: 401,
+      reason: 'Database session token expired or revoked',
+    });
     return res.status(401).json({ error: 'Unauthorized: Session has expired or been terminated upon logout. Please sign in again.' });
   }
 
@@ -219,6 +226,12 @@ export const requireAuth = async (
   if (token.startsWith('META_REVIEWER_SESSION:')) {
     const verified = verifyReviewerToken(token);
     if (!verified.valid || !verified.payload) {
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'AUTH_FAILURE',
+        threatType: 'INVALID_REVIEWER_TOKEN',
+        httpStatus: 401,
+        reason: 'Reviewer token verification failed',
+      });
       return res.status(401).json({ error: 'Unauthorized: Invalid or expired reviewer session' });
     }
 
@@ -298,6 +311,12 @@ export const requireAuth = async (
     next();
   } catch (error) {
     console.error('Error verifying Firebase ID token:', error);
+    void recordAuthSecurityEvent(req, {
+      eventCategory: 'AUTH_FAILURE',
+      threatType: 'INVALID_BEARER_TOKEN',
+      httpStatus: 401,
+      reason: 'Firebase ID token verification failed',
+    });
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };
@@ -309,6 +328,14 @@ export const requireAdmin = async (
 ) => {
   await requireAuth(req, res, () => {
     if (!req.dbUser || req.dbUser.role !== 'admin') {
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'RBAC_DENIED',
+        threatType: 'ADMIN_ROLE_REQUIRED',
+        httpStatus: 403,
+        actorEmail: req.dbUser?.email,
+        actorUserId: req.dbUser?.uid,
+        reason: `Role ${req.dbUser?.role || 'unknown'} denied admin route`,
+      });
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
     next();
@@ -327,6 +354,14 @@ export const requireStaffOrAdmin = async (
         req.dbUser.role !== 'staff' &&
         req.dbUser.role !== 'social_media_reviewer')
     ) {
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'RBAC_DENIED',
+        threatType: 'STAFF_OR_ADMIN_REQUIRED',
+        httpStatus: 403,
+        actorEmail: req.dbUser?.email,
+        actorUserId: req.dbUser?.uid,
+        reason: `Role ${req.dbUser?.role || 'unknown'} denied staff/admin route`,
+      });
       return res.status(403).json({ error: 'Forbidden: Admin, Staff, or Reviewer access required' });
     }
     next();
@@ -345,6 +380,14 @@ export const requireSocialMediaReviewerOrAdmin = async (
         req.dbUser.role !== 'staff' &&
         req.dbUser.role !== 'social_media_reviewer')
     ) {
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'RBAC_DENIED',
+        threatType: 'SOCIAL_REVIEWER_REQUIRED',
+        httpStatus: 403,
+        actorEmail: req.dbUser?.email,
+        actorUserId: req.dbUser?.uid,
+        reason: `Role ${req.dbUser?.role || 'unknown'} denied social route`,
+      });
       return res.status(403).json({ error: 'Forbidden: Social Media Reviewer or Admin access required' });
     }
     next();
@@ -388,6 +431,14 @@ export function requireCorporateRoles(allowedRoles: CorporateAdminRole[]) {
       if (effectiveRole === 'SUPER_ADMIN' || allowedRoles.includes(effectiveRole)) {
         return next();
       }
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'RBAC_DENIED',
+        threatType: 'CORPORATE_RBAC_DENIED',
+        httpStatus: 403,
+        actorEmail: req.dbUser?.email,
+        actorUserId: req.dbUser?.uid,
+        reason: `Effective corporate role ${effectiveRole} lacks [${allowedRoles.join(', ')}]`,
+      });
       return res.status(403).json({
         error: `Forbidden: Requires one of roles [${allowedRoles.join(', ')}]. Your effective corporate role is ${effectiveRole}.`,
         requiredRoles: allowedRoles,

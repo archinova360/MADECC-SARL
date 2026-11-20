@@ -1,8 +1,13 @@
 node_modules/
 build/
 dist/
+dev-dist/
+uploads/
+*.tar.gz
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
+.aistudio/
+workspace/

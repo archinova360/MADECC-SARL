@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -29,12 +28,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
-    // Defer state update asynchronously to avoid React warning during render phase
     setTimeout(() => {
       setToasts((prev) => [...prev, { id, message, type }]);
     }, 0);
-    
-    // Automatically dismiss after 4 seconds
+
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
@@ -49,56 +46,54 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {/* Toast Portal/Container */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className={`pointer-events-auto p-4 rounded-xl shadow-xl flex items-start gap-3 border ${
-                toast.type === 'success'
-                  ? 'bg-slate-900 border-emerald-500/20 text-emerald-100'
-                  : toast.type === 'error'
-                  ? 'bg-slate-900 border-red-500/20 text-red-100'
-                  : toast.type === 'warning'
-                  ? 'bg-slate-900 border-amber-500/20 text-amber-100'
-                  : 'bg-slate-900 border-blue-500/20 text-blue-100'
-              }`}
-            >
-              {toast.type === 'success' ? (
-                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              ) : toast.type === 'error' ? (
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              ) : toast.type === 'warning' ? (
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              ) : (
-                <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-              )}
-              
-              <div className="flex-grow space-y-1">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {toast.type === 'success'
-                    ? 'Operation Success'
-                    : toast.type === 'error'
-                    ? 'Operation Error'
-                    : toast.type === 'warning'
-                    ? 'Attention'
-                    : 'Information'}
-                </span>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">{toast.message}</p>
-              </div>
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            role="status"
+            aria-live="polite"
+            className={`pointer-events-auto p-4 rounded-xl shadow-xl flex items-start gap-3 border animate-in fade-in slide-in-from-bottom-3 duration-200 ${
+              toast.type === 'success'
+                ? 'bg-slate-900 border-emerald-500/20 text-emerald-100'
+                : toast.type === 'error'
+                ? 'bg-slate-900 border-red-500/20 text-red-100'
+                : toast.type === 'warning'
+                ? 'bg-slate-900 border-amber-500/20 text-amber-100'
+                : 'bg-slate-900 border-blue-500/20 text-blue-100'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            ) : toast.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            ) : toast.type === 'warning' ? (
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            ) : (
+              <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+            )}
 
-              <button
-                onClick={() => dismissToast(toast.id)}
-                className="text-slate-400 hover:text-white transition-colors p-0.5"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+            <div className="flex-grow space-y-1">
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                {toast.type === 'success'
+                  ? 'Operation Success'
+                  : toast.type === 'error'
+                  ? 'Operation Error'
+                  : toast.type === 'warning'
+                  ? 'Attention'
+                  : 'Information'}
+              </span>
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">{toast.message}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => dismissToast(toast.id)}
+              aria-label="Dismiss notification"
+              className="text-slate-400 hover:text-white transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center rounded-md hover:bg-slate-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
       </div>
     </ToastContext.Provider>
   );

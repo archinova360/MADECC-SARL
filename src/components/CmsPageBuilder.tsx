@@ -34,6 +34,7 @@ import { getCsrfHeaders } from '../lib/csrf.ts';
 import { getAuthToken } from '../lib/firebase.ts';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import CmsMediaLibrary from './CmsMediaLibrary.tsx';
+import CmsRichTextEditor from './cms/CmsRichTextEditor.tsx';
 const safeConfirm = (message: string): boolean => {
   if (typeof window === 'undefined') return true;
   if (window.self !== window.top) {
@@ -113,10 +114,15 @@ const createDefaultPageContent = (slug: string): PageContent => ({
   }
 });
 
-export default function CmsPageBuilder() {
+interface CmsPageBuilderProps {
+  initialSlug?: string;
+}
+
+export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}) {
   const [pages, setPages] = useState<Array<{ id: number; slug: string; title: string; status: string; version: number }>>(DEFAULT_PAGES_LIST);
-  const [selectedSlug, setSelectedSlug] = useState('home');
-  const [pageData, setPageData] = useState<PageContent>(() => createDefaultPageContent('home'));
+  const [selectedSlug, setSelectedSlug] = useState(initialSlug || 'home');
+  const [pageData, setPageData] = useState<PageContent>(() => createDefaultPageContent(initialSlug || 'home'));
+  const [confirmDeleteSectionIdx, setConfirmDeleteSectionIdx] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -195,6 +201,10 @@ export default function CmsPageBuilder() {
   useEffect(() => {
     fetchPages();
   }, []);
+
+  useEffect(() => {
+    if (initialSlug) setSelectedSlug(initialSlug);
+  }, [initialSlug]);
 
   useEffect(() => {
     if (selectedSlug) {
@@ -803,18 +813,20 @@ export default function CmsPageBuilder() {
       {/* 2. Sections Manager Tab */}
       {activeTab === 'sections' && (
         <div className="py-6 space-y-4 text-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-slate-400">
-              Organize, toggle visibility, and customize section titles across this page.
+              Add, edit rich text, reorder, duplicate, toggle visibility, or remove custom content sections for this page.
             </p>
             <button
+              type="button"
               onClick={() => {
                 const newSections = [...(pageData.sections || [])];
                 newSections.push({
                   id: `sec-${Date.now()}`,
                   type: 'custom',
                   title: 'New Content Section',
-                  subtitle: 'Custom section description',
+                  subtitle: 'Custom section summary',
+                  content: '<p>Write structured section content here.</p>',
                   enabled: true,
                   displayOrder: newSections.length + 1
                 });
@@ -826,15 +838,33 @@ export default function CmsPageBuilder() {
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Array.isArray(pageData.sections) && pageData.sections.map((sec, idx) => (
               <div key={sec.id || idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2.5 flex-1">
                     <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-amber-500">
                       {idx + 1}
                     </span>
-                    <span className="font-mono text-xs text-amber-400 uppercase font-bold">[{sec.type}]</span>
+                    <select
+                      value={sec.type || 'custom'}
+                      onChange={e => {
+                        const updated = [...(pageData.sections || [])];
+                        updated[idx].type = e.target.value as any;
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] font-mono text-amber-400 uppercase font-bold"
+                    >
+                      <option value="custom">custom</option>
+                      <option value="rich_text">rich_text</option>
+                      <option value="media_showcase">media_showcase</option>
+                      <option value="services">services</option>
+                      <option value="stats">stats</option>
+                      <option value="cta">cta</option>
+                      <option value="about">about</option>
+                      <option value="projects">projects</option>
+                      <option value="faq">faq</option>
+                    </select>
                     <input
                       type="text"
                       value={sec.title || ''}
@@ -843,11 +873,57 @@ export default function CmsPageBuilder() {
                         updated[idx].title = e.target.value;
                         setPageData({ ...pageData, sections: updated });
                       }}
-                      className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-xs text-white font-bold"
+                      className="flex-1 min-w-[180px] bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-xs text-white font-bold"
                     />
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => {
+                        if (idx === 0) return;
+                        const updated = [...(pageData.sections || [])];
+                        const [moved] = updated.splice(idx, 1);
+                        updated.splice(idx - 1, 0, moved);
+                        updated.forEach((s, i) => (s.displayOrder = i + 1));
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30"
+                      title="Move Section Up"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === (pageData.sections?.length || 0) - 1}
+                      onClick={() => {
+                        const updated = [...(pageData.sections || [])];
+                        if (idx >= updated.length - 1) return;
+                        const [moved] = updated.splice(idx, 1);
+                        updated.splice(idx + 1, 0, moved);
+                        updated.forEach((s, i) => (s.displayOrder = i + 1));
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30"
+                      title="Move Section Down"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [...(pageData.sections || [])];
+                        const copy = { ...sec, id: `sec-${Date.now()}`, title: `${sec.title || 'Section'} (Copy)` };
+                        updated.splice(idx + 1, 0, copy);
+                        updated.forEach((s, i) => (s.displayOrder = i + 1));
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[11px] text-amber-300 hover:bg-slate-800"
+                      title="Duplicate Section"
+                    >
+                      Duplicate
+                    </button>
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
                       <input
                         type="checkbox"
@@ -859,33 +935,83 @@ export default function CmsPageBuilder() {
                         }}
                         className="rounded text-amber-500"
                       />
-                      Active
+                      Visible
                     </label>
 
-                    <button
-                      onClick={() => {
-                        const updated = pageData.sections?.filter((_, i) => i !== idx) || [];
+                    {confirmDeleteSectionIdx === idx ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = pageData.sections?.filter((_, i) => i !== idx) || [];
+                            setPageData({ ...pageData, sections: updated });
+                            setConfirmDeleteSectionIdx(null);
+                          }}
+                          className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-bold"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteSectionIdx(null)}
+                          className="px-1.5 py-1 rounded bg-slate-800 text-slate-300 text-[10px]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteSectionIdx(idx)}
+                        className="p-1 text-slate-500 hover:text-rose-400"
+                        title="Remove section"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Subtitle / Summary</label>
+                    <input
+                      type="text"
+                      value={sec.subtitle || ''}
+                      onChange={e => {
+                        const updated = [...(pageData.sections || [])];
+                        updated[idx].subtitle = e.target.value;
                         setPageData({ ...pageData, sections: updated });
                       }}
-                      className="p-1 text-slate-500 hover:text-rose-400"
-                      title="Remove section"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Optional Media / Video / Document URL</label>
+                    <input
+                      type="url"
+                      value={sec.mediaUrl || ''}
+                      onChange={e => {
+                        const updated = [...(pageData.sections || [])];
+                        updated[idx].mediaUrl = e.target.value;
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      placeholder="https://..."
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Subtitle / Summary</label>
-                  <input
-                    type="text"
-                    value={sec.subtitle || ''}
-                    onChange={e => {
+                  <label className="block text-[11px] text-slate-400 mb-1">Section Rich Text Body (Sanitized HTML)</label>
+                  <CmsRichTextEditor
+                    value={typeof sec.content === 'string' ? sec.content : ''}
+                    onChange={html => {
                       const updated = [...(pageData.sections || [])];
-                      updated[idx].subtitle = e.target.value;
+                      updated[idx].content = html;
                       setPageData({ ...pageData, sections: updated });
                     }}
-                    className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-300"
+                    minHeight="140px"
                   />
                 </div>
               </div>

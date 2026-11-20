@@ -14,6 +14,8 @@ import { seedDatabase } from '../../db/seed.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 import { getSiteSettings, upsertSiteSettings } from '../../db/ensureSiteSettings.ts';
 import { ensureWebsiteDevelopmentServices } from '../../db/ensureWebServices.ts';
+import { sanitizeCmsPagePayload } from '../cmsSanitizer.ts';
+import { processDueCmsSchedules } from './cmsPublishingRoutes.ts';
 
   async function ensureFaqDefaults() {
     const existingCats = await db.select().from(faqCategories);
@@ -1200,12 +1202,16 @@ export function setupCmsRoutes(app: express.Express) {
   // 2. CMS Pages List
   app.get('/api/cms/pages', async (req, res) => {
     try {
+      await processDueCmsSchedules();
       let pages = await db.select({
         id: pageContents.id,
         slug: pageContents.slug,
         title: pageContents.title,
+        pageGroup: pageContents.pageGroup,
         status: pageContents.status,
+        reviewStatus: pageContents.reviewStatus,
         version: pageContents.version,
+        scheduledPublishAt: pageContents.scheduledPublishAt,
         lastSavedBy: pageContents.lastSavedBy,
         publishedAt: pageContents.publishedAt,
         updatedAt: pageContents.updatedAt
@@ -1298,15 +1304,18 @@ export function setupCmsRoutes(app: express.Express) {
   });
 
   // 3. CMS Page Details (Live vs Draft)
-  app.get('/api/cms/pages/:slug', async (req, res) => {
+  app.get('/api/cms/pages/:slug', async (req, res, next) => {
     try {
+      await processDueCmsSchedules();
       const { slug } = req.params;
+      if (slug === 'manage') return next();
       const { mode } = req.query; // 'draft' or 'live' (default)
 
       let pages = await db.select().from(pageContents).where(eq(pageContents.slug, slug)).limit(1);
       
-      // If page not found, auto-create a clean initial page record
-      if (pages.length === 0) {
+      // Only auto-create core landing slugs if missing (never auto-seed arbitrary public URLs)
+      const CORE_SLUGS = new Set(['home', 'about', 'services', 'projects', 'legal', 'developers', 'sitemap', 'contact', 'website-development']);
+      if (pages.length === 0 && CORE_SLUGS.has(slug)) {
         const formattedTitle = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
         const inserted = await db.insert(pageContents).values({
           slug,
@@ -1364,6 +1373,9 @@ export function setupCmsRoutes(app: express.Express) {
       }
 
       const page = pages[0];
+      if (mode !== 'draft' && (page.status === 'UNPUBLISHED' || page.status === 'ARCHIVED')) {
+        return res.status(404).json({ success: false, published: false, error: 'Page is not currently published' });
+      }
       let pageData: any = {};
 
       if (mode === 'draft') {
@@ -1408,11 +1420,11 @@ export function setupCmsRoutes(app: express.Express) {
       const { heroConfig, sections, seo, title } = req.body;
 
       const existing = await db.select().from(pageContents).where(eq(pageContents.slug, slug)).limit(1);
-      const draftPayload = {
+      const draftPayload = sanitizeCmsPagePayload({
         heroConfig,
         sections,
         seo
-      };
+      });
 
       let pageRecord;
       if (existing.length > 0) {
@@ -1432,9 +1444,9 @@ export function setupCmsRoutes(app: express.Express) {
           slug,
           title: title || slug.toUpperCase(),
           status: 'DRAFT',
-          heroConfig,
-          sections,
-          seo,
+          heroConfig: draftPayload.heroConfig,
+          sections: draftPayload.sections,
+          seo: draftPayload.seo,
           draftData: draftPayload,
           version: 1,
           lastSavedBy: req.dbUser?.displayName || req.dbUser?.email || 'MADECC Admin'
@@ -1469,15 +1481,14 @@ export function setupCmsRoutes(app: express.Express) {
       }
 
       const currentPage = existing[0];
-      const liveHero = heroConfig || (currentPage.draftData as any)?.heroConfig || currentPage.heroConfig;
-      const liveSections = sections || (currentPage.draftData as any)?.sections || currentPage.sections;
-      const liveSeo = seo || (currentPage.draftData as any)?.seo || currentPage.seo;
-
-      const publishPayload = {
-        heroConfig: liveHero,
-        sections: liveSections,
-        seo: liveSeo
-      };
+      const publishPayload = sanitizeCmsPagePayload({
+        heroConfig: heroConfig || (currentPage.draftData as any)?.heroConfig || currentPage.heroConfig,
+        sections: sections || (currentPage.draftData as any)?.sections || currentPage.sections,
+        seo: seo || (currentPage.draftData as any)?.seo || currentPage.seo
+      });
+      const liveHero = publishPayload.heroConfig;
+      const liveSections = publishPayload.sections;
+      const liveSeo = publishPayload.seo;
 
       const newVersion = (currentPage.version || 1) + 1;
       const now = new Date();
@@ -1739,6 +1750,14 @@ export function setupCmsRoutes(app: express.Express) {
         dimensions: data.dimensions || null,
         altText: data.altText || data.title,
         caption: data.caption || null,
+        description: data.description || null,
+        creditSource: data.creditSource || null,
+        folder: data.folder || 'Root',
+        subtitlesUrl: data.subtitlesUrl || null,
+        transcript: data.transcript || null,
+        thumbnailUrl: data.thumbnailUrl || null,
+        durationSeconds: data.durationSeconds ? Number(data.durationSeconds) : null,
+        isPublic: data.isPublic !== undefined ? Boolean(data.isPublic) : true,
         category: data.category || 'General',
         tags: data.tags || [],
         usedIn: data.usedIn || [],
@@ -1765,24 +1784,33 @@ export function setupCmsRoutes(app: express.Express) {
     try {
       const id = Number(req.params.id);
       const data = req.body;
+      const existing = await db.select().from(mediaLibrary).where(eq(mediaLibrary.id, id)).limit(1);
+      if (existing.length === 0) {
+        return res.status(404).json({ error: 'Media asset not found' });
+      }
+      const cur = existing[0];
 
       const updated = await db.update(mediaLibrary)
         .set({
-          title: data.title,
-          altText: data.altText,
-          caption: data.caption,
-          category: data.category,
-          tags: data.tags,
-          usedIn: data.usedIn,
-          status: data.status,
+          title: data.title !== undefined ? data.title : cur.title,
+          altText: data.altText !== undefined ? data.altText : cur.altText,
+          caption: data.caption !== undefined ? data.caption : cur.caption,
+          description: data.description !== undefined ? data.description : cur.description,
+          creditSource: data.creditSource !== undefined ? data.creditSource : cur.creditSource,
+          folder: data.folder !== undefined ? data.folder : cur.folder,
+          subtitlesUrl: data.subtitlesUrl !== undefined ? data.subtitlesUrl : cur.subtitlesUrl,
+          transcript: data.transcript !== undefined ? data.transcript : cur.transcript,
+          thumbnailUrl: data.thumbnailUrl !== undefined ? data.thumbnailUrl : cur.thumbnailUrl,
+          durationSeconds: data.durationSeconds !== undefined ? (data.durationSeconds ? Number(data.durationSeconds) : null) : cur.durationSeconds,
+          isPublic: data.isPublic !== undefined ? Boolean(data.isPublic) : cur.isPublic,
+          category: data.category !== undefined ? data.category : cur.category,
+          tags: data.tags !== undefined ? data.tags : cur.tags,
+          usedIn: data.usedIn !== undefined ? data.usedIn : cur.usedIn,
+          status: data.status !== undefined ? data.status : cur.status,
           updatedAt: new Date()
         })
         .where(eq(mediaLibrary.id, id))
         .returning();
-
-      if (updated.length === 0) {
-        return res.status(404).json({ error: 'Media asset not found' });
-      }
 
       res.json({ success: true, media: updated[0] });
     } catch (error: any) {
@@ -1793,10 +1821,43 @@ export function setupCmsRoutes(app: express.Express) {
   app.delete('/api/cms/media/:id', requireStaffOrAdmin, async (req: any, res) => {
     try {
       const id = Number(req.params.id);
-      const deleted = await db.delete(mediaLibrary).where(eq(mediaLibrary.id, id)).returning();
-      if (deleted.length === 0) {
+      const force = String(req.query.force || '') === 'true';
+      const existing = await db.select().from(mediaLibrary).where(eq(mediaLibrary.id, id)).limit(1);
+      if (existing.length === 0) {
         return res.status(404).json({ error: 'Media asset not found' });
       }
+      const asset = existing[0];
+
+      if (!force) {
+        const usedIn: string[] = [];
+        const [allPages, allBanners, allProjects, allBlogs] = await Promise.all([
+          db.select().from(pageContents).catch(() => []),
+          db.select().from(heroBanners).catch(() => []),
+          db.select().from(projects).catch(() => []),
+          db.select().from(blogPosts).catch(() => [])
+        ]);
+        for (const p of allPages) {
+          if (JSON.stringify(p).includes(asset.fileUrl)) usedIn.push(`Page: /${p.slug}`);
+        }
+        for (const b of allBanners) {
+          if (b.imageUrl === asset.fileUrl || b.videoUrl === asset.fileUrl) usedIn.push(`Hero Banner: ${b.title}`);
+        }
+        for (const pr of allProjects) {
+          if (JSON.stringify(pr).includes(asset.fileUrl)) usedIn.push(`Project: ${pr.title}`);
+        }
+        for (const bl of allBlogs) {
+          if (JSON.stringify(bl).includes(asset.fileUrl)) usedIn.push(`Blog: ${bl.title}`);
+        }
+        if (usedIn.length > 0) {
+          return res.status(409).json({
+            error: `Asset is currently referenced in ${usedIn.length} location(s). Confirm force deletion or replace references first.`,
+            requiresConfirmation: true,
+            usedIn
+          });
+        }
+      }
+
+      const deleted = await db.delete(mediaLibrary).where(eq(mediaLibrary.id, id)).returning();
 
       await db.insert(cmsActivityLogs).values({
         module: 'MEDIA_LIBRARY',

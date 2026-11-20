@@ -1543,6 +1543,9 @@ export const siteSettings = pgTable('site_settings', {
   navigationLinks: json('navigation_links'), // Array of nav items
   footerContent: json('footer_content'), // { aboutText, copyrightText, accreditationBadges }
   emergencyBanner: json('emergency_banner'), // { enabled, message, linkText, linkUrl, badgeType }
+  timezone: text('timezone').default('Africa/Douala'),
+  developerPortalConfig: json('developer_portal_config'),
+  discoveryConfig: json('discovery_config'),
   updatedBy: text('updated_by').default('MADECC Executive Admin'),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -1552,9 +1555,11 @@ export const siteSettings = pgTable('site_settings', {
 // =========================================================================
 export const pageContents = pgTable('page_contents', {
   id: serial('id').primaryKey(),
-  slug: text('slug').notNull().unique(), // 'home', 'about', 'services', 'projects', 'sustainability', 'tenders', 'suppliers', 'careers', 'blog', 'contact', 'privacy-policy', 'terms', 'cookie-policy', 'disclaimer'
+  slug: text('slug').notNull().unique(), // 'home', 'about', 'services', 'projects', 'legal', 'developers', 'sitemap', 'contact', ...
   title: text('title').notNull(),
-  status: text('status').notNull().default('PUBLISHED'), // DRAFT, PUBLISHED, UNPUBLISHED, ARCHIVED
+  pageGroup: text('page_group').default('public'),
+  status: text('status').notNull().default('PUBLISHED'), // DRAFT, PENDING_REVIEW, APPROVED, SCHEDULED, PUBLISHED, UNPUBLISHED, ARCHIVED
+  reviewStatus: text('review_status').default('NOT_REVIEWED'), // NOT_REVIEWED, REVIEW_REQUIRED, CHANGES_RECOMMENDED, APPROVED_BY_ADMIN
   heroConfig: json('hero_config'), // Full Hero section configuration
   sections: json('sections'), // Ordered page sections
   seo: json('seo'), // SEO title, description, canonical, OG, robots
@@ -1562,6 +1567,13 @@ export const pageContents = pgTable('page_contents', {
   publishedData: json('published_data'), // Active live payload
   version: integer('version').default(1).notNull(),
   lastSavedBy: text('last_saved_by').default('MADECC Executive Admin'),
+  approvalNotes: text('approval_notes'),
+  approvedBy: text('approved_by'),
+  approvedAt: timestamp('approved_at'),
+  scheduledPublishAt: timestamp('scheduled_publish_at'),
+  expiresAt: timestamp('expires_at'),
+  archivedAt: timestamp('archived_at'),
+  lastPublishError: text('last_publish_error'),
   publishedAt: timestamp('published_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -1581,11 +1593,20 @@ export const mediaLibrary = pgTable('media_library', {
   dimensions: text('dimensions'), // e.g. 1920x1080
   altText: text('alt_text'),
   caption: text('caption'),
+  description: text('description'),
+  creditSource: text('credit_source'),
+  folder: text('folder').default('Root'),
+  subtitlesUrl: text('subtitles_url'),
+  transcript: text('transcript'),
+  thumbnailUrl: text('thumbnail_url'),
+  durationSeconds: integer('duration_seconds'),
+  isPublic: boolean('is_public').default(true),
   category: text('category').default('General').notNull(), // Hero Media, Projects, Services, Logos, Documents, Team, Blog, General
   tags: json('tags'), // Array of strings
   usedIn: json('used_in'), // Array of strings describing usage
   status: text('status').default('ACTIVE').notNull(), // ACTIVE, ARCHIVED
   uploadedBy: text('uploaded_by').default('MADECC Media Admin'),
+  archivedAt: timestamp('archived_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -1601,6 +1622,9 @@ export const pageContentRevisions = pgTable('page_content_revisions', {
   snapshotData: json('snapshot_data').notNull(),
   changeSummary: text('change_summary'),
   author: text('author').default('MADECC CMS Admin'),
+  status: text('status').default('PUBLISHED'),
+  actionType: text('action_type').default('PUBLISH'),
+  publishedAt: timestamp('published_at'),
   isPublished: boolean('is_published').default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -2640,6 +2664,319 @@ export const corporateEnquiries = pgTable('corporate_enquiries', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// =========================================================================
+// 80. SECURITY & THREAT MONITORING TABLES
+// =========================================================================
+export const securityEvents = pgTable('security_events', {
+  id: serial('id').primaryKey(),
+  eventCategory: text('event_category').notNull(), // ATTACK_PROBE | AUTH_FAILURE | RBAC_DENIED | RATE_LIMIT | BOT_SCANNER | UPLOAD_REJECTION | ADMIN_ACTION
+  severity: text('severity').notNull().default('MEDIUM'), // LOW | MEDIUM | HIGH | CRITICAL
+  threatType: text('threat_type').notNull(),
+  ipAddress: text('ip_address').notNull(),
+  userAgent: text('user_agent'),
+  method: text('method').notNull(),
+  path: text('path').notNull(),
+  querySummary: text('query_summary'),
+  countryCode: text('country_code'),
+  countryName: text('country_name'),
+  regionName: text('region_name'),
+  city: text('city'),
+  asnOrg: text('asn_org'),
+  httpStatus: integer('http_status').default(403),
+  blocked: boolean('blocked').notNull().default(false),
+  actorUserId: text('actor_user_id'),
+  actorEmail: text('actor_email'),
+  detailsJson: json('details_json'),
+  resolved: boolean('resolved').notNull().default(false),
+  resolvedAt: timestamp('resolved_at'),
+  resolvedBy: text('resolved_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const securityVisitorLogs = pgTable('security_visitor_logs', {
+  id: serial('id').primaryKey(),
+  sessionId: text('session_id'),
+  ipAddress: text('ip_address').notNull(),
+  userAgent: text('user_agent'),
+  deviceType: text('device_type').default('desktop'),
+  browser: text('browser').default('Unknown'),
+  os: text('os').default('Unknown'),
+  countryCode: text('country_code'),
+  countryName: text('country_name'),
+  regionName: text('region_name'),
+  city: text('city'),
+  asnOrg: text('asn_org'),
+  path: text('path').notNull(),
+  tab: text('tab'),
+  referrer: text('referrer'),
+  isBot: boolean('is_bot').notNull().default(false),
+  botName: text('bot_name'),
+  userEmail: text('user_email'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const securityIpIntelligence = pgTable('security_ip_intelligence', {
+  id: serial('id').primaryKey(),
+  ipAddress: text('ip_address').notNull().unique(),
+  rdapStatus: text('rdap_status').notNull().default('PENDING'), // PENDING | RESOLVED | PRIVATE_OR_LOOPBACK | FAILED
+  networkName: text('network_name'),
+  cidr: text('cidr'),
+  countryCode: text('country_code'),
+  asn: text('asn'),
+  asnOrg: text('asn_org'),
+  abuseEmail: text('abuse_email'),
+  abusePhone: text('abuse_phone'),
+  whoisSummaryJson: json('whois_summary_json'),
+  totalRequests: integer('total_requests').notNull().default(0),
+  threatHits: integer('threat_hits').notNull().default(0),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
+  lastEnrichedAt: timestamp('last_enriched_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const securityBlockedIps = pgTable('security_blocked_ips', {
+  id: serial('id').primaryKey(),
+  ipAddress: text('ip_address').notNull().unique(),
+  cidr: text('cidr'),
+  reason: text('reason').notNull(),
+  severity: text('severity').notNull().default('HIGH'),
+  source: text('source').notNull().default('MANUAL'), // MANUAL | AUTO_RULE | THREAT_RESPONSE
+  blockedBy: text('blocked_by'),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').notNull().default(true),
+  hitCount: integer('hit_count').notNull().default(0),
+  lastBlockedAt: timestamp('last_blocked_at'),
+  unblockedAt: timestamp('unblocked_at'),
+  unblockedBy: text('unblocked_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const securityAlerts = pgTable('security_alerts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  alertType: text('alert_type').notNull(),
+  severity: text('severity').notNull().default('HIGH'),
+  status: text('status').notNull().default('OPEN'), // OPEN | ACKNOWLEDGED | RESOLVED | DISMISSED
+  ipAddress: text('ip_address'),
+  path: text('path'),
+  eventCount: integer('event_count').notNull().default(1),
+  summary: text('summary').notNull(),
+  evidenceJson: json('evidence_json'),
+  acknowledgedBy: text('acknowledged_by'),
+  acknowledgedAt: timestamp('acknowledged_at'),
+  resolvedBy: text('resolved_by'),
+  resolvedAt: timestamp('resolved_at'),
+  emailNotified: boolean('email_notified').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const securityIncidents = pgTable('security_incidents', {
+  id: serial('id').primaryKey(),
+  incidentCode: text('incident_code').notNull().unique(),
+  title: text('title').notNull(),
+  severity: text('severity').notNull().default('HIGH'),
+  status: text('status').notNull().default('INVESTIGATING'), // INVESTIGATING | CONTAINED | MITIGATED | CLOSED
+  category: text('category').notNull(),
+  affectedIp: text('affected_ip'),
+  affectedUserEmail: text('affected_user_email'),
+  rootCause: text('root_cause'),
+  containmentActions: text('containment_actions'),
+  timelineJson: json('timeline_json'),
+  createdBy: text('created_by'),
+  closedAt: timestamp('closed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const securityTrafficStatsHourly = pgTable('security_traffic_stats_hourly', {
+  id: serial('id').primaryKey(),
+  bucketHour: text('bucket_hour').notNull().unique(), // UTC ISO hour prefix e.g. 2026-11-18T18:00:00Z
+  totalRequests: integer('total_requests').notNull().default(0),
+  visitorViews: integer('visitor_views').notNull().default(0),
+  botRequests: integer('bot_requests').notNull().default(0),
+  blockedRequests: integer('blocked_requests').notNull().default(0),
+  authFailures: integer('auth_failures').notNull().default(0),
+  threatEvents: integer('threat_events').notNull().default(0),
+  uniqueIps: integer('unique_ips').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const securityAlertPolicies = pgTable('security_alert_policies', {
+  id: serial('id').primaryKey(),
+  policyKey: text('policy_key').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  thresholdCount: integer('threshold_count').notNull().default(5),
+  windowSeconds: integer('window_seconds').notNull().default(300),
+  autoBlockIp: boolean('auto_block_ip').notNull().default(false),
+  autoBlockMinutes: integer('auto_block_minutes').notNull().default(60),
+  notifyEmail: boolean('notify_email').notNull().default(true),
+  updatedBy: text('updated_by'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const securityAuditTrail = pgTable('security_audit_trail', {
+  id: serial('id').primaryKey(),
+  actorEmail: text('actor_email'),
+  actorRole: text('actor_role'),
+  action: text('action').notNull(),
+  targetType: text('target_type').notNull(),
+  targetId: text('target_id'),
+  ipAddress: text('ip_address'),
+  detailsJson: json('details_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const securityAdminPreferences = pgTable('security_admin_preferences', {
+  id: serial('id').primaryKey(),
+  adminEmail: text('admin_email').notNull().unique(),
+  defaultTimeWindow: text('default_time_window').notNull().default('24h'),
+  autoRefreshSeconds: integer('auto_refresh_seconds').notNull().default(30),
+  emailNotificationsEnabled: boolean('email_notifications_enabled').notNull().default(true),
+  alertRecipientEmail: text('alert_recipient_email').notNull().default('kreboya603@gmail.com'),
+  soundAlertEnabled: boolean('sound_alert_enabled').notNull().default(false),
+  preferencesJson: json('preferences_json'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 80. WEBSITE MANAGEMENT: LEGAL DOCUMENTS, REVISIONS, REVIEWS, PUBLISHING, MAINTENANCE & ANNOUNCEMENTS
+// =========================================================================
+export const legalDocuments = pgTable('legal_documents', {
+  id: serial('id').primaryKey(),
+  slug: text('slug').notNull().unique(),
+  docType: text('doc_type').notNull(),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  contentHtml: text('content_html').notNull().default(''),
+  status: text('status').notNull().default('DRAFT'), // DRAFT, PENDING_REVIEW, APPROVED, SCHEDULED, PUBLISHED, UNPUBLISHED, ARCHIVED
+  version: integer('version').notNull().default(1),
+  effectiveDate: text('effective_date'),
+  lastUpdatedDate: text('last_updated_date'),
+  reviewStatus: text('review_status').notNull().default('REVIEW_REQUIRED'),
+  legalReviewWarning: text('legal_review_warning').default('Requires review by qualified legal counsel before treating as final statutory text.'),
+  requiresProfessionalReview: boolean('requires_professional_review').notNull().default(true),
+  draftData: json('draft_data'),
+  publishedData: json('published_data'),
+  scheduledPublishAt: timestamp('scheduled_publish_at'),
+  publishedAt: timestamp('published_at'),
+  archivedAt: timestamp('archived_at'),
+  updatedBy: text('updated_by').default('MADECC Admin'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const legalDocumentRevisions = pgTable('legal_document_revisions', {
+  id: serial('id').primaryKey(),
+  legalSlug: text('legal_slug').notNull(),
+  version: integer('version').notNull(),
+  title: text('title').notNull(),
+  snapshotData: json('snapshot_data').notNull(),
+  changeSummary: text('change_summary'),
+  author: text('author').default('MADECC Admin'),
+  isPublished: boolean('is_published').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const contentReviews = pgTable('content_reviews', {
+  id: serial('id').primaryKey(),
+  targetType: text('target_type').notNull(), // 'page' | 'legal' | 'developer_portal' | 'announcement'
+  targetSlug: text('target_slug').notNull(),
+  reviewStatus: text('review_status').notNull().default('NOT_REVIEWED'), // NOT_REVIEWED, REVIEW_REQUIRED, CHANGES_RECOMMENDED, APPROVED_BY_ADMIN
+  grammarIssuesCount: integer('grammar_issues_count').notNull().default(0),
+  readabilityScore: integer('readability_score').notNull().default(0),
+  repeatedPhrasesCount: integer('repeated_phrases_count').notNull().default(0),
+  hypeFlagsCount: integer('hype_flags_count').notNull().default(0),
+  factCheckIssues: json('fact_check_issues'),
+  reportJson: json('report_json'),
+  reviewerNotes: text('reviewer_notes'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const publicationHistory = pgTable('publication_history', {
+  id: serial('id').primaryKey(),
+  targetType: text('target_type').notNull(), // 'page' | 'legal' | 'sitemap' | 'maintenance' | 'announcement' | 'developer_portal'
+  targetSlug: text('target_slug').notNull(),
+  targetTitle: text('target_title'),
+  action: text('action').notNull(), // DRAFT_SAVE, SUBMIT_REVIEW, APPROVE, PUBLISH, REPUBLISH, SCHEDULE, AUTO_PUBLISH, UNPUBLISH, ARCHIVE, RESTORE, FAIL
+  fromStatus: text('from_status'),
+  toStatus: text('to_status'),
+  version: integer('version'),
+  scheduledFor: timestamp('scheduled_for'),
+  success: boolean('success').notNull().default(true),
+  errorMessage: text('error_message'),
+  performedBy: text('performed_by').default('MADECC Admin'),
+  details: text('details'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const maintenanceSchedules = pgTable('maintenance_schedules', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  status: text('status').notNull().default('CANCELLED'), // SCHEDULED, ACTIVE, COMPLETED, CANCELLED, EMERGENCY
+  mode: text('mode').notNull().default('non_intrusive_banner'), // non_intrusive_banner, soft_dismissible_modal, scoped_notice, full_site_advisory
+  timezone: text('timezone').notNull().default('Africa/Douala'),
+  startAt: timestamp('start_at'),
+  endAt: timestamp('end_at'),
+  estimatedCompletion: text('estimated_completion'),
+  affectedScope: text('affected_scope').default('Background Sync & Cloud Backup Only (All Public Pages & Calculators 100% Active)'),
+  allowAdminBypass: boolean('allow_admin_bypass').notNull().default(true),
+  requireManualConfirm: boolean('require_manual_confirm').notNull().default(false),
+  fullSiteAdvisory: boolean('full_site_advisory').notNull().default(false),
+  subscribersJson: json('subscribers_json'),
+  lastSmtpDispatchAt: timestamp('last_smtp_dispatch_at'),
+  lastSmtpStatus: text('last_smtp_status'),
+  createdBy: text('created_by').default('MADECC Admin'),
+  updatedBy: text('updated_by').default('MADECC Admin'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const visitorAnnouncements = pgTable('visitor_announcements', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  category: text('category').notNull().default('NOTICE'), // NOTICE, ENGINEERING, LEGAL, API_PLATFORM, URGENT, PROMOTION
+  priority: integer('priority').notNull().default(1),
+  displayLocation: text('display_location').notNull().default('site_wide_banner'), // homepage_banner, site_wide_banner, maintenance_notice, selected_page, api_platform
+  targetPages: json('target_pages'), // Array of page slugs e.g. ['home', 'services']
+  ctaText: text('cta_text'),
+  ctaLink: text('cta_link'),
+  dismissible: boolean('dismissible').notNull().default(true),
+  active: boolean('active').notNull().default(false),
+  publishAt: timestamp('publish_at'),
+  expireAt: timestamp('expire_at'),
+  timezone: text('timezone').notNull().default('Africa/Douala'),
+  notifySubscribersSmtp: boolean('notify_subscribers_smtp').notNull().default(false),
+  lastSmtpStatus: text('last_smtp_status'),
+  createdBy: text('created_by').default('MADECC Admin'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const siteRoutesConfig = pgTable('site_routes_config', {
+  id: serial('id').primaryKey(),
+  path: text('path').notNull().unique(),
+  pageGroup: text('page_group').notNull().default('public'),
+  title: text('title').notNull(),
+  metaDescription: text('meta_description'),
+  robotsIndex: boolean('robots_index').notNull().default(true),
+  robotsFollow: boolean('robots_follow').notNull().default(true),
+  includeInSitemap: boolean('include_in_sitemap').notNull().default(true),
+  priority: text('priority').notNull().default('0.8'),
+  changefreq: text('changefreq').notNull().default('weekly'),
+  isSystemRoute: boolean('is_system_route').notNull().default(false),
+  status: text('status').notNull().default('PUBLISHED'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+
 
 
 

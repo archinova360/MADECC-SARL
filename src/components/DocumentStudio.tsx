@@ -7,7 +7,7 @@ import PrintPreviewModal from './PrintPreviewModal.tsx';
 import { ExportPreviewModal } from './ExportPreviewModal.tsx';
 import { ExportHistoryPanel } from './ExportHistoryPanel.tsx';
 import { ExportModuleType } from '../types/exportTypes.ts';
-import { auth, getAuthToken } from '../lib/firebase.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 import { 
   FileText, 
   Signature, 

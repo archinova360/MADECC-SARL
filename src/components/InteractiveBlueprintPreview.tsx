@@ -12,6 +12,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getOptimizedImageUrl } from '../lib/utils.ts';
 
 interface BlueprintLayer {
   id: string;
@@ -101,9 +102,9 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
             <Cpu className="w-3.5 h-3.5" />
             <span>Interactive Engineering Layer Inspector</span>
           </div>
-          <h3 className="text-2xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl font-extrabold text-white tracking-tight">
             Explore Our Multi-Disciplinary Engineering Standards
-          </h3>
+          </h2>
         </div>
 
         {/* Layer Tabs */}
@@ -137,15 +138,19 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
         {/* Left: Image with interactive hot-spots (7 cols) */}
         <div className="lg:col-span-7 relative rounded-2xl overflow-hidden border border-slate-700 aspect-video group">
           <img
-            src={activeLayer.image}
+            src={getOptimizedImageUrl(activeLayer.image, 800, 75)}
             alt={activeLayer.name}
+            width={800}
+            height={450}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover brightness-75 group-hover:scale-105 transition-transform duration-700"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/30" />
 
           {/* Technical Watermark badge */}
           <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-mono text-amber-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
             <span>{activeLayer.standard}</span>
           </div>
 
@@ -156,14 +161,12 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
               type="button"
               onClick={() => setSelectedPoint(pt)}
               style={{ top: `${pt.y}%`, left: `${pt.x}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 group/pt focus:outline-none"
+              className="absolute -translate-x-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center group/pt cursor-pointer"
               title={pt.label}
+              aria-label={`Inspect ${pt.label}`}
             >
-              <span className="relative flex h-7 w-7 items-center justify-center">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-5 w-5 bg-amber-500 border-2 border-slate-950 text-slate-950 font-bold text-[10px] items-center justify-center shadow-lg">
-                  {idx + 1}
-                </span>
+              <span className="relative inline-flex rounded-full h-6 w-6 bg-amber-500 border-2 border-slate-950 text-slate-950 font-bold text-[11px] items-center justify-center shadow-lg group-hover/pt:scale-110 transition-transform">
+                {idx + 1}
               </span>
             </button>
           ))}
@@ -178,10 +181,12 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
                 className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-amber-500/50 p-4 rounded-xl shadow-2xl text-left"
               >
                 <div className="flex justify-between items-start">
-                  <h5 className="text-sm font-bold text-amber-400">{selectedPoint.label}</h5>
+                  <h4 className="text-sm font-bold text-amber-400">{selectedPoint.label}</h4>
                   <button
+                    type="button"
                     onClick={() => setSelectedPoint(null)}
-                    className="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 bg-slate-800 rounded"
+                    aria-label="Close inspection details"
+                    className="text-slate-300 hover:text-white text-xs px-2 py-1 bg-slate-800 rounded cursor-pointer"
                   >
                     ✕
                   </button>
@@ -192,8 +197,8 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
           </AnimatePresence>
 
           {!selectedPoint && (
-            <div className="absolute bottom-3 left-4 text-[11px] text-slate-400 bg-slate-900/70 backdrop-blur-sm px-2.5 py-1 rounded">
-              💡 Click on any numbered pulse marker to inspect structural specs
+            <div className="absolute bottom-3 left-4 text-[11px] text-slate-300 bg-slate-900/80 backdrop-blur-sm px-2.5 py-1 rounded">
+              Click on any numbered marker to inspect structural specs
             </div>
           )}
         </div>
@@ -201,7 +206,7 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
         {/* Right: Technical Specs & Certifications (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-slate-800/60 border border-slate-700/80 p-5 rounded-2xl">
-            <h4 className="text-lg font-bold text-white mb-2">{activeLayer.name}</h4>
+            <h3 className="text-lg font-bold text-white mb-2">{activeLayer.name}</h3>
             <p className="text-xs text-slate-300 leading-relaxed mb-4">{activeLayer.description}</p>
 
             <div className="space-y-2 mb-4">

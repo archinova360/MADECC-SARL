@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { getCloudinary, initAndSanitizeCloudinaryEnv, upload } from '../storageService.js';
+import { recordUploadRejectionEvent } from '../securityMonitorService.ts';
 
 export function setupUploadRoutes(app: express.Express) {
   app.get('/api/resolve-image', (req, res) => {
@@ -48,6 +49,7 @@ export function setupUploadRoutes(app: express.Express) {
     upload.single('file')(req, res, (err: any) => {
       if (err) {
         console.error('[STORAGE_MULTER_ERROR]', err);
+        void recordUploadRejectionEvent(req, err);
         return res.status(400).json({
           success: false,
           error: err.message || 'File upload processing failed'

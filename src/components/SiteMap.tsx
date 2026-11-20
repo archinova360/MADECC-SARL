@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Compass, 
   FileText, 
@@ -28,6 +28,21 @@ interface SiteMapProps {
 
 export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
   const [filterQuery, setFilterQuery] = useState('');
+  const [dynamicRoutes, setDynamicRoutes] = useState<Array<{ path: string; title: string; metaDescription?: string; status?: string }>>([]);
+
+  useEffect(() => {
+    fetch('/api/cms/sitemap/urls')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && Array.isArray(data.urls)) {
+          const filtered = data.urls.filter(
+            (u: any) => !u.isSystemRoute && u.includeInSitemap && u.robotsIndex && (u.cmsStatus === 'PUBLISHED' || u.status === 'PUBLISHED')
+          );
+          setDynamicRoutes(filtered);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const navigate = (tab: string) => {
     if (onNavigateToTab) {
@@ -319,6 +334,48 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
             );
           })}
         </div>
+
+        {/* Dynamic Live CMS Index Directory */}
+        {dynamicRoutes.length > 0 && (
+          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div>
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-emerald-400" /> Live Published Routes &amp; Legal Governance Index
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Synced directly with Neon DB Sitemap Configuration ({dynamicRoutes.length} indexable public routes)
+                </p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Live XML Sync Active
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {dynamicRoutes
+                .filter(
+                  (r) =>
+                    !filterQuery ||
+                    r.title.toLowerCase().includes(filterQuery.toLowerCase()) ||
+                    r.path.toLowerCase().includes(filterQuery.toLowerCase())
+                )
+                .map((r, idx) => {
+                  const tabSlug = r.path === '/' ? 'home' : r.path.replace(/^\//, '');
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => navigate(tabSlug)}
+                      className="text-left p-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 transition-colors cursor-pointer"
+                    >
+                      <div className="text-xs font-bold text-white truncate">{r.title}</div>
+                      <div className="text-[10px] font-mono text-amber-400 mt-0.5">{r.path}</div>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* Canonical Footnote & Contact Helpdesk */}
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">

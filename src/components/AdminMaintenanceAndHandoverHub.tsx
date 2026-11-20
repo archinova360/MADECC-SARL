@@ -22,6 +22,8 @@ import {
 import { ADMIN_SMTP_USER_EMAIL, OFFICIAL_PAYMENT_CONFIG, STANDARD_RECEIPT_FEE_XAF } from '../utils/paymentDomain.ts';
 import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
 import { MaintenanceStatusData } from './VisitorMaintenanceNotice.tsx';
+import { getCsrfHeaders } from '../lib/csrf.ts';
+import { getAuthToken } from '../lib/firebase.ts';
 
 export const AdminMaintenanceAndHandoverHub: React.FC = () => {
   const [maintenance, setMaintenance] = useState<MaintenanceStatusData>({
@@ -68,9 +70,21 @@ export const AdminMaintenanceAndHandoverHub: React.FC = () => {
     setIsDispatching(true);
     setDispatchFeedback(null);
     try {
+      const [csrf, token] = await Promise.all([
+        getCsrfHeaders().catch(() => ({})),
+        getAuthToken().catch(() => null),
+      ]);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...csrf,
+      };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch('/api/maintenance/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify({
           enabled: targetEnabledState,
           mode: maintenance.mode,

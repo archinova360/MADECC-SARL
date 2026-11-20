@@ -12,7 +12,11 @@ import { ensureErpTables } from '../db/ensureErpTables.ts';
 import { ensureSaasTables } from '../db/ensureSaasTables.ts';
 import { ensureProDocStudioTables } from '../db/ensureProDocStudioTables.ts';
 import { ensureCorporatePlatformTables } from '../db/ensureCorporatePlatformTables.ts';
+import { ensureSecurityMonitoringTables } from '../db/ensureSecurityMonitoringTables.ts';
+import { ensureCmsTables } from '../db/ensureCmsTables.ts';
 import { generateCsrfToken, validateCsrfToken } from './csrfService.ts';
+import { buildCorsHeadersForOrigin } from './corsOrigins.ts';
+import { createSecurityGateMiddleware } from './securityMonitorService.ts';
 
 import { setupAuthRoutes } from './routes/authRoutes.ts';
 import { setupGeminiRoutes } from './routes/geminiRoutes.ts';
@@ -32,12 +36,24 @@ import { setupSalesRoutes } from './routes/salesRoutes.ts';
 import { setupErpPlatformRoutes } from './routes/erpPlatformRoutes.ts';
 import { setupProDocStudioRoutes } from './routes/proDocStudioRoutes.ts';
 import { setupCorporateRoutes } from './routes/corporateRoutes.ts';
+import { setupSecurityRoutes } from './routes/securityRoutes.ts';
+import {
+  setupCmsPublishingRoutes,
+  generateDynamicSitemapXml,
+  generateDynamicRobotsTxt,
+  generateDynamicLlmsTxt,
+} from './routes/cmsPublishingRoutes.ts';
 import apiPlatformRoutes from './routes/apiPlatformRoutes.ts';
 
 let isDatabaseSeeded = false;
 
 export async function getApp(): Promise<express.Express> {
   if (!isDatabaseSeeded) {
+    try {
+      await ensureSecurityMonitoringTables();
+    } catch (secErr) {
+      console.error('[SECURITY_DB_INIT_ERROR]', secErr);
+    }
     try {
       await ensureReviewerCredentialsTable();
       await ensureAuthSessionsTable();
@@ -47,6 +63,7 @@ export async function getApp(): Promise<express.Express> {
       await ensureSaasTables();
       await ensureProDocStudioTables();
       await ensureCorporatePlatformTables();
+      await ensureCmsTables();
       if (!process.env.NETLIFY) {
         await seedDatabase();
       } else {
@@ -60,22 +77,36 @@ export async function getApp(): Promise<express.Express> {
   }
 
   const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
   app.use(cookieParser());
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-  // Global Cross-Origin Resource Sharing (CORS) & Preflight Handling for Netlify & Production
+  // Baseline Security Headers (Preserves AI Studio iframe & Firebase Google OAuth popups)
   app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=()');
+    res.setHeader(
+      'Content-Security-Policy',
+      "frame-ancestors 'self' https://aistudio.google.com https://*.googleusercontent.com https://*.ai.studio; base-uri 'self'; object-src 'none';"
+    );
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
+    if (isHttps) {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-api-key, x-admin-key, Accept');
-    res.setHeader('Access-Control-Max-Age', '86400');
+    next();
+  });
+
+  // Strict CORS Allowlist & Preflight Handling
+  app.use((req, res, next) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined;
+    const corsHeaders = buildCorsHeadersForOrigin(origin);
+    for (const [k, v] of Object.entries(corsHeaders)) {
+      res.setHeader(k, v);
+    }
 
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
@@ -94,8 +125,28 @@ export async function getApp(): Promise<express.Express> {
     next();
   });
 
-  // Explicit sitemap.xml handler (ensures valid XML header & immediate delivery)
-  app.get('/sitemap.xml', (req, res) => {
+  // Security Gate & Threat Telemetry Middleware
+  app.use('/api/admin', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, private');
+    next();
+  });
+  app.use('/api/auth', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, private');
+    next();
+  });
+  app.use(createSecurityGateMiddleware());
+
+  // Dynamic sitemap.xml handler (Neon DB backed with public/ fallback)
+  app.get('/sitemap.xml', async (_req, res) => {
+    try {
+      const xml = await generateDynamicSitemapXml();
+      if (xml && xml.includes('<urlset')) {
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        return res.send(xml);
+      }
+    } catch {
+      // Fallback to static asset
+    }
     const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
     if (fs.existsSync(sitemapPath)) {
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
@@ -109,8 +160,17 @@ export async function getApp(): Promise<express.Express> {
     res.status(404).send('Sitemap not found');
   });
 
-  // Explicit robots.txt handler
-  app.get('/robots.txt', (req, res) => {
+  // Dynamic robots.txt handler (always enforces /admin and /api exclusion)
+  app.get('/robots.txt', async (_req, res) => {
+    try {
+      const robots = await generateDynamicRobotsTxt();
+      if (robots) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.send(robots);
+      }
+    } catch {
+      // Fallback to static asset
+    }
     const robotsPath = path.join(process.cwd(), 'public', 'robots.txt');
     if (fs.existsSync(robotsPath)) {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -140,6 +200,38 @@ export async function getApp(): Promise<express.Express> {
     res.send('google.com, pub-7227721489757915, DIRECT, f08c47fec0942fa0\n');
   });
 
+  // Explicit AI-Agent Discovery handlers (/llms.txt and /ai-catalog.json)
+  app.get('/llms.txt', async (_req, res) => {
+    try {
+      const txt = await generateDynamicLlmsTxt();
+      if (txt) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.send(txt);
+      }
+    } catch {
+      // Fallback to static asset
+    }
+    const publicPath = path.join(process.cwd(), 'public', 'llms.txt');
+    const distPath = path.join(process.cwd(), 'dist', 'llms.txt');
+    const target = fs.existsSync(publicPath) ? publicPath : distPath;
+    if (fs.existsSync(target)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(target);
+    }
+    res.status(404).send('llms.txt not found');
+  });
+
+  app.get('/ai-catalog.json', (_req, res) => {
+    const publicPath = path.join(process.cwd(), 'public', 'ai-catalog.json');
+    const distPath = path.join(process.cwd(), 'dist', 'ai-catalog.json');
+    const target = fs.existsSync(publicPath) ? publicPath : distPath;
+    if (fs.existsSync(target)) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.sendFile(target);
+    }
+    res.status(404).json({ error: 'ai-catalog.json not found' });
+  });
+
   // Base Health and Diagnostic Endpoints (Guaranteed JSON responses)
   app.get('/api/health', (req, res) => {
     res.json({
@@ -167,6 +259,7 @@ export async function getApp(): Promise<express.Express> {
     // Exclude CSRF token route, authenticated admin operations, webhooks, compliance, and public endpoints
     if (
       req.path === '/csrf-token' ||
+      req.path === '/security/beacon' ||
       req.path.startsWith('/auth') ||
       req.path.startsWith('/sales') ||
       req.path.startsWith('/optimizer') ||
@@ -267,6 +360,7 @@ export async function getApp(): Promise<express.Express> {
   setupAuthRoutes(app);
   setupGeminiRoutes(app);
   setupUploadRoutes(app);
+  setupCmsPublishingRoutes(app);
   setupCmsRoutes(app);
   setupCalculatorRoutes(app);
   setupQuotesRoutes(app);
@@ -282,6 +376,7 @@ export async function getApp(): Promise<express.Express> {
   setupSalesRoutes(app);
   setupProDocStudioRoutes(app);
   setupCorporateRoutes(app);
+  setupSecurityRoutes(app);
   app.use('/api/v1', apiPlatformRoutes);
   app.use('/api', apiPlatformRoutes);
 

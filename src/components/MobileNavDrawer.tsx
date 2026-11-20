@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
   Home, 
@@ -32,8 +31,6 @@ import {
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
-// @ts-ignore
-import logoImg from '../assets/images/madecc_premium_logo_1793583157182.jpg';
 
 export interface MobileNavDrawerProps {
   isOpen: boolean;
@@ -227,41 +224,33 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
     { id: 'contact', label: 'Contact Us & HQ', desc: 'Yaoundé office & 24/7 client desk', icon: Phone },
   ];
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-[100] flex justify-end"
-          role="presentation"
-        >
-          {/* Backdrop Overlay */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
-            onClick={onClose}
-            aria-hidden="true"
-          />
+  if (!isOpen) return null;
 
-          {/* Slide-out Drawer Panel */}
-          <motion.div
-            ref={drawerRef}
-            id="mobile-navigation-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="mobile-drawer-title"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 280, mass: 0.8 }}
-            className={`relative z-10 w-full sm:w-[420px] max-w-[90vw] h-[100dvh] flex flex-col shadow-2xl border-l ${
-              theme === 'light'
-                ? 'bg-white border-slate-200 text-slate-900'
-                : 'bg-slate-950 border-slate-800 text-slate-100'
-            }`}
-          >
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex justify-end"
+      role="presentation"
+    >
+      {/* Backdrop Overlay */}
+      <div
+        className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Slide-out Drawer Panel */}
+      <div
+        ref={drawerRef}
+        id="mobile-navigation-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mobile-drawer-title"
+        className={`relative z-10 w-full sm:w-[420px] max-w-[90vw] h-[100dvh] flex flex-col shadow-2xl border-l animate-in slide-in-from-right duration-200 ${
+          theme === 'light'
+            ? 'bg-white border-slate-200 text-slate-900'
+            : 'bg-slate-950 border-slate-800 text-slate-100'
+        }`}
+      >
             {/* Drawer Header */}
             <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0 ${
               theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/90 border-slate-800'
@@ -271,8 +260,10 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'
                 }`}>
                   <img 
-                    src={currentTenant.logoUrl || logoImg} 
+                    src={currentTenant.logoUrl && currentTenant.logoUrl !== '/logo.png' ? currentTenant.logoUrl : '/logo.webp'} 
                     alt="" 
+                    width={40}
+                    height={40}
                     className="w-full h-full object-contain"
                     aria-hidden="true"
                     referrerPolicy="no-referrer"
@@ -283,7 +274,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                     {currentTenant.name.toUpperCase()}
                   </span>
                   <span className={`text-[10px] font-mono tracking-wider block ${
-                    theme === 'light' ? 'text-slate-500' : 'text-slate-400'
+                    theme === 'light' ? 'text-slate-600' : 'text-slate-400'
                   }`}>
                     {currentTenant.isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
                   </span>
@@ -497,10 +488,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   id="mobile-drawer-follow-btn"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                    </span>
+                    <span className="inline-flex rounded-full h-2 w-2 bg-amber-500" aria-hidden="true" />
                     <Radio className="w-4 h-4" />
                     <span>Follow MADECC on Social Media</span>
                   </div>
@@ -588,7 +576,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                       </>
                     ) : (
                       <>
-                        <Sun className="w-4 h-4 text-amber-400 animate-pulse" />
+                        <Sun className="w-4 h-4 text-amber-400" />
                         <span>Light Theme</span>
                       </>
                     )}
@@ -656,9 +644,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                 </button>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
-      )}
-    </AnimatePresence>
   );
 };

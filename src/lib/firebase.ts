@@ -1,11 +1,39 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signOut } from 'firebase/auth';
+import type { Auth, GoogleAuthProvider } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleAuthProvider = new GoogleAuthProvider();
-export { signOut };
+let cachedAuth: Auth | null = null;
+let cachedGoogleProvider: GoogleAuthProvider | null = null;
+
+export async function getFirebaseAuth(): Promise<Auth> {
+  if (cachedAuth) return cachedAuth;
+  const [{ initializeApp, getApps }, { getAuth }] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/auth'),
+  ]);
+  const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+  cachedAuth = getAuth(app);
+  return cachedAuth;
+}
+
+export async function getGoogleAuthProvider(): Promise<GoogleAuthProvider> {
+  if (cachedGoogleProvider) return cachedGoogleProvider;
+  const { GoogleAuthProvider } = await import('firebase/auth');
+  cachedGoogleProvider = new GoogleAuthProvider();
+  return cachedGoogleProvider;
+}
+
+function hasStoredFirebaseUserHint(): boolean {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith('firebase:authUser:')) {
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
+}
 
 export function setStoredAuthToken(token: string | null): void {
   try {
@@ -34,18 +62,22 @@ export async function logoutUser(userEmail?: string, userUid?: string): Promise<
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ email: userEmail, uid: userUid })
+      body: JSON.stringify({ email: userEmail, uid: userUid }),
     }).catch(() => {});
   } catch {
     // Non-blocking
   }
 
-  // 2. Firebase sign out
+  // 2. Firebase sign out (only load Firebase SDK if previously initialized or a Firebase session hint exists)
   try {
-    if (auth) {
-      await signOut(auth);
+    if (cachedAuth || hasStoredFirebaseUserHint()) {
+      const [firebaseAuth, { signOut }] = await Promise.all([
+        getFirebaseAuth(),
+        import('firebase/auth'),
+      ]);
+      await signOut(firebaseAuth);
     }
   } catch (err) {
     console.warn('Firebase signOut notice:', err);
@@ -65,8 +97,8 @@ export async function logoutUser(userEmail?: string, userUid?: string): Promise<
 
 export async function getAuthToken(): Promise<string | null> {
   try {
-    const stored = 
-      localStorage.getItem('madecc_auth_token') || 
+    const stored =
+      localStorage.getItem('madecc_auth_token') ||
       sessionStorage.getItem('madecc_auth_token') ||
       localStorage.getItem('admin_token') ||
       sessionStorage.getItem('admin_token') ||
@@ -77,20 +109,28 @@ export async function getAuthToken(): Promise<string | null> {
   } catch (_) {}
 
   try {
-    if (auth?.currentUser) {
-      const token = await auth.currentUser.getIdToken();
+    if (cachedAuth?.currentUser) {
+      const token = await cachedAuth.currentUser.getIdToken();
       if (token) return token;
+    } else if (hasStoredFirebaseUserHint()) {
+      const firebaseAuth = await getFirebaseAuth();
+      if (firebaseAuth.currentUser) {
+        const token = await firebaseAuth.currentUser.getIdToken();
+        if (token) return token;
+      }
     }
   } catch (err) {
     console.warn('Could not retrieve Firebase getIdToken:', err);
   }
 
   try {
-    if (localStorage.getItem('madecc_is_admin_user') === 'true' || sessionStorage.getItem('madecc_is_admin_user') === 'true') {
+    if (
+      localStorage.getItem('madecc_is_admin_user') === 'true' ||
+      sessionStorage.getItem('madecc_is_admin_user') === 'true'
+    ) {
       return 'Adminmadeccgroup';
     }
   } catch (_) {}
 
   return null;
 }
-

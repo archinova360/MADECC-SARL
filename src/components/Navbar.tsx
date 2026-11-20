@@ -1,13 +1,8 @@
 import React, { useState, useRef } from 'react';
-// @ts-ignore
-import logoImg from '../assets/images/madecc_premium_logo_1793583157182.jpg';
-import { 
-  auth, 
-  googleAuthProvider,
+import {
   setStoredAuthToken,
   logoutUser
 } from '../lib/firebase.ts';
-import { signInWithPopup, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useTheme } from '../lib/ThemeContext.tsx';
 import { useLanguage } from '../lib/LanguageContext.tsx';
 import { 
@@ -49,9 +44,7 @@ import {
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { TenantService } from '../services/tenantService.ts';
-import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
-import { motion, AnimatePresence } from 'motion/react';
 import { MobileNavDrawer } from './MobileNavDrawer.tsx';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
 
@@ -136,8 +129,9 @@ export default function Navbar({
   const [reqLoading, setReqLoading] = useState(false);
   const [reqSuccess, setReqSuccess] = useState<string | null>(null);
 
-  const handleDownloadNavigationGuide = () => {
+  const handleDownloadNavigationGuide = async () => {
     try {
+      const { downloadWebsiteNavigationGuidePdf } = await import('../utils/navigationGuidePdf.ts');
       downloadWebsiteNavigationGuidePdf();
     } catch (err) {
       console.error('Failed to generate navigation guide PDF:', err);
@@ -262,9 +256,14 @@ export default function Navbar({
       console.warn('Reviewer endpoint pre-check notice:', revErr);
     }
 
-    // 2. Firebase Authentication for Standard Users
+    // 2. Firebase Authentication for Standard Users (loaded dynamically on demand)
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const [{ getFirebaseAuth }, { signInWithEmailAndPassword }] = await Promise.all([
+        import('../lib/firebase.ts'),
+        import('firebase/auth'),
+      ]);
+      const firebaseAuth = await getFirebaseAuth();
+      const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
       const token = await userCredential.user.getIdToken();
       
       const response = await fetch('/api/auth/me', {
@@ -412,20 +411,22 @@ export default function Navbar({
           
           {/* Logo & Tenant Brand */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 max-w-[calc(100%-110px)] xl:max-w-none">
-            <div 
-              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0" 
+            <button 
+              type="button"
+              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0 text-left" 
               onClick={() => setCurrentTab('home')}
               id="nav-logo"
+              aria-label={`Go to ${currentTenant.name} home page`}
             >
               <div className={`h-11 w-11 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center overflow-hidden border shadow-inner shrink-0 ${
                 theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800/80'
               }`}>
                 <img 
-                  src={currentTenant.logoUrl || logoImg} 
+                  src={currentTenant.logoUrl && currentTenant.logoUrl !== '/logo.png' ? currentTenant.logoUrl : '/logo.webp'} 
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target.src !== '/logo.png') {
-                      target.src = '/logo.png';
+                    if (!target.src.endsWith('/logo.webp')) {
+                      target.src = '/logo.webp';
                     }
                   }}
                   alt={`${currentTenant.name} Logo`} 
@@ -442,12 +443,12 @@ export default function Navbar({
                   {currentTenant.name.toUpperCase()}
                 </span>
                 <span className={`text-[9px] sm:text-[10px] font-mono tracking-widest block -mt-1 truncate ${
-                  theme === 'light' ? 'text-slate-500' : 'text-slate-400'
+                  theme === 'light' ? 'text-slate-700' : 'text-slate-400'
                 }`}>
                   {currentTenant.isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
                 </span>
               </div>
-            </div>
+            </button>
 
             {/* Tenant Switcher Dropdown (Large desktop only to prevent squeeze) */}
             <div className="hidden 2xl:block border-l border-slate-800 pl-3">
@@ -478,18 +479,16 @@ export default function Navbar({
                     }}
                     className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors cursor-pointer select-none whitespace-nowrap ${
                       isActive 
-                        ? 'text-amber-400 font-bold' 
-                        : 'text-slate-300 hover:text-white'
+                        ? theme === 'light'
+                          ? 'bg-amber-500/15 text-amber-800 font-bold border border-amber-500/30'
+                          : 'bg-slate-800/80 text-amber-400 font-bold border border-amber-500/20'
+                        : theme === 'light'
+                          ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                          : 'text-slate-300 hover:text-white'
                     }`}
                     id={`nav-link-${item.id}`}
+                    aria-current={isActive ? 'page' : undefined}
                   >
-                    {isActive && (
-                      <motion.div
-                        layoutId="nav-active-indicator"
-                        className="absolute inset-0 bg-slate-800/80 rounded-md border border-amber-500/20"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    )}
                     <span className="relative z-10">{item.label}</span>
                   </button>
                 );
@@ -507,34 +506,26 @@ export default function Navbar({
                   onClick={() => setToolsDropdownOpen(!toolsDropdownOpen)}
                   className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
                     isToolsActive 
-                      ? 'text-amber-400 font-bold' 
-                      : 'text-slate-300 hover:text-white'
+                      ? theme === 'light'
+                        ? 'bg-amber-500/15 text-amber-800 font-bold border border-amber-500/30'
+                        : 'bg-slate-800/80 text-amber-400 font-bold border border-amber-500/20'
+                      : theme === 'light'
+                        ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                        : 'text-slate-300 hover:text-white'
                   }`}
                   aria-expanded={toolsDropdownOpen}
                   aria-haspopup="true"
                 >
-                  {isToolsActive && (
-                    <motion.div
-                      layoutId="nav-active-indicator"
-                      className="absolute inset-0 bg-slate-800/80 rounded-md border border-amber-500/20"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
                   <span className="relative z-10 flex items-center gap-1">
                     <span>Tools</span>
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${toolsDropdownOpen ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
                   </span>
                 </button>
 
-                <AnimatePresence>
-                  {toolsDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 4, scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
+                {toolsDropdownOpen && (
+                    <div
                       id="nav-tools-dropdown"
-                      className={`absolute top-full left-0 mt-1 w-64 rounded-xl shadow-2xl border p-2 z-50 ${
+                      className={`absolute top-full left-0 mt-1 w-64 rounded-xl shadow-2xl border p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
                         theme === 'light'
                           ? 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
@@ -739,9 +730,8 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Site progress, photos & invoices</div>
                         </div>
                       </button>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
               </div>
 
               {/* Company Dropdown */}
@@ -756,34 +746,26 @@ export default function Navbar({
                   onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
                   className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
                     isCompanyActive 
-                      ? 'text-amber-400 font-bold' 
-                      : 'text-slate-300 hover:text-white'
+                      ? theme === 'light'
+                        ? 'bg-amber-500/15 text-amber-800 font-bold border border-amber-500/30'
+                        : 'bg-slate-800/80 text-amber-400 font-bold border border-amber-500/20'
+                      : theme === 'light'
+                        ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                        : 'text-slate-300 hover:text-white'
                   }`}
                   aria-expanded={companyDropdownOpen}
                   aria-haspopup="true"
                 >
-                  {isCompanyActive && (
-                    <motion.div
-                      layoutId="nav-active-indicator"
-                      className="absolute inset-0 bg-slate-800/80 rounded-md border border-amber-500/20"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
                   <span className="relative z-10 flex items-center gap-1">
                     <span>Company</span>
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${companyDropdownOpen ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
                   </span>
                 </button>
 
-                <AnimatePresence>
-                  {companyDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 4, scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
+                {companyDropdownOpen && (
+                    <div
                       id="nav-company-dropdown"
-                      className={`absolute top-full left-0 mt-1 w-56 rounded-xl shadow-2xl border p-2 z-50 ${
+                      className={`absolute top-full left-0 mt-1 w-56 rounded-xl shadow-2xl border p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
                         theme === 'light'
                           ? 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
@@ -868,9 +850,8 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Yaoundé HQ & 24/7 hotline</div>
                         </div>
                       </button>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
               </div>
 
               {/* Direct Top-Level Client Portal Button */}
@@ -928,14 +909,11 @@ export default function Navbar({
               {/* Follow Us on Social Media Button */}
               <button
                 onClick={openFollowModal}
-                className="relative px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0 select-none whitespace-nowrap"
+                className="relative min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0 select-none whitespace-nowrap"
                 title="Follow MADECC GROUP on Social Media (LinkedIn, Facebook, YouTube, X, Instagram, TikTok, WhatsApp)"
                 id="nav-btn-follow-us"
               >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
+                <span className="inline-flex rounded-full h-2 w-2 bg-amber-500" aria-hidden="true" />
                 <Radio className="w-3.5 h-3.5" />
                 <span>Follow</span>
               </button>
@@ -943,9 +921,9 @@ export default function Navbar({
               {/* Theme Toggle Button */}
               <button
                 onClick={toggleTheme}
-                className={`p-2 rounded-lg transition-colors shrink-0 ${
+                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shrink-0 ${
                   theme === 'light' 
-                    ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-500' 
+                    ? 'hover:bg-slate-100 text-slate-700 hover:text-amber-600' 
                     : 'hover:bg-slate-800/60 text-slate-300 hover:text-amber-400'
                 }`}
                 aria-label="Toggle visual theme"
@@ -954,22 +932,22 @@ export default function Navbar({
                 {theme === 'light' ? (
                   <Moon className="w-4 h-4 text-indigo-600" />
                 ) : (
-                  <Sun className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <Sun className="w-4 h-4 text-amber-400" />
                 )}
               </button>
 
               {/* Language Switcher Button */}
               <button
                 onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-                className={`p-1.5 sm:p-2 rounded-lg transition-colors text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1 cursor-pointer select-none shrink-0 ${
+                className={`min-w-[44px] min-h-[44px] px-2 rounded-lg transition-colors text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer select-none shrink-0 ${
                   theme === 'light' 
-                    ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-500 border border-slate-200' 
+                    ? 'hover:bg-slate-100 text-slate-700 hover:text-amber-600 border border-slate-200' 
                     : 'hover:bg-slate-800/60 text-slate-300 hover:text-amber-400 border border-slate-800'
                 }`}
                 aria-label="Toggle Language"
                 id="language-toggle-btn"
               >
-                <span className="text-[13px]">🌐</span>
+                <span className="text-[13px]" aria-hidden="true">🌐</span>
                 <span>{language === 'en' ? 'FR' : 'EN'}</span>
               </button>
 
@@ -1137,7 +1115,7 @@ export default function Navbar({
             {/* Close Button */}
             <button 
               onClick={() => setLoginModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              className="absolute top-3 right-3 text-slate-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
               aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
@@ -1294,7 +1272,7 @@ export default function Navbar({
                           onChange={(e) => setReqName(e.target.value)}
                           placeholder="Your Name / Reviewer ID *"
                           aria-label="Your Name or Reviewer ID"
-                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                         />
                         <input
                           type="text"
@@ -1302,7 +1280,7 @@ export default function Navbar({
                           onChange={(e) => setReqOrg(e.target.value)}
                           placeholder="Meta / Organization"
                           aria-label="Organization or Review Agency"
-                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                         />
                       </div>
 
@@ -1314,7 +1292,7 @@ export default function Navbar({
                           onChange={(e) => setReqEmail(e.target.value)}
                           placeholder="Official Work Email *"
                           aria-label="Official Work Email"
-                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                         />
                         <input
                           type="text"
@@ -1322,7 +1300,7 @@ export default function Navbar({
                           onChange={(e) => setReqPhone(e.target.value)}
                           placeholder="WhatsApp Phone Number"
                           aria-label="WhatsApp Phone Number"
-                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                          className="bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                         />
                       </div>
 
@@ -1332,7 +1310,7 @@ export default function Navbar({
                         onChange={(e) => setReqMsg(e.target.value)}
                         placeholder="Additional details (e.g., App Review Case Number)..."
                         aria-label="Additional verification details or App Review Case Number"
-                        className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                       />
 
                       <button
@@ -1360,9 +1338,9 @@ export default function Navbar({
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
                         placeholder="e.g. meta-reviewer@madeccgroup.online"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 transition-colors"
                       />
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     </div>
                   </div>
 
@@ -1378,9 +1356,9 @@ export default function Navbar({
                         value={passwordInput}
                         onChange={(e) => setPasswordInput(e.target.value)}
                         placeholder="Enter password provided by admin"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 transition-colors"
                       />
-                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     </div>
                   </div>
 
@@ -1416,9 +1394,9 @@ export default function Navbar({
                       value={adminSecretKey}
                       onChange={(e) => setAdminSecretKey(e.target.value)}
                       placeholder="Enter Admin Secret Key"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 transition-colors"
                     />
-                    <Key className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                    <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   </div>
                 </div>
 

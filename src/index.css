@@ -11,6 +11,11 @@ html, body {
   width: 100%;
 }
 
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 700px;
+}
+
 /* Custom Keyframe Animations & Transitions */
 @keyframes marquee {
   0% {
@@ -83,8 +88,41 @@ html, body {
   transform: translateZ(0);
 }
 
+@keyframes hero-progress-scale {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.animate-hero-progress {
+  transform-origin: left center;
+  animation: hero-progress-scale 6s linear forwards;
+  will-change: transform;
+}
+
 .pause-hover:hover {
   animation-play-state: paused !important;
+}
+
+:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-slow,
+  .animate-marquee-reverse,
+  .animate-float-gentle,
+  .animate-hero-progress,
+  .animate-pulse,
+  .animate-ping,
+  .animate-bounce {
+    animation: none !important;
+  }
 }
 
 /* Print Stylesheet overrides for perfect document alignments */

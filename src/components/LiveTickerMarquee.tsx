@@ -1,24 +1,10 @@
 import React, { useState } from 'react';
 import { 
   Radio, 
-  Sparkles, 
-  ShieldCheck, 
-  HardHat, 
-  ArrowRight, 
   Pause, 
   Play, 
-  Zap, 
-  Flame, 
-  Activity, 
-  Award, 
-  MapPin, 
-  CheckCircle2, 
-  Calculator,
-  Building2,
-  TrendingUp,
   X
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useTheme } from '../lib/ThemeContext.tsx';
 
 interface TickerItem {
@@ -114,6 +100,7 @@ export function LiveTickerMarquee({ onNavigateToTab, speed = 'normal' }: LiveTic
           ? 'bg-slate-900 text-slate-200 border-slate-800' 
           : 'bg-[#08080A] text-slate-300 border-amber-500/20'
       }`}
+      role="region"
       aria-label="Live Project and Structural Ticker"
     >
       <div className="flex items-center w-full">
@@ -123,18 +110,15 @@ export function LiveTickerMarquee({ onNavigateToTab, speed = 'normal' }: LiveTic
             ? 'bg-amber-500 text-slate-950 border-amber-600' 
             : 'bg-amber-500 text-slate-950 border-amber-400'
         }`}>
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-950"></span>
-          </span>
-          <Radio className="w-3.5 h-3.5 animate-pulse text-slate-950" />
+          <span className="inline-flex rounded-full h-2 w-2 bg-slate-950" aria-hidden="true" />
+          <Radio className="w-3.5 h-3.5 text-slate-950" aria-hidden="true" />
           <span className="hidden sm:inline uppercase">LIVE DISPATCH</span>
           <span className="sm:hidden uppercase">LIVE</span>
         </div>
 
         {/* Continuous Moving Text Marquee Track */}
         <div 
-          className="relative flex overflow-x-hidden flex-1 py-1.5 cursor-grab"
+          className="relative flex overflow-x-hidden flex-1 py-1.5"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
@@ -146,9 +130,12 @@ export function LiveTickerMarquee({ onNavigateToTab, speed = 'normal' }: LiveTic
           >
             {/* Duplicated arrays create seamless infinite scrolling */}
             {[...DEFAULT_TICKER_ITEMS, ...DEFAULT_TICKER_ITEMS].map((item, idx) => (
-              <div 
+              <button
                 key={`${item.id}-${idx}`}
-                className="inline-flex items-center gap-2.5 group cursor-pointer hover:text-amber-400 transition-colors"
+                type="button"
+                aria-hidden={idx >= DEFAULT_TICKER_ITEMS.length}
+                tabIndex={idx >= DEFAULT_TICKER_ITEMS.length ? -1 : 0}
+                className="inline-flex items-center gap-2.5 group cursor-pointer hover:text-amber-400 transition-colors text-left"
                 onClick={() => {
                   if (item.targetTab && onNavigateToTab) {
                     onNavigateToTab(item.targetTab);
@@ -164,39 +151,39 @@ export function LiveTickerMarquee({ onNavigateToTab, speed = 'normal' }: LiveTic
                 </span>
 
                 {item.badge && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
                     {item.badge}
                   </span>
                 )}
 
-                <span className="text-amber-500/60 font-bold mx-2 select-none">•</span>
-              </div>
+                <span className="text-amber-400 font-bold mx-2 select-none" aria-hidden="true">•</span>
+              </button>
             ))}
           </div>
         </div>
 
         {/* Right Action Controls: Pause / Play & Dismiss */}
-        <div className={`relative z-20 flex items-center gap-1 px-2.5 py-1.5 border-l shrink-0 ${
+        <div className={`relative z-20 flex items-center gap-1 px-2 py-0.5 border-l shrink-0 ${
           theme === 'light' ? 'bg-slate-900 border-slate-800' : 'bg-[#08080A] border-amber-500/20'
         }`}>
           <button
             type="button"
             onClick={() => setIsPaused(!isPaused)}
-            className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors text-xs"
-            title={isPaused ? "Resume Moving Text (Animation)" : "Pause Moving Text"}
-            aria-label={isPaused ? "Resume text scroll" : "Pause text scroll"}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-slate-800 text-slate-300 hover:text-amber-400 transition-colors text-xs cursor-pointer"
+            title={isPaused ? 'Resume Moving Text (Animation)' : 'Pause Moving Text'}
+            aria-label={isPaused ? 'Resume text scroll' : 'Pause text scroll'}
           >
-            {isPaused ? <Play className="w-3 h-3 fill-current" /> : <Pause className="w-3 h-3 fill-current" />}
+            {isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
           </button>
 
           <button
             type="button"
             onClick={() => setIsVisible(false)}
-            className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors text-xs"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-slate-800 text-slate-300 hover:text-rose-400 transition-colors text-xs cursor-pointer"
             title="Dismiss Ticker"
             aria-label="Dismiss Ticker"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

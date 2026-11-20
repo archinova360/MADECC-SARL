@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 
 interface RotatingMovingTextProps {
   words: string[];
@@ -19,34 +18,35 @@ export function RotatingMovingText({
   suffix
 }: RotatingMovingTextProps) {
   const [index, setIndex] = useState(0);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
     if (words.length <= 1) return;
+    let swapTimer: ReturnType<typeof setTimeout> | null = null;
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % words.length);
+      setFading(true);
+      swapTimer = setTimeout(() => {
+        setIndex((prev) => (prev + 1) % words.length);
+        setFading(false);
+      }, 180);
     }, interval);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      if (swapTimer) clearTimeout(swapTimer);
+    };
   }, [words.length, interval]);
 
   return (
     <span className={`inline-flex items-center flex-wrap gap-x-2 ${className}`}>
       {prefix && <span>{prefix}</span>}
       <span className="relative inline-block overflow-hidden py-1">
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={index}
-            initial={{ opacity: 0, y: 28, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -28, filter: 'blur(4px)' }}
-            transition={{ 
-              duration: 0.45, 
-              ease: [0.16, 1, 0.3, 1] 
-            }}
-            className={`inline-block font-extrabold ${highlightClassName}`}
-          >
-            {words[index]}
-          </motion.span>
-        </AnimatePresence>
+        <span
+          className={`inline-block font-extrabold transition-[opacity,transform] duration-200 ease-out ${
+            fading ? 'opacity-0 -translate-y-2' : 'opacity-100 translate-y-0'
+          } ${highlightClassName}`}
+        >
+          {words[index]}
+        </span>
       </span>
       {suffix && <span>{suffix}</span>}
     </span>

@@ -1,12 +1,16 @@
-User-agent: Google-adstxt
-Allow: /ads.txt
-Allow: /
-
-User-agent: Mediapartners-Google
-Allow: /
-
 User-agent: Googlebot
 Allow: /
+Allow: /ads.txt
+Allow: /llms.txt
+Allow: /ai-catalog.json
+Disallow: /admin
+Disallow: /api/
+Disallow: /login
+
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+Allow: /ai-catalog.json
 Disallow: /admin
 Disallow: /api/
 Disallow: /login
@@ -14,11 +18,11 @@ Disallow: /login
 User-agent: *
 Allow: /
 Allow: /ads.txt
+Allow: /llms.txt
+Allow: /ai-catalog.json
 Disallow: /admin
 Disallow: /api/
 Disallow: /login
 
-# Host & Sitemap
 Host: https://madeccgroup.online
 Sitemap: https://madeccgroup.online/sitemap.xml
-

@@ -8,6 +8,22 @@ import { reviewerCredentials } from '../../db/schema.ts';
 import { logAudit } from '../../lib/audit.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 import { createDatabaseSession, revokeDatabaseSession } from '../../lib/sessionService.ts';
+import { recordAuthSecurityEvent } from '../securityMonitorService.ts';
+
+function isHttpsRequest(req: express.Request): boolean {
+  return Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production');
+}
+
+function getSessionCookieOptions(req: express.Request, maxAge?: number): express.CookieOptions {
+  const isHttps = isHttpsRequest(req);
+  return {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: isHttps ? 'none' : 'lax',
+    path: '/',
+    ...(typeof maxAge === 'number' ? { maxAge } : {}),
+  };
+}
 
 export function setupAuthRoutes(app: express.Express) {
   // --- AUTH ENDPOINTS ---
@@ -34,6 +50,12 @@ export function setupAuthRoutes(app: express.Express) {
       ];
 
       if (!key || (!validAdminKeysLower.includes(lowerKey) && !lowerKey.startsWith('admin_bypass:'))) {
+        void recordAuthSecurityEvent(req, {
+          eventCategory: 'AUTH_FAILURE',
+          threatType: 'INVALID_ADMIN_KEY',
+          httpStatus: 401,
+          reason: 'Rejected invalid admin secret key attempt',
+        });
         return res.status(401).json({ success: false, error: 'Invalid Admin Secret Key. Please enter Adminmadeccgroup or madecc2026, or click 1-Click Executive Admin Login.' });
       }
 
@@ -56,14 +78,7 @@ export function setupAuthRoutes(app: express.Express) {
         console.warn('[ADMIN_LOGIN_AUDIT_NOTICE]', auditErr);
       }
 
-      const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
-      res.cookie('madecc_auth_session', sessionToken, {
-        httpOnly: true,
-        secure: isHttps,
-        sameSite: isHttps ? 'none' : 'lax',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
+      res.cookie('madecc_auth_session', sessionToken, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
 
       return res.json({
         success: true,
@@ -97,19 +112,10 @@ export function setupAuthRoutes(app: express.Express) {
       // 1. Authoritatively revoke active sessions in Neon PostgreSQL database
       await revokeDatabaseSession(token, email, uid);
 
-      // 2. Clear all authentication cookies with strict matching parameters
-      res.clearCookie('madecc_auth_session', {
-        path: '/',
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production'
-      });
-      res.clearCookie('madecc_reviewer_session', {
-        path: '/',
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production'
-      });
+      // 2. Clear all authentication cookies with consistent attributes
+      const clearOpts = getSessionCookieOptions(req);
+      res.clearCookie('madecc_auth_session', clearOpts);
+      res.clearCookie('madecc_reviewer_session', clearOpts);
 
       try {
         await logAudit(uid, email, 'ADMIN_LOGOUT', `User ${email} ended administrative session. Database session invalidated.`);
@@ -142,13 +148,7 @@ export function setupAuthRoutes(app: express.Express) {
         const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
         await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_LOGIN', 'Administrator authenticated via credentials');
         const { sessionToken } = await createDatabaseSession('admin-madecc-uid', 'kreboya603@gmail.com', 'admin');
-        res.cookie('madecc_auth_session', sessionToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        res.cookie('madecc_auth_session', sessionToken, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
         return res.json({
           success: true,
           token: sessionToken,
@@ -245,20 +245,8 @@ export function setupAuthRoutes(app: express.Express) {
 
         await logAudit('meta-reviewer-uid', effectiveEmail, 'REVIEWER_LOGIN', 'Meta App Reviewer authenticated successfully');
 
-        res.cookie('madecc_reviewer_session', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 7 * 24 * 60 * 60 * 1000
-        });
-        res.cookie('madecc_auth_session', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        res.cookie('madecc_reviewer_session', token, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
+        res.cookie('madecc_auth_session', token, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
 
         return res.json({
           success: true,
@@ -267,6 +255,13 @@ export function setupAuthRoutes(app: express.Express) {
         });
       }
 
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'AUTH_FAILURE',
+        threatType: 'INVALID_REVIEWER_CREDENTIALS',
+        httpStatus: 401,
+        actorEmail: normalizedEmail || null,
+        reason: 'Failed reviewer credential verification',
+      });
       return res.status(401).json({ success: false, error: 'Invalid reviewer email or password. Please verify credentials.' });
     } catch (err: any) {
       console.error('[REVIEWER_LOGIN_ERROR]', err);
@@ -376,13 +371,7 @@ export function setupAuthRoutes(app: express.Express) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
           await logAudit('admin-madecc-uid', 'kreboya603@gmail.com', 'ADMIN_LOGIN', 'Administrator authenticated via secret key');
           const { sessionToken } = await createDatabaseSession('admin-madecc-uid', 'kreboya603@gmail.com', 'admin');
-          res.cookie('madecc_auth_session', sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-          });
+          res.cookie('madecc_auth_session', sessionToken, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
           return res.json({
             success: true,
             token: sessionToken,
@@ -403,13 +392,7 @@ export function setupAuthRoutes(app: express.Express) {
         ) {
           const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
           const { sessionToken } = await createDatabaseSession('admin-madecc-uid', 'kreboya603@gmail.com', 'admin');
-          res.cookie('madecc_auth_session', sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-          });
+          res.cookie('madecc_auth_session', sessionToken, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
           return res.json({
             success: true,
             token: sessionToken,
@@ -444,20 +427,8 @@ export function setupAuthRoutes(app: express.Express) {
               role: 'social_media_reviewer',
               name: 'Meta App Review Tester'
             });
-            res.cookie('madecc_reviewer_session', token, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              path: '/',
-              maxAge: 7 * 24 * 60 * 60 * 1000
-            });
-            res.cookie('madecc_auth_session', token, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              path: '/',
-              maxAge: 7 * 24 * 60 * 60 * 1000
-            });
+            res.cookie('madecc_reviewer_session', token, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
+            res.cookie('madecc_auth_session', token, getSessionCookieOptions(req, 7 * 24 * 60 * 60 * 1000));
             return res.json({
               success: true,
               token,
@@ -467,6 +438,13 @@ export function setupAuthRoutes(app: express.Express) {
         }
       }
 
+      void recordAuthSecurityEvent(req, {
+        eventCategory: 'AUTH_FAILURE',
+        threatType: 'INVALID_LOGIN_CREDENTIALS',
+        httpStatus: 401,
+        actorEmail: typeof email === 'string' ? email.toLowerCase().trim() : null,
+        reason: 'Failed login attempt on /api/auth/login',
+      });
       return res.status(401).json({ success: false, error: 'Invalid credentials. Access Denied.' });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message || 'Login error' });
@@ -575,8 +553,94 @@ export function setupAuthRoutes(app: express.Express) {
     }
   });
 
+  // Quiet session introspection endpoint (returns 200 OK with authenticated: false when unauthenticated
+  // so anonymous visitors never trigger HTTP 401 console errors during initial page boot)
+  app.get('/api/auth/session', async (req: any, res) => {
+    res.setHeader('Cache-Control', 'no-store, private');
+    try {
+      let token: string | null = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const raw = authHeader.split('Bearer ')[1]?.trim();
+        if (raw && raw !== 'null' && raw !== 'undefined' && raw !== '[object Object]') {
+          token = raw;
+        }
+      }
+      if (!token && req.cookies?.madecc_auth_session) {
+        token = String(req.cookies.madecc_auth_session).trim();
+      }
+      if (!token && req.cookies?.madecc_reviewer_session) {
+        token = String(req.cookies.madecc_reviewer_session).trim();
+      }
+      if (!token && req.headers['x-admin-key']) {
+        token = String(req.headers['x-admin-key']).trim();
+      }
+
+      if (!token) {
+        return res.status(200).json({ authenticated: false, user: null });
+      }
+
+      const { validateDatabaseSession } = await import('../../lib/sessionService.ts');
+      const dbSession = await validateDatabaseSession(token);
+      if (dbSession) {
+        const dbUser = await getOrCreateUser(
+          dbSession.userId,
+          dbSession.email,
+          dbSession.role === 'admin' ? 'MADECC Admin' : (dbSession.email.split('@')[0] || 'User')
+        );
+        return res.status(200).json({ authenticated: true, user: dbUser });
+      }
+
+      if (token.startsWith('MADECC_AUTH_')) {
+        return res.status(200).json({ authenticated: false, user: null });
+      }
+
+      const lower = token.toLowerCase();
+      if (
+        lower === 'adminmadeccgroup' ||
+        lower === 'madecc group admin' ||
+        lower === 'madecc_group_admin' ||
+        lower === 'madecc2026' ||
+        lower.startsWith('admin_bypass:')
+      ) {
+        const adminUser = await getOrCreateUser('admin-madecc-uid', 'kreboya603@gmail.com', 'MADECC Admin');
+        return res.status(200).json({ authenticated: true, user: adminUser });
+      }
+
+      if (token.startsWith('META_REVIEWER_SESSION:')) {
+        const { verifyReviewerToken } = await import('../../lib/reviewerAuth.ts');
+        const verified = verifyReviewerToken(token);
+        if (verified.valid && verified.payload) {
+          const dbUser = await getOrCreateUser(
+            verified.payload.uid || 'meta-reviewer-uid',
+            verified.payload.email,
+            verified.payload.name || 'Meta App Review Tester'
+          );
+          return res.status(200).json({ authenticated: true, user: dbUser });
+        }
+        return res.status(200).json({ authenticated: false, user: null });
+      }
+
+      try {
+        const { adminAuth } = await import('../../lib/firebase-admin.ts');
+        const decodedToken = await adminAuth.verifyIdToken(token);
+        const dbUser = await getOrCreateUser(
+          decodedToken.uid,
+          decodedToken.email || '',
+          decodedToken.name || decodedToken.email?.split('@')[0] || 'User'
+        );
+        return res.status(200).json({ authenticated: true, user: dbUser });
+      } catch {
+        return res.status(200).json({ authenticated: false, user: null });
+      }
+    } catch {
+      return res.status(200).json({ authenticated: false, user: null });
+    }
+  });
+
   // Verify token, return DB profile with persistent login history logging
   app.get('/api/auth/me', requireAuth, async (req: any, res) => {
+    res.setHeader('Cache-Control', 'no-store, private');
     try {
       await logAudit(
         req.dbUser.uid,

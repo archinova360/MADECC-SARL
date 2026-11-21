@@ -9,7 +9,7 @@ import {
 import { eq, desc, and, sql, or } from 'drizzle-orm';
 import { requireAuth, requireAdmin, requireStaffOrAdmin } from '../../middleware/auth.ts';
 import { logAudit } from '../../lib/audit.ts';
-import { deleteFileFromCloud } from '../storageService.js';
+import { deleteFileFromCloud, isSafePublicHttpsMediaUrl, isVerifiedCloudAssetUrl } from '../storageService.ts';
 import { seedDatabase } from '../../db/seed.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 import { getSiteSettings, upsertSiteSettings } from '../../db/ensureSiteSettings.ts';
@@ -126,7 +126,7 @@ import { processDueCmsSchedules } from './cmsPublishingRoutes.ts';
           {
             title: 'Premier Infrastructure & Civil Engineering in Central Africa',
             subtitle: 'Engineering durable commercial towers, road networks, and state-of-the-art industrial facilities built to international safety and Eurocode standards.',
-            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=85',
+            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=85',
             videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
             displayOrder: 1,
             active: true
@@ -1246,8 +1246,8 @@ export function setupCmsRoutes(app: express.Express) {
                 eyebrow: 'Construction & Civil Engineering -- Cameroon',
                 mediaType: 'video',
                 videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-construction-site-with-cranes-and-workers-40915-large.mp4',
-                posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
-                imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
+                posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
+                imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
                 videoSettings: {
                   autoplay: true,
                   muted: true,
@@ -1328,8 +1328,8 @@ export function setupCmsRoutes(app: express.Express) {
             eyebrow: 'Construction & Civil Engineering -- Cameroon',
             mediaType: 'video',
             videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-            posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
-            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
+            posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
+            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
             videoSettings: {
               autoplay: true,
               muted: true,
@@ -1648,7 +1648,7 @@ export function setupCmsRoutes(app: express.Express) {
           {
             title: 'Modern Commercial Tower Structural Concrete',
             filename: 'commercial-building-framework.jpg',
-            fileUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
+            fileUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
             fileType: 'image',
             mimeType: 'image/jpeg',
             fileSize: 2400000,
@@ -1735,15 +1735,61 @@ export function setupCmsRoutes(app: express.Express) {
 
   app.post('/api/cms/media', requireStaffOrAdmin, async (req: any, res) => {
     try {
-      const data = req.body;
+      const data = req.body || {};
       if (!data.fileUrl || !data.title) {
         return res.status(400).json({ error: 'Title and fileUrl are required' });
+      }
+
+      const fileUrl = String(data.fileUrl).trim();
+      if (!isSafePublicHttpsMediaUrl(fileUrl)) {
+        return res.status(400).json({
+          error: 'Only valid public HTTPS media URLs or verified cloud assets are permitted.',
+        });
+      }
+
+      // Infer storageProvider when omitted
+      let resolvedProvider = String(data.storageProvider || '').trim().toLowerCase();
+      if (!resolvedProvider) {
+        if (fileUrl.includes('res.cloudinary.com')) resolvedProvider = 'cloudinary';
+        else if (fileUrl.includes('.supabase.co')) resolvedProvider = 'supabase';
+        else if (fileUrl.startsWith('/uploads/')) resolvedProvider = 'local';
+        else if (isVerifiedCloudAssetUrl(fileUrl)) resolvedProvider = 'cloudinary';
+        else resolvedProvider = 'external_https';
+      }
+
+      // Deduplicate by fileUrl so repeated uploads/registrations do not duplicate rows
+      const existingRows = await db
+        .select()
+        .from(mediaLibrary)
+        .where(eq(mediaLibrary.fileUrl, fileUrl))
+        .limit(1);
+
+      if (existingRows.length > 0) {
+        const cur = existingRows[0];
+        const updated = await db
+          .update(mediaLibrary)
+          .set({
+            title: data.title || cur.title,
+            altText: data.altText || cur.altText,
+            caption: data.caption !== undefined ? data.caption : cur.caption,
+            description: data.description !== undefined ? data.description : cur.description,
+            creditSource: data.creditSource !== undefined ? data.creditSource : cur.creditSource,
+            folder: data.folder || cur.folder,
+            category: data.category || cur.category,
+            storageProvider: resolvedProvider || cur.storageProvider,
+            publicId: data.publicId || cur.publicId,
+            updatedAt: new Date(),
+          })
+          .where(eq(mediaLibrary.id, cur.id))
+          .returning();
+
+        return res.json({ success: true, media: updated[0], deduplicated: true });
       }
 
       const inserted = await db.insert(mediaLibrary).values({
         title: data.title,
         filename: data.filename || data.title.toLowerCase().replace(/[^a-z0-9.]+/g, '-'),
-        fileUrl: data.fileUrl,
+        fileUrl,
         fileType: data.fileType || 'image',
         mimeType: data.mimeType || 'image/jpeg',
         fileSize: Number(data.fileSize) || 0,
@@ -1762,6 +1808,8 @@ export function setupCmsRoutes(app: express.Express) {
         tags: data.tags || [],
         usedIn: data.usedIn || [],
         status: data.status || 'ACTIVE',
+        storageProvider: resolvedProvider,
+        publicId: data.publicId || null,
         uploadedBy: req.dbUser?.displayName || req.dbUser?.email || 'MADECC Media Admin'
       }).returning();
 
@@ -1771,7 +1819,7 @@ export function setupCmsRoutes(app: express.Express) {
         recordId: String(inserted[0].id),
         recordTitle: inserted[0].title,
         performedBy: req.dbUser?.email || 'Admin',
-        details: `Added media asset "${inserted[0].title}" (${inserted[0].fileType})`
+        details: `Added media asset "${inserted[0].title}" (${inserted[0].fileType}, provider=${resolvedProvider})`
       }).catch(e => console.warn('[CMS_LOG]', e));
 
       res.json({ success: true, media: inserted[0] });
@@ -1858,6 +1906,11 @@ export function setupCmsRoutes(app: express.Express) {
       }
 
       const deleted = await db.delete(mediaLibrary).where(eq(mediaLibrary.id, id)).returning();
+
+      // Clean up underlying Cloudinary / Supabase / local object
+      void deleteFileFromCloud(asset.fileUrl, (asset as any).publicId).catch((e) =>
+        console.warn('[MEDIA_CLOUD_DELETE_WARN]', e)
+      );
 
       await db.insert(cmsActivityLogs).values({
         module: 'MEDIA_LIBRARY',

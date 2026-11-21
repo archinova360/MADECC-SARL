@@ -34,6 +34,7 @@ import {
   analyzeHumanContentEditorial,
 } from '../cmsSanitizer.ts';
 import { eq, desc, and, lte, gte, or, isNull, sql } from 'drizzle-orm';
+import { isSafePublicHttpsMediaUrl } from '../storageService.ts';
 
 const ADMIN_SMTP_USER = process.env.SMTP_USER || process.env.ADMIN_EMAIL || 'kreboya603@gmail.com';
 const CANONICAL_ORIGIN = 'https://madeccgroup.online';
@@ -248,8 +249,8 @@ async function ensureCoreCmsPagesExist(): Promise<void> {
           subtitle: 'Excellence in Civil Engineering, Construction, and Multi-Service Execution across Cameroon.',
           eyebrow: 'MADECC GROUP Cameroon',
           mediaType: 'image',
-          posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
-          imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
+          posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
+          imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
           primaryCta: { text: 'Request a Quote', link: '/request-a-quote', visible: true },
           secondaryCta: { text: 'Calculate Budget (FCFA)', link: '/budget-calculator', visible: true },
         },
@@ -356,7 +357,18 @@ export async function generateDynamicLlmsTxt(): Promise<string> {
   const routes = await db.select().from(siteRoutesConfig);
   const publicRoutes = routes.filter((r) => !r.isSystemRoute && r.robotsIndex && r.status === 'PUBLISHED');
 
-  const routeLines = publicRoutes.map((r) => `- ${CANONICAL_ORIGIN}${r.path} : ${r.title} — ${r.metaDescription || ''}`).join('\n');
+  const coreSlugs = new Set(['/', '/about', '/services', '/projects', '/budget-calculator', '/construction-cost-guide', '/website-development', '/developers', '/contact', '/sitemap']);
+  const coreRoutes = publicRoutes.filter((r) => coreSlugs.has(r.path));
+  const optionalRoutes = publicRoutes.filter((r) => !coreSlugs.has(r.path));
+
+  const formatLine = (r: any) => {
+    const cleanTitle = (r.title || r.path || 'MADECC Page').replace(/[\[\]\n\r]/g, ' ').trim();
+    const cleanDesc = (r.metaDescription || 'Official MADECC GROUP portal resource.').replace(/\s+/g, ' ').trim();
+    return `- [${cleanTitle}](${CANONICAL_ORIGIN}${r.path}): ${cleanDesc}`;
+  };
+
+  const coreLines = (coreRoutes.length > 0 ? coreRoutes : publicRoutes).map(formatLine).join('\n');
+  const optionalLines = optionalRoutes.map(formatLine).join('\n');
 
   return [
     `# ${settings.siteName || 'MADECC GROUP'}`,
@@ -371,8 +383,12 @@ export async function generateDynamicLlmsTxt(): Promise<string> {
     `- Primary Contact Email: ${settings.email || 'kreboya603@gmail.com'}`,
     `- Official Phone: ${settings.phone || '+237 683 31 64 86'}`,
     '',
-    '## Public Pages Directory',
-    routeLines,
+    '## Core Services & Documentation',
+    coreLines || `- [MADECC GROUP Home](${CANONICAL_ORIGIN}/): Premier Civil Engineering, Construction & Digital Solutions in Cameroon.`,
+    '',
+    '## Optional',
+    optionalLines || `- [AI Service Catalog](${CANONICAL_ORIGIN}/ai-catalog.json): Machine-readable service and API directory.`,
+    `- [Sitemap XML](${CANONICAL_ORIGIN}/sitemap.xml): Complete XML index of canonical MADECC GROUP URLs.`,
     '',
   ].join('\n');
 }
@@ -874,21 +890,36 @@ export function setupCmsPublishingRoutes(app: express.Express) {
   app.post('/api/cms/media/:id/replace', requireStaffOrAdmin, async (req: any, res) => {
     try {
       const id = Number(req.params.id);
-      const { newFileUrl, filename, mimeType, fileSize, dimensions, updateReferences } = req.body || {};
+      const { newFileUrl, filename, mimeType, fileSize, dimensions, updateReferences, storageProvider, publicId } = req.body || {};
       if (!newFileUrl) return res.status(400).json({ error: 'newFileUrl is required.' });
+      if (!isSafePublicHttpsMediaUrl(String(newFileUrl))) {
+        return res.status(400).json({ error: 'Invalid or unsafe replacement media URL.' });
+      }
 
       const existing = await db.select().from(mediaLibrary).where(eq(mediaLibrary.id, id)).limit(1);
       if (existing.length === 0) return res.status(404).json({ error: 'Media asset not found.' });
       const oldUrl = existing[0].fileUrl;
 
+      const nextProvider =
+        storageProvider ||
+        (String(newFileUrl).includes('res.cloudinary.com')
+          ? 'cloudinary'
+          : String(newFileUrl).includes('.supabase.co')
+            ? 'supabase'
+            : String(newFileUrl).startsWith('/uploads/')
+              ? 'local'
+              : 'external_https');
+
       const updated = await db
         .update(mediaLibrary)
         .set({
-          fileUrl: newFileUrl,
+          fileUrl: String(newFileUrl).trim(),
           filename: filename || existing[0].filename,
           mimeType: mimeType || existing[0].mimeType,
           fileSize: fileSize !== undefined ? Number(fileSize) : existing[0].fileSize,
           dimensions: dimensions || existing[0].dimensions,
+          storageProvider: nextProvider,
+          publicId: publicId !== undefined ? publicId : existing[0].publicId,
           updatedAt: new Date(),
         })
         .where(eq(mediaLibrary.id, id))

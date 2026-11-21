@@ -5,6 +5,8 @@ import {
   setStoredAuthToken,
   logoutUser
 } from '../lib/firebase.ts';
+import { getCsrfHeaders } from '../lib/csrf.ts';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 import { 
   Building2, 
   Plus, 
@@ -420,7 +422,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     }
 
     setUploadingFile(true);
-    setUploadProgress('Preparing file upload...');
+    setUploadProgress('Preparing signed cloud upload...');
 
     const applyFinalUrl = (finalUrl: string) => {
       setUploadingFile(false);
@@ -438,123 +440,22 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       showToast('File uploaded successfully!', 'success');
     };
 
-    const uploadViaServerProxy = async (): Promise<string> => {
-      setUploadProgress('Uploading to secure server storage...');
-      const proxyFormData = new FormData();
-      proxyFormData.append('file', file);
-      const token = await getAuthToken();
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: proxyFormData
-      });
-      const rawText = await res.text();
-      let data: any = {};
-      try {
-        data = JSON.parse(rawText);
-      } catch (parseErr) {
-        if (!res.ok) throw new Error(`Server upload error (${res.status})`);
-      }
-      if (!res.ok) {
-        throw new Error(data.error || `Server rejected upload (${res.status})`);
-      }
-      const finalUrl = data.url || data.secure_url;
-      if (!finalUrl) throw new Error('No asset URL returned from upload server');
-      return finalUrl;
-    };
-
     try {
       const token = await getAuthToken();
-
-      // Step A: Try to get a signed direct upload ticket for Cloudinary
-      let signedTicket: any = null;
-      try {
-        const sigRes = await fetch('/api/cloudinary-signature', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        if (sigRes.ok) {
-          signedTicket = await sigRes.json();
-        }
-      } catch (err) {
-        console.warn('Could not fetch Cloudinary upload ticket, falling back to proxy upload:', err);
-      }
-
-      if (signedTicket && signedTicket.signature && signedTicket.cloudName) {
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
-
-        // Direct Signed Cloudinary Upload
-        formData.append('file', file);
-        formData.append('api_key', signedTicket.apiKey);
-        formData.append('timestamp', signedTicket.timestamp.toString());
-        formData.append('signature', signedTicket.signature);
-        formData.append('folder', signedTicket.folder || 'madecc');
-
-        const uploadUrl = `https://api.cloudinary.com/v1_1/${signedTicket.cloudName}/auto/upload`;
-        xhr.open('POST', uploadUrl, true);
-        setUploadProgress('Uploading directly to Cloudinary (0%)...');
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(`Uploading: ${percentComplete}% (${(event.loaded / (1024 * 1024)).toFixed(1)}MB / ${(event.total / (1024 * 1024)).toFixed(1)}MB)`);
-          }
-        };
-
-        xhr.onload = async () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              const finalUrl = data.secure_url || data.url;
-              if (finalUrl) {
-                applyFinalUrl(finalUrl);
-                return;
-              }
-            } catch (err) {
-              console.warn('[ADMIN_UPLOAD_PARSE_WARN] Direct upload response parse error, falling back:', err);
-            }
-          }
-
-          // Direct upload returned non-2xx (e.g. 403 Forbidden). Seamlessly fallback to server upload
-          console.warn(`[ADMIN_DIRECT_UPLOAD_FAILED] HTTP ${xhr.status}. Executing server fallback...`);
-          try {
-            const serverUrl = await uploadViaServerProxy();
-            applyFinalUrl(serverUrl);
-          } catch (fbErr: any) {
-            setUploadingFile(false);
-            setUploadProgress('');
-            showToast(`Upload failed: ${fbErr.message}`, 'error');
-          }
-        };
-
-        xhr.onerror = async () => {
-          console.warn('[ADMIN_DIRECT_UPLOAD_XHR_ERROR] Network issue. Executing server fallback...');
-          try {
-            const serverUrl = await uploadViaServerProxy();
-            applyFinalUrl(serverUrl);
-          } catch (fbErr: any) {
-            setUploadingFile(false);
-            setUploadProgress('');
-            showToast(`Upload failed: ${fbErr.message}`, 'error');
-          }
-        };
-
-        xhr.send(formData);
-      } else {
-        // Direct ticket not available - use server proxy immediately
-        try {
-          const serverUrl = await uploadViaServerProxy();
-          applyFinalUrl(serverUrl);
-        } catch (serverErr: any) {
-          setUploadingFile(false);
-          setUploadProgress('');
-          showToast(`Upload failed: ${serverErr.message}`, 'error');
-        }
-      }
+      const csrfHeaders = await getCsrfHeaders();
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: `madecc/cms_media/${targetField}`,
+        authToken: token,
+        csrfHeaders,
+        useCmsEndpoint: true,
+        onProgress: (p) => setUploadProgress(p.label),
+      });
+      applyFinalUrl(result.url);
     } catch (err: any) {
       setUploadingFile(false);
       setUploadProgress('');
-      showToast(`Upload error: ${err.message}`, 'error');
+      showToast(`Upload error: ${err.message || 'Upload failed'}`, 'error');
     }
   };
 

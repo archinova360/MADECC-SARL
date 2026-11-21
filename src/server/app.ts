@@ -91,7 +91,7 @@ export async function getApp(): Promise<express.Express> {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=()');
     res.setHeader(
       'Content-Security-Policy',
-      "frame-ancestors 'self' https://aistudio.google.com https://*.googleusercontent.com https://*.ai.studio; base-uri 'self'; object-src 'none';"
+      "frame-ancestors 'self' https://aistudio.google.com https://*.googleusercontent.com https://*.ai.studio; base-uri 'self'; object-src 'none'; media-src 'self' blob: https://res.cloudinary.com https://*.supabase.co https://vjs.zencdn.net https://cdn.jsdelivr.net https://assets.mixkit.co; connect-src 'self' ws: wss: https://api.cloudinary.com https://res.cloudinary.com https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://rdap.org;"
     );
     const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
     if (isHttps) {
@@ -126,11 +126,7 @@ export async function getApp(): Promise<express.Express> {
   });
 
   // Security Gate & Threat Telemetry Middleware
-  app.use('/api/admin', (_req, res, next) => {
-    res.setHeader('Cache-Control', 'no-store, private');
-    next();
-  });
-  app.use('/api/auth', (_req, res, next) => {
+  app.use(['/api/admin', '/api/auth', '/api/cms/media', '/api/cloudinary-signature', '/api/upload', '/api/public/upload'], (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, private');
     next();
   });
@@ -138,6 +134,7 @@ export async function getApp(): Promise<express.Express> {
 
   // Dynamic sitemap.xml handler (Neon DB backed with public/ fallback)
   app.get('/sitemap.xml', async (_req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     try {
       const xml = await generateDynamicSitemapXml();
       if (xml && xml.includes('<urlset')) {
@@ -162,6 +159,7 @@ export async function getApp(): Promise<express.Express> {
 
   // Dynamic robots.txt handler (always enforces /admin and /api exclusion)
   app.get('/robots.txt', async (_req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     try {
       const robots = await generateDynamicRobotsTxt();
       if (robots) {
@@ -186,6 +184,7 @@ export async function getApp(): Promise<express.Express> {
 
   // Explicit ads.txt handler (guarantees AdSense crawler gets plain text 200 response immediately)
   app.get('/ads.txt', (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     const adsPath = path.join(process.cwd(), 'public', 'ads.txt');
     if (fs.existsSync(adsPath)) {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -202,6 +201,7 @@ export async function getApp(): Promise<express.Express> {
 
   // Explicit AI-Agent Discovery handlers (/llms.txt and /ai-catalog.json)
   app.get('/llms.txt', async (_req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     try {
       const txt = await generateDynamicLlmsTxt();
       if (txt) {
@@ -222,6 +222,7 @@ export async function getApp(): Promise<express.Express> {
   });
 
   app.get('/ai-catalog.json', (_req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     const publicPath = path.join(process.cwd(), 'public', 'ai-catalog.json');
     const distPath = path.join(process.cwd(), 'dist', 'ai-catalog.json');
     const target = fs.existsSync(publicPath) ? publicPath : distPath;

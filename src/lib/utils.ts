@@ -61,19 +61,21 @@ export function getOptimizedImageUrl(url: string | null | undefined, width = 800
     }
   }
 
-  // Handle Unsplash URLs for WebP conversion and resizing
+  // Handle Unsplash URLs for WebP conversion and resizing with deterministic parameter order
   if (formattedUrl.includes('images.unsplash.com')) {
     try {
       const parsedUrl = new URL(formattedUrl);
-      parsedUrl.searchParams.set('fm', 'webp');
-      parsedUrl.searchParams.set('q', quality.toString());
+      const base = `${parsedUrl.origin}${parsedUrl.pathname}`;
+      const params = new URLSearchParams();
+      params.set('auto', 'format');
+      params.set('fit', 'crop');
       if (width) {
-        parsedUrl.searchParams.set('w', width.toString());
+        params.set('w', width.toString());
       }
-      parsedUrl.searchParams.delete('auto');
-      return parsedUrl.toString();
-    } catch (e) {
-      // Return formatted URL if URL parsing fails
+      params.set('q', quality.toString());
+      params.set('fm', 'webp');
+      return `${base}?${params.toString()}`;
+    } catch {
       return formattedUrl;
     }
   }

@@ -292,7 +292,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           ========================================== */}
       <section className="relative min-h-[680px] bg-slate-950 overflow-hidden" id="hero-section">
         <HeroVideoPlayer config={cmsPageData?.heroConfig} banners={banners}>
-          <div className="max-w-3xl text-white space-y-6 animate-in fade-in duration-500">
+          <div className="max-w-3xl text-white space-y-6">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
                 <span className="inline-flex rounded-full h-2 w-2 bg-amber-500" aria-hidden="true" />
@@ -373,7 +373,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               <button
                 type="button"
                 onClick={() => setActiveTechnicalModal('eurocode')}
-                className="group flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-all text-left text-slate-300 hover:text-white cursor-pointer"
+                className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
                 title="Click to view Eurocode 2 & BAEL 91 structural standards"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
@@ -383,7 +383,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               <button
                 type="button"
                 onClick={() => setActiveTechnicalModal('boq')}
-                className="group flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-all text-left text-slate-300 hover:text-white cursor-pointer"
+                className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
                 title="Click to view fixed-price BOQ details"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
@@ -393,7 +393,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               <button
                 type="button"
                 onClick={() => setActiveTechnicalModal('cube-tests')}
-                className="group flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-all text-left text-slate-300 hover:text-white cursor-pointer"
+                className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
                 title="Click to view 28-day concrete cube crush test certification"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
@@ -604,7 +604,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             {services.map((service) => (
               <div
                 key={service.id}
-                className={`bg-slate-900/50 rounded-2xl border p-6 transition-all duration-300 shadow-sm ${
+                className={`bg-slate-900/50 rounded-2xl border p-6 transition-colors duration-300 shadow-sm ${
                   expandedServiceId === service.id 
                     ? 'border-amber-500 ring-2 ring-amber-500/10 bg-slate-900/80' 
                     : 'border-slate-800/80 hover:border-slate-750 hover:bg-slate-900/70'
@@ -628,7 +628,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                     {/* Expandable details */}
                     {expandedServiceId === service.id && service.details && (
-                      <div className="pt-4 border-t border-slate-850 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="pt-4 border-t border-slate-850 mt-4">
                         <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Scope of Operations:</h4>
                         <div className="grid grid-cols-1 gap-1.5">
                           {service.details.split(',').map((item, idx) => (
@@ -645,7 +645,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                       <button
                         type="button"
                         onClick={() => setCurrentTab('request-a-quote')}
-                        className="text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                        className="min-h-[44px] inline-flex items-center text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                       >
                         Inquire for this Service →
                       </button>
@@ -653,7 +653,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                         type="button"
                         onClick={() => setExpandedServiceId(expandedServiceId === service.id ? null : service.id)}
                         aria-expanded={expandedServiceId === service.id}
-                        className="text-xs font-semibold text-slate-300 hover:text-white transition-colors flex items-center gap-1 focus:outline-none cursor-pointer"
+                        className="min-h-[44px] text-xs font-semibold text-slate-300 hover:text-white transition-colors flex items-center gap-1 focus:outline-none cursor-pointer"
                       >
                         {expandedServiceId === service.id ? 'Collapse' : 'View Scope'}
                         <ArrowRight className={`w-3.5 h-3.5 transition-transform ${expandedServiceId === service.id ? 'rotate-90' : ''}`} />
@@ -667,8 +667,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
           <div className="mt-12 text-center">
             <button
+              type="button"
               onClick={() => setCurrentTab('services')}
-              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-xl text-xs uppercase tracking-wider border border-slate-800 hover:border-amber-500 transition-all"
+              className="min-h-[44px] inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-xl text-xs uppercase tracking-wider border border-slate-800 hover:border-amber-500 transition-colors cursor-pointer"
             >
               Explore Full Divisions &amp; Services Directory <ArrowRight className="w-4 h-4 text-amber-500" />
             </button>
@@ -733,7 +734,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 desc: 'Final architectural snagging, MEP pressure testing, certified as-built dossiers delivery, and formal client handover with warranty.'
               }
             ].map((st, idx) => (
-              <div key={idx} className="bg-slate-950/60 border border-slate-850 p-6 rounded-2xl relative space-y-3 group hover:border-slate-750 transition-all">
+              <div key={idx} className="bg-slate-950/60 border border-slate-850 p-6 rounded-2xl relative space-y-3 group hover:border-slate-750 transition-colors">
                 <span className="font-mono font-black text-amber-500 text-lg bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 inline-block">
                   {st.step}
                 </span>
@@ -761,8 +762,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setCurrentTab('projects')}
-              className="group text-sm font-bold text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1"
+              className="min-h-[44px] group text-sm font-bold text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer"
             >
               Browse Full Portfolio <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
@@ -775,13 +777,15 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               {featuredProjects.map((project) => (
                 <div 
                   key={project.id} 
-                  className="bg-slate-900/50 border border-slate-800/85 rounded-2xl overflow-hidden shadow-sm hover:border-slate-700/80 hover:bg-slate-900 transition-all flex flex-col h-full cursor-pointer group"
+                  className="bg-slate-900/50 border border-slate-800/85 rounded-2xl overflow-hidden shadow-sm hover:border-slate-700/80 hover:bg-slate-900 transition-colors flex flex-col h-full cursor-pointer group"
                   onClick={() => handleViewProject(project.id)}
                   id={`featured-project-${project.id}`}
                 >
                   <div className="relative h-56 bg-slate-950 overflow-hidden">
                     <img
-                      src={getOptimizedImageUrl(project.image, 800, 80)}
+                      src={getOptimizedImageUrl(project.image, 640, 75)}
+                      srcSet={`${getOptimizedImageUrl(project.image, 400, 70)} 400w, ${getOptimizedImageUrl(project.image, 640, 75)} 640w, ${getOptimizedImageUrl(project.image, 900, 80)} 900w`}
+                      sizes="(max-width: 768px) 100vw, 400px"
                       alt={project.title}
                       width={400}
                       height={224}
@@ -930,7 +934,11 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                             className="min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
                             aria-label={`Review slide ${idx + 1}`}
                           >
-                            <span className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${idx === currentReviewIndex ? 'w-5 bg-amber-500' : 'w-1.5 bg-slate-600'}`} />
+                            <span
+                              className={`block w-5 h-1.5 rounded-full origin-center transform-gpu transition-[transform,background-color] duration-300 ${
+                                idx === currentReviewIndex ? 'scale-x-100 bg-amber-500' : 'scale-x-[0.3] bg-slate-600'
+                              }`}
+                            />
                           </button>
                         ))}
                       </div>
@@ -1079,7 +1087,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                   <button
                     type="submit"
                     disabled={submittingReview}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                    className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     {submittingReview ? 'Submitting...' : 'Post Client Review'}
                   </button>
@@ -1137,7 +1145,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               return (
                 <div 
                   key={idx}
-                  className="bg-slate-900/40 border border-slate-850 rounded-2xl overflow-hidden transition-all duration-300"
+                  className="bg-slate-900/40 border border-slate-850 rounded-2xl overflow-hidden transition-colors duration-300"
                   id={`faq-item-${idx}`}
                 >
                   <button
@@ -1145,7 +1153,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     onClick={() => setExpandedFaqIndex(isExpanded ? null : idx)}
                     aria-expanded={isExpanded}
                     aria-controls={`faq-panel-${idx}`}
-                    className="w-full text-left p-5 flex items-center justify-between gap-4 focus:outline-none hover:bg-slate-900/80 transition-colors cursor-pointer"
+                    className="w-full min-h-[44px] text-left p-5 flex items-center justify-between gap-4 focus:outline-none hover:bg-slate-900/80 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <HelpCircle className="w-5 h-5 text-amber-500 shrink-0" />
@@ -1162,7 +1170,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                     <div
                       id={`faq-panel-${idx}`}
                       role="region"
-                      className="px-5 pb-5 pt-1 text-xs text-slate-300 border-t border-slate-850/60 bg-slate-950/30 leading-relaxed font-sans animate-in fade-in slide-in-from-top-2 duration-200"
+                      className="px-5 pb-5 pt-1 text-xs text-slate-300 border-t border-slate-850/60 bg-slate-950/30 leading-relaxed font-sans"
                     >
                       {faq.a}
                     </div>
@@ -1180,8 +1188,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             </p>
             <div className="pt-2 flex flex-wrap justify-center gap-3">
               <button 
+                type="button"
                 onClick={() => setCurrentTab('contact')}
-                className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold uppercase tracking-wider py-3 px-6 rounded-xl transition-all"
+                className="min-h-[44px] inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold uppercase tracking-wider py-3 px-6 rounded-xl transition-colors cursor-pointer"
               >
                 Contact Our Engineering Office <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -1189,7 +1198,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 href="https://wa.me/237683316486" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider py-3 px-6 rounded-xl transition-all"
+                className="min-h-[44px] inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider py-3 px-6 rounded-xl transition-colors"
               >
                 Chat on WhatsApp (+237 683 31 64 86)
               </a>
@@ -1203,9 +1212,10 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           INTERACTIVE TECHNICAL STANDARD MODALS
           ========================================== */}
       {activeTechnicalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
             <button
+              type="button"
               onClick={() => setActiveTechnicalModal(null)}
               className="absolute top-3 right-3 text-slate-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-slate-800/80 hover:bg-slate-800 transition-colors"
               aria-label="Close modal"
@@ -1250,20 +1260,22 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                 <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-3">
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTechnicalModal(null);
                       setCurrentTab('schedule-consultation');
                     }}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Schedule Consultation With Our Engineers
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTechnicalModal(null);
                       setCurrentTab('request-a-quote');
                     }}
-                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Request Structural Quote
                   </button>
@@ -1308,20 +1320,22 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                 <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-3">
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTechnicalModal(null);
                       setCurrentTab('budget-calculator');
                     }}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Open Online Budget Calculator
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTechnicalModal(null);
                       setCurrentTab('request-a-quote');
                     }}
-                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Request Custom Itemized BOQ
                   </button>
@@ -1366,20 +1380,22 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
                 <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-3">
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTechnicalModal(null);
                       setCurrentTab('schedule-consultation');
                     }}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Schedule Quality Inspection
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTechnicalModal(null);
                       setCurrentTab('contact');
                     }}
-                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                    className="min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Contact Quality Control Lab
                   </button>

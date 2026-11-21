@@ -459,7 +459,7 @@ export const CorporateDivisionsDirectory: React.FC<{
               setEnquiryError(null);
               setEnquiryModal({ open: true, category: 'Real estate investment' });
             }}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+            className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-sm cursor-pointer shrink-0 transition-colors"
           >
             <Handshake className="w-4 h-4" /> Investor &amp; Partnership Enquiry
           </button>
@@ -474,7 +474,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedSector(tab.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                   active
                     ? 'bg-amber-500 text-slate-950'
                     : isLight
@@ -504,7 +504,7 @@ export const CorporateDivisionsDirectory: React.FC<{
             return (
               <div
                 key={div.id}
-                className={`rounded-2xl border overflow-hidden flex flex-col justify-between transition-all hover:shadow-xl ${
+                className={`rounded-2xl border overflow-hidden flex flex-col justify-between transition-colors hover:shadow-xl ${
                   isLight
                     ? 'bg-white border-slate-200 hover:border-amber-400'
                     : 'bg-slate-900/75 border-slate-800 hover:border-amber-500/40'
@@ -515,7 +515,9 @@ export const CorporateDivisionsDirectory: React.FC<{
                   {div.imageUrl && (
                     <div className="aspect-[16/9] w-full bg-slate-950 relative overflow-hidden">
                       <img
-                        src={getOptimizedImageUrl(div.imageUrl, 800, 75)}
+                        src={getOptimizedImageUrl(div.imageUrl, 640, 75)}
+                        srcSet={`${getOptimizedImageUrl(div.imageUrl, 400, 70)} 400w, ${getOptimizedImageUrl(div.imageUrl, 640, 75)} 640w, ${getOptimizedImageUrl(div.imageUrl, 960, 80)} 960w`}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"
                         alt={div.name}
                         width={640}
                         height={360}
@@ -576,7 +578,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                         <div className="flex items-center justify-between text-[11px] font-mono font-bold text-amber-500">
                           <span>{div.services.length} Specialized Services</span>
                           {groupedNames.length > 0 && (
-                            <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>
+                            <span className={isLight ? 'text-slate-600' : 'text-slate-400'}>
                               {groupedNames.length} Sub-Groups
                             </span>
                           )}
@@ -627,7 +629,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                     <button
                       type="button"
                       onClick={() => openEnquiryForDivision(div)}
-                      className={`text-[11px] font-bold hover:underline cursor-pointer ${
+                      className={`min-h-[44px] inline-flex items-center text-[11px] font-bold hover:underline cursor-pointer ${
                         isLight ? 'text-slate-700' : 'text-slate-300'
                       }`}
                     >
@@ -639,7 +641,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                     <button
                       type="button"
                       onClick={() => setActiveDivision(div)}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                      className={`min-h-[44px] py-2 px-3 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                         isLight
                           ? 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100'
                           : 'bg-slate-900 border-slate-700 text-white hover:border-amber-500/50'
@@ -650,7 +652,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                     <button
                       type="button"
                       onClick={() => (onInquire ? onInquire(div.name) : openEnquiryForDivision(div))}
-                      className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold inline-flex items-center justify-center gap-1 cursor-pointer"
+                      className="min-h-[44px] py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
                     >
                       Enquire <ArrowRight className="w-3.5 h-3.5" />
                     </button>
@@ -687,7 +689,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                 setEnquirySuccessRef(null);
                 setEnquiryModal({ open: true, category: 'Real estate investment' });
               }}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
             >
               <Briefcase className="w-3.5 h-3.5" /> Real Estate Investment Desk
             </button>
@@ -711,7 +713,9 @@ export const CorporateDivisionsDirectory: React.FC<{
                     {previewImg && (
                       <div className="aspect-[16/10] bg-slate-900 relative overflow-hidden">
                         <img
-                          src={getOptimizedImageUrl(previewImg, 800, 75)}
+                          src={getOptimizedImageUrl(previewImg, 640, 75)}
+                          srcSet={`${getOptimizedImageUrl(previewImg, 400, 70)} 400w, ${getOptimizedImageUrl(previewImg, 640, 75)} 640w, ${getOptimizedImageUrl(previewImg, 960, 80)} 960w`}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"
                           alt={proj.name}
                           width={640}
                           height={400}
@@ -831,7 +835,9 @@ export const CorporateDivisionsDirectory: React.FC<{
             {activeDivision.imageUrl && (
               <div className="aspect-[21/7] w-full relative bg-slate-900 overflow-hidden">
                 <img
-                  src={getOptimizedImageUrl(activeDivision.imageUrl, 1200, 80)}
+                  src={getOptimizedImageUrl(activeDivision.imageUrl, 1024, 80)}
+                  srcSet={`${getOptimizedImageUrl(activeDivision.imageUrl, 640, 75)} 640w, ${getOptimizedImageUrl(activeDivision.imageUrl, 1024, 80)} 1024w`}
+                  sizes="(max-width: 768px) 100vw, 896px"
                   alt={activeDivision.name}
                   width={1024}
                   height={340}
@@ -843,7 +849,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                   type="button"
                   onClick={() => setActiveDivision(null)}
                   aria-label="Close division details"
-                  className="absolute right-4 top-4 w-10 h-10 rounded-full bg-slate-950/80 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer border border-slate-700"
+                  className="absolute right-4 top-4 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-slate-950/80 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer border border-slate-700"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -867,7 +873,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                     type="button"
                     onClick={() => setActiveDivision(null)}
                     aria-label="Close division details"
-                    className="w-10 h-10 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -935,7 +941,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                               )}
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[11px]">
-                              <span className="font-mono text-slate-500">
+                              <span className="font-mono text-slate-400">
                                 {OP_STATUS_LABELS[svc.operationalStatus || ''] || svc.operationalStatus || 'Proposed'}
                               </span>
                               <button
@@ -949,7 +955,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                                     openEnquiryForDivision(d, svc.name);
                                   }
                                 }}
-                                className="font-bold text-amber-400 hover:underline cursor-pointer"
+                                className="min-h-[44px] inline-flex items-center font-bold text-amber-400 hover:underline cursor-pointer"
                               >
                                 Enquire &rarr;
                               </button>
@@ -994,7 +1000,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                     setActiveDivision(null);
                     openEnquiryForDivision(d);
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  className="min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Handshake className="w-4 h-4 text-amber-400" /> Partnership / Investment Desk
                 </button>
@@ -1006,7 +1012,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                     if (onInquire) onInquire(d.name);
                     else openEnquiryForDivision(d);
                   }}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   Request Service / Quote <ArrowRight className="w-4 h-4" />
                 </button>
@@ -1033,7 +1039,7 @@ export const CorporateDivisionsDirectory: React.FC<{
                 type="button"
                 onClick={() => setEnquiryModal((p) => ({ ...p, open: false }))}
                 aria-label="Close investor enquiry modal"
-                className="w-10 h-10 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+                className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-slate-900 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1172,14 +1178,14 @@ export const CorporateDivisionsDirectory: React.FC<{
                   <button
                     type="button"
                     onClick={() => setEnquiryModal((p) => ({ ...p, open: false }))}
-                    className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer"
+                    className="min-h-[44px] px-4 py-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submittingEnquiry}
-                    className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" /> {submittingEnquiry ? 'Submitting...' : 'Submit Enquiry'}
                   </button>

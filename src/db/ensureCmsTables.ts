@@ -153,6 +153,8 @@ export async function ensureCmsTables(): Promise<void> {
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT true;
+      ALTER TABLE media_library ADD COLUMN IF NOT EXISTS storage_provider TEXT DEFAULT 'cloudinary';
+      ALTER TABLE media_library ADD COLUMN IF NOT EXISTS public_id TEXT;
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITHOUT TIME ZONE;
     `);
 

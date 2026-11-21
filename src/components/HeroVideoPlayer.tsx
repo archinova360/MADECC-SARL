@@ -36,7 +36,7 @@ export const DEFAULT_HERO_VIDEOS: HeroVideoItem[] = [
     category: 'Heavy Infrastructure & Bridges',
     location: 'Yaoundé - Douala Expressway Corridor',
     videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=75&fm=webp',
+    posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=800&q=75&fm=webp',
     accent: '#f59e0b'
   },
   {
@@ -133,7 +133,12 @@ export default function HeroVideoPlayer({
         accent: '#f59e0b'
       };
 
-      if (!list.some(s => s.title === configItem.title)) {
+      const normalizeBaseUrl = (u?: string | null) => (u || '').split('?')[0].trim().toLowerCase();
+      const configBasePoster = normalizeBaseUrl(configItem.posterUrl);
+      const isDuplicate = list.some(
+        (s) => s.title === configItem.title || (configBasePoster && normalizeBaseUrl(s.posterUrl) === configBasePoster)
+      );
+      if (!isDuplicate) {
         list.unshift(configItem);
       }
     }
@@ -298,11 +303,7 @@ export default function HeroVideoPlayer({
               {/* Cinematic Background Poster Image - LCP optimized with responsive srcSet & priority for first slide */}
               <img
                 src={getOptimizedImageUrl(item.posterUrl, 800, 75)}
-                srcSet={`
-                  ${getOptimizedImageUrl(item.posterUrl, 480, 70)} 480w,
-                  ${getOptimizedImageUrl(item.posterUrl, 768, 75)} 768w,
-                  ${getOptimizedImageUrl(item.posterUrl, 1200, 80)} 1200w
-                `}
+                srcSet={`${getOptimizedImageUrl(item.posterUrl, 480, 70)} 480w, ${getOptimizedImageUrl(item.posterUrl, 768, 75)} 768w, ${getOptimizedImageUrl(item.posterUrl, 1200, 80)} 1200w`}
                 sizes="(max-width: 768px) 100vw, 1200px"
                 alt={item.title}
                 width={800}
@@ -447,10 +448,10 @@ export default function HeroVideoPlayer({
               aria-label={`Slide ${i + 1}`}
             >
               <span
-                className={`relative block h-2 rounded-full overflow-hidden transition-[width,background-color] duration-300 ${
+                className={`relative block w-7 h-2 rounded-full overflow-hidden origin-center transform-gpu transition-[transform,background-color] duration-300 ${
                   i === currentIndex 
-                    ? 'w-9 bg-slate-800 ring-1 ring-amber-500/60' 
-                    : 'w-2 bg-slate-600 hover:bg-slate-400'
+                    ? 'scale-x-100 bg-slate-800 ring-1 ring-amber-500/60' 
+                    : 'scale-x-[0.3] bg-slate-600 hover:bg-slate-400'
                 }`}
               >
                 {i === currentIndex && (

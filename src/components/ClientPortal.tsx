@@ -1027,7 +1027,7 @@ export default function ClientPortal({ onNavigateToTab: _onNavigateToTab }: { on
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 relative rounded-2xl overflow-hidden aspect-video border border-slate-800">
                     <img
-                      src={currentProject.image || 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80'}
+                      src={currentProject.image || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80'}
                       alt={currentProject.title}
                       className="w-full h-full object-cover"
                     />

@@ -161,7 +161,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="MADECC LinkedIn Profile"
-                    className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-[#0077B5] hover:text-white text-slate-400 border border-slate-800 transition-all flex items-center justify-center text-xs font-bold font-mono"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-[#0077B5] hover:text-white text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
                     title="LinkedIn"
                   >
                     in
@@ -258,7 +258,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
           {/* Column 2: Quick Links */}
           <div>
             <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Quick Links</h2>
-            <ul className="space-y-3.5 text-sm">
+            <ul className="space-y-1 text-sm">
               {[
                 { label: 'Home Page', id: 'home' },
                 { label: 'Client Portal (Live Progress & Invoices)', id: 'client-portal' },
@@ -283,7 +283,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 <li key={link.id}>
                   <button
                     onClick={() => setCurrentTab(link.id)}
-                    className="hover:text-amber-400 transition-colors text-left"
+                    className="min-h-[44px] py-2 w-full hover:text-amber-400 transition-colors text-left flex items-center"
                     id={`footer-link-${link.id}`}
                   >
                     {link.label}
@@ -296,7 +296,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     const { downloadWebsiteNavigationGuidePdf } = await import('../utils/navigationGuidePdf.ts');
                     downloadWebsiteNavigationGuidePdf();
                   }}
-                  className="text-amber-400 hover:text-amber-300 transition-colors text-left font-bold flex items-center gap-1.5"
+                  className="min-h-[44px] py-2 text-amber-400 hover:text-amber-300 transition-colors text-left font-bold flex items-center gap-1.5"
                   id="footer-download-navigation-guide"
                 >
                   <FileDown className="w-3.5 h-3.5 text-amber-500" />
@@ -309,7 +309,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     const { downloadBuyerHandoverManualPdf } = await import('../utils/buyerHandoverPdf.ts');
                     downloadBuyerHandoverManualPdf();
                   }}
-                  className="text-emerald-400 hover:text-emerald-300 transition-colors text-left font-bold flex items-center gap-1.5"
+                  className="min-h-[44px] py-2 text-emerald-400 hover:text-emerald-300 transition-colors text-left font-bold flex items-center gap-1.5"
                   id="footer-download-buyer-handover-guide"
                 >
                   <FileDown className="w-3.5 h-3.5 text-emerald-500" />
@@ -335,16 +335,16 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-amber-500 shrink-0" />
                   <div className="flex flex-col gap-0.5">
-                    <a href={`tel:${(settings?.phone || '+237 683 316 486').replace(/\s+/g, '')}`} className="hover:text-amber-400 transition-colors font-mono font-bold">
+                    <a href={`tel:${(settings?.phone || '+237 683 316 486').replace(/\s+/g, '')}`} className="min-h-[44px] inline-flex items-center hover:text-amber-400 transition-colors font-mono font-bold">
                       {settings?.phone || '+237 683 316 486'}
                     </a>
                     {settings?.phoneSecondary && (
-                      <a href={`tel:${settings.phoneSecondary.replace(/\s+/g, '')}`} className="hover:text-amber-400 transition-colors font-mono text-xs text-slate-400">
+                      <a href={`tel:${settings.phoneSecondary.replace(/\s+/g, '')}`} className="min-h-[44px] inline-flex items-center hover:text-amber-400 transition-colors font-mono text-xs text-slate-400">
                         {settings.phoneSecondary}
                       </a>
                     )}
                     {settings?.phoneTertiary && (
-                      <a href={`tel:${settings.phoneTertiary.replace(/\s+/g, '')}`} className="hover:text-amber-400 transition-colors font-mono text-xs text-slate-400">
+                      <a href={`tel:${settings.phoneTertiary.replace(/\s+/g, '')}`} className="min-h-[44px] inline-flex items-center hover:text-amber-400 transition-colors font-mono text-xs text-slate-400">
                         {settings.phoneTertiary}
                       </a>
                     )}
@@ -357,13 +357,13 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               <li className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-amber-500 shrink-0" />
-                  <a href={`mailto:${settings?.email || 'Infomadeccconstruction@gmail.com'}`} className="hover:text-amber-400 transition-colors font-mono">
+                  <a href={`mailto:${settings?.email || 'Infomadeccconstruction@gmail.com'}`} className="min-h-[44px] inline-flex items-center hover:text-amber-400 transition-colors font-mono">
                     {settings?.email || 'Infomadeccconstruction@gmail.com'}
                   </a>
                 </div>
                 {settings?.secondaryEmail && (
                   <div className="flex items-center gap-3 pl-8">
-                    <a href={`mailto:${settings.secondaryEmail}`} className="hover:text-amber-400 transition-colors font-mono">
+                    <a href={`mailto:${settings.secondaryEmail}`} className="min-h-[44px] inline-flex items-center hover:text-amber-400 transition-colors font-mono">
                       {settings.secondaryEmail}
                     </a>
                   </div>
@@ -388,7 +388,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   placeholder="Enter email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg py-2.5 pl-3 pr-10 text-sm text-white placeholder-slate-400 outline-none transition-all"
+                  className="w-full min-h-[44px] bg-slate-900 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg py-2.5 pl-3 pr-10 text-sm text-white placeholder-slate-400 outline-none transition-colors"
                   required
                 />
               </div>
@@ -462,31 +462,31 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               <span>{settings?.legalStatus || 'Individual establishment registration pending'}</span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-5">
             <button 
               onClick={() => setCurrentTab('privacy')} 
-              className="hover:text-amber-500 cursor-pointer transition-colors focus:outline-none"
+              className="min-h-[44px] px-2 hover:text-amber-500 cursor-pointer transition-colors focus:outline-none inline-flex items-center"
               id="footer-privacy-btn"
             >
               Privacy Policy
             </button>
             <button 
               onClick={() => setCurrentTab('terms')} 
-              className="hover:text-amber-500 cursor-pointer transition-colors focus:outline-none"
+              className="min-h-[44px] px-2 hover:text-amber-500 cursor-pointer transition-colors focus:outline-none inline-flex items-center"
               id="footer-terms-btn"
             >
               Terms of Service
             </button>
             <button 
               onClick={() => setCurrentTab('safety')} 
-              className="hover:text-amber-500 cursor-pointer transition-colors focus:outline-none"
+              className="min-h-[44px] px-2 hover:text-amber-500 cursor-pointer transition-colors focus:outline-none inline-flex items-center"
               id="footer-safety-btn"
             >
               Health &amp; Safety Statement
             </button>
             <button 
               onClick={() => setCurrentTab('data-deletion')} 
-              className="text-amber-500/90 hover:text-amber-400 font-semibold cursor-pointer transition-colors focus:outline-none"
+              className="min-h-[44px] px-2 text-amber-500/90 hover:text-amber-400 font-semibold cursor-pointer transition-colors focus:outline-none inline-flex items-center"
               id="footer-data-deletion-btn"
             >
               Data Deletion
@@ -499,7 +499,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
       {/* Legal Modal Overlay */}
       {modalType && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="legal-modal-overlay">
-          <div className="bg-[#0E0E12] border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-250">
+          <div className="bg-[#0E0E12] border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-850 flex items-center justify-between bg-slate-900/30">
               <h3 className="text-sm font-bold uppercase tracking-wider text-white font-mono">
@@ -573,7 +573,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <div className="p-4 border-t border-slate-850 bg-[#0A0A0C] flex justify-end">
               <button 
                 onClick={() => setModalType(null)}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2 rounded-xl text-xs font-bold transition-all"
+                className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2 rounded-xl text-xs font-bold transition-colors"
                 id="close-legal-modal-footer"
               >
                 Acknowledge & Close
@@ -586,7 +586,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
       {/* Share Website Modal Overlay */}
       {showShareModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="share-modal-overlay">
-          <div className="bg-[#0E0E12] border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-250">
+          <div className="bg-[#0E0E12] border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
             {/* Header */}
             <div className="p-5 border-b border-slate-850 flex items-center justify-between bg-slate-900/40">
               <div className="flex items-center gap-2.5">
@@ -616,7 +616,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + websiteUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 hover:bg-emerald-900/60 transition-all text-xs font-semibold"
+                  className="min-h-[44px] flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 hover:bg-emerald-900/60 transition-colors text-xs font-semibold"
                 >
                   <span className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs font-mono">WA</span>
                   <span>WhatsApp</span>
@@ -627,7 +627,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(websiteUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-950/40 border border-blue-800/40 text-blue-300 hover:bg-blue-900/60 transition-all text-xs font-semibold"
+                  className="min-h-[44px] flex items-center gap-2.5 p-3 rounded-xl bg-blue-950/40 border border-blue-800/40 text-blue-300 hover:bg-blue-900/60 transition-colors text-xs font-semibold"
                 >
                   <span className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs font-mono">in</span>
                   <span>LinkedIn</span>
@@ -638,7 +638,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(websiteUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-sky-950/40 border border-sky-800/40 text-sky-300 hover:bg-sky-900/60 transition-all text-xs font-semibold"
+                  className="min-h-[44px] flex items-center gap-2.5 p-3 rounded-xl bg-sky-950/40 border border-sky-800/40 text-sky-300 hover:bg-sky-900/60 transition-colors text-xs font-semibold"
                 >
                   <span className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-xs font-mono">fb</span>
                   <span>Facebook</span>
@@ -649,7 +649,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(websiteUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-750 text-slate-200 hover:bg-slate-800 transition-all text-xs font-semibold"
+                  className="min-h-[44px] flex items-center gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-750 text-slate-200 hover:bg-slate-800 transition-colors text-xs font-semibold"
                 >
                   <span className="w-7 h-7 rounded-lg bg-slate-700 text-white flex items-center justify-center font-bold text-xs font-mono">𝕏</span>
                   <span>X / Twitter</span>
@@ -659,7 +659,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               {/* Email Referral */}
               <a
                 href={`mailto:?subject=${encodeURIComponent('MADECC GROUP — Premier Construction & Engineering Firm')}&body=${encodeURIComponent(shareText + '\n\nVisit: ' + websiteUrl)}`}
-                className="flex items-center justify-center gap-2 w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold transition-all"
+                className="min-h-[44px] flex items-center justify-center gap-2 w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold transition-colors"
               >
                 <Mail className="w-4 h-4 text-amber-500" />
                 <span>Share via Email</span>
@@ -678,7 +678,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="min-h-[40px] flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
+                    className="min-h-[44px] flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
                   >
                     {copiedLink ? (
                       <>
@@ -700,7 +700,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <div className="p-3 border-t border-slate-850 bg-[#0A0A0C] flex justify-end">
               <button 
                 onClick={() => setShowShareModal(false)}
-                className="bg-slate-850 hover:bg-slate-800 text-slate-300 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                className="min-h-[44px] bg-slate-850 hover:bg-slate-800 text-slate-300 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors"
               >
                 Close
               </button>

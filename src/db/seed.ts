@@ -1467,14 +1467,14 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         youtubeUrl: 'https://youtube.com/@madeccgroup',
         twitterUrl: 'https://x.com/madeccgroup',
         tiktokUrl: 'https://tiktok.com/@madeccgroup',
-        logoUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80',
+        logoUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&q=80',
         globalSeo: {
           seoTitle: 'MADECC GROUP — Premier Construction & Civil Engineering in Cameroon',
           metaDescription: 'Official portal of MADECC GROUP. Structural design, turn-key civil construction, Eurocode compliance, BOQ estimation, and project management in Yaoundé, Douala, and across Cameroon.',
           canonicalUrl: 'https://madeccgroup.online',
           ogTitle: 'MADECC GROUP — Engineering Excellence in Cameroon',
           ogDescription: 'Leading construction and civil engineering contractor in Cameroon. Eurocode 2 standards, certified concrete batching, and turnkey execution.',
-          ogImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
+          ogImage: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
           robotsIndex: true,
           keywords: 'construction cameroon, civil engineering yaounde, building contractor douala, madecc group, eurocode concrete, boq estimation cameroon'
         },
@@ -1537,9 +1537,9 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         },
         mediaType: 'video' as const,
         videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-construction-site-with-cranes-and-workers-40915-large.mp4',
-        posterUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
-        imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
-        mobileImageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=80',
+        posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
+        mobileImageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=800&q=80',
         videoSettings: {
           autoplay: true,
           muted: true,
@@ -1650,7 +1650,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         canonicalUrl: 'https://madeccgroup.com/',
         ogTitle: 'MADECC GROUP — Building Cameroon with Structural Precision',
         ogDescription: 'Certified civil engineering contractor in Yaoundé & Douala. Eurocode 2 standards, transparent BOQs, and timely execution.',
-        ogImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1600&q=80',
+        ogImage: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
         keywords: 'construction cameroon, civil engineering yaounde, building contractor douala, madecc group, eurocode concrete, boq estimation cameroon',
         robotsIndex: true
       };
@@ -1781,7 +1781,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
         {
           title: 'Heavy Foundation Excavator (High-Res Poster)',
           filename: 'hero-poster-foundation.jpg',
-          fileUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1920&q=80',
+          fileUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
           fileType: 'image',
           mimeType: 'image/jpeg',
           fileSize: 1845000,
@@ -1957,7 +1957,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
           VALUES 
           ('MADECC-CONSTRUCTION', 'madecc-construction', 'MADECC Group (Individual establishment registration pending)', '/logo.png', 'madecc-construction.madecccloud.com', 'madeccgroup.online', 'ACTIVE', 'ENTERPRISE', 'XAF', 'Africa/Douala', '+237 671 063 511 / +237 683 316 486', 'kreboya603@gmail.com', 'Yaoundé, Cameroon', 'Cameroon', '{"primaryColor": "#0f172a", "secondaryColor": "#f59e0b", "accentColor": "#3b82f6", "fontFamily": "Plus Jakarta Sans", "taxNumber": "P030217852934P", "tagline": "Building Cameroon''s Future — Engineering, Construction & Enterprise Development"}'::jsonb, 50000, true),
           ('BuildPro Engineering Ltd', 'buildpro-engineering', 'BuildPro Civil & Structural Contractors Ltd', 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80', 'buildpro.madecccloud.com', 'buildpro-contractors.com', 'ACTIVE', 'PROFESSIONAL', 'XAF', 'Africa/Douala', '+237 689 115 595', 'info@buildpro-contractors.com', 'Bonanjo Commercial District, Douala', 'Cameroon', '{"primaryColor": "#1e3a8a", "secondaryColor": "#10b981", "accentColor": "#f97316", "fontFamily": "Inter", "tagline": "Modern Structural Solutions & Commercial General Contracting"}'::jsonb, 450, false),
-          ('Alpha Civil & Infra Group', 'alpha-civil', 'Alpha Civil Infrastructure & Roads SARL', 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80', 'alpha-civil.madecccloud.com', 'alpha-civil-cm.com', 'ACTIVE', 'STARTER', 'XAF', 'Africa/Douala', '+237 671 063 511', 'contact@alpha-civil-cm.com', 'Mvan Complex, Yaoundé', 'Cameroon', '{"primaryColor": "#064e3b", "secondaryColor": "#d97706", "accentColor": "#0284c7", "fontFamily": "Plus Jakarta Sans", "tagline": "Specialized Earthworks, Highways & Public Infrastructure"}'::jsonb, 85, false);
+          ('Alpha Civil & Infra Group', 'alpha-civil', 'Alpha Civil Infrastructure & Roads SARL', 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&q=80', 'alpha-civil.madecccloud.com', 'alpha-civil-cm.com', 'ACTIVE', 'STARTER', 'XAF', 'Africa/Douala', '+237 671 063 511', 'contact@alpha-civil-cm.com', 'Mvan Complex, Yaoundé', 'Cameroon', '{"primaryColor": "#064e3b", "secondaryColor": "#d97706", "accentColor": "#0284c7", "fontFamily": "Plus Jakarta Sans", "tagline": "Specialized Earthworks, Highways & Public Infrastructure"}'::jsonb, 85, false);
         `);
       }
     } catch (tenantErr) {
@@ -2296,7 +2296,7 @@ This article reviews our pre-construction workflow used on the Sanaga Bridge pro
             'DIGITAL',
             18500,
             25000,
-            'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=800&q=80',
             '/sample-civil-manual-preview.pdf',
             'https://madecc-secure-docs.storage/krr-civil-eurocode-manual-2026.pdf',
             'krr-civil-eurocode-manual-2026.pdf',

@@ -1,5 +1,6 @@
 import { Tenant, SaaSWorkspaceVersion } from '../types.ts';
 import { TenantContentService } from './tenantContentService.ts';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 
 export const MADECC_FLAGSHIP_TENANT: Tenant = TenantContentService.getProfile(1).tenant;
 export const INITIAL_PILOT_TENANTS: Tenant[] = TenantContentService.getAllTenants();
@@ -10,62 +11,13 @@ export async function uploadSaasAssetFile(
   file: File,
   onProgress?: (label: string) => void
 ): Promise<string> {
-  onProgress?.('Preparing secure cloud upload...');
-
-  const uploadViaProxy = async () => {
-    onProgress?.('Uploading to Cloudinary / Supabase Storage...');
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!res.ok || (!data.url && !data.secure_url)) {
-      throw new Error(data.error || `Upload failed (${res.status})`);
-    }
-    return data.secure_url || data.url;
-  };
-
-  try {
-    const sigRes = await fetch('/api/cloudinary-signature');
-    if (sigRes.ok) {
-      const ticket = await sigRes.json();
-      if (ticket?.signature && ticket?.cloudName) {
-        return await new Promise<string>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          const fd = new FormData();
-          fd.append('file', file);
-          fd.append('api_key', ticket.apiKey);
-          fd.append('timestamp', String(ticket.timestamp));
-          fd.append('signature', ticket.signature);
-          fd.append('folder', ticket.folder || 'madecc');
-          xhr.open('POST', `https://api.cloudinary.com/v1_1/${ticket.cloudName}/auto/upload`, true);
-          xhr.upload.onprogress = (ev) => {
-            if (ev.lengthComputable) {
-              const pct = Math.round((ev.loaded / ev.total) * 100);
-              onProgress?.(`Uploading (${pct}%)...`);
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const parsed = JSON.parse(xhr.responseText);
-                resolve(parsed.secure_url || parsed.url);
-              } catch {
-                reject(new Error('Invalid Cloudinary response'));
-              }
-            } else {
-              reject(new Error(`Cloudinary HTTP ${xhr.status}`));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Cloudinary network error'));
-          xhr.send(fd);
-        });
-      }
-    }
-  } catch {
-    // Fall back transparently to server proxy (Cloudinary -> Supabase)
-  }
-
-  return await uploadViaProxy();
+  const result = await uploadMediaAssetDirect({
+    file,
+    folder: 'madecc/saas_tenants',
+    useCmsEndpoint: false,
+    onProgress: (p) => onProgress?.(p.label),
+  });
+  return result.url;
 }
 
 export class TenantService {

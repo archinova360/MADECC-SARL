@@ -11,7 +11,6 @@ import {
   FileSpreadsheet,
   ArrowRight
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { getOptimizedImageUrl } from '../lib/utils.ts';
 
 interface BlueprintLayer {
@@ -120,7 +119,7 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
                   setActiveLayerId(layer.id);
                   setSelectedPoint(null);
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+                className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                   isSelected
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
@@ -139,6 +138,8 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
         <div className="lg:col-span-7 relative rounded-2xl overflow-hidden border border-slate-700 aspect-video group">
           <img
             src={getOptimizedImageUrl(activeLayer.image, 800, 75)}
+            srcSet={`${getOptimizedImageUrl(activeLayer.image, 480, 70)} 480w, ${getOptimizedImageUrl(activeLayer.image, 800, 75)} 800w, ${getOptimizedImageUrl(activeLayer.image, 1200, 80)} 1200w`}
+            sizes="(max-width: 1024px) 100vw, 680px"
             alt={activeLayer.name}
             width={800}
             height={450}
@@ -172,29 +173,25 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
           ))}
 
           {/* Selected Point Popover */}
-          <AnimatePresence>
-            {selectedPoint && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-amber-500/50 p-4 rounded-xl shadow-2xl text-left"
-              >
-                <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-bold text-amber-400">{selectedPoint.label}</h4>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPoint(null)}
-                    aria-label="Close inspection details"
-                    className="text-slate-300 hover:text-white text-xs px-2 py-1 bg-slate-800 rounded cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <p className="text-xs text-slate-300 mt-1">{selectedPoint.detail}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {selectedPoint && (
+            <div
+              role="status"
+              className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-amber-500/50 p-4 rounded-xl shadow-2xl text-left"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <h4 className="text-sm font-bold text-amber-400">{selectedPoint.label}</h4>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPoint(null)}
+                  aria-label="Close inspection details"
+                  className="text-slate-300 hover:text-white text-xs min-w-[44px] min-h-[44px] flex items-center justify-center bg-slate-800 rounded-lg cursor-pointer shrink-0 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">{selectedPoint.detail}</p>
+            </div>
+          )}
 
           {!selectedPoint && (
             <div className="absolute bottom-3 left-4 text-[11px] text-slate-300 bg-slate-900/80 backdrop-blur-sm px-2.5 py-1 rounded">
@@ -225,7 +222,7 @@ export function InteractiveBlueprintPreview({ onNavigateToTab }: { onNavigateToT
               <button
                 type="button"
                 onClick={() => onNavigateToTab('schedule-consultation')}
-                className="w-full py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                className="w-full min-h-[44px] py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>Book On-Site Engineering Audit</span>
                 <ArrowRight className="w-3.5 h-3.5" />

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, lazy, Suspense } from 'react';
 import {
   setStoredAuthToken,
   logoutUser
@@ -45,8 +45,11 @@ import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { TenantService } from '../services/tenantService.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
-import { MobileNavDrawer } from './MobileNavDrawer.tsx';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
+
+const MobileNavDrawer = lazy(() =>
+  import('./MobileNavDrawer.tsx').then((m) => ({ default: m.MobileNavDrawer }))
+);
 
 interface NavbarProps {
   currentTab: string;
@@ -504,7 +507,7 @@ export default function Navbar({
                 <button
                   id="nav-tools-menu"
                   onClick={() => setToolsDropdownOpen(!toolsDropdownOpen)}
-                  className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
+                  className={`relative min-h-[44px] px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
                     isToolsActive 
                       ? theme === 'light'
                         ? 'bg-amber-500/15 text-amber-800 font-bold border border-amber-500/30'
@@ -525,7 +528,7 @@ export default function Navbar({
                 {toolsDropdownOpen && (
                     <div
                       id="nav-tools-dropdown"
-                      className={`absolute top-full left-0 mt-1 w-64 rounded-xl shadow-2xl border p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
+                      className={`absolute top-full left-0 mt-1 w-64 rounded-xl shadow-2xl border p-2 z-50 transition-opacity duration-150 ${
                         theme === 'light'
                           ? 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
@@ -744,7 +747,7 @@ export default function Navbar({
                 <button
                   id="nav-company-menu"
                   onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
-                  className={`relative px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
+                  className={`relative min-h-[44px] px-3 py-2 rounded-md font-sans text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer select-none whitespace-nowrap ${
                     isCompanyActive 
                       ? theme === 'light'
                         ? 'bg-amber-500/15 text-amber-800 font-bold border border-amber-500/30'
@@ -765,7 +768,7 @@ export default function Navbar({
                 {companyDropdownOpen && (
                     <div
                       id="nav-company-dropdown"
-                      className={`absolute top-full left-0 mt-1 w-56 rounded-xl shadow-2xl border p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
+                      className={`absolute top-full left-0 mt-1 w-56 rounded-xl shadow-2xl border p-2 z-50 transition-opacity duration-150 ${
                         theme === 'light'
                           ? 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
@@ -862,7 +865,7 @@ export default function Navbar({
                   setToolsDropdownOpen(false);
                   setCompanyDropdownOpen(false);
                 }}
-                className={`px-3 py-1.5 rounded-lg font-sans text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap cursor-pointer select-none ${
+                className={`min-h-[44px] px-3 py-2 rounded-lg font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border whitespace-nowrap cursor-pointer select-none ${
                   currentTab === 'client-portal' || currentTab === 'portal'
                     ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
                     : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400'
@@ -878,7 +881,7 @@ export default function Navbar({
               {dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff' || dbUser.role === 'social_media_reviewer') && (
                 <button
                   onClick={() => setCurrentTab('admin')}
-                  className={`px-3 py-1.5 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border whitespace-nowrap ${
+                  className={`min-h-[44px] px-3 py-2 rounded-md font-sans text-xs font-bold transition-colors flex items-center gap-1.5 border whitespace-nowrap ${
                     currentTab === 'admin'
                       ? 'text-amber-400 bg-amber-500/20 border-amber-500/40 shadow-sm'
                       : 'text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/60'
@@ -909,7 +912,7 @@ export default function Navbar({
               {/* Follow Us on Social Media Button */}
               <button
                 onClick={openFollowModal}
-                className="relative min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0 select-none whitespace-nowrap"
+                className="relative min-h-[44px] px-2.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 shadow-sm cursor-pointer shrink-0 select-none whitespace-nowrap"
                 title="Follow MADECC GROUP on Social Media (LinkedIn, Facebook, YouTube, X, Instagram, TikTok, WhatsApp)"
                 id="nav-btn-follow-us"
               >
@@ -968,7 +971,7 @@ export default function Navbar({
                   </button>
 
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
+                    <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 transition-opacity duration-150 font-sans">
                       <div className="px-4 py-3 bg-slate-900 border-b border-slate-700">
                         <span className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Signed in as</span>
                         <span className="block font-medium text-sm text-white truncate">{dbUser.email}</span>
@@ -1027,7 +1030,7 @@ export default function Navbar({
                     setLoginError(null);
                     setLoginModalOpen(true);
                   }}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/15 whitespace-nowrap shrink-0"
+                  className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors shadow-lg shadow-amber-500/15 whitespace-nowrap shrink-0"
                   id="login-btn"
                 >
                   <Key className="w-3.5 h-3.5" />
@@ -1081,37 +1084,41 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* Mobile Slide-Out Navigation Drawer */}
-      <MobileNavDrawer
-        isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        language={language}
-        setLanguage={setLanguage}
-        t={t}
-        currentTenant={currentTenant}
-        onTenantChange={onTenantChange}
-        onOpenBilling={onOpenBilling}
-        onOpenOnboarding={onOpenOnboarding}
-        onOpenSuperAdmin={onOpenSuperAdmin}
-        dbUser={dbUser}
-        handleLogout={handleLogout}
-        openLoginModal={() => {
-          setLoginError(null);
-          setLoginModalOpen(true);
-        }}
-        openFollowModal={openFollowModal}
-        handleDownloadNavigationGuide={handleDownloadNavigationGuide}
-        triggerRef={hamburgerBtnRef}
-      />
+      {/* Mobile Slide-Out Navigation Drawer (Lazy-loaded on open to shrink initial homepage bundle) */}
+      {menuOpen && (
+        <Suspense fallback={null}>
+          <MobileNavDrawer
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            currentTab={currentTab}
+            setCurrentTab={setCurrentTab}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            language={language}
+            setLanguage={setLanguage}
+            t={t}
+            currentTenant={currentTenant}
+            onTenantChange={onTenantChange}
+            onOpenBilling={onOpenBilling}
+            onOpenOnboarding={onOpenOnboarding}
+            onOpenSuperAdmin={onOpenSuperAdmin}
+            dbUser={dbUser}
+            handleLogout={handleLogout}
+            openLoginModal={() => {
+              setLoginError(null);
+              setLoginModalOpen(true);
+            }}
+            openFollowModal={openFollowModal}
+            handleDownloadNavigationGuide={handleDownloadNavigationGuide}
+            triggerRef={hamburgerBtnRef}
+          />
+        </Suspense>
+      )}
 
       {/* Sign In Dialog */}
       {loginModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-in zoom-in-95 duration-200" id="signin-modal">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative" id="signin-modal">
             {/* Close Button */}
             <button 
               onClick={() => setLoginModalOpen(false)}
@@ -1137,7 +1144,7 @@ export default function Navbar({
                 setLoginModalOpen(false);
                 setCurrentTab('client-portal');
               }}
-              className="w-full mb-4 p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
+              className="w-full min-h-[44px] mb-4 p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left flex items-center justify-between gap-3 transition-colors cursor-pointer group"
               id="signin-modal-client-portal-btn"
             >
               <div className="flex items-center gap-2.5">
@@ -1160,7 +1167,7 @@ export default function Navbar({
                   setLoginTab('email_login');
                   setLoginError(null);
                 }}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-h-[44px] py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                   loginTab === 'email_login'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -1175,7 +1182,7 @@ export default function Navbar({
                   setLoginTab('admin_key');
                   setLoginError(null);
                 }}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-h-[44px] py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                   loginTab === 'admin_key'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -1188,7 +1195,7 @@ export default function Navbar({
 
             {/* Error Message */}
             {loginError && (
-              <div className="mb-4 p-3.5 bg-red-500/10 border border-red-500/20 text-red-200 rounded-xl text-xs space-y-1 flex gap-2.5 items-start animate-in slide-in-from-top-2 duration-200" id="signin-error-banner">
+              <div className="mb-4 p-3.5 bg-red-500/10 border border-red-500/20 text-red-200 rounded-xl text-xs space-y-1 flex gap-2.5 items-start" id="signin-error-banner">
                 <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold uppercase tracking-wider text-[10px] text-red-400">Authentication Error</p>

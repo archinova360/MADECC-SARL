@@ -207,7 +207,7 @@ export async function ensureSalesTables(): Promise<void> {
             'DIGITAL',
             15000,
             25000,
-            'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80',
             'https://madeccgroup.online/assets/sample-civil-engineering-preview.pdf',
             'https://madeccgroup.online/assets/krr-eurocode2-manual-complete-2026.pdf',
             'krr-eurocode2-manual-complete-2026.pdf',

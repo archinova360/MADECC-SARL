@@ -318,7 +318,7 @@ export async function ensureErpTables(): Promise<void> {
           ($1, 'Foundation & Earthworks', 'Foundation Concrete Pour & Soil Certification Completed',
            'Strip footing excavation, lean blinding concrete, and FeE500 rebar cage placement passed geotechnical & structural inspection with 28-day cube test confirmation.',
            35, 'COMPLETED', '+2 Days Ahead', '', 'Ing. Arnaud Fopa (ONIGC Registered)', '+237 671 06 35 11', 16, 'Clear / Dry',
-           'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80', 'PHOTO', TRUE, 'Adminmadeccgroup', CURRENT_DATE - INTERVAL '10 days'),
+           'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80', 'PHOTO', TRUE, 'Adminmadeccgroup', CURRENT_DATE - INTERVAL '10 days'),
           ($1, 'Superstructure & Columns', 'Level 1 Columns, Beams Formwork & Concrete Curing Inspection',
            'Completed Doka formwork alignment and Class C25/30 ready-mix concrete casting for primary structural columns C1-C14 and Level 1 ring beams. Mechanical vibration verified.',
            58, 'ON_SCHEDULE', 'On Schedule per Master GANTT', '', 'Ing. Arnaud Fopa (ONIGC Registered)', '+237 671 06 35 11', 18, 'Partly Cloudy',
@@ -404,7 +404,7 @@ export async function ensureErpTables(): Promise<void> {
         await client.query(`
           INSERT INTO project_media (project_id, phase, media_type, title, description, media_url, upload_date, is_client_visible, uploaded_by)
           VALUES
-          (1, 'Foundation & Earthworks', 'PHOTO', 'Strip Footing Trenching & Bedding Concrete', 'Successful soil excavation and placement of 100mm blinding concrete under footings.', 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80', '2026-02-18', TRUE, 'Arnaud Fopa (Site Eng)'),
+          (1, 'Foundation & Earthworks', 'PHOTO', 'Strip Footing Trenching & Bedding Concrete', 'Successful soil excavation and placement of 100mm blinding concrete under footings.', 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80', '2026-02-18', TRUE, 'Arnaud Fopa (Site Eng)'),
           (1, 'Superstructure & Columns', 'PHOTO', 'Level 1 Column Cages & Formwork Alignment', 'Installation of high-tensile rebar cages for columns C1-C14 with laser plumb checks.', 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80', '2026-03-12', TRUE, 'Michel Onana (Foreman)'),
           (1, 'Superstructure & Columns', 'PHOTO', 'Floor Slab Concrete Pouring & Mechanical Vibration', 'Continuous pour of 95m3 C25/30 ready-mix concrete with dual vibrators.', 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=1200&q=80', '2026-03-24', TRUE, 'Arnaud Fopa (Site Eng)');
         `);

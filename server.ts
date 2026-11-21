@@ -69,6 +69,12 @@ export async function startServer() {
       setHeaders: (res, filePath) => {
         if (filePath.endsWith('.html')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (filePath.endsWith('.woff2')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (/\.(png|jpe?g|webp|svg|ico)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
+        } else if (filePath.endsWith('sw.js')) {
+          res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
         } else {
           res.setHeader('Cache-Control', 'public, max-age=86400');
         }

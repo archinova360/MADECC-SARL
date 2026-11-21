@@ -233,7 +233,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
     >
       {/* Backdrop Overlay */}
       <div
-        className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -245,7 +245,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="mobile-drawer-title"
-        className={`relative z-10 w-full sm:w-[420px] max-w-[90vw] h-[100dvh] flex flex-col shadow-2xl border-l animate-in slide-in-from-right duration-200 ${
+        className={`relative z-10 w-full sm:w-[420px] max-w-[90vw] h-[100dvh] flex flex-col shadow-2xl border-l transform-gpu transition-transform duration-200 ${
           theme === 'light'
             ? 'bg-white border-slate-200 text-slate-900'
             : 'bg-slate-950 border-slate-800 text-slate-100'
@@ -316,7 +316,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                       <button
                         key={link.id}
                         onClick={() => handleNavClick(link.id)}
-                        className={`w-full min-h-[48px] px-3.5 py-3 rounded-xl font-sans text-sm font-semibold flex items-center justify-between transition-all select-none text-left ${
+                        className={`w-full min-h-[48px] px-3.5 py-3 rounded-xl font-sans text-sm font-semibold flex items-center justify-between transition-colors select-none text-left ${
                           isActive
                             ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20 font-bold'
                             : theme === 'light'
@@ -350,7 +350,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`w-full min-h-[52px] p-3 rounded-xl border text-left transition-all select-none flex items-start justify-between gap-2.5 ${
+                        className={`w-full min-h-[52px] p-3 rounded-xl border text-left transition-colors select-none flex items-start justify-between gap-2.5 ${
                           isActive
                             ? theme === 'light'
                               ? 'bg-amber-50 border-amber-400 shadow-sm'
@@ -410,7 +410,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`w-full min-h-[48px] px-3.5 py-2.5 rounded-xl text-left transition-all select-none flex items-center justify-between ${
+                        className={`w-full min-h-[48px] px-3.5 py-2.5 rounded-xl text-left transition-colors select-none flex items-center justify-between ${
                           isActive
                             ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
                             : theme === 'light'
@@ -444,7 +444,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   </div>
                   <button
                     onClick={() => handleNavClick('admin')}
-                    className={`w-full min-h-[48px] px-4 py-3 rounded-xl border flex items-center justify-between transition-all select-none ${
+                    className={`w-full min-h-[48px] px-4 py-3 rounded-xl border flex items-center justify-between transition-colors select-none ${
                       currentTab === 'admin'
                         ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-md'
                         : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
@@ -561,7 +561,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={toggleTheme}
-                    className={`min-h-[48px] px-3 py-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all select-none ${
+                    className={`min-h-[48px] px-3 py-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-colors select-none ${
                       theme === 'light'
                         ? 'bg-slate-100 border-slate-300 text-slate-800 hover:bg-slate-200'
                         : 'bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800'
@@ -584,7 +584,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
                   <button
                     onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-                    className={`min-h-[48px] px-3 py-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold font-mono uppercase transition-all select-none ${
+                    className={`min-h-[48px] px-3 py-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold font-mono uppercase transition-colors select-none ${
                       theme === 'light'
                         ? 'bg-slate-100 border-slate-300 text-slate-800 hover:bg-slate-200'
                         : 'bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800'
@@ -636,7 +636,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                     onClose();
                     openLoginModal();
                   }}
-                  className="w-full min-h-[48px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all text-sm select-none active:scale-[0.98]"
+                  className="w-full min-h-[48px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-colors text-sm select-none active:scale-[0.98]"
                   id="mobile-drawer-login-btn"
                 >
                   <Key className="w-4 h-4" />

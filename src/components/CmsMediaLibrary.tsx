@@ -23,6 +23,7 @@ import { getCsrfHeaders } from '../lib/csrf.ts';
 import { getOptimizedImageUrl } from '../lib/utils.ts';
 import { getAuthToken } from '../lib/firebase.ts';
 import { cmsFetch } from './cms/cmsClient.ts';
+import { uploadMediaAssetDirect, ingestRemoteMediaUrl } from '../lib/directMediaUpload.ts';
 
 interface CmsMediaLibraryProps {
   onSelectMedia?: (media: MediaItem) => void;
@@ -65,6 +66,9 @@ export default function CmsMediaLibrary({
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusLabel, setUploadStatusLabel] = useState('');
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [uploadAbortController, setUploadAbortController] = useState<AbortController | null>(null);
   const [uploadError, setUploadError] = useState('');
 
   // Edit modal state
@@ -157,83 +161,103 @@ export default function CmsMediaLibrary({
       return;
     }
 
+    const controller = new AbortController();
+    setUploadAbortController(controller);
     setIsUploading(true);
     setUploadError('');
-    setUploadProgress(15);
+    setUploadProgress(5);
+    setUploadStatusLabel('Preparing upload...');
 
     try {
-      let finalFileUrl = uploadUrlDirect;
+      let finalFileUrl = uploadUrlDirect.trim();
       let finalFileType: 'image' | 'video' | 'document' | 'logo' = 'image';
       let mimeType = 'image/jpeg';
       let fileSize = 0;
+      let filename = '';
+      let storageProvider = 'cloudinary';
+      let publicId = '';
+
+      const csrf = await getCsrfHeaders();
+      const authToken = await getAuthToken();
 
       if (uploadMode === 'file' && uploadFile) {
-        const formData = new FormData();
-        formData.append('file', uploadFile);
-        formData.append('folder', 'madecc_cms_media');
-
-        setUploadProgress(40);
-        const csrf = await getCsrfHeaders();
-        const authToken = await getAuthToken();
-        const uploadHeaders: Record<string, string> = { ...csrf };
-        if (authToken) {
-          uploadHeaders['Authorization'] = `Bearer ${authToken}`;
-        }
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers: uploadHeaders,
-          credentials: 'include',
-          body: formData,
+        const directRes = await uploadMediaAssetDirect({
+          file: uploadFile,
+          folder: `madecc/cms_media/${uploadFolder.toLowerCase()}`,
+          fileType: uploadCategory === 'Logos' ? 'logo' : undefined,
+          authToken,
+          csrfHeaders: csrf,
+          useCmsEndpoint: true,
+          signal: controller.signal,
+          onProgress: (p) => {
+            setUploadProgress(p.percent);
+            setUploadStatusLabel(p.label);
+          },
         });
 
-        const rawUploadText = await uploadRes.text();
-        let uploadData: any = {};
-        try {
-          uploadData = JSON.parse(rawUploadText);
-        } catch (_) {}
+        finalFileUrl = directRes.url;
+        mimeType = directRes.mimeType || uploadFile.type;
+        fileSize = directRes.fileSize || uploadFile.size;
+        filename = directRes.filename || uploadFile.name;
+        storageProvider = directRes.storageProvider;
+        publicId = directRes.publicId || '';
 
-        if (!uploadRes.ok || !uploadData.url) {
-          throw new Error(uploadData.error || `Failed to upload asset to cloud storage (${uploadRes.status})`);
-        }
-
-        finalFileUrl = uploadData.url;
-        mimeType = uploadFile.type;
-        fileSize = uploadFile.size;
-
-        if (uploadFile.type.startsWith('video/')) {
+        if (mimeType.startsWith('video/')) {
           finalFileType = 'video';
         } else if (uploadCategory === 'Logos') {
           finalFileType = 'logo';
-        } else if (uploadFile.type.includes('pdf') || uploadFile.type.includes('doc')) {
+        } else if (mimeType.includes('pdf') || mimeType.includes('doc')) {
           finalFileType = 'document';
         } else {
           finalFileType = 'image';
         }
       } else {
-        if (!uploadUrlDirect.trim()) {
+        if (!finalFileUrl) {
           throw new Error('Please enter a valid media URL.');
         }
-        if (uploadUrlDirect.endsWith('.mp4') || uploadUrlDirect.endsWith('.webm') || uploadUrlDirect.includes('video') || initialFilterType === 'video') {
+        setUploadStatusLabel('Fetching & verifying remote HTTPS media safely...');
+        setUploadProgress(35);
+        const ingested = await ingestRemoteMediaUrl({
+          url: finalFileUrl,
+          folder: `madecc/cms_media/${uploadFolder.toLowerCase()}`,
+          fileType: uploadCategory === 'Logos' ? 'logo' : undefined,
+          authToken,
+          csrfHeaders: csrf,
+          signal: controller.signal,
+        });
+        finalFileUrl = ingested.url;
+        mimeType = ingested.mimeType;
+        fileSize = ingested.fileSize;
+        filename = ingested.filename;
+        storageProvider = ingested.storageProvider;
+        publicId = ingested.publicId || '';
+
+        if (mimeType.startsWith('video/') || initialFilterType === 'video') {
           finalFileType = 'video';
-          mimeType = 'video/mp4';
         } else if (uploadCategory === 'Logos') {
           finalFileType = 'logo';
+        } else if (mimeType.includes('pdf')) {
+          finalFileType = 'document';
         } else {
           finalFileType = 'image';
         }
       }
 
-      setUploadProgress(80);
+      setUploadProgress(92);
+      setUploadStatusLabel('Saving asset metadata in Neon DB...');
 
       const tagsArray = uploadTags.split(',').map((t) => t.trim()).filter(Boolean);
       const regData = await cmsFetch('/api/cms/media', {
         method: 'POST',
         body: JSON.stringify({
           title: uploadTitle,
+          filename: filename || undefined,
           fileUrl: finalFileUrl,
           fileType: finalFileType,
           mimeType,
           fileSize,
+          storageProvider,
+          publicId,
           altText: uploadAltText || uploadTitle,
           caption: uploadCaption,
           description: uploadDescription,
@@ -253,6 +277,7 @@ export default function CmsMediaLibrary({
       }
 
       setUploadProgress(100);
+      setUploadStatusLabel('Saved!');
       setShowUploadModal(false);
       setUploadTitle('');
       setUploadAltText('');
@@ -266,11 +291,16 @@ export default function CmsMediaLibrary({
       setUploadDurationSeconds('');
       setUploadFile(null);
       setUploadUrlDirect('');
-      showNotice('success', 'Asset registered in CMS Media Library.');
+      showNotice('success', 'Asset uploaded & registered in CMS Media Library.');
       fetchMedia();
     } catch (err: any) {
-      setUploadError(err.message || 'Upload process failed');
+      if (err?.name === 'AbortError') {
+        setUploadError('Upload cancelled.');
+      } else {
+        setUploadError(err.message || 'Upload process failed');
+      }
     } finally {
+      setUploadAbortController(null);
       setIsUploading(false);
     }
   };
@@ -387,30 +417,39 @@ export default function CmsMediaLibrary({
       let mimeType = replaceModal.mimeType;
       let fileSize = replaceModal.fileSize;
       let filename = replaceModal.filename;
+      let storageProvider = replaceModal.storageProvider;
+      let publicId = replaceModal.publicId;
+
+      const csrf = await getCsrfHeaders();
+      const authToken = await getAuthToken();
 
       if (replaceFile) {
-        const formData = new FormData();
-        formData.append('file', replaceFile);
-        formData.append('folder', 'madecc_cms_media');
-        const csrf = await getCsrfHeaders();
-        const authToken = await getAuthToken();
-        const headers: Record<string, string> = { ...csrf };
-        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers,
-          credentials: 'include',
-          body: formData,
+        const directRes = await uploadMediaAssetDirect({
+          file: replaceFile,
+          folder: `madecc/cms_media/${(replaceModal.folder || 'root').toLowerCase()}`,
+          authToken,
+          csrfHeaders: csrf,
+          useCmsEndpoint: true,
         });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok || !uploadData.url) {
-          throw new Error(uploadData.error || 'Upload failed');
-        }
-        nextUrl = uploadData.url;
-        mimeType = replaceFile.type;
-        fileSize = replaceFile.size;
-        filename = replaceFile.name;
+        nextUrl = directRes.url;
+        mimeType = directRes.mimeType;
+        fileSize = directRes.fileSize;
+        filename = directRes.filename;
+        storageProvider = directRes.storageProvider;
+        publicId = directRes.publicId;
+      } else if (nextUrl && nextUrl !== replaceModal.fileUrl) {
+        const ingested = await ingestRemoteMediaUrl({
+          url: nextUrl,
+          folder: `madecc/cms_media/${(replaceModal.folder || 'root').toLowerCase()}`,
+          authToken,
+          csrfHeaders: csrf,
+        });
+        nextUrl = ingested.url;
+        mimeType = ingested.mimeType;
+        fileSize = ingested.fileSize;
+        filename = ingested.filename;
+        storageProvider = ingested.storageProvider;
+        publicId = ingested.publicId;
       }
 
       if (!nextUrl) throw new Error('Provide a replacement file or URL.');
@@ -422,6 +461,8 @@ export default function CmsMediaLibrary({
           filename,
           mimeType,
           fileSize,
+          storageProvider,
+          publicId,
           updateReferences: replaceUpdateRefs,
         }),
       });
@@ -742,13 +783,35 @@ export default function CmsMediaLibrary({
               </div>
 
               {uploadMode === 'file' ? (
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Select Media File (MP4, WebM, JPG, PNG, WebP, PDF)
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingFile(true);
+                  }}
+                  onDragLeave={() => setIsDraggingFile(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingFile(false);
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (dropped) {
+                      setUploadFile(dropped);
+                      if (!uploadTitle) {
+                        setUploadTitle(dropped.name.replace(/\.[^/.]+$/, ''));
+                      }
+                    }
+                  }}
+                  className={`rounded-xl border-2 border-dashed p-3 transition-colors ${
+                    isDraggingFile
+                      ? 'border-amber-400 bg-amber-500/10'
+                      : 'border-slate-800 bg-slate-950'
+                  }`}
+                >
+                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                    Select or Drop Media File (Direct Signed Upload — Up to 250 MB Video / 25 MB Image)
                   </label>
                   <input
                     type="file"
-                    accept="video/mp4,video/webm,image/*,application/pdf"
+                    accept="video/mp4,video/webm,video/quicktime,image/*,application/pdf"
                     onChange={(e) => {
                       if (e.target.files?.[0]) {
                         setUploadFile(e.target.files[0]);
@@ -757,8 +820,13 @@ export default function CmsMediaLibrary({
                         }
                       }
                     }}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 bg-slate-950 border border-slate-800 rounded-lg p-2"
+                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 bg-slate-900 border border-slate-800 rounded-lg p-2"
                   />
+                  {uploadFile && (
+                    <p className="text-[11px] font-mono text-amber-300 mt-1.5">
+                      Selected: {uploadFile.name} ({(uploadFile.size / (1024 * 1024)).toFixed(2)} MB)
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -891,13 +959,16 @@ export default function CmsMediaLibrary({
               )}
 
               {isUploading && (
-                <div className="space-y-1 pt-2">
-                  <div className="flex justify-between text-[11px] text-slate-400 font-mono">
-                    <span>Uploading &amp; Registering...</span>
+                <div className="space-y-1.5 pt-2">
+                  <div className="flex justify-between text-[11px] text-slate-300 font-mono">
+                    <span className="truncate pr-2">{uploadStatusLabel || 'Uploading & Registering...'}</span>
                     <span>{uploadProgress}%</span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-amber-500 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                    <div
+                      className="bg-amber-500 h-full origin-left transition-transform duration-200"
+                      style={{ transform: `scaleX(${Math.max(0.05, uploadProgress / 100)})` }}
+                    />
                   </div>
                 </div>
               )}
@@ -905,10 +976,16 @@ export default function CmsMediaLibrary({
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowUploadModal(false)}
+                  onClick={() => {
+                    if (isUploading && uploadAbortController) {
+                      uploadAbortController.abort();
+                    } else {
+                      setShowUploadModal(false);
+                    }
+                  }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg"
                 >
-                  Cancel
+                  {isUploading ? 'Abort Upload' : 'Cancel'}
                 </button>
                 <button
                   type="submit"

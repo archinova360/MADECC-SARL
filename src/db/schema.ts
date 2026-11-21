@@ -1605,6 +1605,8 @@ export const mediaLibrary = pgTable('media_library', {
   tags: json('tags'), // Array of strings
   usedIn: json('used_in'), // Array of strings describing usage
   status: text('status').default('ACTIVE').notNull(), // ACTIVE, ARCHIVED
+  storageProvider: text('storage_provider').default('cloudinary').notNull(),
+  publicId: text('public_id'),
   uploadedBy: text('uploaded_by').default('MADECC Media Admin'),
   archivedAt: timestamp('archived_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

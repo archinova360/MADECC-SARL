@@ -79,7 +79,7 @@ export const TEN_BUSINESS_DIVISIONS_SEED: DivisionSeed[] = [
     slug: 'civil-engineering-infrastructure',
     name: 'B. Civil Engineering and Infrastructure',
     category: 'Civil Engineering',
-    imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1000&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1000&q=80',
     summary:
       'Roads, drainage systems, culverts, foundations, structural works, water supply, sanitation infrastructure, bulk earthworks, site preparation, and infrastructure planning.',
     fullDescription:

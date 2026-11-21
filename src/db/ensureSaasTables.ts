@@ -271,7 +271,7 @@ export async function ensureSaasTables(): Promise<void> {
             'Alpha Civil & Infra Group',
             'alpha-civil',
             'Alpha Civil Infrastructure, Roads & Geotechnics SARL',
-            'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=400&q=80',
+            'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&q=80',
             'alphacivil.madecccloud.com',
             'alphacivil.cm',
             'ACTIVE', 'PUBLISHED', 1, 'STARTER', 'XAF', 'Africa/Douala',

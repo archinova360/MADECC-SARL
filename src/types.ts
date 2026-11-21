@@ -312,6 +312,8 @@ export interface MediaItem {
   tags?: string[];
   usedIn?: string[];
   status: 'ACTIVE' | 'ARCHIVED';
+  storageProvider?: string;
+  publicId?: string;
   uploadedBy?: string;
   createdAt: string;
   updatedAt: string;

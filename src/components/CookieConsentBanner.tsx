@@ -69,7 +69,7 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
       role="region"
       aria-label="Cookie consent banner"
       id="cookie-consent-banner"
-      className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 shadow-[0_-10px_35px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom duration-300"
+      className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 shadow-[0_-10px_35px_rgba(0,0,0,0.6)]"
     >
       <div className="max-w-6xl mx-auto">
         {!showSettings ? (
@@ -102,7 +102,7 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
               <button
                 type="button"
                 onClick={() => setShowSettings(true)}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg transition-all cursor-pointer"
+                className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors cursor-pointer"
                 id="cookie-settings-btn"
               >
                 Customize
@@ -110,7 +110,7 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
               <button
                 type="button"
                 onClick={handleDeclineNonEssential}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800 border border-slate-800/80 rounded-lg transition-all cursor-pointer"
+                className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors cursor-pointer"
                 id="cookie-decline-btn"
               >
                 Essential Only
@@ -118,7 +118,7 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
               <button
                 type="button"
                 onClick={handleAcceptAll}
-                className="px-4 py-2 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 rounded-lg shadow transition-all cursor-pointer flex items-center gap-1.5"
+                className="min-h-[44px] px-4 py-2 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 rounded-lg shadow transition-colors cursor-pointer flex items-center gap-1.5"
                 id="cookie-accept-all-btn"
               >
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -127,7 +127,7 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
             </div>
           </div>
         ) : (
-          <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-amber-500" />
@@ -138,7 +138,7 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
-                className="text-slate-400 hover:text-white text-xs bg-slate-900 p-1 rounded-md"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-300 hover:text-white text-xs bg-slate-900 rounded-md cursor-pointer transition-colors"
                 aria-label="Back to banner"
               >
                 <X className="w-4 h-4" />
@@ -197,14 +197,14 @@ export default function CookieConsentBanner({ onOpenPrivacyPolicy }: CookieConse
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
-                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                className="min-h-[44px] px-4 py-2 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={handleSavePreferences}
-                className="px-4 py-1.5 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 rounded-lg shadow transition-all"
+                className="min-h-[44px] px-4 py-2 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 rounded-lg shadow transition-colors cursor-pointer"
               >
                 Save Preferences
               </button>

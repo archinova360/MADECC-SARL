@@ -12,8 +12,6 @@ import {
   FileCheck2
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils.ts';
-import { motion } from 'motion/react';
-import { InteractiveCard } from './MotionReveal.tsx';
 
 interface QuickEstimatorProps {
   onNavigateToTab: (tab: string, state?: any) => void;
@@ -134,7 +132,7 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
                     type="button"
                     onClick={() => setSelectedType(type.id)}
                     aria-pressed={isSelected}
-                    className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+                    className={`min-h-[44px] p-3.5 rounded-xl border text-left transition-colors relative flex flex-col justify-between cursor-pointer ${
                       isSelected
                         ? 'bg-amber-500/15 border-amber-500 text-white shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/50'
                         : 'bg-slate-800/60 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
@@ -208,7 +206,7 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
                     key={grade}
                     type="button"
                     onClick={() => setFinishGrade(grade)}
-                    className={`py-2 text-xs font-semibold capitalize rounded-lg transition-all ${
+                    className={`min-h-[44px] py-2 text-xs font-semibold capitalize rounded-lg transition-colors cursor-pointer ${
                       finishGrade === grade
                         ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
                         : 'text-slate-400 hover:text-slate-200'
@@ -286,7 +284,7 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
             <button
               type="button"
               onClick={() => onNavigateToTab('request-a-quote', { selectedService: activeType.name })}
-              className="w-full py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm transition-all transform active:scale-[0.98]"
+              className="w-full min-h-[44px] py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm transition-[transform,background-color] active:scale-[0.98] cursor-pointer"
             >
               <span>Get Formal Engineer's BOQ Quote</span>
               <ArrowRight className="w-4 h-4" />
@@ -294,7 +292,7 @@ export function InteractiveQuickEstimator({ onNavigateToTab, currency = 'XAF' }:
             <button
               type="button"
               onClick={() => onNavigateToTab('budget-calculator')}
-              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 text-center transition-colors"
+              className="w-full min-h-[44px] py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 text-center transition-colors cursor-pointer"
             >
               Open Full 30-Parameter Cost Breakdown Engine →
             </button>

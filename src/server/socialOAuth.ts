@@ -2494,7 +2494,7 @@ async function publishToInstagram(
 ): Promise<PlatformPublishResult> {
   const accountHandle = channel?.accountHandle?.replace('@', '') || 'instagram_business';
   const fullCaption = `${content.title ? content.title + '\n\n' : ''}${content.caption || ''}\n\n${content.ctaText || ''}\n\n${content.hashtags || ''}`.trim();
-  const rawMedia = content.mediaUrl || 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80';
+  const rawMedia = content.mediaUrl || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80';
   const effectiveMedia = rawMedia.startsWith('http://') || rawMedia.startsWith('https://')
     ? rawMedia
     : `https://madeccgroup.online${rawMedia.startsWith('/') ? '' : '/'}${rawMedia}`;

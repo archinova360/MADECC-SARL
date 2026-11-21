@@ -7,16 +7,37 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { registerSW } from 'virtual:pwa-register';
 import { initCsrfProtection } from './lib/csrf.ts';
 
-// Register PWA service worker with offline caching
+// Promote non-blocking Google Fonts stylesheet once loaded
+if (typeof document !== 'undefined') {
+  const fontLink = document.getElementById('madecc-google-fonts') as HTMLLinkElement | null;
+  if (fontLink) {
+    fontLink.media = 'all';
+  }
+}
+
+// Defer PWA service worker registration so initial render & LCP are unobstructed
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  registerSW({ immediate: true });
+  const scheduleSw = () => registerSW({ immediate: true });
+  const triggerDeferredSw = () => {
+    const win = window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number };
+    if (typeof win.requestIdleCallback === 'function') {
+      win.requestIdleCallback(scheduleSw, { timeout: 2500 });
+    } else {
+      window.setTimeout(scheduleSw, 1200);
+    }
+  };
+  if (document.readyState === 'complete') {
+    triggerDeferredSw();
+  } else {
+    window.addEventListener('load', triggerDeferredSw, { once: true });
+  }
 }
 
 // Initialize global CSRF protection headers for all write requests
 initCsrfProtection();
 
-// Gracefully handle development HMR WebSocket disconnection errors
-if (typeof window !== 'undefined') {
+// Gracefully handle development HMR WebSocket disconnection errors in dev mode only
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
     const reasonStr = String(event.reason?.message || event.reason || '');
     if (

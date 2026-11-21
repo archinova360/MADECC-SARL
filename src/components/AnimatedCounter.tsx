@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useReducedMotion } from 'motion/react';
 
 interface AnimatedCounterProps {
   value: number;
@@ -23,7 +22,10 @@ export default function AnimatedCounter({
   const [displayValue, setDisplayValue] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
     if (shouldReduceMotion) {

@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
       (function() {
+        var host = (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
+        var isDevPreviewHost = (
+          host === 'localhost' ||
+          host === '127.0.0.1' ||
+          host.indexOf('.run.app') !== -1 ||
+          host.indexOf('.ai.studio') !== -1 ||
+          host.indexOf('googleusercontent.com') !== -1
+        );
+        if (!isDevPreviewHost) return;
         // 1. Intercept console.error to suppress Vite HMR WebSocket disconnect messages in dev preview
         if (typeof window !== 'undefined' && window.console && window.console.error) {
           var origError = window.console.error;
@@ -137,15 +146,22 @@
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="dns-prefetch" href="https://images.unsplash.com" />
 
-    <!-- Non-Blocking Asynchronous Google Fonts Loading (Prevents 510ms render-blocking penalty) -->
+    <!-- Non-Blocking Asynchronous Google Fonts Loading without inline onload attribute -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" media="print" onload="this.media='all'" />
+    <link id="madecc-google-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" media="print" />
     <noscript>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
     </noscript>
 
-    <!-- Preload Mobile Hero LCP Image to slash LCP -->
-    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=75&fm=webp" fetchpriority="high" />
+    <!-- Preload Responsive Hero LCP Image matching HeroVideoPlayer srcSet -->
+    <link
+      rel="preload"
+      as="image"
+      href="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=800&q=75&fm=webp"
+      imagesrcset="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=480&q=70&fm=webp 480w, https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=768&q=75&fm=webp 768w, https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=80&fm=webp 1200w"
+      imagesizes="(max-width: 768px) 100vw, 1200px"
+      fetchpriority="high"
+    />
 
     <!-- Structured Data (JSON-LD) for LocalBusiness / GeneralContractor -->
     <script type="application/ld+json">

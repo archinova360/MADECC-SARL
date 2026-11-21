@@ -1,5 +1,19 @@
 {
-  "schema_version": "1.0",
+  "$schema": "https://madeccgroup.online/ai-catalog.json",
+  "schema_version": "1.1",
+  "version": "1.1.0",
+  "name": "MADECC GROUP AI & Service Discovery Catalog",
+  "description": "Machine-readable corporate identity, engineering calculators, public APIs, and governance index for MADECC GROUP (Yaoundé, Cameroon).",
+  "url": "https://madeccgroup.online",
+  "llmsTxtUrl": "https://madeccgroup.online/llms.txt",
+  "sitemapUrl": "https://madeccgroup.online/sitemap.xml",
+  "capabilities": [
+    "civil-engineering-estimation",
+    "construction-boq-api",
+    "concrete-mix-design",
+    "corporate-website-development",
+    "multi-division-procurement"
+  ],
   "organization": {
     "name": "MADECC GROUP",
     "url": "https://madeccgroup.online",
@@ -7,6 +21,7 @@
     "taxID": "P030217852934P",
     "registrationStatus": "Individual establishment registration pending (formal RCCM completion pending)",
     "headquarters": {
+      "streetAddress": "Mbankolo",
       "city": "Yaounde",
       "region": "Centre",
       "country": "Cameroon"

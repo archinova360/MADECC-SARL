@@ -72,6 +72,7 @@ import {
 import { parseApiResponse } from '../utils/apiHelper.ts';
 import MediaPreviewImage from './MediaPreviewImage.tsx';
 import { getAuthToken } from '../lib/firebase.ts';
+import { uploadMediaAssetDirect, formatSpeed, formatEta } from '../lib/directMediaUpload.ts';
 
 export interface ExtendedChannelItem extends SocialChannelItem {
   approvalStatus?: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ACTIVE';
@@ -394,158 +395,47 @@ export default function SocialMediaStudio({ currentUser }: SocialMediaStudioProp
     }));
 
     setIsUploadingMedia(true);
-    setUploadProgressText(`Uploading ${isVideo ? 'video' : 'image'} to Cloudinary (0%)...`);
-    if (showToast) showToast(`Uploading ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)}MB) to Cloudinary...`, 'info');
-
-    const uploadViaServerProxy = async (): Promise<string> => {
-      setUploadProgressText(`Uploading ${isVideo ? 'video' : 'image'} via secure server proxy...`);
-      const proxyFormData = new FormData();
-      proxyFormData.append('file', file);
-      const token = await getAuthToken();
-      
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: proxyFormData
-      });
-
-      const rawText = await res.text();
-      let proxyData: any = {};
-      try {
-        proxyData = JSON.parse(rawText);
-      } catch (parseErr) {
-        if (!res.ok) {
-          throw new Error(`Server proxy upload failed with status ${res.status}`);
-        }
-      }
-
-      if (!res.ok && proxyData.error) {
-        throw new Error(proxyData.error);
-      }
-
-      const serverUrl = proxyData.url || proxyData.secure_url;
-      if (!serverUrl) {
-        throw new Error('No media URL returned from upload server');
-      }
-      return serverUrl;
-    };
+    setUploadProgressText(`Preparing ${isVideo ? 'video' : 'image'} upload (0%)...`);
+    if (showToast) showToast(`Uploading ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`, 'info');
 
     try {
       const token = await getAuthToken();
-      let signedTicket: any = null;
-      try {
-        const sigRes = await fetch('/api/cloudinary-signature', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (sigRes.ok) {
-          signedTicket = await sigRes.json();
-        }
-      } catch (ticketErr) {
-        console.warn('Could not fetch signed Cloudinary ticket, will use server upload:', ticketErr);
-      }
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'madecc',
+        authToken: token,
+        useCmsEndpoint: false,
+        onProgress: (p) => {
+          const speedStr = p.speedBytesPerSec > 0 ? ` · ${formatSpeed(p.speedBytesPerSec)}` : '';
+          const etaStr = p.etaSeconds !== null ? ` · ETA ${formatEta(p.etaSeconds)}` : '';
+          setUploadProgressText(`${p.label || 'Uploading'}: ${p.percent}%${speedStr}${etaStr}`);
+        },
+      });
 
-      const applyUploadedUrl = async (secureUrl: string, providerName: string) => {
-        setIsUploadingMedia(false);
-        setUploadProgressText('');
-        URL.revokeObjectURL(tempObjectUrl);
-
-        const updatedPost = {
-          ...generatedPost,
-          mediaUrl: secureUrl,
-          mediaType: detectedMediaType
-        };
-        setGeneratedPost(updatedPost);
-
-        // Auto-save post with persistent URL to Neon PostgreSQL
-        await handleSaveDraft(updatedPost, true);
-
-        addAuditLog('MEDIA_UPLOAD_SUCCESS', `Uploaded ${detectedMediaType} (${file.name}) via ${providerName}: ${secureUrl}`, 'CONTENT', 'SUCCESS');
-        if (showToast) showToast(`✓ ${isVideo ? 'Video' : 'Image'} uploaded successfully!`, 'success');
+      const updatedPost = {
+        ...generatedPost,
+        mediaUrl: result.url,
+        mediaType: detectedMediaType
       };
+      setGeneratedPost(updatedPost);
 
-      if (signedTicket && signedTicket.signature && signedTicket.cloudName) {
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
+      // Auto-save post with persistent URL to Neon PostgreSQL
+      await handleSaveDraft(updatedPost, true);
 
-        formData.append('file', file);
-        formData.append('api_key', signedTicket.apiKey);
-        formData.append('timestamp', signedTicket.timestamp.toString());
-        formData.append('signature', signedTicket.signature);
-        formData.append('folder', signedTicket.folder || 'madecc');
-
-        const uploadUrl = `https://api.cloudinary.com/v1_1/${signedTicket.cloudName}/auto/upload`;
-        xhr.open('POST', uploadUrl, true);
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            const loadedMb = (event.loaded / (1024 * 1024)).toFixed(1);
-            const totalMb = (event.total / (1024 * 1024)).toFixed(1);
-            setUploadProgressText(`Uploading: ${percent}% (${loadedMb}MB / ${totalMb}MB)`);
-          }
-        };
-
-        xhr.onload = async () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              const secureUrl = data.secure_url || data.url;
-              if (secureUrl) {
-                await applyUploadedUrl(secureUrl, 'Direct Cloudinary');
-                return;
-              }
-            } catch (pErr) {
-              console.warn('[CLOUDINARY_DIRECT_PARSE_WARN] Failed parsing response, falling back to proxy:', pErr);
-            }
-          }
-
-          // If direct Cloudinary upload failed (e.g. 403 Forbidden, CORS, or misconfigured account), seamlessly fallback to server upload
-          console.warn(`[CLOUDINARY_DIRECT_UPLOAD_FAILED] HTTP ${xhr.status}. Initiating automatic server fallback...`);
-          try {
-            const fallbackUrl = await uploadViaServerProxy();
-            await applyUploadedUrl(fallbackUrl, 'Server Storage');
-          } catch (fbErr: any) {
-            setIsUploadingMedia(false);
-            setUploadProgressText('');
-            URL.revokeObjectURL(tempObjectUrl);
-            console.error('[MEDIA_UPLOAD_FINAL_ERROR]', fbErr);
-            if (showToast) showToast(`Media upload failed: ${fbErr.message}`, 'error');
-          }
-        };
-
-        xhr.onerror = async () => {
-          console.warn('[CLOUDINARY_DIRECT_XHR_ERROR] Network issue on direct upload. Trying server fallback...');
-          try {
-            const fallbackUrl = await uploadViaServerProxy();
-            await applyUploadedUrl(fallbackUrl, 'Server Storage');
-          } catch (fbErr: any) {
-            setIsUploadingMedia(false);
-            setUploadProgressText('');
-            URL.revokeObjectURL(tempObjectUrl);
-            console.error('[MEDIA_UPLOAD_FINAL_ERROR]', fbErr);
-            if (showToast) showToast(`Media upload failed: ${fbErr.message}`, 'error');
-          }
-        };
-
-        xhr.send(formData);
-      } else {
-        // Direct ticket not available - use server proxy immediately
-        try {
-          const fallbackUrl = await uploadViaServerProxy();
-          await applyUploadedUrl(fallbackUrl, 'Server Storage');
-        } catch (serverErr: any) {
-          setIsUploadingMedia(false);
-          setUploadProgressText('');
-          URL.revokeObjectURL(tempObjectUrl);
-          console.error('[MEDIA_UPLOAD_PROXY_ERROR]', serverErr);
-          if (showToast) showToast(`Media upload failed: ${serverErr.message}`, 'error');
-        }
-      }
+      addAuditLog(
+        'MEDIA_UPLOAD_SUCCESS',
+        `Uploaded ${detectedMediaType} (${file.name}) via ${result.storageProvider}: ${result.url}`,
+        'CONTENT',
+        'SUCCESS'
+      );
+      if (showToast) showToast(`✓ ${isVideo ? 'Video' : 'Image'} uploaded successfully!`, 'success');
     } catch (err: any) {
+      console.error('[MEDIA_UPLOAD_ERROR]', err);
+      if (showToast) showToast(`Media upload failed: ${err?.message || 'Upload error'}`, 'error');
+    } finally {
       setIsUploadingMedia(false);
       setUploadProgressText('');
       URL.revokeObjectURL(tempObjectUrl);
-      if (showToast) showToast(`Failed to initiate upload: ${err.message}`, 'error');
     }
   };
 

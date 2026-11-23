@@ -26,6 +26,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { exportTenderNoticePDF, exportTenderNoticeDOCX } from '../lib/exportEngine.ts';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 
 interface Tender {
   id: number;
@@ -70,7 +71,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
   const [eoiEmail, setEoiEmail] = useState('');
   const [eoiPhone, setEoiPhone] = useState('');
   const [eoiStatement, setEoiStatement] = useState('');
-  const [eoiDocs, setEoiDocs] = useState<{ title: string; fileUrl: string; fileName?: string }[]>([]);
+  const [eoiDocs, setEoiDocs] = useState<{ title: string; fileUrl: string; fileName?: string; fileType?: string; fileSize?: number }[]>([]);
   const [uploadingEoi, setUploadingEoi] = useState(false);
   const [submittingEoi, setSubmittingEoi] = useState(false);
   const [eoiSuccess, setEoiSuccess] = useState<string | null>(null);
@@ -213,27 +214,26 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
     setUploadingEoi(true);
     setEoiError('');
     const file = files[0];
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
-      const res = await fetch('/api/public/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      const uploadedUrl = data.fileUrl || data.url;
-      if (uploadedUrl) {
-        setEoiDocs(prev => [...prev, { 
-          title: data.fileName || file.name, 
-          fileUrl: uploadedUrl,
-          fileName: data.fileName || file.name,
-          fileType: data.fileType || file.type || 'application/pdf',
-          fileSize: data.fileSize || file.size
-        }]);
-      } else {
-        throw new Error(data.error || 'Upload returned no URL');
-      }
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'madecc/tenders',
+        useCmsEndpoint: false,
+      });
+      setEoiDocs((prev) => [
+        ...prev,
+        {
+          title: result.filename || file.name,
+          fileUrl: result.url,
+          fileName: result.filename || file.name,
+          fileType: result.mimeType || file.type || 'application/pdf',
+          fileSize: result.fileSize || file.size,
+        },
+      ]);
     } catch (err: any) {
       console.error('File upload failed:', err);
-      setEoiError('Failed to upload file. Please verify file format and size (max 50MB).');
+      setEoiError(err?.message || 'Failed to upload file. Please verify file format and size.');
     } finally {
       setUploadingEoi(false);
       e.target.value = '';

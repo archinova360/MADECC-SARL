@@ -16,6 +16,7 @@ import {
   ChevronRight,
   UserCheck
 } from 'lucide-react';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 
 interface ComplianceDoc {
   title: string;
@@ -119,34 +120,33 @@ export const SuppliersSubcontractors: React.FC<Props> = ({ onNavigateToTab }) =>
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Handle document file upload using existing upload API
+  // Handle document file upload via direct chunked / TUS cloud pipeline
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', files[0]);
+    setErrorMsg('');
+    const file = files[0];
 
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'supplier_docs',
+        useCmsEndpoint: false,
       });
-      const data = await res.json();
-      if (data.url) {
-        setUploadedDocs([
-          ...uploadedDocs,
-          {
-            title: docType,
-            docType,
-            fileUrl: data.url,
-            fileName: files[0].name
-          }
-        ]);
-      }
-    } catch (err) {
+      setUploadedDocs((prev) => [
+        ...prev,
+        {
+          title: docType,
+          docType,
+          fileUrl: result.url,
+          fileName: result.filename || file.name,
+        },
+      ]);
+    } catch (err: any) {
       console.error('File upload failed:', err);
+      setErrorMsg(err?.message || 'Document upload failed. Please try again.');
     } finally {
       setUploading(false);
     }

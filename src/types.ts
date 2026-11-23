@@ -314,6 +314,10 @@ export interface MediaItem {
   status: 'ACTIVE' | 'ARCHIVED';
   storageProvider?: string;
   publicId?: string;
+  uploadStatus?: string;
+  uploadCompletedAt?: string | null;
+  ownerUserId?: number | null;
+  fileFingerprint?: string | null;
   uploadedBy?: string;
   createdAt: string;
   updatedAt: string;

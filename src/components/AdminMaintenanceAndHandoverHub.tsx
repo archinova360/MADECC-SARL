@@ -129,7 +129,7 @@ export const AdminMaintenanceAndHandoverHub: React.FC = () => {
     {
       num: '01',
       title: 'No-Code Brand Identity, Logo, Colors & Contact Info',
-      location: 'Admin Dashboard (#admin) → CMS & Site Settings',
+      location: 'Admin Dashboard (#admin) → 08. Website CMS & Publishing → Global Site Branding & Settings',
       icon: Building2,
       items: [
         'Company Name (siteName), Tagline, Legal Status, RCCM & NIU Tax ID',

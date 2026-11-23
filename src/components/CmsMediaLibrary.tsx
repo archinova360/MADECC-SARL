@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Upload,
   Search,
@@ -8,22 +8,34 @@ import {
   Check,
   Film,
   Image as ImageIcon,
+  FileText,
   Plus,
   RefreshCw,
   CheckCircle2,
   X,
   Play,
+  Pause,
+  RotateCcw,
   FolderOpen,
   Link2,
   Replace,
   AlertTriangle,
+  HardDrive,
 } from 'lucide-react';
 import { MediaItem } from '../types.ts';
 import { getCsrfHeaders } from '../lib/csrf.ts';
 import { getOptimizedImageUrl } from '../lib/utils.ts';
 import { getAuthToken } from '../lib/firebase.ts';
 import { cmsFetch } from './cms/cmsClient.ts';
-import { uploadMediaAssetDirect, ingestRemoteMediaUrl } from '../lib/directMediaUpload.ts';
+import {
+  uploadMediaAssetDirect,
+  ingestRemoteMediaUrl,
+  fetchUploadCapabilities,
+  formatBytes,
+  formatEta,
+  formatSpeed,
+  UploadCapabilities,
+} from '../lib/directMediaUpload.ts';
 
 interface CmsMediaLibraryProps {
   onSelectMedia?: (media: MediaItem) => void;
@@ -47,7 +59,27 @@ export default function CmsMediaLibrary({
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Upload modal state
+  // Upload modal & multi-file resumable queue state
+  interface QueuedUploadItem {
+    id: string;
+    file: File;
+    title: string;
+    previewUrl: string | null;
+    kind: 'image' | 'video' | 'document';
+    status: 'queued' | 'uploading' | 'paused' | 'verifying' | 'completed' | 'error' | 'cancelled';
+    percent: number;
+    loadedBytes: number;
+    speedBytesPerSec: number;
+    etaSeconds: number | null;
+    stageLabel: string;
+    chunkText?: string;
+    error?: string;
+    duplicateMatch?: MediaItem | null;
+    resultUrl?: string;
+  }
+
+  const [capabilities, setCapabilities] = useState<UploadCapabilities | null>(null);
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCategory, setUploadCategory] = useState(initialFilterType === 'video' ? 'Hero Media' : 'General');
@@ -61,7 +93,7 @@ export default function CmsMediaLibrary({
   const [uploadSubtitlesUrl, setUploadSubtitlesUrl] = useState('');
   const [uploadTranscript, setUploadTranscript] = useState('');
   const [uploadDurationSeconds, setUploadDurationSeconds] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<QueuedUploadItem[]>([]);
   const [uploadUrlDirect, setUploadUrlDirect] = useState('');
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
   const [isUploading, setIsUploading] = useState(false);
@@ -70,6 +102,12 @@ export default function CmsMediaLibrary({
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [uploadAbortController, setUploadAbortController] = useState<AbortController | null>(null);
   const [uploadError, setUploadError] = useState('');
+
+  // Per-item pause/abort runtime refs so pause/resume works reliably without stale closures
+  const itemControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const pausedIdsRef = useRef<Set<string>>(new Set());
+  const pauseResolversRef = useRef<Map<string, (action: 'resume' | 'abort') => void>>(new Map());
+  const previewUrlsRef = useRef<string[]>([]);
 
   // Edit modal state
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
@@ -95,6 +133,7 @@ export default function CmsMediaLibrary({
   const [replaceFile, setReplaceFile] = useState<File | null>(null);
   const [replaceUpdateRefs, setReplaceUpdateRefs] = useState(true);
   const [isReplacing, setIsReplacing] = useState(false);
+  const [replaceProgressText, setReplaceProgressText] = useState('');
 
   // Video preview player modal
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
@@ -111,6 +150,29 @@ export default function CmsMediaLibrary({
   useEffect(() => {
     setSelectedType(initialFilterType);
   }, [initialFilterType]);
+
+  const loadCapabilities = async (refresh = false) => {
+    setCapabilitiesLoading(true);
+    try {
+      const token = await getAuthToken();
+      const caps = await fetchUploadCapabilities({ authToken: token, isCms: true, refresh });
+      if (caps) setCapabilities(caps);
+    } finally {
+      setCapabilitiesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCapabilities(false);
+    return () => {
+      previewUrlsRef.current.forEach((u) => {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
+      });
+      previewUrlsRef.current = [];
+    };
+  }, []);
 
   const showNotice = (type: 'success' | 'error', text: string) => {
     setStatusNotice({ type, text });
@@ -149,14 +211,305 @@ export default function CmsMediaLibrary({
 
   const isUploadVideo =
     initialFilterType === 'video' ||
-    Boolean(uploadFile?.type.startsWith('video/')) ||
+    uploadQueue.some((q) => q.kind === 'video') ||
     uploadUrlDirect.endsWith('.mp4') ||
     uploadUrlDirect.endsWith('.webm') ||
     uploadFolder === 'Videos';
 
+  const enqueueFiles = (fileList: FileList | File[]) => {
+    const incoming = Array.from(fileList || []);
+    if (incoming.length === 0) return;
+
+    const newItems: QueuedUploadItem[] = incoming.map((file) => {
+      const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|avi|mkv)$/i.test(file.name);
+      const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|avif|svg)$/i.test(file.name);
+      let previewUrl: string | null = null;
+      if (isImg || isVid) {
+        previewUrl = URL.createObjectURL(file);
+        previewUrlsRef.current.push(previewUrl);
+      }
+      const duplicateMatch =
+        mediaList.find(
+          (m) => m.filename === file.name && Number(m.fileSize || 0) === file.size && m.status === 'ACTIVE'
+        ) || null;
+
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        previewUrl,
+        kind: isVid ? 'video' : isImg ? 'image' : 'document',
+        status: 'queued',
+        percent: 0,
+        loadedBytes: 0,
+        speedBytesPerSec: 0,
+        etaSeconds: null,
+        stageLabel: duplicateMatch ? 'Duplicate detected in library (ready to upload copy or remove)' : 'Queued',
+        duplicateMatch,
+      };
+    });
+
+    setUploadQueue((prev) => {
+      const merged = [...prev, ...newItems];
+      if (!uploadTitle && merged.length === 1) {
+        setUploadTitle(merged[0].title);
+      }
+      return merged;
+    });
+    setUploadError('');
+  };
+
+  const removeQueueItem = (itemId: string) => {
+    const ctrl = itemControllersRef.current.get(itemId);
+    if (ctrl) ctrl.abort();
+    const resolver = pauseResolversRef.current.get(itemId);
+    if (resolver) {
+      resolver('abort');
+      pauseResolversRef.current.delete(itemId);
+    }
+    pausedIdsRef.current.delete(itemId);
+    setUploadQueue((prev) => {
+      const target = prev.find((i) => i.id === itemId);
+      if (target?.previewUrl) {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {}
+      }
+      return prev.filter((i) => i.id !== itemId);
+    });
+  };
+
+  const togglePauseQueueItem = (itemId: string) => {
+    if (pausedIdsRef.current.has(itemId)) {
+      pausedIdsRef.current.delete(itemId);
+      const resolver = pauseResolversRef.current.get(itemId);
+      if (resolver) {
+        resolver('resume');
+        pauseResolversRef.current.delete(itemId);
+      }
+      setUploadQueue((prev) =>
+        prev.map((q) => (q.id === itemId ? { ...q, status: 'uploading', stageLabel: 'Resuming upload...' } : q))
+      );
+    } else {
+      pausedIdsRef.current.add(itemId);
+      setUploadQueue((prev) =>
+        prev.map((q) =>
+          q.id === itemId
+            ? { ...q, status: 'paused', stageLabel: 'Pausing after active chunk finishes...' }
+            : q
+        )
+      );
+    }
+  };
+
+  const uploadSingleQueueItem = async (
+    item: QueuedUploadItem,
+    totalCount: number,
+    csrf: Record<string, string>,
+    authToken: string | null
+  ): Promise<boolean> => {
+    const controller = new AbortController();
+    itemControllersRef.current.set(item.id, controller);
+
+    const resolveItemTitle = () => {
+      if (totalCount === 1 && uploadTitle.trim()) return uploadTitle.trim();
+      return item.title || item.file.name.replace(/\.[^/.]+$/, '');
+    };
+
+    try {
+      setUploadQueue((prev) =>
+        prev.map((q) =>
+          q.id === item.id ? { ...q, status: 'uploading', error: undefined, stageLabel: 'Signing upload ticket...' } : q
+        )
+      );
+
+      const directRes = await uploadMediaAssetDirect({
+        file: item.file,
+        folder: `madecc/cms_media/${uploadFolder.toLowerCase()}`,
+        fileType: uploadCategory === 'Logos' ? 'logo' : undefined,
+        authToken,
+        csrfHeaders: csrf,
+        useCmsEndpoint: true,
+        signal: controller.signal,
+        shouldPause: () => pausedIdsRef.current.has(item.id),
+        waitWhilePaused: () =>
+          new Promise<'resume' | 'abort'>((resolve) => {
+            setUploadQueue((prev) =>
+              prev.map((q) => (q.id === item.id ? { ...q, status: 'paused' } : q))
+            );
+            pauseResolversRef.current.set(item.id, resolve);
+          }),
+        onProgress: (p) => {
+          setUploadQueue((prev) =>
+            prev.map((q) =>
+              q.id === item.id
+                ? {
+                    ...q,
+                    status: p.stage === 'paused' ? 'paused' : p.stage === 'verifying' ? 'verifying' : 'uploading',
+                    percent: p.percent,
+                    loadedBytes: p.loadedBytes,
+                    speedBytesPerSec: p.speedBytesPerSec,
+                    etaSeconds: p.etaSeconds,
+                    stageLabel: p.label,
+                    chunkText:
+                      p.chunkIndex && p.totalChunks ? `Chunk ${p.chunkIndex}/${p.totalChunks}` : undefined,
+                  }
+                : q
+            )
+          );
+          if (totalCount === 1) {
+            setUploadProgress(p.percent);
+            setUploadStatusLabel(p.label);
+          }
+        },
+      });
+
+      const mimeType = directRes.mimeType || item.file.type || 'application/octet-stream';
+      const resolvedTitle = resolveItemTitle();
+      let finalFileType: 'image' | 'video' | 'document' | 'logo' = 'image';
+      if (mimeType.startsWith('video/')) finalFileType = 'video';
+      else if (uploadCategory === 'Logos') finalFileType = 'logo';
+      else if (mimeType.includes('pdf') || mimeType.includes('doc') || item.kind === 'document') {
+        finalFileType = 'document';
+      }
+
+      setUploadQueue((prev) =>
+        prev.map((q) =>
+          q.id === item.id
+            ? { ...q, status: 'verifying', percent: 97, stageLabel: 'Saving asset metadata in Neon DB...' }
+            : q
+        )
+      );
+
+      const tagsArray = uploadTags.split(',').map((t) => t.trim()).filter(Boolean);
+      const regData = await cmsFetch('/api/cms/media', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: resolvedTitle,
+          filename: directRes.filename || item.file.name,
+          fileUrl: directRes.url,
+          fileType: finalFileType,
+          mimeType,
+          fileSize: directRes.fileSize || item.file.size,
+          dimensions: directRes.dimensions,
+          storageProvider: directRes.storageProvider,
+          publicId: directRes.publicId || '',
+          fileFingerprint: directRes.fileFingerprint,
+          uploadStatus: 'COMPLETED',
+          uploadCompletedAt: new Date().toISOString(),
+          altText: totalCount === 1 && uploadAltText ? uploadAltText : resolvedTitle,
+          caption: uploadCaption,
+          description: uploadDescription,
+          creditSource: uploadCreditSource,
+          folder: uploadFolder,
+          thumbnailUrl: uploadThumbnailUrl || undefined,
+          subtitlesUrl: uploadSubtitlesUrl || undefined,
+          transcript: uploadTranscript || undefined,
+          durationSeconds: uploadDurationSeconds
+            ? Number(uploadDurationSeconds)
+            : directRes.durationSeconds || undefined,
+          category: uploadCategory,
+          tags: tagsArray,
+        }),
+      });
+
+      if (!regData.success) {
+        throw new Error(regData.error || 'Failed to register media in database');
+      }
+
+      setUploadQueue((prev) =>
+        prev.map((q) =>
+          q.id === item.id
+            ? {
+                ...q,
+                status: 'completed',
+                percent: 100,
+                loadedBytes: item.file.size,
+                speedBytesPerSec: 0,
+                etaSeconds: 0,
+                stageLabel: 'Saved & Verified',
+                resultUrl: directRes.url,
+              }
+            : q
+        )
+      );
+      return true;
+    } catch (err: any) {
+      const isAbort = err?.name === 'AbortError';
+      setUploadQueue((prev) =>
+        prev.map((q) =>
+          q.id === item.id
+            ? {
+                ...q,
+                status: isAbort ? 'cancelled' : 'error',
+                speedBytesPerSec: 0,
+                etaSeconds: null,
+                error: isAbort ? 'Cancelled' : err?.message || 'Upload failed',
+                stageLabel: isAbort ? 'Cancelled' : err?.message || 'Upload failed',
+              }
+            : q
+        )
+      );
+      return false;
+    } finally {
+      itemControllersRef.current.delete(item.id);
+      pausedIdsRef.current.delete(item.id);
+      pauseResolversRef.current.delete(item.id);
+    }
+  };
+
+  const retryQueueItem = async (itemId: string) => {
+    const target = uploadQueue.find((q) => q.id === itemId);
+    if (!target || isUploading) return;
+    setIsUploading(true);
+    try {
+      const csrf = await getCsrfHeaders();
+      const authToken = await getAuthToken();
+      const ok = await uploadSingleQueueItem(target, uploadQueue.length, csrf, authToken);
+      if (ok) {
+        fetchMedia();
+        showNotice('success', `Uploaded "${target.title}".`);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const resetUploadModal = () => {
+    previewUrlsRef.current.forEach((u) => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {}
+    });
+    previewUrlsRef.current = [];
+    setUploadQueue([]);
+    setUploadTitle('');
+    setUploadAltText('');
+    setUploadCaption('');
+    setUploadDescription('');
+    setUploadCreditSource('');
+    setUploadTags('');
+    setUploadThumbnailUrl('');
+    setUploadSubtitlesUrl('');
+    setUploadTranscript('');
+    setUploadDurationSeconds('');
+    setUploadUrlDirect('');
+    setUploadError('');
+    setUploadProgress(0);
+    setUploadStatusLabel('');
+  };
+
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadTitle.trim()) {
+    if (uploadMode === 'file' && uploadQueue.length === 0) {
+      setUploadError('Please select or drop at least one file to upload.');
+      return;
+    }
+    if (uploadMode === 'file' && uploadQueue.length === 1 && !uploadTitle.trim()) {
+      setUploadError('Please provide a title for the media item.');
+      return;
+    }
+    if (uploadMode === 'url' && !uploadTitle.trim()) {
       setUploadError('Please provide a title for the media item.');
       return;
     }
@@ -169,78 +522,64 @@ export default function CmsMediaLibrary({
     setUploadStatusLabel('Preparing upload...');
 
     try {
-      let finalFileUrl = uploadUrlDirect.trim();
-      let finalFileType: 'image' | 'video' | 'document' | 'logo' = 'image';
-      let mimeType = 'image/jpeg';
-      let fileSize = 0;
-      let filename = '';
-      let storageProvider = 'cloudinary';
-      let publicId = '';
-
       const csrf = await getCsrfHeaders();
       const authToken = await getAuthToken();
 
-      if (uploadMode === 'file' && uploadFile) {
-        const directRes = await uploadMediaAssetDirect({
-          file: uploadFile,
-          folder: `madecc/cms_media/${uploadFolder.toLowerCase()}`,
-          fileType: uploadCategory === 'Logos' ? 'logo' : undefined,
-          authToken,
-          csrfHeaders: csrf,
-          useCmsEndpoint: true,
-          signal: controller.signal,
-          onProgress: (p) => {
-            setUploadProgress(p.percent);
-            setUploadStatusLabel(p.label);
-          },
-        });
+      if (uploadMode === 'file') {
+        const pending = uploadQueue.filter(
+          (q) => q.status === 'queued' || q.status === 'error' || q.status === 'cancelled'
+        );
+        let successCount = 0;
+        let failCount = 0;
 
-        finalFileUrl = directRes.url;
-        mimeType = directRes.mimeType || uploadFile.type;
-        fileSize = directRes.fileSize || uploadFile.size;
-        filename = directRes.filename || uploadFile.name;
-        storageProvider = directRes.storageProvider;
-        publicId = directRes.publicId || '';
+        for (const item of pending) {
+          if (controller.signal.aborted) break;
+          const ok = await uploadSingleQueueItem(item, uploadQueue.length, csrf, authToken);
+          if (ok) successCount++;
+          else failCount++;
+        }
 
-        if (mimeType.startsWith('video/')) {
-          finalFileType = 'video';
-        } else if (uploadCategory === 'Logos') {
-          finalFileType = 'logo';
-        } else if (mimeType.includes('pdf') || mimeType.includes('doc')) {
-          finalFileType = 'document';
-        } else {
-          finalFileType = 'image';
+        if (successCount > 0) {
+          fetchMedia();
         }
-      } else {
-        if (!finalFileUrl) {
-          throw new Error('Please enter a valid media URL.');
+        if (failCount === 0 && successCount > 0) {
+          setShowUploadModal(false);
+          resetUploadModal();
+          showNotice(
+            'success',
+            successCount === 1
+              ? 'Asset uploaded, verified & registered in CMS Media Library.'
+              : `${successCount} assets uploaded, verified & registered in CMS Media Library.`
+          );
+        } else if (failCount > 0) {
+          setUploadError(`${failCount} file(s) did not complete. Check individual queue status to retry.`);
         }
-        setUploadStatusLabel('Fetching & verifying remote HTTPS media safely...');
-        setUploadProgress(35);
-        const ingested = await ingestRemoteMediaUrl({
-          url: finalFileUrl,
-          folder: `madecc/cms_media/${uploadFolder.toLowerCase()}`,
-          fileType: uploadCategory === 'Logos' ? 'logo' : undefined,
-          authToken,
-          csrfHeaders: csrf,
-          signal: controller.signal,
-        });
-        finalFileUrl = ingested.url;
-        mimeType = ingested.mimeType;
-        fileSize = ingested.fileSize;
-        filename = ingested.filename;
-        storageProvider = ingested.storageProvider;
-        publicId = ingested.publicId || '';
+        return;
+      }
 
-        if (mimeType.startsWith('video/') || initialFilterType === 'video') {
-          finalFileType = 'video';
-        } else if (uploadCategory === 'Logos') {
-          finalFileType = 'logo';
-        } else if (mimeType.includes('pdf')) {
-          finalFileType = 'document';
-        } else {
-          finalFileType = 'image';
-        }
+      // Remote HTTPS URL safe ingestion path
+      const finalFileUrl = uploadUrlDirect.trim();
+      if (!finalFileUrl) {
+        throw new Error('Please enter a valid HTTPS media URL.');
+      }
+      setUploadStatusLabel('Fetching & verifying remote HTTPS media safely...');
+      setUploadProgress(35);
+      const ingested = await ingestRemoteMediaUrl({
+        url: finalFileUrl,
+        folder: `madecc/cms_media/${uploadFolder.toLowerCase()}`,
+        fileType: uploadCategory === 'Logos' ? 'logo' : undefined,
+        authToken,
+        csrfHeaders: csrf,
+        signal: controller.signal,
+      });
+
+      let finalFileType: 'image' | 'video' | 'document' | 'logo' = 'image';
+      if (ingested.mimeType.startsWith('video/') || initialFilterType === 'video') {
+        finalFileType = 'video';
+      } else if (uploadCategory === 'Logos') {
+        finalFileType = 'logo';
+      } else if (ingested.mimeType.includes('pdf')) {
+        finalFileType = 'document';
       }
 
       setUploadProgress(92);
@@ -251,13 +590,15 @@ export default function CmsMediaLibrary({
         method: 'POST',
         body: JSON.stringify({
           title: uploadTitle,
-          filename: filename || undefined,
-          fileUrl: finalFileUrl,
+          filename: ingested.filename || undefined,
+          fileUrl: ingested.url,
           fileType: finalFileType,
-          mimeType,
-          fileSize,
-          storageProvider,
-          publicId,
+          mimeType: ingested.mimeType,
+          fileSize: ingested.fileSize,
+          storageProvider: ingested.storageProvider,
+          publicId: ingested.publicId || '',
+          uploadStatus: 'COMPLETED',
+          uploadCompletedAt: new Date().toISOString(),
           altText: uploadAltText || uploadTitle,
           caption: uploadCaption,
           description: uploadDescription,
@@ -279,19 +620,8 @@ export default function CmsMediaLibrary({
       setUploadProgress(100);
       setUploadStatusLabel('Saved!');
       setShowUploadModal(false);
-      setUploadTitle('');
-      setUploadAltText('');
-      setUploadCaption('');
-      setUploadDescription('');
-      setUploadCreditSource('');
-      setUploadTags('');
-      setUploadThumbnailUrl('');
-      setUploadSubtitlesUrl('');
-      setUploadTranscript('');
-      setUploadDurationSeconds('');
-      setUploadFile(null);
-      setUploadUrlDirect('');
-      showNotice('success', 'Asset uploaded & registered in CMS Media Library.');
+      resetUploadModal();
+      showNotice('success', 'Asset ingested & registered in CMS Media Library.');
       fetchMedia();
     } catch (err: any) {
       if (err?.name === 'AbortError') {
@@ -412,6 +742,7 @@ export default function CmsMediaLibrary({
     e.preventDefault();
     if (!replaceModal) return;
     setIsReplacing(true);
+    setReplaceProgressText('Preparing replacement...');
     try {
       let nextUrl = replaceUrl.trim();
       let mimeType = replaceModal.mimeType;
@@ -430,6 +761,9 @@ export default function CmsMediaLibrary({
           authToken,
           csrfHeaders: csrf,
           useCmsEndpoint: true,
+          onProgress: (p) => {
+            setReplaceProgressText(p.label);
+          },
         });
         nextUrl = directRes.url;
         mimeType = directRes.mimeType;
@@ -438,6 +772,7 @@ export default function CmsMediaLibrary({
         storageProvider = directRes.storageProvider;
         publicId = directRes.publicId;
       } else if (nextUrl && nextUrl !== replaceModal.fileUrl) {
+        setReplaceProgressText('Ingesting & validating remote HTTPS URL...');
         const ingested = await ingestRemoteMediaUrl({
           url: nextUrl,
           folder: `madecc/cms_media/${(replaceModal.folder || 'root').toLowerCase()}`,
@@ -454,6 +789,7 @@ export default function CmsMediaLibrary({
 
       if (!nextUrl) throw new Error('Provide a replacement file or URL.');
 
+      setReplaceProgressText('Updating references in Neon DB...');
       const res = await cmsFetch(`/api/cms/media/${replaceModal.id}/replace`, {
         method: 'POST',
         body: JSON.stringify({
@@ -468,6 +804,7 @@ export default function CmsMediaLibrary({
       });
 
       setReplaceModal(null);
+      setReplaceProgressText('');
       showNotice(
         'success',
         `Asset replaced cleanly (${res.updatedRefsCount || 0} hero banner reference(s) updated).`
@@ -477,6 +814,7 @@ export default function CmsMediaLibrary({
       showNotice('error', err.message || 'Failed to replace asset.');
     } finally {
       setIsReplacing(false);
+      setReplaceProgressText('');
     }
   };
 
@@ -738,20 +1076,77 @@ export default function CmsMediaLibrary({
         </div>
       )}
 
-      {/* Upload Media Modal */}
+      {/* Upload Media Modal (Multi-File Resumable Queue + Live Provider Limits) */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl my-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-6 shadow-2xl my-8 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Upload className="w-5 h-5 text-amber-500" /> Upload Asset to CMS
+                <Upload className="w-5 h-5 text-amber-500" /> Upload Assets to CMS
               </h3>
               <button
-                onClick={() => setShowUploadModal(false)}
+                onClick={() => {
+                  if (!isUploading) setShowUploadModal(false);
+                }}
                 className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Live Storage Capacity Telemetry (Strictly reflects real configured provider caps) */}
+            <div className="mt-4 p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                  <HardDrive className="w-3.5 h-3.5 text-amber-500" />
+                  Active Cloud Upload Capacity
+                </span>
+                <button
+                  type="button"
+                  onClick={() => loadCapabilities(true)}
+                  disabled={capabilitiesLoading}
+                  className="text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3 h-3 ${capabilitiesLoading ? 'animate-spin' : ''}`} />
+                  Refresh Limits
+                </button>
+              </div>
+              {capabilities ? (
+                <div className="space-y-1 text-[11px] text-slate-400 tabular-nums">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-300">
+                    <span>
+                      Cloudinary ({capabilities.cloudinary.plan}):{' '}
+                      <strong className="text-white">
+                        {formatBytes(capabilities.cloudinary.imageMaxBytes)} img/doc ·{' '}
+                        {formatBytes(capabilities.cloudinary.videoMaxBytes)} video
+                      </strong>
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      Supabase TUS:{' '}
+                      <strong className={capabilities.supabase.configured ? 'text-emerald-400' : 'text-slate-400'}>
+                        {capabilities.supabase.configured
+                          ? `Up to ${formatBytes(capabilities.supabase.effectiveMaxBytes)} (${capabilities.supabase.bucketName})`
+                          : 'Not configured'}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="text-slate-400">
+                    Verified max single file:{' '}
+                    <strong className="text-amber-400">{formatBytes(capabilities.overallMaxUploadBytes)}</strong>
+                    {capabilities.supports10Gb
+                      ? ' (10 GB Resumable TUS Active)'
+                      : ' (Direct chunked uploads bypass serverless 4.2 MB limit; 10 GB requires Supabase Pro+ bucket)'}
+                  </div>
+                  {capabilities.limitations.length > 0 && !capabilities.supports10Gb && (
+                    <p className="text-[10px] text-amber-300/90 leading-relaxed">
+                      {capabilities.limitations[0]}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400">Inspecting live Cloudinary &amp; Supabase storage limits...</p>
+              )}
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-3 pt-4 text-sm">
@@ -769,7 +1164,7 @@ export default function CmsMediaLibrary({
                     uploadMode === 'file' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Upload File (Video / Photo)
+                  Upload Files (Direct / Chunked / TUS)
                 </button>
                 <button
                   type="button"
@@ -778,7 +1173,7 @@ export default function CmsMediaLibrary({
                     uploadMode === 'url' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Direct HTTPS URL
+                  Remote HTTPS URL
                 </button>
               </div>
 
@@ -792,40 +1187,129 @@ export default function CmsMediaLibrary({
                   onDrop={(e) => {
                     e.preventDefault();
                     setIsDraggingFile(false);
-                    const dropped = e.dataTransfer.files?.[0];
-                    if (dropped) {
-                      setUploadFile(dropped);
-                      if (!uploadTitle) {
-                        setUploadTitle(dropped.name.replace(/\.[^/.]+$/, ''));
-                      }
+                    if (e.dataTransfer.files?.length) {
+                      enqueueFiles(e.dataTransfer.files);
                     }
                   }}
-                  className={`rounded-xl border-2 border-dashed p-3 transition-colors ${
-                    isDraggingFile
-                      ? 'border-amber-400 bg-amber-500/10'
-                      : 'border-slate-800 bg-slate-950'
+                  className={`rounded-xl border-2 border-dashed p-3.5 transition-colors space-y-2.5 ${
+                    isDraggingFile ? 'border-amber-400 bg-amber-500/10' : 'border-slate-800 bg-slate-950'
                   }`}
                 >
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Select or Drop Media File (Direct Signed Upload — Up to 250 MB Video / 25 MB Image)
+                  <label className="block text-xs font-medium text-slate-300">
+                    Select or Drop Single / Multiple Files (Max{' '}
+                    {capabilities ? formatBytes(capabilities.overallMaxUploadBytes) : 'Configured Limit'})
                   </label>
                   <input
                     type="file"
-                    accept="video/mp4,video/webm,video/quicktime,image/*,application/pdf"
+                    multiple
+                    accept="video/*,image/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.vtt,.zip"
                     onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        setUploadFile(e.target.files[0]);
-                        if (!uploadTitle) {
-                          setUploadTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
-                        }
+                      if (e.target.files?.length) {
+                        enqueueFiles(e.target.files);
+                        e.target.value = '';
                       }
                     }}
                     className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 bg-slate-900 border border-slate-800 rounded-lg p-2"
                   />
-                  {uploadFile && (
-                    <p className="text-[11px] font-mono text-amber-300 mt-1.5">
-                      Selected: {uploadFile.name} ({(uploadFile.size / (1024 * 1024)).toFixed(2)} MB)
-                    </p>
+
+                  {/* Multi-File Resumable Upload Queue */}
+                  {uploadQueue.length > 0 && (
+                    <div className="space-y-2 pt-1 max-h-56 overflow-y-auto">
+                      {uploadQueue.map((item) => (
+                        <div
+                          key={item.id}
+                          className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-start gap-3 text-xs"
+                        >
+                          <div className="w-12 h-12 rounded bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                            {item.previewUrl && item.kind === 'image' ? (
+                              <img src={item.previewUrl} alt={item.file.name} className="w-full h-full object-cover" />
+                            ) : item.previewUrl && item.kind === 'video' ? (
+                              <video src={item.previewUrl} className="w-full h-full object-cover" muted />
+                            ) : (
+                              <FileText className="w-5 h-5 text-slate-400" />
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-white truncate" title={item.file.name}>
+                                {item.file.name}
+                              </span>
+                              <span className="text-[11px] font-mono text-slate-400 shrink-0 tabular-nums">
+                                {formatBytes(item.file.size)}
+                              </span>
+                            </div>
+
+                            {item.duplicateMatch && item.status === 'queued' && (
+                              <p className="text-[11px] text-amber-400">
+                                Already in library as “{item.duplicateMatch.title}”. Upload anyway or remove.
+                              </p>
+                            )}
+
+                            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full origin-left transition-transform duration-150 ${
+                                  item.status === 'error'
+                                    ? 'bg-rose-500'
+                                    : item.status === 'completed'
+                                      ? 'bg-emerald-500'
+                                      : item.status === 'paused'
+                                        ? 'bg-sky-400'
+                                        : 'bg-amber-500'
+                                }`}
+                                style={{ transform: `scaleX(${Math.max(0.02, item.percent / 100)})` }}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] text-slate-400 tabular-nums gap-2">
+                              <span className="truncate">{item.stageLabel}</span>
+                              <span className="shrink-0 font-mono">
+                                {item.percent}%
+                                {item.speedBytesPerSec > 0 ? ` · ${formatSpeed(item.speedBytesPerSec)}` : ''}
+                                {item.etaSeconds !== null && item.status === 'uploading'
+                                  ? ` · ETA ${formatEta(item.etaSeconds)}`
+                                  : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            {(item.status === 'uploading' || item.status === 'paused') && (
+                              <button
+                                type="button"
+                                onClick={() => togglePauseQueueItem(item.id)}
+                                className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                                title={item.status === 'paused' ? 'Resume Upload' : 'Pause Upload'}
+                              >
+                                {item.status === 'paused' ? (
+                                  <Play className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : (
+                                  <Pause className="w-3.5 h-3.5 text-amber-400" />
+                                )}
+                              </button>
+                            )}
+                            {(item.status === 'error' || item.status === 'cancelled') && !isUploading && (
+                              <button
+                                type="button"
+                                onClick={() => retryQueueItem(item.id)}
+                                className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-400"
+                                title="Retry Upload"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeQueueItem(item.id)}
+                              className="p-1.5 rounded bg-slate-800 hover:bg-rose-600/20 text-slate-400 hover:text-rose-400"
+                              title="Cancel & Remove"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -842,16 +1326,20 @@ export default function CmsMediaLibrary({
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Asset Title *</label>
-                <input
-                  type="text"
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
-                  required
-                />
-              </div>
+              {(uploadMode === 'url' || uploadQueue.length <= 1) && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Asset Title {uploadQueue.length <= 1 ? '*' : '(Auto-derived from filenames for batch)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadTitle}
+                    onChange={(e) => setUploadTitle(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                    required={uploadMode === 'url' || uploadQueue.length <= 1}
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -958,10 +1446,10 @@ export default function CmsMediaLibrary({
                 </div>
               )}
 
-              {isUploading && (
+              {isUploading && uploadMode === 'url' && (
                 <div className="space-y-1.5 pt-2">
                   <div className="flex justify-between text-[11px] text-slate-300 font-mono">
-                    <span className="truncate pr-2">{uploadStatusLabel || 'Uploading & Registering...'}</span>
+                    <span className="truncate pr-2">{uploadStatusLabel || 'Ingesting & Registering...'}</span>
                     <span>{uploadProgress}%</span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -977,22 +1465,28 @@ export default function CmsMediaLibrary({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isUploading && uploadAbortController) {
-                      uploadAbortController.abort();
+                    if (isUploading) {
+                      uploadAbortController?.abort();
+                      itemControllersRef.current.forEach((ctrl) => ctrl.abort());
+                      pauseResolversRef.current.forEach((res) => res('abort'));
                     } else {
                       setShowUploadModal(false);
                     }
                   }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg"
                 >
-                  {isUploading ? 'Abort Upload' : 'Cancel'}
+                  {isUploading ? 'Abort Active Uploads' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   disabled={isUploading}
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  {isUploading ? 'Processing...' : 'Save to Media Library'}
+                  {isUploading
+                    ? 'Uploading Queue...'
+                    : uploadQueue.length > 1
+                      ? `Upload ${uploadQueue.length} Files to Library`
+                      : 'Save to Media Library'}
                 </button>
               </div>
             </form>
@@ -1237,6 +1731,9 @@ export default function CmsMediaLibrary({
                 />
                 <span>Automatically update Hero Banner image/video references</span>
               </label>
+              {isReplacing && replaceProgressText && (
+                <p className="text-[11px] font-mono text-amber-300 truncate">{replaceProgressText}</p>
+              )}
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"

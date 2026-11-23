@@ -1778,6 +1778,10 @@ export function setupCmsRoutes(app: express.Express) {
             category: data.category || cur.category,
             storageProvider: resolvedProvider || cur.storageProvider,
             publicId: data.publicId || cur.publicId,
+            fileSize: Number(data.fileSize) > 0 ? Number(data.fileSize) : cur.fileSize,
+            uploadStatus: data.uploadStatus || 'COMPLETED',
+            uploadCompletedAt: new Date(),
+            fileFingerprint: data.fileFingerprint || cur.fileFingerprint,
             updatedAt: new Date(),
           })
           .where(eq(mediaLibrary.id, cur.id))
@@ -1810,6 +1814,10 @@ export function setupCmsRoutes(app: express.Express) {
         status: data.status || 'ACTIVE',
         storageProvider: resolvedProvider,
         publicId: data.publicId || null,
+        uploadStatus: data.uploadStatus || 'COMPLETED',
+        uploadCompletedAt: data.uploadCompletedAt ? new Date(data.uploadCompletedAt) : new Date(),
+        ownerUserId: req.dbUser?.id || null,
+        fileFingerprint: data.fileFingerprint || null,
         uploadedBy: req.dbUser?.displayName || req.dbUser?.email || 'MADECC Media Admin'
       }).returning();
 

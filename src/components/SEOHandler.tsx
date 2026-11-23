@@ -97,6 +97,18 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         keywords: `visitor guide ${brandName}, how to use ${brandName}, construction calculator guide, 2199 XAF receipt download, ${country}`,
         ogType: 'article'
       },
+      'navigation-manual': {
+        title: `Navigation Manual (A4 PDF) — 999 XAF | ${brandName}`,
+        description: `Official v4.0 Navigation Manual (A4 PDF) covering all 18 public portals, the 11-category Admin Dashboard, 10 GB media upload system, and 999 / 2,199 XAF unlock workflow for ${brandName}.`,
+        keywords: `navigation manual A4 PDF, ${brandName} manual, 999 XAF PDF, admin dashboard guide, ${country}`,
+        ogType: 'article'
+      },
+      'buyer-handover-manual': {
+        title: `Buyer Brand Handover Manual (PDF) — 999 XAF | ${brandName}`,
+        description: `Official Buyer Brand Handover Manual (PDF) with customizable Ownership Transfer Certificate, no-code CMS rebranding guide, paymentDomain.ts transfer, and infrastructure checklist for ${brandName}.`,
+        keywords: `buyer brand handover manual, white-label transfer PDF, ${brandName} handover, 999 XAF PDF, ${country}`,
+        ogType: 'article'
+      },
       faq: {
         title: `Frequently Asked Questions & Technical Help | ${brandName}`,
         description: `Verified answers to technical questions about building permits, construction costs, soil testing, and project guarantees from ${brandName}.`,

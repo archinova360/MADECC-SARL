@@ -1,5 +1,6 @@
 import { getAuthToken } from '../lib/firebase.ts';
 import { getCsrfHeaders } from '../lib/csrf.ts';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 import {
   ProDocument,
   ProDocumentTemplate,
@@ -415,51 +416,14 @@ export const proDocStudioService = {
   },
 
   async uploadEditorImage(file: File): Promise<string> {
-    const headers = await buildHeaders(false);
-    // Try Cloudinary signed upload first if configured, fallback to server /api/upload (Supabase/Cloudinary)
-    try {
-      const sigRes = await fetch('/api/cloudinary-signature', {
-        method: 'POST',
-        credentials: 'include',
-        headers: await buildHeaders(true),
-        body: JSON.stringify({ folder: 'madecc/doc-studio' }),
-      });
-      if (sigRes.ok) {
-        const sigData = await sigRes.json();
-        if (sigData.cloudName && sigData.signature && sigData.apiKey) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('api_key', sigData.apiKey);
-          formData.append('timestamp', String(sigData.timestamp));
-          formData.append('signature', sigData.signature);
-          formData.append('folder', sigData.folder || 'madecc/doc-studio');
-          const upRes = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
-            method: 'POST',
-            body: formData,
-          });
-          if (upRes.ok) {
-            const upData = await upRes.json();
-            if (upData.secure_url || upData.url) {
-              return upData.secure_url || upData.url;
-            }
-          }
-        }
-      }
-    } catch {
-      // Fall through cleanly to backend /api/upload
-    }
-
-    const fd = new FormData();
-    fd.append('file', file);
-    const upRes = await fetch('/api/upload', {
-      method: 'POST',
-      credentials: 'include',
-      headers,
-      body: fd,
+    const authToken = await getAuthToken();
+    const result = await uploadMediaAssetDirect({
+      file,
+      folder: 'madecc/doc-studio',
+      authToken,
+      useCmsEndpoint: false,
     });
-    const data = await handleJsonResponse<{ url?: string; fileUrl?: string; secure_url?: string }>(upRes);
-    const resolved = data.url || data.fileUrl || data.secure_url;
-    if (!resolved) throw new Error('Image upload did not return a URL.');
-    return resolved;
+    if (!result.url) throw new Error('Image upload did not return a URL.');
+    return result.url;
   },
 };

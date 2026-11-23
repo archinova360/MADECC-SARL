@@ -156,6 +156,40 @@ export async function ensureCmsTables(): Promise<void> {
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS storage_provider TEXT DEFAULT 'cloudinary';
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS public_id TEXT;
       ALTER TABLE media_library ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITHOUT TIME ZONE;
+      ALTER TABLE media_library ADD COLUMN IF NOT EXISTS upload_status TEXT DEFAULT 'COMPLETED';
+      ALTER TABLE media_library ADD COLUMN IF NOT EXISTS upload_completed_at TIMESTAMP WITHOUT TIME ZONE;
+      ALTER TABLE media_library ADD COLUMN IF NOT EXISTS owner_user_id INTEGER;
+      ALTER TABLE media_library ADD COLUMN IF NOT EXISTS file_fingerprint TEXT;
+      ALTER TABLE media_library ALTER COLUMN file_size TYPE BIGINT USING file_size::BIGINT;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS upload_sessions (
+        id SERIAL PRIMARY KEY,
+        session_token TEXT NOT NULL UNIQUE,
+        provider TEXT NOT NULL,
+        folder TEXT DEFAULT 'madecc/cms_media',
+        filename TEXT NOT NULL,
+        mime_type TEXT,
+        file_type TEXT,
+        expected_size BIGINT NOT NULL DEFAULT 0,
+        uploaded_size BIGINT DEFAULT 0,
+        file_fingerprint TEXT,
+        bucket_name TEXT,
+        object_path TEXT,
+        public_id TEXT,
+        resource_type TEXT,
+        file_url TEXT,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        owner_user_id INTEGER,
+        owner_email TEXT,
+        expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        completed_at TIMESTAMP WITHOUT TIME ZONE,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_upload_sessions_fingerprint ON upload_sessions (file_fingerprint);
+      CREATE INDEX IF NOT EXISTS idx_media_library_fingerprint ON media_library (file_fingerprint);
     `);
 
     // 2. Create 7 new tables cleanly

@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { getAuthToken } from '../lib/firebase.ts';
+import { uploadMediaAssetDirect, formatSpeed, formatEta } from '../lib/directMediaUpload.ts';
 
 const safeConfirm = (message: string): boolean => {
   if (typeof window === 'undefined') return true;
@@ -275,8 +276,6 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
     setMediaUploadProgress('Preparing upload...');
 
     const applyUploadedMedia = (finalUrl: string) => {
-      setIsUploadingMedia(false);
-      setMediaUploadProgress('');
       const newFile = {
         id: `MED-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
         name: file.name,
@@ -289,123 +288,25 @@ export default function LessonStudio({ showToast, activeSyllabus, setActiveSylla
       showToast(`Media file "${file.name}" uploaded successfully!`, 'success');
     };
 
-    const uploadViaServerProxy = async (): Promise<string> => {
-      setMediaUploadProgress('Uploading to secure server...');
-      const proxyFormData = new FormData();
-      proxyFormData.append('file', file);
-      const token = await getAuthToken() || '';
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: proxyFormData
-      });
-      const rawText = await res.text();
-      let data: any = {};
-      try {
-        data = JSON.parse(rawText);
-      } catch (parseErr) {
-        if (!res.ok) throw new Error(`Server upload failed (${res.status})`);
-      }
-      if (!res.ok && data.error) {
-        throw new Error(data.error);
-      }
-      const finalUrl = data.url || data.secure_url;
-      if (!finalUrl) throw new Error('No URL returned from server upload');
-      return finalUrl;
-    };
-
     try {
-      const token = await getAuthToken() || '';
-      
-      // Step A: Try to get a signed direct upload ticket for Cloudinary
-      let signedTicket: any = null;
-      try {
-        const sigRes = await fetch('/api/cloudinary-signature', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        if (sigRes.ok) {
-          signedTicket = await sigRes.json();
-        }
-      } catch (err) {
-        console.warn('Could not fetch Cloudinary upload ticket, falling back to proxy upload:', err);
-      }
-
-      if (signedTicket && signedTicket.signature && signedTicket.cloudName) {
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
-
-        // Direct Signed Cloudinary Upload
-        formData.append('file', file);
-        formData.append('api_key', signedTicket.apiKey);
-        formData.append('timestamp', signedTicket.timestamp.toString());
-        formData.append('signature', signedTicket.signature);
-        formData.append('folder', signedTicket.folder || 'minesec_media');
-
-        const uploadUrl = `https://api.cloudinary.com/v1_1/${signedTicket.cloudName}/auto/upload`;
-        xhr.open('POST', uploadUrl, true);
-        setMediaUploadProgress('Uploading directly to Cloudinary (0%)...');
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            setMediaUploadProgress(`Uploading: ${percentComplete}% (${(event.loaded / (1024 * 1024)).toFixed(1)}MB / ${(event.total / (1024 * 1024)).toFixed(1)}MB)`);
-          }
-        };
-
-        xhr.onload = async () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              const finalUrl = data.secure_url || data.url;
-              if (finalUrl) {
-                applyUploadedMedia(finalUrl);
-                return;
-              }
-            } catch (err) {
-              console.warn('[LESSON_UPLOAD_PARSE_WARN] Direct upload response parse error, falling back:', err);
-            }
-          }
-
-          // Direct upload failed (e.g. 403 Forbidden). Fall back to server storage
-          console.warn(`[LESSON_DIRECT_UPLOAD_FAILED] HTTP ${xhr.status}. Running server fallback...`);
-          try {
-            const serverUrl = await uploadViaServerProxy();
-            applyUploadedMedia(serverUrl);
-          } catch (fbErr: any) {
-            setIsUploadingMedia(false);
-            setMediaUploadProgress('');
-            showToast(`Upload failed: ${fbErr.message}`, 'error');
-          }
-        };
-
-        xhr.onerror = async () => {
-          console.warn('[LESSON_DIRECT_UPLOAD_XHR_ERROR] Network issue. Running server fallback...');
-          try {
-            const serverUrl = await uploadViaServerProxy();
-            applyUploadedMedia(serverUrl);
-          } catch (fbErr: any) {
-            setIsUploadingMedia(false);
-            setMediaUploadProgress('');
-            showToast(`Upload failed: ${fbErr.message}`, 'error');
-          }
-        };
-
-        xhr.send(formData);
-      } else {
-        // Direct ticket not available - use server proxy immediately
-        try {
-          const serverUrl = await uploadViaServerProxy();
-          applyUploadedMedia(serverUrl);
-        } catch (serverErr: any) {
-          setIsUploadingMedia(false);
-          setMediaUploadProgress('');
-          showToast(`Upload failed: ${serverErr.message}`, 'error');
-        }
-      }
+      const token = (await getAuthToken()) || '';
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'minesec_media',
+        authToken: token,
+        useCmsEndpoint: false,
+        onProgress: (p) => {
+          const speedStr = p.speedBytesPerSec > 0 ? ` · ${formatSpeed(p.speedBytesPerSec)}` : '';
+          const etaStr = p.etaSeconds !== null ? ` · ETA ${formatEta(p.etaSeconds)}` : '';
+          setMediaUploadProgress(`${p.label || 'Uploading'}: ${p.percent}%${speedStr}${etaStr}`);
+        },
+      });
+      applyUploadedMedia(result.url);
     } catch (err: any) {
+      showToast(`Upload failed: ${err?.message || err}`, 'error');
+    } finally {
       setIsUploadingMedia(false);
       setMediaUploadProgress('');
-      showToast(`Upload failed: ${err.message || err}`, 'error');
     }
   };
 

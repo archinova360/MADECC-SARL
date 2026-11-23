@@ -61,6 +61,8 @@ const FAQ = lazyRetry(() => import('./components/FAQ.tsx'));
 const Tenders = lazyRetry(() => import('./components/Tenders.tsx').then(m => ({ default: m.Tenders })));
 const DeveloperPortal = lazyRetry(() => import('./components/DeveloperPortal.tsx'));
 const VisitorWalkthroughGuide = lazyRetry(() => import('./components/VisitorWalkthroughGuide.tsx').then(m => ({ default: m.VisitorWalkthroughGuide })));
+const NavigationManualPage = lazyRetry(() => import('./components/NavigationManualPage.tsx').then(m => ({ default: m.NavigationManualPage })));
+const BuyerHandoverManualPage = lazyRetry(() => import('./components/BuyerHandoverManualPage.tsx').then(m => ({ default: m.BuyerHandoverManualPage })));
 const KrrSalesStore = lazyRetry(() => import('./components/KrrSalesStore.tsx').then(m => ({ default: m.KrrSalesStore })));
 const KrrOrderTracking = lazyRetry(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
 const SiteMap = lazyRetry(() => import('./components/SiteMap.tsx'));
@@ -408,6 +410,20 @@ function AppContent({
       case 'visitor-guide':
         return (
           <VisitorWalkthroughGuide 
+            onNavigateToTab={handleNavigateWithState}
+          />
+        );
+      case 'navigation-manual':
+      case 'navigation-guide':
+        return (
+          <NavigationManualPage
+            onNavigateToTab={handleNavigateWithState}
+          />
+        );
+      case 'buyer-handover-manual':
+      case 'handover-manual':
+        return (
+          <BuyerHandoverManualPage
             onNavigateToTab={handleNavigateWithState}
           />
         );
@@ -759,7 +775,9 @@ function getTabFromPath(pathname: string, searchStr: string): string {
   if (path.includes('schedule-consultation') || path.includes('consultation')) return 'schedule-consultation';
   if (path.includes('construction-cost-guide')) return 'construction-cost-guide';
   if (path.includes('budget-calculator') || path.includes('calculator')) return 'budget-calculator';
-  if (path.includes('walkthrough-guide') || path.includes('visitor-guide')) return 'walkthrough-guide';
+  if (path.includes('navigation-manual') || path.includes('navigation-guide') || params.get('tab') === 'navigation-manual') return 'navigation-manual';
+  if (path.includes('buyer-handover-manual') || path.includes('handover-manual') || params.get('tab') === 'buyer-handover-manual') return 'buyer-handover-manual';
+  if (path.includes('walkthrough-guide') || path.includes('visitor-guide') || params.get('tab') === 'walkthrough-guide') return 'walkthrough-guide';
   if (path.includes('faq') || path.includes('help')) return 'faq';
   if (path.includes('tender') || path.includes('procurement')) return 'tenders';
   if (path.includes('about')) return 'about';

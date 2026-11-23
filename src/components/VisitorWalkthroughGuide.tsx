@@ -250,10 +250,10 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
       howToSteps: [
         'Developers & Integrators: Open "Tools > Developer APIs" to inspect REST endpoints for regional material rates, automated BoQ generation, and webhooks.',
         'Engineering Firms: Visit "Tools > Cloud SaaS Platform" to explore multi-tenant workspace capabilities for construction companies.',
-        'Administrators: Sign in to the Admin Command Center to manage quotes, approve 2,199 XAF client payments ("Confirm & Press OK"), and export from all 8 studios for free.'
+        'Administrators: Sign in to the reorganized 11-category Admin Dashboard to manage quotes, confirm 999 / 2,199 XAF payments in Finance, and export from all studios for free.'
       ],
       proTip:
-        'Download the A4 PDF Walkthrough Manual below to keep a printable reference of all 8 engineering studios and Meta App Review protocols.',
+        'Open or download the A4 Navigation Manual (v4.0) or Buyer Brand Handover Manual (999 XAF) for printable documentation of all portals, 11 Admin categories, and Meta App Review protocols.',
       primaryAction: {
         label: 'Explore Developer APIs',
         targetTab: 'developers'
@@ -287,6 +287,8 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
     { id: 'verify', label: 'Verify Contract / Receipt', desc: 'Scan QR code or verify document authenticity', icon: QrCode },
     { id: 'faq', label: 'FAQ & Help Center', desc: 'Answers on timelines, warranties & payments', icon: HelpCircle },
     { id: 'developers', label: 'Developer REST API', desc: 'Construction cost & BoQ API documentation', icon: Key },
+    { id: 'navigation-manual', label: 'Navigation Manual (A4 PDF)', desc: 'Full 4-page A4 manual & interactive portal map (999 XAF)', icon: BookOpen },
+    { id: 'buyer-handover-manual', label: 'Buyer Brand Handover Manual', desc: 'Ownership transfer certificate & cutover guide (999 XAF)', icon: ShieldCheck },
     { id: 'contact', label: 'Contact & Yaoundé HQ', desc: 'Direct phones, WhatsApp & office coordinates', icon: Phone }
   ];
 
@@ -340,20 +342,36 @@ export const VisitorWalkthroughGuide: React.FC<VisitorWalkthroughGuideProps> = (
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button
-                  onClick={() => downloadWebsiteNavigationGuidePdf()}
-                  className="px-6 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
-                  id="walkthrough-download-pdf-hero"
+                  onClick={() => onNavigateToTab('navigation-manual')}
+                  className="px-5 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                  id="walkthrough-open-navigation-manual"
                 >
-                  <Download className="w-4 h-4" />
+                  <BookOpen className="w-4 h-4" />
                   Navigation Manual (A4 PDF) — 999 XAF
                 </button>
                 <button
-                  onClick={() => downloadBuyerHandoverManualPdf({ sellerEmail: ADMIN_SMTP_USER_EMAIL })}
+                  onClick={() => downloadWebsiteNavigationGuidePdf()}
+                  className="px-4 py-3.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+                  id="walkthrough-download-pdf-hero"
+                >
+                  <Download className="w-4 h-4" />
+                  Quick PDF
+                </button>
+                <button
+                  onClick={() => onNavigateToTab('buyer-handover-manual')}
                   className="px-5 py-3.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
-                  id="walkthrough-download-buyer-handover-pdf"
+                  id="walkthrough-open-buyer-handover"
                 >
                   <FileText className="w-4 h-4 text-emerald-400" />
                   Buyer Brand Handover Manual (PDF) — 999 XAF
+                </button>
+                <button
+                  onClick={() => downloadBuyerHandoverManualPdf({ sellerEmail: ADMIN_SMTP_USER_EMAIL })}
+                  className="px-4 py-3.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+                  id="walkthrough-download-buyer-handover-pdf"
+                >
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  Quick PDF
                 </button>
                 <button
                   onClick={() => onNavigateToTab('budget-calculator')}

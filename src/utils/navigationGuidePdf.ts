@@ -1,6 +1,16 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { isReceiptPaid, isCurrentUserAdmin, NAVIGATION_MANUAL_RECEIPT_NO, MANUAL_DOWNLOAD_FEE_XAF } from './paymentDomain';
+import {
+  ADMIN_SMTP_USER_EMAIL,
+  BUYER_HANDOVER_MANUAL_RECEIPT_NO,
+  MANUAL_DOWNLOAD_FEE_XAF,
+  NAVIGATION_MANUAL_RECEIPT_NO,
+  OFFICIAL_PAYMENT_CONFIG,
+  STANDARD_RECEIPT_FEE_XAF,
+  TARGET_OFFICIAL_DOMAIN,
+  isCurrentUserAdmin,
+  isReceiptPaid
+} from './paymentDomain';
 
 export interface NavigationGuideOptions {
   includeMetaReviewerProtocol?: boolean;
@@ -18,38 +28,40 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
-  const contentWidth = pageWidth - (margin * 2);
+  const contentWidth = pageWidth - margin * 2;
+  const totalPages = 4;
 
-  // Color Palette
-  const darkNavy = [15, 23, 42];      // #0F172A (Primary Slate)
-  const deepBlue = [30, 58, 138];     // #1E3A8A (Corporate Blue)
-  const amberGold = [217, 119, 6];    // #D97706 (Amber Brand)
-  const lightBg = [248, 250, 252];    // #F8FAFC
-  const borderGray = [226, 232, 240]; // #E2E8F0
-  const emeraldGreen = [16, 185, 129];// #10B981
+  const darkNavy: [number, number, number] = [15, 23, 42];
+  const deepBlue: [number, number, number] = [30, 58, 138];
+  const amberGold: [number, number, number] = [217, 119, 6];
+  const lightBg: [number, number, number] = [248, 250, 252];
+  const borderGray: [number, number, number] = [226, 232, 240];
+  const emeraldGreen: [number, number, number] = [16, 185, 129];
 
-  let currentPage = 1;
+  const mtnNumbers = (OFFICIAL_PAYMENT_CONFIG?.mtnMomoNumbers || ['671063511', '683316486']).join(' / ');
+  const omNumbers = (OFFICIAL_PAYMENT_CONFIG?.orangeMoneyNumbers || ['689115595', '640194505']).join(' / ');
 
-  // Helper: Draw Header & Footer for every page
-  const drawHeaderFooter = (pageDoc: jsPDF, pageNum: number, totalPagesPlaceholder = 'Page {page_number}') => {
-    // Top banner bar
-    pageDoc.setFillColor(deepBlue[0], deepBlue[1], deepBlue[2]);
+  const drawHeaderFooter = (pageDoc: jsPDF, pageNum: number) => {
+    pageDoc.setFillColor(...deepBlue);
     pageDoc.rect(0, 0, pageWidth, 5, 'F');
 
-    pageDoc.setFillColor(amberGold[0], amberGold[1], amberGold[2]);
+    pageDoc.setFillColor(...amberGold);
     pageDoc.rect(0, 5, pageWidth, 1.5, 'F');
 
-    // Footer bar
-    pageDoc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    pageDoc.setDrawColor(...borderGray);
     pageDoc.setLineWidth(0.4);
     pageDoc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
 
     pageDoc.setFont('helvetica', 'normal');
     pageDoc.setFontSize(8);
     pageDoc.setTextColor(100, 116, 139);
-    pageDoc.text('MADECC GROUP S.A.R.L - Comprehensive Website & Portal Navigation Manual (A4 Format)', margin, pageHeight - 7);
     pageDoc.text(
-      `Support: kreboya603@gmail.com | +237 671 063 511 | ${pageNum}`,
+      `MADECC GROUP S.A.R.L - Navigation Manual (A4 PDF) | ${MANUAL_DOWNLOAD_FEE_XAF} XAF Edition`,
+      margin,
+      pageHeight - 7
+    );
+    pageDoc.text(
+      `Support: ${ADMIN_SMTP_USER_EMAIL} | Page ${pageNum} of ${totalPages}`,
       pageWidth - margin,
       pageHeight - 7,
       { align: 'right' }
@@ -57,59 +69,67 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   };
 
   // =========================================================================
-  // PAGE 1: TITLE, EXECUTIVE OVERVIEW & GLOBAL ARCHITECTURE
+  // PAGE 1: COVER OVERVIEW & COMPLETE PUBLIC WEBSITE DIRECTORY (18 PORTALS)
   // =========================================================================
-  drawHeaderFooter(doc, currentPage);
+  drawHeaderFooter(doc, 1);
 
-  // Corporate Header Card
-  doc.setFillColor(darkNavy[0], darkNavy[1], darkNavy[2]);
+  doc.setFillColor(...darkNavy);
   doc.roundedRect(margin, 12, contentWidth, 38, 3, 3, 'F');
 
-  // Gold accent left line
-  doc.setFillColor(amberGold[0], amberGold[1], amberGold[2]);
+  doc.setFillColor(...amberGold);
   doc.rect(margin + 2, 14, 2, 34, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(17);
+  doc.setFontSize(16.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('MADECC GROUP S.A.R.L - CAMEROON', margin + 8, 22);
+  doc.text('MADECC GROUP S.A.R.L - NAVIGATION MANUAL (A4 PDF)', margin + 8, 22);
 
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   doc.setTextColor(245, 158, 11);
-  doc.text('COMPLETE VISITOR, CLIENT & PLATFORM WALKTHROUGH MANUAL', margin + 8, 29);
+  doc.text('COMPLETE PLATFORM DIRECTORY, 11-CATEGORY ADMIN ARCHITECTURE & WORKFLOWS', margin + 8, 29);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.2);
   doc.setTextColor(203, 213, 225);
-  doc.text('Step-by-step guide for Website Visitors, Clients, Cost Calculators, 2,199 XAF Document Unlock & Studios.', margin + 8, 36);
-  doc.text(`Version 3.0 | Classification: Public Visitor & Client Guide | Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin + 8, 42);
+  doc.text(
+    `Domain: ${TARGET_OFFICIAL_DOMAIN} | Manuals: ${MANUAL_DOWNLOAD_FEE_XAF} XAF | Certified Receipts: ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF`,
+    margin + 8,
+    36
+  );
+  doc.text(
+    `Version 4.0 | ISO 9001 & OHADA Reference | Issued: ${new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })}${options.generatedBy ? ` | Prepared by: ${options.generatedBy}` : ''}`,
+    margin + 8,
+    42
+  );
 
   let y = 55;
 
-  // Section 1: Executive Summary
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('1. Welcome Visitors & Clients — Platform Overview', margin, y);
-  y += 5;
+  doc.setFontSize(11.5);
+  doc.setTextColor(...darkNavy);
+  doc.text('1. Platform Overview & Dual-Tier Document Access', margin, y);
+  y += 4.5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
-  const introText = 
-    'Welcome to the official MADECC GROUP S.A.R.L digital platform (https://madeccgroup.online). Whether you are a ' +
-    'homeowner planning a villa, a corporate developer estimating a commercial complex, a contractor bidding on tenders, ' +
-    'or a client downloading certified engineering receipts and contracts, this complete walkthrough guide walks you ' +
-    'step-by-step through every tool, calculator, payment verification, and service on our website.';
+  const introText =
+    `Welcome to the official MADECC GROUP S.A.R.L digital ecosystem (${TARGET_OFFICIAL_DOMAIN}). This v4.0 A4 Navigation ` +
+    'Manual documents all 18 public visitor portals, the reorganized 11-category Enterprise Administrative Dashboard, ' +
+    'our direct 10 GB chunked media upload pipeline (Cloudinary + Supabase TUS), and our dual-tier Mobile Money / Orange Money ' +
+    `verification flow (${MANUAL_DOWNLOAD_FEE_XAF} XAF for Platform Manuals; ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF for Certified Receipts, BOQs & Contracts; Admin Free).`;
   const splitIntro = doc.splitTextToSize(introText, contentWidth);
   doc.text(splitIntro, margin, y);
-  y += splitIntro.length * 4.5 + 4;
+  y += splitIntro.length * 4.2 + 3;
 
-  // Section 2: Global Navigation Header Layout Table
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('2. Website Directory & Visitor Navigation Map', margin, y);
+  doc.setFontSize(11.5);
+  doc.setTextColor(...darkNavy);
+  doc.text('2. Public Website Directory (18 Interactive Portals)', margin, y);
   y += 3;
 
   autoTable(doc, {
@@ -117,317 +137,360 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
     margin: { left: margin, right: margin },
     theme: 'grid',
     headStyles: {
-      fillColor: [30, 58, 138],
+      fillColor: deepBlue,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 9
+      fontSize: 8.2
     },
     bodyStyles: {
-      fontSize: 8,
-      cellPadding: 2.2,
+      fontSize: 7.4,
+      cellPadding: 1.8,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 34, fontStyle: 'bold' },
-      1: { cellWidth: 36 },
+      0: { cellWidth: 36, fontStyle: 'bold' },
+      1: { cellWidth: 38 },
       2: { cellWidth: 'auto' },
-      3: { cellWidth: 28 }
+      3: { cellWidth: 25 }
     },
-    head: [['Website Section', 'Tab / Target', 'What Visitors & Clients Can Do Here', 'Access Level']],
+    head: [['Portal Name', 'Route / Tab Key', 'Primary Functions for Visitors & Clients', 'Access']],
     body: [
-      ['Home Page', '#home', 'Overview of MADECC Group, quick m² cost estimator, live project stats, and client testimonials', 'Public (Free)'],
-      ['Walkthrough Guide', '#walkthrough-guide', 'Interactive step-by-step visitor & client guide with 1-click module launchers & FAQ', 'Public (Free)'],
-      ['Engineering Services', '#services', 'Explore structural design, civil works, road construction, geotechnical & solar services', 'Public (Free)'],
-      ['Projects Portfolio', '#projects', 'Filter completed & ongoing projects across Cameroon with CAD blueprints & specs', 'Public (Free)'],
-      ['Budget Calculator', '#budget-calculator', '5-Step Quick Estimator & Full Engineering Calculator for villas, apartments & offices', 'Public (Free)'],
-      ['Cost Guide 2026', '#construction-cost-guide', '2026 regional material prices (cement, iron rods, sand) & labour rates across 10 regions', 'Public (Free)'],
-      ['Request a Quote', '#request-a-quote', 'Submit project specs or architectural drawings for a custom fixed-price BoQ proposal', 'Public (Free)'],
-      ['Book Consultation', '#schedule-consultation', 'Schedule an in-person (Yaoundé HQ) or virtual video consultation with senior engineers', 'Public (Free)'],
-      ['Tenders & Bidding', '#tenders', 'View open procurement tenders, supplier pre-qualification, and bidding documents', 'Public (Free)'],
-      ['Verify Document', '#verify', 'Scan QR codes or enter receipt/contract tokens to verify authentic MADECC documents', 'Public (Free)'],
-      ['Admin & Studios', '#admin', '8 Technical Studios (BoQ, Structural, Labour, Blueprint, Contracts, Receipts) & ERP', 'Admin / Staff']
+      ['Home & Quick Estimator', '#home', 'Corporate overview, 10 business divisions showcase, and instant m² cost preview', 'Public'],
+      ['Engineering Services', '#services', '10 civil engineering, infrastructure, pharma, agro-industry & real estate divisions', 'Public'],
+      ['Website Development', '#website-development', 'Corporate sites, client portals, MTN/Orange MoMo stores & technical SEO services', 'Public'],
+      ['Projects Portfolio', '#projects', 'Filter active/completed Cameroon projects with 2D blueprints, budgets & specs', 'Public'],
+      ['Budget Calculator', '#budget-calculator', '5-Step Quick Wizard & Full Engineering cost breakdown across 10 regions', 'Public'],
+      ['Cost Guide 2026', '#construction-cost-guide', 'Live regional unit prices for cement, rebar, sand, gravel & skilled labour', 'Public'],
+      ['Request a Quote', '#request-a-quote', 'Submit architectural plans & scope for a custom fixed-price BOQ proposal', 'Public'],
+      ['Schedule Consultation', '#schedule-consultation', 'Book in-office (Yaoundé HQ) or remote meetings with Senior Civil Engineers', 'Public'],
+      ['KRR Bookstore & Store', '#store', 'Order technical textbooks, Eurocode manuals & guides via MoMo/OM in XAF', 'Public'],
+      ['Order Tracking', '#order-tracking', 'Track bookstore transactions, payment review & unlock digital PDF downloads', 'Public'],
+      ['Tenders & Bidding', '#tenders', 'Browse active procurement tenders, download RFPs & upload contractor bids', 'Public'],
+      ['Client Portal', '#client-portal', 'Authenticated client login to monitor milestones, progress media & invoices', 'Client Login'],
+      ['Verify Document', '#verify', 'Scan QR codes or validate receipt (RCP-...) and contract (CNT-...) tokens', 'Public'],
+      ['Developer APIs', '#developers', 'REST API catalog, subscription keys, webhooks & live endpoint sandbox', 'Public / API'],
+      ['Cloud SaaS Platform', '#saas-cloud', 'Multi-tenant construction ERP workspaces for partner engineering firms', 'Public / SaaS'],
+      ['Walkthrough & Site Map', '#walkthrough-guide / #sitemap', 'Interactive 6-phase visitor tour, FAQ hub, and full XML/HTML sitemap index', 'Public'],
+      ['Navigation Manual Page', '#navigation-manual', 'Interactive A4 navigation guide chapter browser & 999 XAF PDF unlock', '999 XAF / Free'],
+      ['Buyer Handover Manual', '#buyer-handover-manual', 'Interactive white-label brand transfer & 999 XAF Ownership Certificate PDF', '999 XAF / Free']
     ]
   });
 
-  y = (doc as any).lastAutoTable.finalY + 8;
-
-  // Security & Anti-Hacking Alert Box
-  doc.setFillColor(254, 243, 199); // Amber 100
-  doc.setDrawColor(245, 158, 11);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(margin, y, contentWidth, 32, 2, 2, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  doc.setTextColor(180, 83, 9);
-  doc.text('SECURITY NOTICE: CREDENTIAL PRIVACY & ANTI-HACKING PROTOCOL', margin + 4, y + 6);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(120, 53, 15);
-  const secNotice = 
-    'To protect enterprise infrastructure from unauthorized intrusion, live credentials and bypass passwords are never ' +
-    'exposed publicly. Meta App Reviewers, auditors, and staff must request temporary isolated session credentials directly ' +
-    'from Administrator Eric (Email: kreboya603@gmail.com | WhatsApp: +237 671 063 511 / +237 640 194 505). ' +
-    'All authentication attempts are cryptographically HMAC signed, timestamped, and logged to the security audit ledger.';
-  const splitSecNotice = doc.splitTextToSize(secNotice, contentWidth - 8);
-  doc.text(splitSecNotice, margin + 4, y + 12);
-
   // =========================================================================
-  // PAGE 2: TECHNICAL COMPUTING STUDIOS & DOCUMENT WORK ENGINES
+  // PAGE 2: REARRANGED ADMINISTRATIVE DASHBOARD ARCHITECTURE (11 CATEGORIES)
   // =========================================================================
   doc.addPage();
-  currentPage++;
-  drawHeaderFooter(doc, currentPage);
+  drawHeaderFooter(doc, 2);
 
-  y = 15;
+  y = 14;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('3. Technical Computing & Professional Engineering Studios', margin, y);
-  y += 6;
+  doc.setFontSize(12.5);
+  doc.setTextColor(...darkNavy);
+  doc.text('3. Administrative Dashboard Navigation Architecture (11 Functional Categories)', margin, y);
+  y += 4.5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.2);
   doc.setTextColor(71, 85, 105);
-  doc.text('The MADECC platform includes 8 specialized technical computing studios accessible via the Admin/Staff Workspace.', margin, y);
-  y += 4;
+  doc.text(
+    'Every Admin module is organized into 11 non-overlapping functional groups with live sidebar search, Expand/Collapse All, and Cmd/Ctrl+K quick jump.',
+    margin,
+    y
+  );
+  y += 3.5;
 
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     theme: 'striped',
     headStyles: {
-      fillColor: [15, 23, 42],
+      fillColor: darkNavy,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.5
+      fontSize: 8
     },
     bodyStyles: {
-      fontSize: 7.8,
-      cellPadding: 2,
+      fontSize: 7.4,
+      cellPadding: 1.9,
       textColor: [15, 23, 42]
     },
     columnStyles: {
-      0: { cellWidth: 42, fontStyle: 'bold' },
+      0: { cellWidth: 48, fontStyle: 'bold' },
       1: { cellWidth: 'auto' },
-      2: { cellWidth: 45 }
+      2: { cellWidth: 34 }
     },
-    head: [['Specialized Studio', 'Capabilities & Computational Workflow', 'Export & Output Formats']],
+    head: [['Navigation Category', 'Included Modules & Tabs', 'Primary Responsibility']],
     body: [
       [
-        'Bill of Quantities (BoQ) Studio',
-        'Hierarchical Work Breakdown Structures (WBS), sub-item nesting, live currency conversions (XAF, USD, EUR), automated TVA/tax calculations, and custom unit rate libraries.',
-        'Formatted A4 PDF, XLSX, CSV, JSON Master backup'
+        '01. Overview & Intelligence',
+        'Command Center Overview, Executive Analytics & KPIs, AI Construction Intelligence',
+        'Executive KPIs & AI'
       ],
       [
-        'Structural Engineering Calculator',
-        'Reinforced concrete beam, slab, and column dimensioning under Eurocode 2 / BS 8110 standards. Moment of inertia, shear force envelopes, deflection checks.',
-        'Engineering Calculation Sheet (PDF), Print Layout'
+        '02. Corporate & Governance',
+        'Business Profile & Legal Registration, Business Divisions (10), Real Estate Hub, Pharma Compliance, Investors (Ghana/CM), Governance & Audit Trail',
+        'Corporate Legal & Divisions'
       ],
       [
-        'Labour & Workforce Estimator',
-        'Man-hour productivity modeling, skilled vs. unskilled trade ratios, daily wage rate indexing for Cameroon & CEMAC zone, site supervisor overheads.',
-        'Labour Allocation Schedule (A4 PDF & Excel)'
+        '03. Construction ERP & Operations',
+        'Manage Projects Portfolio, Client Directory, Client Portal Access, Site Progress Tracking, Progress Photos & Videos, Milestones, Materials Inventory, Equipment Fleet, Subcontractors, Workforce & Roster, ERP Reports',
+        'Field & Client Delivery'
       ],
       [
-        'Blueprint Architecture & Drawing Studio',
-        'Interactive 2D vector CAD blueprint viewer, layer visibility toggling, dimension measuring calipers, scale calibration (1:50, 1:100), and PDF blueprint viewer.',
-        'Vector Blueprint Export (SVG, PDF, PNG)'
+        '04. Engineering & Quantity Surveying',
+        'Enterprise QS & BOQ Studio, Quantity Take-Off (CAD Studio), Structural Loads & Weights, Labour & Crew Calculator, ERP Cost Estimator, ERP BOQ Manager',
+        'Technical Computation'
       ],
       [
-        'Legal Contract & Agreement Generator',
-        'Standardized FIDIC & OHADA compliant civil construction contracts, subcontractor terms, dispute resolution clauses, and digital signature blocks.',
-        'Legal Contract Document (DOCX & PDF)'
+        '05. Commerce, CRM & Engagement',
+        'KRR Bookstore Orders & Verification, Quote Requests & Leads, Consultations Queue, Client Inquiries, Tenders CMS, Suppliers CMS',
+        'Commercial Pipeline'
       ],
       [
-        'Fiscal Receipt & Invoice Studio',
-        'Corporate billing receipts with automated cryptographic transaction hashes, QR code verification tags, multi-currency breakdown, and client records.',
-        'Numbered Official Receipt (A4 PDF)'
+        '06. Finance, Billing & Payments',
+        'Payment Confirmations (999 / 2,199 XAF Queue), Client Project Invoices, Official Receipt Generator, Receipt & Contract Ledger, ERP Financial Statements',
+        'Revenue & Payment OK'
       ],
       [
-        'Proposal & Tender Architect',
-        'Full-scale commercial bidding proposal generator with executive executive summary, team resumes, equipment manifests, and project gantt timeline.',
-        'Commercial Proposal Dossier (PDF & DOCX)'
+        '07. Documents, Legal & Manuals',
+        'Pro Document Studio, Commercial Proposal Manager, OHADA Contract Generator, Company Policy Documents, Manuals & Handover Guides (A4 PDF), CV Builder, Application Letters',
+        'Legal & Manuals Hub'
       ],
       [
-        'Pedagogical Civil Engineering Studio',
-        'Technical training modules, engineering syllabus curriculum, civil construction lecture notes, and staff vocational development builder.',
-        'Curriculum Guide (A4 PDF & Word)'
+        '08. Website CMS & Publishing',
+        'Website Overview, Page Builder & Hero Studio, Section Editor, Publishing & Staging Queue, Human Content Review, Revision History, Media Library (10 GB), Video Library, Hero Sliders, Gallery, Services CMS, Sustainability CMS, FAQ CMS, Blogs, Reviews, Legal Pages, Technical SEO, Sitemap, Announcements, Live Website Optimizer, Global Branding Settings',
+        'Full No-Code CMS'
+      ],
+      [
+        '09. Marketing & Social Media',
+        'SEO & Social Media Publisher (Role-isolated for social_media_reviewer testers)',
+        'OAuth Social Growth'
+      ],
+      [
+        '10. People, HR & Education',
+        'Staff Access & Role Permissions, Leadership & Team Directory, MINESEC Lesson Prep Studio, Syllabus Manager, Extended Lesson Architect',
+        'HR & Pedagogical'
+      ],
+      [
+        '11. Platform, Security & Infrastructure',
+        'SaaS Control Plane & Tenants, API Platform & MoMo Verification, Developer API Portal CMS, Maintenance Mode & Brand Handover, Play Store (TWA) & cPanel Hosting, Maintenance Scheduler, Security & Threat Monitoring, Database Audit Logs, Publishing Logs, DB & API Docs',
+        'Cloud, Infra & Security'
       ]
     ]
   });
 
-  y = (doc as any).lastAutoTable.finalY + 8;
-
-  // Section 4: Step-by-Step Navigation Instructions
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('4. Visitor & Client Step-by-Step Walkthrough (Including 2,199 XAF Document Unlock)', margin, y);
-  y += 5;
-
-  const workflows = [
-    {
-      step: 'Step 1: Instant Budget Estimation & 2026 Regional Cost Guide',
-      desc: '1. Click "Tools > Budget Calculator" or "Cost Guide 2026" in the top navigation bar.\n2. Choose your building type (Villa, Apartment Block, Commercial Complex, Warehouse), floor area (m²), and region.\n3. Review instant FCFA material quantities (cement bags, rebar tons, sand/gravel trucks) & phased costs.'
-    },
-    {
-      step: 'Step 2: Official Document & Receipt Payment (2,199 XAF) + Admin OK Unlock Workflow',
-      desc: '1. Clients pay only 2,199 XAF via MTN MoMo (671063511, 683316486) or Orange Money (689115595, 640194505).\n2. Submit payment in the Payment Gate Modal; status enters PENDING_ADMIN_CONFIRMATION (downloads remain locked).\n3. Admin reviews & clicks "Confirm & Press OK" in Admin Dashboard -> dispatches SMTP confirmation to kreboya603@gmail.com.\n4. Only after Admin presses OK do all Receipt, BoQ, PDF, Word & Excel download links unlock! (Admin downloads for free).'
-    },
-    {
-      step: 'Step 3: Requesting a Custom Quote, Bidding on Tenders & Verifying Documents',
-      desc: '1. Use "Request a Quote" or "Schedule Consultation" to submit blueprints and book a senior civil engineer.\n2. Visit "Verify Document" (#verify) to scan QR codes or verify official MADECC receipts (RCP-...) and contracts (CNT-...).'
-    }
-  ];
-
-  workflows.forEach(wf => {
-    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-    doc.roundedRect(margin, y, contentWidth, 20, 1.5, 1.5, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.2);
-    doc.setTextColor(deepBlue[0], deepBlue[1], deepBlue[2]);
-    doc.text(wf.step, margin + 3, y + 4.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.2);
-    doc.setTextColor(51, 65, 85);
-    const splitDesc = doc.splitTextToSize(wf.desc, contentWidth - 6);
-    doc.text(splitDesc, margin + 3, y + 8.5);
-
-    y += 22;
-  });
-
   // =========================================================================
-  // PAGE 3: SOCIAL MEDIA STUDIO & META APP REVIEW TESTING PROTOCOL
+  // PAGE 3: TECHNICAL STUDIOS, 10 GB MEDIA UPLOAD & PAYMENT UNLOCK FLOW
   // =========================================================================
   doc.addPage();
-  currentPage++;
-  drawHeaderFooter(doc, currentPage);
+  drawHeaderFooter(doc, 3);
 
-  y = 15;
+  y = 14;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(deepBlue[0], deepBlue[1], deepBlue[2]);
-  doc.text('5. Social Media Studio & Meta App Review Protocol', margin, y);
-  y += 6;
+  doc.setFontSize(12);
+  doc.setTextColor(...darkNavy);
+  doc.text('4. Specialized Computing Studios & 10 GB Direct Media Architecture', margin, y);
+  y += 4.5;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  const socialIntro = 
-    'The Social Media Studio enables centralized multi-platform publishing, scheduled campaigns, and webhook analytics ' +
-    'across Facebook Pages, Instagram Graph, WhatsApp Business Cloud, and YouTube. ' +
-    'The dedicated "social_media_reviewer" role isolates testers strictly to this interface with zero administrative risk.';
-  const splitSocialIntro = doc.splitTextToSize(socialIntro, contentWidth);
-  doc.text(splitSocialIntro, margin, y);
-  y += splitSocialIntro.length * 4.5 + 4;
-
-  // Reviewer Protocol Steps Table
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     theme: 'grid',
     headStyles: {
-      fillColor: [37, 99, 235], // Blue 600
+      fillColor: deepBlue,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.5
+      fontSize: 8
     },
     bodyStyles: {
-      fontSize: 7.8,
-      cellPadding: 2.2,
+      fontSize: 7.4,
+      cellPadding: 1.9,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 28, fontStyle: 'bold' },
-      1: { cellWidth: 42 },
-      2: { cellWidth: 'auto' }
+      0: { cellWidth: 44, fontStyle: 'bold' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 42 }
     },
-    head: [['Review Step', 'Platform API Under Test', 'Testing Instructions & Verification Outcomes']],
+    head: [['Engineering / Platform Studio', 'Core Capabilities', 'Export / Storage Target']],
     body: [
-      [
-        'Phase 1: Login & Role Isolation',
-        'Authentication Guard & JWT Session',
-        'Access via Login modal > "Email Login". Enter issued credentials. System auto-routes to Social Media Studio. Admin tabs are hidden for security.'
-      ],
-      [
-        'Phase 2: Facebook Pages API',
-        'pages_show_list, pages_read_engagement, pages_manage_posts',
-        'Inspect connected "Madecc Group" Page (ID: 1055380190992758). Click "Publish Test Post" to verify live content distribution to Facebook Page feed.'
-      ],
-      [
-        'Phase 3: Instagram Graph API',
-        'instagram_basic, instagram_content_publish',
-        'Inspect connected Instagram Business Account "@madeccgroupofficials" (ID: 17841439306172513). Verify media container generation and carousel publishing.'
-      ],
-      [
-        'Phase 4: WhatsApp Business API',
-        'whatsapp_business_messaging, management',
-        'Inspect WhatsApp Cloud Account (+237 671 063 511). Test templated client notification broadcasts and inbound webhook delivery simulations.'
-      ],
-      [
-        'Phase 5: Audit & Security Trail',
-        'Postgres Audit Logging Ledger',
-        'Every publish, schedule, and token verification action is logged with IP timestamp, session ID, and HTTP status code for full compliance.'
-      ]
+      ['Enterprise QS & BOQ Studio', 'Nested WBS, multi-currency (XAF/USD/EUR), TVA calculations & unit libraries', 'A4 PDF, XLSX, CSV, JSON'],
+      ['Structural & Labour Calculators', 'Eurocode 2 beam/slab/column sizing plus CEMAC workforce & daily crew costing', 'Calc Sheet PDF & Excel'],
+      ['CAD Quantity Take-Off & AI Vision', '2D blueprint scale calibration (1:50/1:100) + AI drawing quantity extraction', 'SVG, PNG, PDF & BOQ Sync'],
+      ['OHADA Contracts, Proposals & Receipts', 'Signed OHADA agreements, tender proposals & QR-verified fiscal receipts', 'DOCX & QR-Signed A4 PDF'],
+      ['Pro Document & MINESEC Studios', 'Rich collaborative document editor + Cameroon curriculum & lesson architect', 'DOCX, PDF & Curriculum Packs'],
+      ['10 GB Direct Media Pipeline', 'Chunked Cloudinary signed upload + Supabase Storage TUS resumable upload (bypasses proxy HTTP 413 limits up to 10 GB)', 'Cloudinary CDN & Supabase']
     ]
   });
 
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as any).lastAutoTable.finalY + 7;
 
-  // Contact Matrix & Official Coordinates
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('6. Direct Support, Verification & Emergency Contacts', margin, y);
-  y += 5;
+  doc.setTextColor(...darkNavy);
+  doc.text('5. Client Payment & Download Unlock Workflow (999 XAF & 2,199 XAF)', margin, y);
+  y += 4.5;
+
+  const paymentSteps = [
+    {
+      title: `Step 1 — Select Manual (${MANUAL_DOWNLOAD_FEE_XAF} XAF) or Certified Receipt / BOQ (${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF)`,
+      body: `Visitors pay ${MANUAL_DOWNLOAD_FEE_XAF} XAF for the Navigation Manual (${NAVIGATION_MANUAL_RECEIPT_NO}) or Buyer Handover Manual (${BUYER_HANDOVER_MANUAL_RECEIPT_NO}), or ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF for Certified Receipts, BOQs, Cost Guides, and Contracts. Signed-in Admins & Staff bypass payment gates automatically.`
+    },
+    {
+      title: 'Step 2 — Transfer via MTN Mobile Money or Orange Money',
+      body: `Transfer the fee via MTN MoMo (${mtnNumbers}) or Orange Money (${omNumbers}), then enter your sender phone number and transaction reference inside the Payment Gate Modal.`
+    },
+    {
+      title: 'Step 3 — Admin Verification ("Confirm & Press OK" in 06. Finance > Payment Confirmations)',
+      body: `Status enters PENDING_ADMIN_CONFIRMATION. The Administrator verifies funds in Admin > 06. Finance, Billing & Payments > Payment Confirmations and clicks "Confirm & Press OK", dispatching an automated SMTP confirmation to ${ADMIN_SMTP_USER_EMAIL}.`
+    },
+    {
+      title: 'Step 4 — Instant PDF, Word (DOCX) & Excel (XLSX) Unlock',
+      body: 'Once confirmed, download buttons unlock immediately and receipts can be cryptographically verified anytime on #verify.'
+    }
+  ];
+
+  paymentSteps.forEach((step) => {
+    doc.setFillColor(...lightBg);
+    doc.setDrawColor(...borderGray);
+    doc.roundedRect(margin, y, contentWidth, 18.5, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.1);
+    doc.setTextColor(...deepBlue);
+    doc.text(step.title, margin + 3, y + 4.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.setTextColor(51, 65, 85);
+    doc.text(doc.splitTextToSize(step.body, contentWidth - 6), margin + 3, y + 8.8);
+
+    y += 20.5;
+  });
+
+  // =========================================================================
+  // PAGE 4: META APP REVIEW PROTOCOL & SECURITY / OFFICIAL CONTACT MATRIX
+  // =========================================================================
+  doc.addPage();
+  drawHeaderFooter(doc, 4);
+
+  y = 14;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12.5);
+  doc.setTextColor(...deepBlue);
+  doc.text('6. Meta App Review Testing Protocol & Role Isolation', margin, y);
+  y += 4.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.2);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    'Reviewer logins using the "social_media_reviewer" role are strictly isolated to 09. Marketing & Social Media > SEO & Social Media Publisher.',
+    margin,
+    y
+  );
+  y += 3.5;
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8
+    },
+    bodyStyles: {
+      fontSize: 7.4,
+      cellPadding: 2,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { cellWidth: 34, fontStyle: 'bold' },
+      1: { cellWidth: 44 },
+      2: { cellWidth: 'auto' }
+    },
+    head: [['Review Phase', 'Scope / Permission Under Test', 'Verification Steps & Expected Result']],
+    body: [
+      ['1. Isolated Login', 'social_media_reviewer JWT', 'Sign in via Login > Email Login. Dashboard hides all Finance/CMS/ERP tabs and opens Social Media Studio directly.'],
+      ['2. Facebook Pages API', 'pages_show_list, pages_read_engagement, pages_manage_posts', 'Inspect connected "Madecc Group" Page (ID: 1055380190992758) and trigger a test Page post dispatch.'],
+      ['3. Instagram Graph API', 'instagram_basic, instagram_content_publish', 'Verify "@madeccgroupofficials" Business Account container creation and publishing workflow.'],
+      ['4. WhatsApp Business', 'whatsapp_business_messaging, management', 'Validate WhatsApp Cloud alerts (+237 671 063 511) and webhook status tracking.'],
+      ['5. Audit Compliance', 'PostgreSQL audit_logs', 'Confirm publish events, tokens, and session checks record timestamps and status codes in Neon PostgreSQL.']
+    ]
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 7;
+
+  // Security Notice Box
+  doc.setFillColor(254, 243, 199);
+  doc.setDrawColor(245, 158, 11);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(180, 83, 9);
+  doc.text('SECURITY NOTICE: CREDENTIAL PRIVACY & ANTI-HACKING PROTOCOL', margin + 4, y + 5.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.6);
+  doc.setTextColor(120, 53, 15);
+  const secText =
+    `Production passwords and API secrets are never published in client bundles or downloadable manuals. Authorized reviewers and staff request temporary access via ${ADMIN_SMTP_USER_EMAIL} or WhatsApp (+237 671 063 511 / +237 640 194 505).`;
+  doc.text(doc.splitTextToSize(secText, contentWidth - 8), margin + 4, y + 11);
+
+  y += 30;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11.5);
+  doc.setTextColor(...darkNavy);
+  doc.text('7. Official Support, Payment & Corporate Contact Matrix', margin, y);
+  y += 4;
 
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     theme: 'plain',
     bodyStyles: {
-      fontSize: 8,
-      cellPadding: 2,
+      fontSize: 7.8,
+      cellPadding: 1.8,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 45, fontStyle: 'bold', textColor: [30, 58, 138] },
+      0: { cellWidth: 48, fontStyle: 'bold', textColor: deepBlue },
       1: { cellWidth: 'auto' }
     },
     body: [
-      ['Primary Executive Administrator:', 'Eric Kreboya (Managing Director & Lead Engineer)'],
-      ['Direct Contact & Admin SMTP:', 'kreboya603@gmail.com (Prompt 24/7 Response & Receipt Dispatch)'],
-      ['Official MTN Mobile Money (MoMo):', `671063511 / 683316486 (Receipts: 2,199 XAF | PDF Manuals: ${MANUAL_DOWNLOAD_FEE_XAF} XAF)`],
-      ['Official Orange Money (OM):', '689115595 / 640194505 (Unlocks after Admin Confirm & OK)'],
-      ['Primary WhatsApp Channel:', '+237 671 063 511 / +237 640 194 505'],
-      ['Official Website URL:', 'https://madeccgroup.online'],
-      ['Headquarters Address:', 'MADECC GROUP S.A.R.L, Mbankolo / Omnisports, Yaoundé, Centre Region, Cameroon'],
-      ['Business Classification:', 'Civil Engineering, Geotechnics, Renewable Energy & Cloud Systems']
+      ['Executive Administrator:', 'Eric Kreboya — Managing Director & Lead Civil Engineer'],
+      ['Official Email & SMTP Dispatch:', `${ADMIN_SMTP_USER_EMAIL} (Automated Payment OK & Maintenance Alerts)`],
+      ['MTN Mobile Money (MoMo):', `${mtnNumbers} (Manuals: ${MANUAL_DOWNLOAD_FEE_XAF} XAF | Receipts: ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF)`],
+      ['Orange Money (OM):', `${omNumbers} (Unlocks immediately after Admin Confirm & Press OK)`],
+      ['WhatsApp & Hotlines:', '+237 671 063 511 / +237 683 316 486 / +237 640 194 505'],
+      ['Official Domain & Headquarters:', `${TARGET_OFFICIAL_DOMAIN} | Mbankolo / Omnisports, Yaoundé, Cameroon`]
     ]
   });
 
   y = (doc as any).lastAutoTable.finalY + 6;
 
-  // Final Sign-Off Stamp
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.setDrawColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
-  doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'FD');
+  doc.setFillColor(...lightBg);
+  doc.setDrawColor(...emeraldGreen);
+  doc.roundedRect(margin, y, contentWidth, 16, 2, 2, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
-  doc.text('DOCUMENT VERIFICATION STAMP: APPROVED FOR PLATFORM AUDIT & USER OPERATIONS', margin + 4, y + 5);
+  doc.setFontSize(8.2);
+  doc.setTextColor(...emeraldGreen);
+  doc.text('DOCUMENT VERIFICATION STAMP: APPROVED PLATFORM NAVIGATION MANUAL (VERSION 4.0)', margin + 4, y + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.3);
   doc.setTextColor(51, 65, 85);
-  doc.text('This document serves as the official navigational reference for the MADECC GROUP ecosystem. For technical inquiries, contact support directly.', margin + 4, y + 10);
-  doc.text('MADECC GROUP S.A.R.L © 2026. All Rights Reserved. ISO 9001 & OHADA Compliant Documentation.', margin + 4, y + 14);
+  doc.text(
+    'MADECC GROUP S.A.R.L © 2026. All Rights Reserved. ISO 9001 & OHADA Compliant Operational Documentation.',
+    margin + 4,
+    y + 11
+  );
 
   return doc;
 }

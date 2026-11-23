@@ -5,14 +5,17 @@ import net from 'net';
 import dns from 'dns/promises';
 import multer from 'multer';
 
+export const TARGET_MAX_UPLOAD_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB Target Capacity
+export const SERVERLESS_PROXY_MAX_BYTES = Math.floor(4.2 * 1024 * 1024); // ~4.2 MB safe margin under Netlify 6 MB Lambda limit
+
 export const MEDIA_MAX_SIZES = {
-  image: 25 * 1024 * 1024, // 25 MB
-  logo: 10 * 1024 * 1024, // 10 MB
-  icon: 5 * 1024 * 1024, // 5 MB
-  video: 250 * 1024 * 1024, // 250 MB
-  audio: 50 * 1024 * 1024, // 50 MB
-  document: 50 * 1024 * 1024, // 50 MB
-  default: 150 * 1024 * 1024, // 150 MB
+  image: TARGET_MAX_UPLOAD_BYTES,
+  logo: 100 * 1024 * 1024, // 100 MB ceiling for logos
+  icon: 25 * 1024 * 1024, // 25 MB ceiling for icons
+  video: TARGET_MAX_UPLOAD_BYTES,
+  audio: TARGET_MAX_UPLOAD_BYTES,
+  document: TARGET_MAX_UPLOAD_BYTES,
+  default: TARGET_MAX_UPLOAD_BYTES,
 } as const;
 
 const BLOCKED_EXTENSIONS = new Set([
@@ -113,11 +116,17 @@ export function validateMediaFileDescriptor(input: {
     const limit =
       MEDIA_MAX_SIZES[resolvedCategory as keyof typeof MEDIA_MAX_SIZES] || MEDIA_MAX_SIZES.default;
     if (size > limit) {
-      const limitMb = Math.round(limit / (1024 * 1024));
-      const actualMb = (size / (1024 * 1024)).toFixed(1);
+      const limitStr =
+        limit >= 1024 * 1024 * 1024
+          ? `${(limit / (1024 * 1024 * 1024)).toFixed(1)} GB`
+          : `${Math.round(limit / (1024 * 1024))} MB`;
+      const actualStr =
+        size >= 1024 * 1024 * 1024
+          ? `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+          : `${(size / (1024 * 1024)).toFixed(1)} MB`;
       return {
         valid: false,
-        error: `File size (${actualMb} MB) exceeds the ${limitMb} MB limit for ${resolvedCategory} uploads.`,
+        error: `File size (${actualStr}) exceeds the ${limitStr} platform limit for ${resolvedCategory} uploads.`,
         resolvedCategory,
       };
     }
@@ -201,6 +210,551 @@ export function isCloudinaryConfigured(): boolean {
 
 export function isSupabaseConfigured(): boolean {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+export interface ProviderUploadCapabilities {
+  checkedAt: string;
+  targetMaxBytes: number;
+  overallMaxUploadBytes: number;
+  supports10Gb: boolean;
+  serverlessRuntime: boolean;
+  proxyMaxBytes: number;
+  directUploadBypassActive: boolean;
+  cloudinary: {
+    configured: boolean;
+    cloudName: string;
+    plan: string;
+    imageMaxBytes: number;
+    videoMaxBytes: number;
+    rawMaxBytes: number;
+    chunkSizeBytes: number;
+    chunkThresholdBytes: number;
+    storageUsageBytes: number | null;
+    creditsUsagePercent: number | null;
+    probeStatus: 'verified' | 'fallback_defaults' | 'unconfigured';
+  };
+  supabase: {
+    configured: boolean;
+    bucketName: string;
+    bucketPublic: boolean | null;
+    bucketFileSizeLimitBytes: number | null;
+    effectiveMaxBytes: number;
+    tusSupported: boolean;
+    tusEndpoint: string | null;
+    chunkSizeBytes: number;
+    limitSource: 'bucket_limit' | 'env_override' | 'pro_unbounded_default' | 'unconfigured';
+    probeStatus: 'verified' | 'error' | 'unconfigured';
+    probeError?: string;
+  };
+  limitations: string[];
+  recommendations: string[];
+}
+
+let cachedCapabilities: { expiresAt: number; data: ProviderUploadCapabilities } | null = null;
+
+export function getSupabaseStorageTusEndpoint(rawSupabaseUrl = process.env.SUPABASE_URL || ''): string | null {
+  if (!rawSupabaseUrl) return null;
+  try {
+    const parsed = new URL(rawSupabaseUrl);
+    if (/supabase\.(co|in|red)$/i.test(parsed.hostname) && !parsed.hostname.includes('storage.supabase.')) {
+      parsed.hostname = parsed.hostname.replace(/supabase\./i, 'storage.supabase.');
+    }
+    return `${parsed.origin}/storage/v1/upload/resumable/sign`;
+  } catch {
+    return null;
+  }
+}
+
+export async function getUploadCapabilities(forceRefresh = false): Promise<ProviderUploadCapabilities> {
+  if (!forceRefresh && cachedCapabilities && Date.now() < cachedCapabilities.expiresAt) {
+    return cachedCapabilities.data;
+  }
+
+  const limitations: string[] = [];
+  const recommendations: string[] = [];
+
+  // 1. Live Cloudinary Usage & Plan Limit Probe
+  const { cloudName, apiKey, apiSecret } = initAndSanitizeCloudinaryEnv();
+  const cloudinaryCap: ProviderUploadCapabilities['cloudinary'] = {
+    configured: Boolean(cloudName && apiKey && apiSecret),
+    cloudName,
+    plan: 'Unknown',
+    imageMaxBytes: 10 * 1024 * 1024,
+    videoMaxBytes: 100 * 1024 * 1024,
+    rawMaxBytes: 10 * 1024 * 1024,
+    chunkSizeBytes: 6 * 1024 * 1024,
+    chunkThresholdBytes: 20 * 1024 * 1024,
+    storageUsageBytes: null,
+    creditsUsagePercent: null,
+    probeStatus: cloudName && apiKey && apiSecret ? 'fallback_defaults' : 'unconfigured',
+  };
+
+  if (cloudinaryCap.configured) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/usage`, {
+          headers: { Authorization: `Basic ${auth}` },
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const usage: any = await res.json();
+          cloudinaryCap.plan = String(usage?.plan || 'Free');
+          cloudinaryCap.probeStatus = 'verified';
+          if (usage?.media_limits) {
+            if (Number(usage.media_limits.image_max_size_bytes) > 0) {
+              cloudinaryCap.imageMaxBytes = Number(usage.media_limits.image_max_size_bytes);
+            }
+            if (Number(usage.media_limits.video_max_size_bytes) > 0) {
+              cloudinaryCap.videoMaxBytes = Number(usage.media_limits.video_max_size_bytes);
+            }
+            if (Number(usage.media_limits.raw_max_size_bytes) > 0) {
+              cloudinaryCap.rawMaxBytes = Number(usage.media_limits.raw_max_size_bytes);
+            }
+          }
+          if (typeof usage?.storage?.usage === 'number') {
+            cloudinaryCap.storageUsageBytes = usage.storage.usage;
+          }
+          if (typeof usage?.credits?.used_percent === 'number') {
+            cloudinaryCap.creditsUsagePercent = usage.credits.used_percent;
+          } else if (typeof usage?.storage?.credits_usage === 'number') {
+            cloudinaryCap.creditsUsagePercent = usage.storage.credits_usage;
+          }
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch {
+      // Keep verified defaults if probe times out
+    }
+  } else {
+    limitations.push('Cloudinary credentials are not configured on the server.');
+  }
+
+  if (cloudinaryCap.configured && cloudinaryCap.videoMaxBytes < TARGET_MAX_UPLOAD_BYTES) {
+    const imgMb = Math.round(cloudinaryCap.imageMaxBytes / (1024 * 1024));
+    const vidMb = Math.round(cloudinaryCap.videoMaxBytes / (1024 * 1024));
+    const rawMb = Math.round(cloudinaryCap.rawMaxBytes / (1024 * 1024));
+    limitations.push(
+      `Active Cloudinary account (${cloudName}, ${cloudinaryCap.plan} plan) caps direct & chunked assets at ${imgMb} MB (images), ${rawMb} MB (PDF/raw), and ${vidMb} MB (videos).`
+    );
+  }
+
+  // 2. Live Supabase Storage Bucket & TUS Resumable Probe
+  const bucketName = process.env.SUPABASE_BUCKET || 'madecc-assets';
+  const supabaseCap: ProviderUploadCapabilities['supabase'] = {
+    configured: isSupabaseConfigured(),
+    bucketName,
+    bucketPublic: null,
+    bucketFileSizeLimitBytes: null,
+    effectiveMaxBytes: 0,
+    tusSupported: false,
+    tusEndpoint: null,
+    chunkSizeBytes: 6 * 1024 * 1024,
+    limitSource: 'unconfigured',
+    probeStatus: 'unconfigured',
+  };
+
+  if (supabaseCap.configured) {
+    supabaseCap.tusSupported = true;
+    supabaseCap.tusEndpoint = getSupabaseStorageTusEndpoint(process.env.SUPABASE_URL);
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      const { data: bucket, error } = await supabase.storage.getBucket(bucketName);
+      if (error || !bucket) {
+        supabaseCap.probeStatus = 'error';
+        supabaseCap.probeError = error?.message || `Bucket "${bucketName}" could not be inspected`;
+        const envOverride = Number(process.env.SUPABASE_MAX_UPLOAD_BYTES || 0);
+        supabaseCap.effectiveMaxBytes =
+          envOverride > 0 ? Math.min(TARGET_MAX_UPLOAD_BYTES, envOverride) : 50 * 1024 * 1024;
+        supabaseCap.limitSource = envOverride > 0 ? 'env_override' : 'unconfigured';
+        limitations.push(
+          `Supabase Storage bucket "${bucketName}" probe failed (${supabaseCap.probeError}).`
+        );
+      } else {
+        supabaseCap.probeStatus = 'verified';
+        supabaseCap.bucketPublic = Boolean(bucket.public);
+        const rawLimit =
+          typeof (bucket as any).file_size_limit === 'number'
+            ? (bucket as any).file_size_limit
+            : null;
+        supabaseCap.bucketFileSizeLimitBytes = rawLimit;
+        const envOverride = Number(process.env.SUPABASE_MAX_UPLOAD_BYTES || 0);
+
+        if (rawLimit && rawLimit > 0) {
+          supabaseCap.effectiveMaxBytes = Math.min(TARGET_MAX_UPLOAD_BYTES, rawLimit);
+          supabaseCap.limitSource = 'bucket_limit';
+          if (rawLimit < TARGET_MAX_UPLOAD_BYTES) {
+            limitations.push(
+              `Supabase bucket "${bucketName}" file_size_limit is ${(rawLimit / (1024 * 1024)).toFixed(0)} MB. Increase bucket file_size_limit to 10737418240 (10 GB) on Supabase Pro+ to enable full 10 GB TUS uploads.`
+            );
+          }
+        } else if (envOverride > 0) {
+          supabaseCap.effectiveMaxBytes = Math.min(TARGET_MAX_UPLOAD_BYTES, envOverride);
+          supabaseCap.limitSource = 'env_override';
+        } else if (process.env.SUPABASE_PLAN?.toLowerCase() === 'free') {
+          supabaseCap.effectiveMaxBytes = 50 * 1024 * 1024;
+          supabaseCap.limitSource = 'env_override';
+          limitations.push('Supabase Free tier enforces a 50 MB maximum object size.');
+        } else {
+          // Pro+ buckets without an explicit file_size_limit support up to 50 GB TUS on storage.supabase.co
+          supabaseCap.effectiveMaxBytes = TARGET_MAX_UPLOAD_BYTES;
+          supabaseCap.limitSource = 'pro_unbounded_default';
+          recommendations.push(
+            `Supabase bucket "${bucketName}" has no per-bucket cap; TUS resumable uploads up to 10 GB depend on a Supabase Pro+ plan global object limit.`
+          );
+        }
+      }
+    } catch (err: any) {
+      supabaseCap.probeStatus = 'error';
+      supabaseCap.probeError = err?.message || 'Supabase probe failed';
+      limitations.push(`Supabase Storage probe error: ${supabaseCap.probeError}`);
+    }
+  } else {
+    limitations.push(
+      'Supabase Storage (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) is not configured in this environment, so TUS multi-gigabyte uploads (up to 10 GB) are currently unavailable.'
+    );
+    recommendations.push(
+      'Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_BUCKET (Pro+ plan with 10 GB bucket file_size_limit) in Netlify environment variables to unlock resumable TUS uploads up to 10 GB.'
+    );
+  }
+
+  const cloudinaryOverall = cloudinaryCap.configured
+    ? Math.max(cloudinaryCap.imageMaxBytes, cloudinaryCap.videoMaxBytes, cloudinaryCap.rawMaxBytes)
+    : 0;
+  const overallMaxUploadBytes = Math.max(cloudinaryOverall, supabaseCap.effectiveMaxBytes);
+  const supports10Gb = overallMaxUploadBytes >= TARGET_MAX_UPLOAD_BYTES;
+
+  const result: ProviderUploadCapabilities = {
+    checkedAt: new Date().toISOString(),
+    targetMaxBytes: TARGET_MAX_UPLOAD_BYTES,
+    overallMaxUploadBytes,
+    supports10Gb,
+    serverlessRuntime: isServerlessRuntime(),
+    proxyMaxBytes: SERVERLESS_PROXY_MAX_BYTES,
+    directUploadBypassActive: true,
+    cloudinary: cloudinaryCap,
+    supabase: supabaseCap,
+    limitations,
+    recommendations,
+  };
+
+  cachedCapabilities = {
+    expiresAt: Date.now() + 2 * 60 * 1000, // 2-minute TTL
+    data: result,
+  };
+  return result;
+}
+
+export function getCloudinaryLimitForCategory(
+  caps: ProviderUploadCapabilities,
+  category: 'image' | 'video' | 'audio' | 'document' | 'logo'
+): number {
+  if (!caps.cloudinary.configured) return 0;
+  if (category === 'video' || category === 'audio') return caps.cloudinary.videoMaxBytes;
+  if (category === 'document') return caps.cloudinary.rawMaxBytes;
+  return caps.cloudinary.imageMaxBytes;
+}
+
+export function selectUploadProviderForFile(
+  caps: ProviderUploadCapabilities,
+  opts: {
+    fileSize: number;
+    category: 'image' | 'video' | 'audio' | 'document' | 'logo';
+    preferredProvider?: 'cloudinary' | 'supabase' | 'auto';
+  }
+): {
+  allowed: boolean;
+  provider?: 'cloudinary' | 'supabase';
+  maxAllowedBytes: number;
+  error?: string;
+} {
+  const { fileSize, category, preferredProvider = 'auto' } = opts;
+  const cloudLimit = getCloudinaryLimitForCategory(caps, category);
+  const supaLimit = caps.supabase.configured ? caps.supabase.effectiveMaxBytes : 0;
+
+  const formatCap = (bytes: number) =>
+    bytes >= 1024 * 1024 * 1024
+      ? `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+      : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+  if (preferredProvider === 'supabase') {
+    if (!caps.supabase.configured || supaLimit <= 0) {
+      return {
+        allowed: false,
+        maxAllowedBytes: cloudLimit,
+        error: 'Supabase Storage is not configured in this environment.',
+      };
+    }
+    if (fileSize > supaLimit) {
+      return {
+        allowed: false,
+        maxAllowedBytes: supaLimit,
+        error: `File size (${formatCap(fileSize)}) exceeds Supabase bucket limit (${formatCap(supaLimit)}).`,
+      };
+    }
+    return { allowed: true, provider: 'supabase', maxAllowedBytes: supaLimit };
+  }
+
+  // Prefer Cloudinary when file fits Cloudinary plan limit (and preferredProvider !== 'supabase')
+  if (caps.cloudinary.configured && fileSize <= cloudLimit) {
+    return { allowed: true, provider: 'cloudinary', maxAllowedBytes: cloudLimit };
+  }
+
+  // Escalate to Supabase TUS resumable storage when file exceeds Cloudinary plan limit
+  if (caps.supabase.configured && fileSize <= supaLimit) {
+    return { allowed: true, provider: 'supabase', maxAllowedBytes: supaLimit };
+  }
+
+  const highestAvailable = Math.max(cloudLimit, supaLimit);
+  if (highestAvailable <= 0) {
+    return {
+      allowed: false,
+      maxAllowedBytes: 0,
+      error: 'No cloud storage provider is configured on the server.',
+    };
+  }
+
+  const reasons: string[] = [];
+  if (caps.cloudinary.configured) {
+    reasons.push(
+      `Cloudinary (${caps.cloudinary.plan} plan) allows up to ${formatCap(cloudLimit)} for ${category}`
+    );
+  }
+  if (caps.supabase.configured) {
+    reasons.push(`Supabase bucket allows up to ${formatCap(supaLimit)}`);
+  } else {
+    reasons.push('Supabase Storage is not configured for multi-GB TUS uploads');
+  }
+
+  return {
+    allowed: false,
+    maxAllowedBytes: highestAvailable,
+    error: `File size (${formatCap(fileSize)}) exceeds configured storage limits: ${reasons.join('; ')}.`,
+  };
+}
+
+export async function createSupabaseSignedUploadTicket(opts: {
+  folder: string;
+  filename: string;
+  mimeType?: string;
+}): Promise<{
+  bucketName: string;
+  objectPath: string;
+  signedUrl: string;
+  token: string;
+  tusEndpoint: string;
+  fallbackTusEndpoint: string;
+  publicUrl: string;
+  isPublicBucket: boolean;
+}> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase Storage is not configured on the server.');
+  }
+  const { createClient } = await import('@supabase/supabase-js');
+  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const bucketName = process.env.SUPABASE_BUCKET || 'madecc-assets';
+  const safeName = String(opts.filename || 'asset.bin')
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .slice(0, 140);
+  const objectPath = `${sanitizeUploadFolder(opts.folder, 'madecc/cms_media')}/${Date.now()}-${safeName}`;
+
+  const { data: bucketInfo } = await supabase.storage.getBucket(bucketName);
+  const isPublicBucket = Boolean(bucketInfo?.public ?? true);
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .createSignedUploadUrl(objectPath, { upsert: true });
+
+  if (error || !data?.token) {
+    throw new Error(error?.message || 'Could not generate Supabase signed upload URL.');
+  }
+
+  const { data: pubData } = supabase.storage.from(bucketName).getPublicUrl(objectPath);
+  const tusEndpoint =
+    getSupabaseStorageTusEndpoint(process.env.SUPABASE_URL) ||
+    `${process.env.SUPABASE_URL!.replace(/\/$/, '')}/storage/v1/upload/resumable/sign`;
+  const fallbackTusEndpoint = `${process.env.SUPABASE_URL!.replace(/\/$/, '')}/storage/v1/upload/resumable/sign`;
+
+  return {
+    bucketName,
+    objectPath,
+    signedUrl: data.signedUrl,
+    token: data.token,
+    tusEndpoint,
+    fallbackTusEndpoint,
+    publicUrl: pubData.publicUrl,
+    isPublicBucket,
+  };
+}
+
+export async function verifyUploadedAssetInCloud(opts: {
+  provider: 'cloudinary' | 'supabase';
+  publicId?: string;
+  resourceType?: string;
+  bucketName?: string;
+  objectPath?: string;
+  fileUrl?: string;
+}): Promise<{
+  verified: boolean;
+  fileSize: number;
+  fileUrl: string;
+  publicId: string;
+  dimensions?: string;
+  durationSeconds?: number;
+  mimeType?: string;
+  reason?: string;
+}> {
+  if (opts.provider === 'cloudinary') {
+    const { cloudinary, cloudName } = await getCloudinary();
+    let targetPublicId = String(opts.publicId || '').trim();
+    let targetType = String(opts.resourceType || '').trim();
+
+    if (!targetPublicId && opts.fileUrl) {
+      try {
+        const urlObj = new URL(opts.fileUrl);
+        if (urlObj.hostname !== 'res.cloudinary.com' || !urlObj.pathname.startsWith(`/${cloudName}/`)) {
+          return {
+            verified: false,
+            fileSize: 0,
+            fileUrl: opts.fileUrl,
+            publicId: '',
+            reason: 'Cloudinary URL does not match configured cloud account.',
+          };
+        }
+        const parts = urlObj.pathname.split('/');
+        if (!targetType && parts[2]) targetType = parts[2];
+        const uploadIdx = parts.indexOf('upload');
+        if (uploadIdx !== -1 && uploadIdx + 1 < parts.length) {
+          let rem = parts.slice(uploadIdx + 1);
+          if (rem[0]?.startsWith('v') && /^\d+$/.test(rem[0].slice(1))) rem = rem.slice(1);
+          const joined = rem.join('/');
+          const lastDot = joined.lastIndexOf('.');
+          targetPublicId = lastDot !== -1 && targetType !== 'raw' ? joined.slice(0, lastDot) : joined;
+        }
+      } catch {
+        return {
+          verified: false,
+          fileSize: 0,
+          fileUrl: opts.fileUrl || '',
+          publicId: '',
+          reason: 'Malformed Cloudinary URL.',
+        };
+      }
+    }
+
+    if (!targetPublicId) {
+      return {
+        verified: false,
+        fileSize: 0,
+        fileUrl: opts.fileUrl || '',
+        publicId: '',
+        reason: 'Missing Cloudinary publicId for upload verification.',
+      };
+    }
+
+    const typesToTry = Array.from(
+      new Set(
+        [targetType, 'image', 'video', 'raw'].filter(
+          (t): t is 'image' | 'video' | 'raw' => t === 'image' || t === 'video' || t === 'raw'
+        )
+      )
+    );
+
+    for (const rType of typesToTry) {
+      try {
+        const res = await cloudinary.api.resource(targetPublicId, { resource_type: rType });
+        if (res && Number(res.bytes) > 0) {
+          return {
+            verified: true,
+            fileSize: Number(res.bytes),
+            fileUrl: res.secure_url || res.url || opts.fileUrl || '',
+            publicId: res.public_id || targetPublicId,
+            dimensions: res.width && res.height ? `${res.width}x${res.height}` : undefined,
+            durationSeconds: typeof res.duration === 'number' ? Math.round(res.duration) : undefined,
+            mimeType: res.format ? `${rType === 'raw' ? 'application' : rType}/${res.format}` : undefined,
+          };
+        }
+      } catch {
+        // Try next resource_type
+      }
+    }
+
+    return {
+      verified: false,
+      fileSize: 0,
+      fileUrl: opts.fileUrl || '',
+      publicId: targetPublicId,
+      reason: 'Uploaded asset could not be verified on Cloudinary.',
+    };
+  }
+
+  // Supabase verification
+  if (!isSupabaseConfigured()) {
+    return {
+      verified: false,
+      fileSize: 0,
+      fileUrl: opts.fileUrl || '',
+      publicId: '',
+      reason: 'Supabase is not configured to verify this upload.',
+    };
+  }
+
+  const bucketName = opts.bucketName || process.env.SUPABASE_BUCKET || 'madecc-assets';
+  const objectPath = String(opts.objectPath || '').replace(/^\/+/, '');
+  if (!objectPath) {
+    return {
+      verified: false,
+      fileSize: 0,
+      fileUrl: opts.fileUrl || '',
+      publicId: '',
+      reason: 'Missing Supabase objectPath for upload verification.',
+    };
+  }
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+  const dir = path.posix.dirname(objectPath);
+  const base = path.posix.basename(objectPath);
+  const { data: listed, error: listErr } = await supabase.storage
+    .from(bucketName)
+    .list(dir === '.' ? '' : dir, { limit: 20, search: base });
+
+  if (listErr) {
+    return {
+      verified: false,
+      fileSize: 0,
+      fileUrl: opts.fileUrl || '',
+      publicId: `${bucketName}/${objectPath}`,
+      reason: `Supabase object lookup failed: ${listErr.message}`,
+    };
+  }
+
+  const found = (listed || []).find((f) => f.name === base);
+  const actualSize = Number((found as any)?.metadata?.size || 0);
+  if (!found || actualSize <= 0) {
+    return {
+      verified: false,
+      fileSize: 0,
+      fileUrl: opts.fileUrl || '',
+      publicId: `${bucketName}/${objectPath}`,
+      reason: 'Supabase object does not exist or is 0 bytes.',
+    };
+  }
+
+  const { data: pubData } = supabase.storage.from(bucketName).getPublicUrl(objectPath);
+  return {
+    verified: true,
+    fileSize: actualSize,
+    fileUrl: pubData.publicUrl,
+    publicId: `${bucketName}/${objectPath}`,
+    mimeType: (found as any)?.metadata?.mimetype || undefined,
+  };
 }
 
 export function isVerifiedCloudAssetUrl(rawUrl: string | null | undefined): boolean {
@@ -785,6 +1339,6 @@ const storage = multer.diskStorage({
 export const upload = multer({
   storage,
   limits: {
-    fileSize: 2000 * 1024 * 1024, // 2000 MB / 2 GB Maximum Upload Capacity
+    fileSize: TARGET_MAX_UPLOAD_BYTES, // 10 GB ceiling on local Node runtime (direct cloud TUS/chunked bypasses serverless 6 MB limit)
   },
 });

@@ -75,7 +75,9 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
       links: [
         { name: 'KRR Bookstore & Textbooks', tab: 'store', desc: 'Cameroon Civil Engineering & Eurocode manuals, academic publications' },
         { name: 'Order Tracking & Digital Downloads', tab: 'order-tracking', desc: 'Real-time payment tracking, TXID review, and secured PDF activation' },
-        { name: 'Visitor & Client Walkthrough Guide', tab: 'walkthrough-guide', desc: 'Interactive visual step-by-step tour through the MADECC platform' }
+        { name: 'Visitor & Client Walkthrough Guide', tab: 'walkthrough-guide', desc: 'Interactive visual step-by-step tour through the MADECC platform' },
+        { name: 'Navigation Manual (A4 PDF) — 999 XAF', tab: 'navigation-manual', desc: 'Complete 4-page A4 guide to all 18 portals, 11 Admin categories & 10 GB media uploads' },
+        { name: 'Buyer Brand Handover Manual (PDF) — 999 XAF', tab: 'buyer-handover-manual', desc: 'White-label ownership transfer certificate, no-code rebranding & .env cutover manual' }
       ]
     },
     {
@@ -203,24 +205,32 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
                   Navigation Manual (A4 PDF)
                 </h3>
                 <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                  Comprehensive multi-page operational manual detailing the full architecture of the MADECC GROUP ecosystem, budgeting tools, booking procedures, and contact points.
+                  Upgraded v4.0 4-page A4 manual detailing all 18 public portals, the 11-category Admin Dashboard, 10 GB chunked Cloudinary/Supabase uploads, budgeting tools, and 999 / 2,199 XAF unlock verification.
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-mono text-slate-400">
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">A4 Printable PDF</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">English &amp; French</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Instant Download</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">4-Page A4 PDF (v4.0)</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">11 Admin Categories</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Admin Free</span>
                 </div>
               </div>
 
-              <div className="mt-5 pt-4 border-t border-slate-850 flex items-center justify-between gap-3">
+              <div className="mt-5 pt-4 border-t border-slate-850 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => navigate('navigation-manual')}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-300 font-bold text-xs transition-all cursor-pointer"
+                >
+                  <span>Open Manual Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => downloadWebsiteNavigationGuidePdf()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download Navigation Manual (999 XAF)</span>
+                  <span>Download A4 PDF (999 XAF)</span>
                 </button>
               </div>
             </div>
@@ -247,24 +257,32 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
                   Buyer Brand Handover Manual (PDF)
                 </h3>
                 <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                  Official Technical Handover and Brand Transfer Documentation. Details DNS authority, Neon PostgreSQL schemas, SMTP credentials, Cloudinary media CDN, and OHADA contract standards.
+                  Upgraded 2026 Transfer Dossier with live Buyer Certificate personalization, 11-category Admin no-code rebranding guide, paymentDomain.ts cutover, Neon PostgreSQL, Cloudinary &amp; Supabase 10 GB TUS checklist.
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-mono text-slate-400">
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Executive Handover</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Infrastructure Records</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Secure Access</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Custom Certificate</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">No-Code Rebrand</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Launch Checklist</span>
                 </div>
               </div>
 
-              <div className="mt-5 pt-4 border-t border-slate-850 flex items-center justify-between gap-3">
+              <div className="mt-5 pt-4 border-t border-slate-850 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => navigate('buyer-handover-manual')}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition-all cursor-pointer"
+                >
+                  <span>Open Handover Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => downloadBuyerHandoverManualPdf()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download Handover Manual (999 XAF)</span>
+                  <span>Download Handover PDF (999 XAF)</span>
                 </button>
               </div>
             </div>

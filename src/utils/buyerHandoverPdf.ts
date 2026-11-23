@@ -1,6 +1,15 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { isReceiptPaid, isCurrentUserAdmin, BUYER_HANDOVER_MANUAL_RECEIPT_NO } from './paymentDomain';
+import {
+  ADMIN_SMTP_USER_EMAIL,
+  BUYER_HANDOVER_MANUAL_RECEIPT_NO,
+  MANUAL_DOWNLOAD_FEE_XAF,
+  OFFICIAL_PAYMENT_CONFIG,
+  STANDARD_RECEIPT_FEE_XAF,
+  TARGET_OFFICIAL_DOMAIN,
+  isCurrentUserAdmin,
+  isReceiptPaid
+} from './paymentDomain';
 
 export interface BuyerHandoverOptions {
   buyerName?: string;
@@ -22,25 +31,31 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
+  const totalPages = 4;
 
-  const darkNavy = [15, 23, 42];
-  const deepBlue = [30, 58, 138];
-  const amberGold = [217, 119, 6];
-  const emeraldGreen = [16, 185, 129];
-  const lightBg = [248, 250, 252];
-  const borderGray = [226, 232, 240];
+  const darkNavy: [number, number, number] = [15, 23, 42];
+  const deepBlue: [number, number, number] = [30, 58, 138];
+  const amberGold: [number, number, number] = [217, 119, 6];
+  const emeraldGreen: [number, number, number] = [16, 185, 129];
+  const lightBg: [number, number, number] = [248, 250, 252];
+  const borderGray: [number, number, number] = [226, 232, 240];
 
-  const buyerCompanyLabel = options.buyerCompany || '[New Owner Brand / Company Name]';
-  const sellerEmailLabel = options.sellerEmail || 'kreboya603@gmail.com';
+  const buyerNameLabel = options.buyerName?.trim() || '[Authorized Buyer Name]';
+  const buyerCompanyLabel = options.buyerCompany?.trim() || '[New Owner Brand / Company Name]';
+  const buyerDomainLabel = options.buyerDomain?.trim() || '[https://your-new-brand.com]';
+  const sellerNameLabel = options.sellerName?.trim() || 'Eric Kreboya';
+  const sellerEmailLabel = options.sellerEmail?.trim() || ADMIN_SMTP_USER_EMAIL;
+  const mtnNumbers = (OFFICIAL_PAYMENT_CONFIG?.mtnMomoNumbers || ['671063511', '683316486']).join(', ');
+  const omNumbers = (OFFICIAL_PAYMENT_CONFIG?.orangeMoneyNumbers || ['689115595', '640194505']).join(', ');
 
   const drawHeaderFooter = (pageDoc: jsPDF, pageNum: number) => {
-    pageDoc.setFillColor(deepBlue[0], deepBlue[1], deepBlue[2]);
+    pageDoc.setFillColor(...deepBlue);
     pageDoc.rect(0, 0, pageWidth, 5, 'F');
 
-    pageDoc.setFillColor(amberGold[0], amberGold[1], amberGold[2]);
+    pageDoc.setFillColor(...amberGold);
     pageDoc.rect(0, 5, pageWidth, 1.5, 'F');
 
-    pageDoc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    pageDoc.setDrawColor(...borderGray);
     pageDoc.setLineWidth(0.4);
     pageDoc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
 
@@ -48,12 +63,12 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
     pageDoc.setFontSize(8);
     pageDoc.setTextColor(100, 116, 139);
     pageDoc.text(
-      'OFFICIAL WEBSITE ACQUISITION & BRAND CUSTOMIZATION HANDOVER MANUAL (A4)',
+      `BUYER BRAND HANDOVER MANUAL (A4 PDF) — 2026 Enterprise Release | ${MANUAL_DOWNLOAD_FEE_XAF} XAF`,
       margin,
       pageHeight - 7
     );
     pageDoc.text(
-      `Handover Support: ${sellerEmailLabel} | Page ${pageNum} of 3`,
+      `Handover Support: ${sellerEmailLabel} | Page ${pageNum} of ${totalPages}`,
       pageWidth - margin,
       pageHeight - 7,
       { align: 'right' }
@@ -61,68 +76,66 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
   };
 
   // =========================================================================
-  // PAGE 1: EXECUTIVE OVERVIEW & NO-CODE ADMIN CMS BRAND CUSTOMIZATION
+  // PAGE 1: HANDOVER OVERVIEW & NO-CODE 11-CATEGORY ADMIN REBRANDING GUIDE
   // =========================================================================
   drawHeaderFooter(doc, 1);
 
-  doc.setFillColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.roundedRect(margin, 12, contentWidth, 38, 3, 3, 'F');
+  doc.setFillColor(...darkNavy);
+  doc.roundedRect(margin, 12, contentWidth, 40, 3, 3, 'F');
 
-  doc.setFillColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
-  doc.rect(margin + 2, 14, 2, 34, 'F');
+  doc.setFillColor(...emeraldGreen);
+  doc.rect(margin + 2, 14, 2, 36, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('WEBSITE BUYER HANDOVER & BRAND CUSTOMIZATION GUIDE', margin + 8, 22);
+  doc.text('BUYER BRAND HANDOVER & CUSTOMIZATION MANUAL (A4 PDF)', margin + 8, 22);
 
-  doc.setFontSize(10.5);
+  doc.setFontSize(10);
   doc.setTextColor(245, 158, 11);
-  doc.text('COMPLETE BLUEPRINT FOR REBRANDING, PAYMENTS, SMTP & DOMAIN TRANSFER', margin + 8, 29);
+  doc.text('TURNKEY REBRANDING, PAYMENT TRANSFER, INFRASTRUCTURE CUTOVER & LAUNCH DOSSIER', margin + 8, 29);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.2);
+  doc.setFontSize(8);
   doc.setTextColor(203, 213, 225);
   doc.text(
-    `Prepared for New Website Owner: ${buyerCompanyLabel} | Architecture: React 19 + TypeScript + Express + Cloud SaaS`,
+    `Prepared for: ${buyerNameLabel} (${buyerCompanyLabel}) | Target Domain: ${buyerDomainLabel}`,
     margin + 8,
     36
   );
   doc.text(
-    `Handover Edition: 2026 Master Release | Date: ${new Date().toLocaleDateString('en-US', {
+    `2026 Enterprise Release | Stack: React 19 + TypeScript + Express + Neon PostgreSQL + Drizzle ORM | Issued: ${new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })}`,
     margin + 8,
-    42
+    42.5
   );
 
-  let y = 56;
+  let y = 57;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11.5);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('1. Welcome New Owner — What You Have Purchased', margin, y);
-  y += 5;
+  doc.setTextColor(...darkNavy);
+  doc.text('1. Executive Handover Scope — What Transfers to the Buyer', margin, y);
+  y += 4.5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.8);
+  doc.setFontSize(8.4);
   doc.setTextColor(51, 65, 85);
   const introText =
-    'Congratulations on acquiring this turnkey Construction, Civil Engineering, Enterprise ERP & Multi-Tenant Cloud SaaS ' +
-    'web platform. This document shows you the exact sections—both inside the No-Code Admin Dashboard and in the clean ' +
-    'configuration files—that you will customize to rebrand the entire platform for your own company name, logo, colors, ' +
-    'Mobile Money / Orange Money numbers, SMTP email address, and domain name.';
+    `This Enterprise Release handover manual provides ${buyerCompanyLabel} with exact, zero-guesswork instructions to transfer ` +
+    'brand identity, domain authority, Mobile Money / Orange Money settlement accounts, SMTP transactional mail, Neon PostgreSQL / ' +
+    'Drizzle ORM databases, and 10 GB chunked Cloudinary / Supabase media storage cleanly across all 11 Admin Dashboard categories.';
   const splitIntro = doc.splitTextToSize(introText, contentWidth);
   doc.text(splitIntro, margin, y);
-  y += splitIntro.length * 4.3 + 4;
+  y += splitIntro.length * 4.2 + 3.5;
 
-  // Section 2: No-Code Admin Dashboard Brand Customization
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11.5);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('2. No-Code Brand Customization via Admin Dashboard (#admin)', margin, y);
+  doc.setTextColor(...darkNavy);
+  doc.text('2. No-Code Rebranding in the 11-Category Admin Dashboard (#admin)', margin, y);
   y += 3;
 
   autoTable(doc, {
@@ -130,100 +143,103 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
     margin: { left: margin, right: margin },
     theme: 'grid',
     headStyles: {
-      fillColor: [30, 58, 138],
+      fillColor: deepBlue,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.5
+      fontSize: 8.2
     },
     bodyStyles: {
-      fontSize: 7.8,
-      cellPadding: 2.2,
+      fontSize: 7.5,
+      cellPadding: 2,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 38, fontStyle: 'bold' },
-      1: { cellWidth: 42 },
+      0: { cellWidth: 40, fontStyle: 'bold' },
+      1: { cellWidth: 52 },
       2: { cellWidth: 'auto' }
     },
-    head: [['Brand Element to Customize', 'Where in Admin Dashboard', 'What to Update for Your Brand']],
+    head: [['Brand & Platform Element', 'Rearranged Admin Category Path', 'What Buyer Updates (Zero Code Required)']],
     body: [
       [
-        'Company Name, Tagline & Legal Info',
-        'Admin > CMS & Site Settings > General Identity',
-        'Replace "MADECC GROUP", tagline, developer name, RCCM registration number, and NIU tax ID with your company details.'
+        'Site Name, Logo, Theme & Offices',
+        '08. Website CMS & Publishing > Global Site Branding & Settings',
+        'Update Company Name, Tagline, RCCM/NIU Tax ID, Logo/Favicon URLs, Brand Colors, Yaoundé/Douala addresses, and phone hotlines.'
       ],
       [
-        'Logo, Favicon & Brand Colors',
-        'Admin > CMS & Site Settings > Theme & Branding',
-        'Upload/paste your Logo URL, Favicon URL, and choose your Primary & Accent Hex colors (updates CSS variables site-wide).'
+        'Hero Reels, Sliders & Public Pages',
+        '08. Website CMS & Publishing > Page Builder / Home Hero Sliders',
+        'Replace homepage hero copy, background video reels, SEO meta tags, and page section blocks using live staging & revision history.'
       ],
       [
-        'Phones, WhatsApp & Office Addresses',
-        'Admin > CMS & Site Settings > Contact & Offices',
-        'Update primary/secondary phone numbers, WhatsApp dispatch numbers, headquarters address, and business hours.'
+        'Services, Divisions & Legal Pages',
+        '02. Corporate & Governance + 08. Website CMS > Services / Legal Pages',
+        'Edit all 10 business divisions, engineering services, privacy policy, OHADA terms, FAQ entries, and sustainability initiatives.'
       ],
       [
-        'Hero Video, Banners & Page Copy',
-        'Admin > Page Builder / Hero Banners',
-        'Replace homepage hero headlines, background video reel URL, carousel slides, and SEO meta titles/descriptions.'
+        'Projects, Tenders & KRR Store',
+        '03. Construction ERP + 05. Commerce & CRM > Projects / Tenders / KRR Bookstore',
+        'Publish your own projects, progress photos/videos (up to 10 GB), contractor tenders, suppliers, and digital store publications.'
       ],
       [
-        'Services, Portfolio & Tenders',
-        'Admin > Services / Projects / Tenders Tabs',
-        'Add, edit, or delete engineering services, portfolio projects, CAD blueprint galleries, and open procurement tenders.'
+        'Social Links & OAuth Channels',
+        '09. Marketing & Social Media > SEO & Social Media Publisher',
+        'Reconnect Facebook Page, Instagram Business, LinkedIn, YouTube, and WhatsApp Business Cloud under your brand OAuth app.'
       ],
       [
-        'Social Media Channels (8 Links)',
-        'Admin > CMS & Site Settings > Social Channels',
-        'Replace Facebook, Instagram, LinkedIn, YouTube, X/Twitter, TikTok, and Pinterest URLs with your brand profiles.'
+        'Staff Roles & Client Accounts',
+        '10. People, HR & Education + 03. Construction ERP > Staff Access / Client Portal',
+        'Reassign administrator privileges, deactivate seller accounts, and onboard your engineering staff and construction clients.'
       ],
       [
-        'Non-Intrusive Maintenance Mode',
-        'Admin > Command Center > Maintenance Hub',
-        'Toggle scheduled maintenance notice ON/OFF without blocking visitors, and dispatch SMTP alerts to your admin email.'
+        'Maintenance Notice & Brand Guides',
+        '07. Documents > Manuals Hub + 11. Platform > Maintenance Mode & Brand Handover',
+        'Toggle non-intrusive visitor maintenance banners via SMTP and personalize/download Buyer Handover A4 PDFs anytime.'
       ]
     ]
   });
 
-  y = (doc as any).lastAutoTable.finalY + 7;
+  y = (doc as any).lastAutoTable.finalY + 6;
 
   doc.setFillColor(240, 253, 244);
-  doc.setDrawColor(16, 185, 129);
+  doc.setDrawColor(...emeraldGreen);
   doc.setLineWidth(0.5);
-  doc.roundedRect(margin, y, contentWidth, 26, 2, 2, 'FD');
+  doc.roundedRect(margin, y, contentWidth, 21, 2, 2, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.8);
   doc.setTextColor(6, 95, 70);
-  doc.text('FAST REBRANDING TIP: MULTI-TENANT WHITE-LABEL ENGINE INCLUDED', margin + 4, y + 6);
+  doc.text('MULTI-TENANT WHITE-LABEL ENGINE INCLUDED (11. PLATFORM > SAAS CONTROL PLANE)', margin + 4, y + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.6);
   doc.setTextColor(20, 83, 45);
-  const tipText =
-    'This website also includes a built-in Multi-Tenant SaaS Engine (TenantSwitcher & SuperAdmin). You can either operate the ' +
-    'entire website for your own single brand OR rent out isolated workspaces to other construction companies for recurring ' +
-    'monthly/annual subscription revenue!';
-  doc.text(doc.splitTextToSize(tipText, contentWidth - 8), margin + 4, y + 11.5);
+  doc.text(
+    doc.splitTextToSize(
+      'Beyond single-brand operation, the platform includes a multi-tenant SaaS engine allowing you to host isolated sub-brand workspaces for partner firms with custom logos, plans, and tenant billing.',
+      contentWidth - 8
+    ),
+    margin + 4,
+    y + 10.5
+  );
 
   // =========================================================================
-  // PAGE 2: PAYMENT GATEWAY, PRICING, SMTP & SOURCE CODE CUSTOMIZATION MAP
+  // PAGE 2: PAYMENT DOMAIN CONSTANTS & SOURCE FILE HANDOVER MAP
   // =========================================================================
   doc.addPage();
   drawHeaderFooter(doc, 2);
 
-  y = 15;
+  y = 14;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('3. Customizing Payment Numbers, Document Fees & Official Domain', margin, y);
-  y += 5;
+  doc.setTextColor(...darkNavy);
+  doc.text('3. Transferring Payment Numbers, Fees & Domain (src/utils/paymentDomain.ts)', margin, y);
+  y += 4.5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.2);
+  doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    'Open file: src/utils/paymentDomain.ts (lines 1-45) to replace payment numbers, fee amount, domain, and admin SMTP email:',
+    'Edit src/utils/paymentDomain.ts to switch Mobile Money / Orange Money receivers, pricing tiers, SMTP dispatch target, and production domain:',
     margin,
     y
   );
@@ -234,53 +250,30 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
     margin: { left: margin, right: margin },
     theme: 'striped',
     headStyles: {
-      fillColor: [15, 23, 42],
+      fillColor: darkNavy,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.2
+      fontSize: 8
     },
     bodyStyles: {
-      fontSize: 7.6,
-      cellPadding: 2,
+      fontSize: 7.4,
+      cellPadding: 1.9,
       textColor: [15, 23, 42]
     },
     columnStyles: {
-      0: { cellWidth: 46, fontStyle: 'bold' },
-      1: { cellWidth: 44 },
+      0: { cellWidth: 50, fontStyle: 'bold' },
+      1: { cellWidth: 42 },
       2: { cellWidth: 'auto' }
     },
-    head: [['Constant / Property', 'Current Default Value', 'How the Buyer Customizes It']],
+    head: [['Constant / Configuration Key', 'Current Value', 'Buyer Cutover Action']],
     body: [
-      [
-        'TARGET_OFFICIAL_DOMAIN',
-        'https://madeccgroup.online',
-        'Change to your new production domain name (e.g., https://yourbrand.com). Used in QR codes and payment links.'
-      ],
-      [
-        'STANDARD_RECEIPT_FEE_XAF',
-        '2199 (XAF)',
-        'Change to any fee you want clients to pay before unlocking PDF receipts, BoQs, and document downloads.'
-      ],
-      [
-        'ADMIN_SMTP_USER_EMAIL',
-        'kreboya603@gmail.com',
-        'Change to your primary admin email address that receives payment confirmations & maintenance dispatches.'
-      ],
-      [
-        'OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers',
-        "['671063511', '683316486']",
-        'Replace with your own MTN Mobile Money merchant or personal receiver numbers.'
-      ],
-      [
-        'OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers',
-        "['689115595', '640194505']",
-        'Replace with your own Orange Money merchant or personal receiver numbers.'
-      ],
-      [
-        'OFFICIAL_PAYMENT_CONFIG.bankAccount',
-        'Afriland First Bank / IBAN',
-        'Replace bankName, accountName, accountNumber, and swiftCode with your corporate bank account.'
-      ]
+      ['TARGET_OFFICIAL_DOMAIN', TARGET_OFFICIAL_DOMAIN, `Set to ${buyerDomainLabel} for QR verification URLs, SEO canonicals, and payment redirects.`],
+      ['MANUAL_DOWNLOAD_FEE_XAF', `${MANUAL_DOWNLOAD_FEE_XAF} XAF`, 'Controls the fee for Navigation Manual (A4 PDF) & Buyer Brand Handover Manual downloads.'],
+      ['STANDARD_RECEIPT_FEE_XAF', `${STANDARD_RECEIPT_FEE_XAF} XAF`, 'Controls the fee for Certified Receipts, BOQs, Cost Guides, and OHADA Contracts.'],
+      ['ADMIN_SMTP_USER_EMAIL', sellerEmailLabel, 'Replace with the new owner admin inbox receiving payment OK & maintenance dispatches.'],
+      ['OFFICIAL_PAYMENT_CONFIG.mtnMomoNumbers', `[${mtnNumbers}]`, 'Replace with the buyer corporate or merchant MTN Mobile Money receiver lines.'],
+      ['OFFICIAL_PAYMENT_CONFIG.orangeMoneyNumbers', `[${omNumbers}]`, 'Replace with the buyer corporate or merchant Orange Money receiver lines.'],
+      ['OFFICIAL_PAYMENT_CONFIG.bank', 'UBA / Afriland IBAN', 'Update corporate bankName, accountName, and ibanRib for wire settlement receipts.']
     ]
   });
 
@@ -288,8 +281,8 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('4. Key Source Files for Deep Brand & Engineering Customization', margin, y);
+  doc.setTextColor(...darkNavy);
+  doc.text('4. Technical File Handover Reference Map', margin, y);
   y += 3.5;
 
   autoTable(doc, {
@@ -297,71 +290,50 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
     margin: { left: margin, right: margin },
     theme: 'grid',
     headStyles: {
-      fillColor: [30, 58, 138],
+      fillColor: deepBlue,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.2
+      fontSize: 8
     },
     bodyStyles: {
-      fontSize: 7.6,
-      cellPadding: 2,
+      fontSize: 7.4,
+      cellPadding: 1.9,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 54, fontStyle: 'bold' },
+      0: { cellWidth: 56, fontStyle: 'bold' },
       1: { cellWidth: 'auto' }
     },
-    head: [['File Path in Project', 'What This File Controls & What to Customize']],
+    head: [['Repository File Path', 'Purpose & Buyer Transfer Scope']],
     body: [
-      [
-        'src/lib/SiteSettingsContext.tsx',
-        'Default fallback brand settings (siteName, tagline, phones, emails, addresses, RCCM, NIU, social links, SEO defaults).'
-      ],
-      [
-        'src/services/tenantContentService.ts',
-        'Default flagship company profile, hero banners, default services list, and default portfolio projects.'
-      ],
-      [
-        'src/components/ProjectBudgetCalculator.tsx',
-        'Interactive 5-Step & Full Engineering Budget Calculator rates per m², material multipliers, and PDF quote letterhead.'
-      ],
-      [
-        'src/components/ConstructionCostGuide.tsx',
-        '2026 Regional Construction Cost Guide prices (cement, rebar, sand, gravel, labour rates) and regional multipliers.'
-      ],
-      [
-        'src/components/BoqStudio.tsx & DocumentStudio.tsx',
-        'Corporate letterheads, official stamps, contract clauses, and receipt templates for the 8 Engineering Studios.'
-      ],
-      [
-        'src/utils/navigationGuidePdf.ts',
-        'Downloadable A4 Visitor & Client Walkthrough Manual PDF header, company name, and contact coordinates.'
-      ],
-      [
-        'index.html & metadata.json',
-        'Browser <title>, OpenGraph social sharing cards (og:title, og:description), and PWA app name.'
-      ]
+      ['src/lib/SiteSettingsContext.tsx', 'Fallback company identity, NIU/RCCM tax numbers, phones, HQ address, social profiles & SEO defaults.'],
+      ['src/services/tenantContentService.ts', 'Default flagship tenant branding, division templates, hero banners, services & portfolio items.'],
+      ['src/utils/navigationGuidePdf.ts & buyerHandoverPdf.ts', 'Client-side A4 PDF generators for the 999 XAF Navigation & Buyer Handover Manuals.'],
+      ['src/components/BoqStudio.tsx & DocumentStudio.tsx', 'PDF/DOCX corporate letterheads, engineering stamps, fiscal receipts, and OHADA contract clauses.'],
+      ['src/lib/directMediaUpload.ts', 'Direct chunked Cloudinary + Supabase TUS upload engine (supports up to 10 GB media files without 413 errors).'],
+      ['src/middleware/auth.ts & server.ts', 'Backend Express API server, Neon Drizzle queries, admin role guards, SMTP routes & webhook verification.'],
+      ['index.html & metadata.json', 'Document <title>, OpenGraph social share cards, Twitter cards, and PWA manifest configuration.']
     ]
   });
 
   // =========================================================================
-  // PAGE 3: ENVIRONMENT VARIABLES (.ENV), SMTP & HANDOVER CHECKLIST
+  // PAGE 3: INFRASTRUCTURE, NEON POSTGRESQL, STORAGE & .ENV CUTOVER MATRIX
   // =========================================================================
   doc.addPage();
   drawHeaderFooter(doc, 3);
 
-  y = 15;
+  y = 14;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('5. Environment Variables (.env), SMTP Email & Admin Login Setup', margin, y);
-  y += 5;
+  doc.setTextColor(...darkNavy);
+  doc.text('5. Cloud Infrastructure, Storage (10 GB) & .env Variables Cutover', margin, y);
+  y += 4.5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.2);
+  doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    'When deploying on your hosting server (Cloud Run, VPS, Render, Railway, or cPanel Node.js), configure these .env variables:',
+    'Update these environment variables on Netlify, Cloud Run, VPS, or cPanel Node.js during production domain cutover:',
     margin,
     y
   );
@@ -372,98 +344,128 @@ export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {
     margin: { left: margin, right: margin },
     theme: 'grid',
     headStyles: {
-      fillColor: [15, 23, 42],
+      fillColor: darkNavy,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.2
+      fontSize: 8
     },
     bodyStyles: {
-      fontSize: 7.6,
+      fontSize: 7.4,
       cellPadding: 2,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 48, fontStyle: 'bold' },
+      0: { cellWidth: 54, fontStyle: 'bold' },
       1: { cellWidth: 'auto' }
     },
-    head: [['Environment Variable (.env)', 'Purpose & Buyer Configuration Instructions']],
+    head: [['Environment Variable / Secret', 'Infrastructure Provider & Buyer Transfer Instructions']],
     body: [
-      [
-        'SMTP_HOST / SMTP_PORT',
-        'e.g., smtp.gmail.com and 587 (or 465). Used by src/server/mailService.ts for all automated emails.'
-      ],
-      [
-        'SMTP_USER / SMTP_PASS',
-        'Your business email (e.g., yourname@gmail.com) and 16-character Google App Password for live SMTP dispatch.'
-      ],
-      [
-        'ADMIN_EMAIL',
-        'Your primary admin email address that receives quote alerts, 2,199 XAF payment confirmations, and maintenance logs.'
-      ],
-      [
-        'VITE_FIREBASE_API_KEY & PROJECT_ID',
-        'Firebase Authentication & Firestore credentials (or update firebase-applet-config.json with your Firebase project).'
-      ],
-      [
-        'ADMIN EMAIL WHITELIST',
-        'In src/server/routes/documentRoutes.ts (ADMIN_SMTP_USER) & src/middleware/auth.ts, add your admin login email.'
-      ]
+      ['DATABASE_URL', 'Neon Serverless PostgreSQL connection string managed via Drizzle ORM (drizzle-kit push for schema sync).'],
+      ['SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS', 'Transactional mail server (e.g., Gmail App Password or brand SMTP) used by src/server/mailService.ts.'],
+      ['ADMIN_EMAIL & JWT_SECRET / SESSION_SECRET', 'Buyer primary admin alert email plus freshly rotated cryptographic signing secrets for cookies/JWTs.'],
+      ['CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET', 'Cloudinary account credentials powering signed direct chunked browser uploads and optimized CDN transforms.'],
+      ['SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY', 'Supabase project & Storage bucket supporting TUS resumable uploads up to 10 GB for large site videos/blueprints.'],
+      ['VITE_FIREBASE_API_KEY & PROJECT_ID', 'Firebase Auth client configuration and Digital Asset Links (.well-known/assetlinks.json) for Google Play TWA.'],
+      ['GEMINI_API_KEY (Server-Side Only)', 'Server-side AI key for Engineering Studios & Blueprint Vision Take-Off (never exposed in frontend bundles).']
     ]
   });
 
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as any).lastAutoTable.finalY + 7;
 
-  // Section 6: Step-by-Step 15-Minute Rebranding Checklist for the Buyer
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-  doc.text('6. 15-Minute Buyer Launch & Handover Checklist', margin, y);
-  y += 5;
+  doc.setTextColor(...darkNavy);
+  doc.text('6. Mobile Money & Verification Desk Quick Reference', margin, y);
+  y += 3.5;
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: 'plain',
+    bodyStyles: {
+      fontSize: 7.8,
+      cellPadding: 1.9,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { cellWidth: 52, fontStyle: 'bold', textColor: deepBlue },
+      1: { cellWidth: 'auto' }
+    },
+    body: [
+      ['Manuals Verification Tier:', `${MANUAL_DOWNLOAD_FEE_XAF} XAF (Navigation Manual & Buyer Brand Handover Manual)`],
+      ['Certified Exports Tier:', `${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF (Receipts, BOQs, Cost Guides, Contracts)`],
+      ['Admin Confirm & OK Console:', 'Admin > 06. Finance, Billing & Payments > Payment Confirmations'],
+      ['Active MoMo / OM Channels:', `MTN MoMo: ${mtnNumbers} | Orange Money: ${omNumbers}`],
+      ['Handover Technical Desk:', `${sellerNameLabel} (${sellerEmailLabel} | +237 671 063 511)`]
+    ]
+  });
+
+  // =========================================================================
+  // PAGE 4: 15-MINUTE LAUNCH CHECKLIST & OWNERSHIP TRANSFER CERTIFICATE
+  // =========================================================================
+  doc.addPage();
+  drawHeaderFooter(doc, 4);
+
+  y = 14;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...darkNavy);
+  doc.text('7. 15-Minute Post-Handover Launch Checklist', margin, y);
+  y += 4.5;
 
   const checklistItems = [
-    '[  ] Step 1: Log into the Admin Dashboard (#admin) -> Open "CMS & Site Settings" -> Update Company Name, Logo, Phones & Addresses.',
-    '[  ] Step 2: Open src/utils/paymentDomain.ts -> Replace MTN MoMo, Orange Money numbers, Bank IBAN, and ADMIN_SMTP_USER_EMAIL.',
-    '[  ] Step 3: Configure .env with your SMTP_USER and SMTP_PASS -> Click "Test SMTP" or trigger a Maintenance Notice to verify email delivery.',
-    '[  ] Step 4: Test a 2,199 XAF Client Payment -> Approve it via "Confirm & Press OK" in Admin Dashboard -> Verify download links unlock.',
-    '[  ] Step 5: Point your custom domain DNS (A / CNAME record) to your hosting server and enable SSL (HTTPS).'
+    '[  ] Step 1 — Brand Identity: Sign in to #admin > 08. Website CMS > Global Site Branding & Settings; update Logo, Brand Name, NIU/RCCM, Phones & Colors.',
+    '[  ] Step 2 — Payment Transfer: Edit src/utils/paymentDomain.ts with buyer MTN MoMo, Orange Money, Bank IBAN, Domain & ADMIN_SMTP_USER_EMAIL.',
+    '[  ] Step 3 — Infrastructure & Secrets: Rotate DATABASE_URL, SMTP_USER/PASS, Cloudinary, Supabase, and JWT secrets in hosting .env settings.',
+    '[  ] Step 4 — Verify Payment & 10 GB Uploads: Confirm a test 999 / 2,199 XAF payment in 06. Finance > Payment Confirmations and upload a test media file.',
+    '[  ] Step 5 — Domain Cutover & Play Store TWA: Point DNS A/CNAME + SSL HTTPS to your host and update assetlinks.json under 11. Platform > Play Store & cPanel.'
   ];
 
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-  doc.roundedRect(margin, y, contentWidth, 34, 2, 2, 'FD');
+  doc.setFillColor(...lightBg);
+  doc.setDrawColor(...borderGray);
+  doc.roundedRect(margin, y, contentWidth, 42, 2, 2, 'FD');
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7.6);
   doc.setTextColor(30, 41, 59);
   let cy = y + 6;
   checklistItems.forEach((item) => {
-    doc.text(item, margin + 4, cy);
-    cy += 6;
+    const wrapped = doc.splitTextToSize(item, contentWidth - 8);
+    doc.text(wrapped, margin + 4, cy);
+    cy += wrapped.length * 4 + 1.5;
   });
 
-  y += 42;
+  y += 49;
 
-  // Handover Sign-Off Box
+  // Official Ownership Transfer Certificate Box
   doc.setFillColor(254, 243, 199);
-  doc.setDrawColor(217, 119, 6);
-  doc.roundedRect(margin, y, contentWidth, 36, 2, 2, 'FD');
+  doc.setDrawColor(...amberGold);
+  doc.setLineWidth(0.7);
+  doc.roundedRect(margin, y, contentWidth, 64, 2.5, 2.5, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
+  doc.setFontSize(10.5);
   doc.setTextColor(180, 83, 9);
-  doc.text('OFFICIAL WEBSITE OWNERSHIP TRANSFER & HANDOVER CERTIFICATE', margin + 4, y + 6);
+  doc.text('OFFICIAL WEBSITE OWNERSHIP TRANSFER & BRAND HANDOVER CERTIFICATE', margin + 5, y + 8);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(8.2);
   doc.setTextColor(120, 53, 15);
-  doc.text(
-    'This document certifies the handover of full source code, database schemas, 8 Engineering Studios, and Admin CMS controls.',
-    margin + 4,
-    y + 12
-  );
-  doc.text(`Seller / Current Administrator: Eric Kreboya (${sellerEmailLabel} | +237 671 063 511)`, margin + 4, y + 19);
-  doc.text(`Buyer / New Platform Owner: ${buyerCompanyLabel}`, margin + 4, y + 25);
-  doc.text('Seller Signature: ___________________________       Buyer Signature: ___________________________', margin + 4, y + 32);
+  const certBody =
+    'This certificate records the full technical and operational transfer of the React/TypeScript frontend, Express REST API, ' +
+    'Neon PostgreSQL + Drizzle ORM schemas, 11-category Enterprise Admin Dashboard, Cloudinary/Supabase 10 GB media upload system, ' +
+    'and all Engineering/BOQ Studios to the authorized buyer listed below.';
+  doc.text(doc.splitTextToSize(certBody, contentWidth - 10), margin + 5, y + 14.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.text(`Seller / Transferring Administrator: ${sellerNameLabel} (${sellerEmailLabel} | +237 671 063 511)`, margin + 5, y + 30);
+  doc.text(`Buyer / Authorized Recipient: ${buyerNameLabel}`, margin + 5, y + 36);
+  doc.text(`New Owner Company / Brand: ${buyerCompanyLabel}`, margin + 5, y + 42);
+  doc.text(`Target Production Domain: ${buyerDomainLabel}`, margin + 5, y + 48);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text('Seller Signature: _____________________________      Buyer Signature: _____________________________', margin + 5, y + 58);
 
   return doc;
 }

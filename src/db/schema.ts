@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean, numeric, json } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, integer, bigint, boolean, numeric, json } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // 1. Users table (Admin, Staff, Clients)
@@ -1589,7 +1589,7 @@ export const mediaLibrary = pgTable('media_library', {
   fileUrl: text('file_url').notNull(),
   fileType: text('file_type').notNull().default('image'), // image, video, document, audio, logo, icon
   mimeType: text('mime_type'),
-  fileSize: integer('file_size').default(0), // Bytes
+  fileSize: bigint('file_size', { mode: 'number' }).default(0), // Bytes (supports >2 GB up to 10 GB+)
   dimensions: text('dimensions'), // e.g. 1920x1080
   altText: text('alt_text'),
   caption: text('caption'),
@@ -1607,8 +1607,40 @@ export const mediaLibrary = pgTable('media_library', {
   status: text('status').default('ACTIVE').notNull(), // ACTIVE, ARCHIVED
   storageProvider: text('storage_provider').default('cloudinary').notNull(),
   publicId: text('public_id'),
+  uploadStatus: text('upload_status').default('COMPLETED').notNull(), // PENDING, VERIFIED, COMPLETED, FAILED
+  uploadCompletedAt: timestamp('upload_completed_at'),
+  ownerUserId: integer('owner_user_id'),
+  fileFingerprint: text('file_fingerprint'),
   uploadedBy: text('uploaded_by').default('MADECC Media Admin'),
   archivedAt: timestamp('archived_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =========================================================================
+// 67B. UPLOAD SESSIONS (RESUMABLE TICKETS, EXPIRATION & VERIFICATION)
+// =========================================================================
+export const uploadSessions = pgTable('upload_sessions', {
+  id: serial('id').primaryKey(),
+  sessionToken: text('session_token').notNull().unique(),
+  provider: text('provider').notNull(), // cloudinary, supabase
+  folder: text('folder').default('madecc/cms_media'),
+  filename: text('filename').notNull(),
+  mimeType: text('mime_type'),
+  fileType: text('file_type'),
+  expectedSize: bigint('expected_size', { mode: 'number' }).default(0).notNull(),
+  uploadedSize: bigint('uploaded_size', { mode: 'number' }).default(0),
+  fileFingerprint: text('file_fingerprint'),
+  bucketName: text('bucket_name'),
+  objectPath: text('object_path'),
+  publicId: text('public_id'),
+  resourceType: text('resource_type'),
+  fileUrl: text('file_url'),
+  status: text('status').default('PENDING').notNull(), // PENDING, VERIFIED, COMPLETED, EXPIRED, FAILED
+  ownerUserId: integer('owner_user_id'),
+  ownerEmail: text('owner_email'),
+  expiresAt: timestamp('expires_at').notNull(),
+  completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

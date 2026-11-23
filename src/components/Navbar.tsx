@@ -400,7 +400,7 @@ export default function Navbar({
     { id: 'blog', label: 'Insights' },
   ];
 
-  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'saas-cloud', 'developers', 'client-portal', 'website-development'].includes(currentTab);
+  const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'navigation-manual', 'buyer-handover-manual', 'saas-cloud', 'developers', 'client-portal', 'website-development'].includes(currentTab);
   const isCompanyActive = ['about', 'faq', 'contact', 'walkthrough-guide'].includes(currentTab);
 
   return (
@@ -597,6 +597,52 @@ export default function Navbar({
                             <span className="text-[9px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-bold">NEW</span>
                           </div>
                           <div className="text-[11px] text-slate-400 leading-tight">Complete step-by-step client &amp; visitor manual</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('navigation-manual');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'navigation-manual'
+                            ? 'bg-amber-500/10 text-amber-400'
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileDown className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Navigation Manual (A4 PDF)</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded font-bold">999 XAF</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Full platform &amp; 11-category Admin A4 guide</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentTab('buyer-handover-manual');
+                          setToolsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                          currentTab === 'buyer-handover-manual'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans flex items-center gap-1.5">
+                            <span>Buyer Brand Handover Manual</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-bold">999 XAF</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-tight">Ownership transfer certificate &amp; domain cutover PDF</div>
                         </div>
                       </button>
 

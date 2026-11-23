@@ -91,7 +91,7 @@ export async function getApp(): Promise<express.Express> {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=()');
     res.setHeader(
       'Content-Security-Policy',
-      "frame-ancestors 'self' https://aistudio.google.com https://*.googleusercontent.com https://*.ai.studio; base-uri 'self'; object-src 'none'; media-src 'self' blob: https://res.cloudinary.com https://*.supabase.co https://vjs.zencdn.net https://cdn.jsdelivr.net https://assets.mixkit.co; connect-src 'self' ws: wss: https://api.cloudinary.com https://res.cloudinary.com https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://rdap.org;"
+      "frame-ancestors 'self' https://aistudio.google.com https://*.googleusercontent.com https://*.ai.studio; base-uri 'self'; object-src 'none'; media-src 'self' blob: https://res.cloudinary.com https://*.supabase.co https://*.storage.supabase.co https://vjs.zencdn.net https://cdn.jsdelivr.net https://assets.mixkit.co; connect-src 'self' ws: wss: https://api.cloudinary.com https://res.cloudinary.com https://*.supabase.co https://*.storage.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://rdap.org;"
     );
     const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
     if (isHttps) {

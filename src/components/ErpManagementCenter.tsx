@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext.tsx';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { getAuthToken } from '../lib/firebase.ts';
+import { uploadMediaAssetDirect, formatSpeed, formatEta } from '../lib/directMediaUpload.ts';
 
 interface Props {
   initialSubTab?: string;
@@ -323,7 +325,7 @@ export default function ErpManagementCenter({ initialSubTab = 'clients', onOpenC
       .catch(() => {});
   }, [portalSelectedClientId]);
 
-  // Direct Signed Cloudinary Upload + Server Proxy (/api/upload -> Cloudinary / Supabase)
+  // Direct Signed Cloudinary Chunked Upload or Supabase TUS Resumable Upload
   const uploadAssetFile = async (file: File, onComplete: (url: string, detectedType: 'PHOTO' | 'VIDEO') => void) => {
     setUploadingFile(true);
     setUploadProgressText('Preparing upload...');
@@ -331,90 +333,23 @@ export default function ErpManagementCenter({ initialSubTab = 'clients', onOpenC
       ? 'VIDEO'
       : 'PHOTO';
 
-    const uploadViaProxy = async () => {
-      setUploadProgressText('Uploading via secure Cloudinary / Supabase backend...');
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok || (!data.url && !data.secure_url)) {
-        throw new Error(data.error || `Upload failed (${res.status})`);
-      }
-      return data.secure_url || data.url;
-    };
-
     try {
-      let ticket: any = null;
-      try {
-        const sigRes = await fetch('/api/cloudinary-signature');
-        if (sigRes.ok) ticket = await sigRes.json();
-      } catch {
-        ticket = null;
-      }
-
-      if (ticket?.signature && ticket?.cloudName) {
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('api_key', ticket.apiKey);
-          formData.append('timestamp', String(ticket.timestamp));
-          formData.append('signature', ticket.signature);
-          formData.append('folder', ticket.folder || 'madecc');
-
-          xhr.open('POST', `https://api.cloudinary.com/v1_1/${ticket.cloudName}/auto/upload`, true);
-          setUploadProgressText('Uploading directly to Cloudinary (0%)...');
-
-          xhr.upload.onprogress = (ev) => {
-            if (ev.lengthComputable) {
-              const pct = Math.round((ev.loaded / ev.total) * 100);
-              setUploadProgressText(`Uploading to Cloudinary: ${pct}%`);
-            }
-          };
-
-          xhr.onload = async () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const parsed = JSON.parse(xhr.responseText);
-                const url = parsed.secure_url || parsed.url;
-                if (url) {
-                  onComplete(url, detectedType);
-                  resolve();
-                  return;
-                }
-              } catch {
-                // fallback
-              }
-            }
-            try {
-              const fallbackUrl = await uploadViaProxy();
-              onComplete(fallbackUrl, detectedType);
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          };
-
-          xhr.onerror = async () => {
-            try {
-              const fallbackUrl = await uploadViaProxy();
-              onComplete(fallbackUrl, detectedType);
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          };
-
-          xhr.send(formData);
-        });
-      } else {
-        const fallbackUrl = await uploadViaProxy();
-        onComplete(fallbackUrl, detectedType);
-      }
-
+      const authToken = await getAuthToken();
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'madecc',
+        authToken,
+        useCmsEndpoint: false,
+        onProgress: (p) => {
+          const speedStr = p.speedBytesPerSec > 0 ? ` · ${formatSpeed(p.speedBytesPerSec)}` : '';
+          const etaStr = p.etaSeconds !== null ? ` · ETA ${formatEta(p.etaSeconds)}` : '';
+          setUploadProgressText(`${p.label || 'Uploading'}: ${p.percent}%${speedStr}${etaStr}`);
+        },
+      });
+      onComplete(result.url, detectedType);
       showToast(`${detectedType === 'VIDEO' ? 'Video' : 'Photo'} uploaded to cloud storage!`);
     } catch (err: any) {
-      showToast(err.message || 'Upload failed', 'error');
+      showToast(err?.message || 'Upload failed', 'error');
     } finally {
       setUploadingFile(false);
       setUploadProgressText('');

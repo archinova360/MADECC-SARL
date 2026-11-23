@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast.tsx';
 import { useTheme } from '../lib/ThemeContext.tsx';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 
 interface OrderItem {
   id: number;
@@ -167,21 +168,15 @@ export const KrrOrderTracking: React.FC<KrrOrderTrackingProps> = ({
     setProofFile(file);
     setIsUploadingProof(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'payment_proofs',
+        useCmsEndpoint: false,
       });
-      const data = await res.json();
-      if (data.url) {
-        setProofPreviewUrl(data.url);
-        showToast('Receipt image uploaded successfully.', 'success');
-      } else {
-        throw new Error('Upload failed');
-      }
+      setProofPreviewUrl(result.url);
+      showToast('Receipt image uploaded successfully.', 'success');
     } catch (err: any) {
-      showToast('Error uploading proof image: ' + err.message, 'error');
+      showToast('Error uploading proof image: ' + (err?.message || 'Upload failed'), 'error');
     } finally {
       setIsUploadingProof(false);
     }

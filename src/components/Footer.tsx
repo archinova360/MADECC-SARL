@@ -16,7 +16,9 @@ import {
   Copy,
   Check,
   Users,
-  Radio
+  Radio,
+  Compass,
+  ShieldCheck
 } from 'lucide-react';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
@@ -290,31 +292,57 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   </button>
                 </li>
               ))}
-              <li>
-                <button
-                  onClick={async () => {
-                    const { downloadWebsiteNavigationGuidePdf } = await import('../utils/navigationGuidePdf.ts');
-                    downloadWebsiteNavigationGuidePdf();
-                  }}
-                  className="min-h-[44px] py-2 text-amber-400 hover:text-amber-300 transition-colors text-left font-bold flex items-center gap-1.5"
-                  id="footer-download-navigation-guide"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Navigation Manual (A4 PDF) — 999 XAF</span>
-                </button>
+              <li className="pt-1">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentTab('navigation-manual')}
+                    className="min-h-[44px] py-2 text-amber-400 hover:text-amber-300 transition-colors text-left font-bold flex items-center gap-1.5 cursor-pointer"
+                    id="footer-link-navigation-manual"
+                  >
+                    <Compass className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Navigation Manual (A4 PDF) — 999 XAF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { downloadWebsiteNavigationGuidePdf } = await import('../utils/navigationGuidePdf.ts');
+                      downloadWebsiteNavigationGuidePdf();
+                    }}
+                    className="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/25 shrink-0 cursor-pointer"
+                    id="footer-download-navigation-guide"
+                    title="Download Navigation Manual (A4 PDF) — 999 XAF"
+                    aria-label="Download Navigation Manual (A4 PDF)"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </li>
               <li>
-                <button
-                  onClick={async () => {
-                    const { downloadBuyerHandoverManualPdf } = await import('../utils/buyerHandoverPdf.ts');
-                    downloadBuyerHandoverManualPdf();
-                  }}
-                  className="min-h-[44px] py-2 text-emerald-400 hover:text-emerald-300 transition-colors text-left font-bold flex items-center gap-1.5"
-                  id="footer-download-buyer-handover-guide"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Buyer Brand Handover Manual (PDF) — 999 XAF</span>
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentTab('buyer-handover-manual')}
+                    className="min-h-[44px] py-2 text-emerald-400 hover:text-emerald-300 transition-colors text-left font-bold flex items-center gap-1.5 cursor-pointer"
+                    id="footer-link-buyer-handover-manual"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Buyer Brand Handover Manual (PDF) — 999 XAF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { downloadBuyerHandoverManualPdf } = await import('../utils/buyerHandoverPdf.ts');
+                      downloadBuyerHandoverManualPdf();
+                    }}
+                    className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 shrink-0 cursor-pointer"
+                    id="footer-download-buyer-handover-guide"
+                    title="Download Buyer Brand Handover Manual (PDF) — 999 XAF"
+                    aria-label="Download Buyer Brand Handover Manual (PDF)"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </li>
             </ul>
           </div>

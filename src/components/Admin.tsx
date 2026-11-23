@@ -75,7 +75,12 @@ import {
   SearchCheck,
   Network,
   Edit3,
-  GitCompare
+  GitCompare,
+  CreditCard,
+  ExternalLink,
+  FileDown,
+  Smartphone,
+  Compass
 } from 'lucide-react';
 import AdminSalesHub from './AdminSalesHub.tsx';
 import { 
@@ -234,30 +239,45 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   const [commandSearch, setCommandSearch] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
-  // Expanded navigation groups state
+  // Sidebar filter & buyer handover personalization state
+  const [sidebarFilter, setSidebarFilter] = useState('');
+  const [handoverBuyerName, setHandoverBuyerName] = useState('');
+  const [handoverBuyerCompany, setHandoverBuyerCompany] = useState('');
+  const [handoverBuyerDomain, setHandoverBuyerDomain] = useState('');
+
+  // Expanded navigation groups state (11 cleanly organized functional categories)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    'command-center-group': true,
-    'corporate-governance-group': true,
-    'sales-group': true,
-    'analytics-group': true,
-    'construction-erp-group': true,
-    'saas-cloud-group': true,
-    'projects-group': true,
-    'qs-group': true,
-    'ai-group': true,
-    'crm-group': true,
-    'docs-group': true,
-    'cms-group': true,
-    'marketing-group': true,
-    'hr-group': true,
-    'minesec-group': true,
+    'overview-group': true,
+    'corporate-group': false,
+    'erp-group': true,
+    'engineering-group': false,
+    'crm-commerce-group': true,
     'finance-group': true,
-    'system-group': true,
-    'admin-group': true
+    'documents-group': false,
+    'cms-group': false,
+    'marketing-group': true,
+    'people-edu-group': false,
+    'system-group': false
   });
 
   const toggleGroup = (groupId: string) => {
     setOpenGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
+  const setAllGroupsExpanded = (expanded: boolean) => {
+    setOpenGroups({
+      'overview-group': expanded,
+      'corporate-group': expanded,
+      'erp-group': expanded,
+      'engineering-group': expanded,
+      'crm-commerce-group': expanded,
+      'finance-group': expanded,
+      'documents-group': expanded,
+      'cms-group': expanded,
+      'marketing-group': expanded,
+      'people-edu-group': expanded,
+      'system-group': expanded
+    });
   };
 
   // Keyboard shortcut listener for Command Palette (Cmd/Ctrl + K)
@@ -1949,25 +1969,21 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     );
   });
 
-  // Definition of 14 Enterprise Information Architecture Groups
+  // Definition of 11 Functional Enterprise Navigation Categories (Zero Duplicates)
   const ADMIN_NAV_GROUPS = [
     {
-      id: 'command-center-group',
-      title: '🏠 COMMAND CENTER',
+      id: 'overview-group',
+      title: '01. Overview & Intelligence',
       icon: LayoutDashboard,
       items: [
-        { id: 'command-center', label: 'Dashboard Overview', icon: LayoutDashboard },
-        { id: 'sales-hub', label: '🛒 KRR Bookstore & Orders Hub', icon: ShoppingBag },
-        { id: 'website-optimizer', label: '⚡ Website Live Optimizer (Real-Life)', icon: Sparkles },
-        { id: 'analytics', label: 'Executive Analytics', icon: TrendingUp },
-        { id: 'contacts', label: 'Notifications & Alerts', icon: Mail, badgeKey: 'unreadInquiries' },
-        { id: 'reviews', label: 'Approval Center', icon: Star, badgeKey: 'pendingReviews' },
-        { id: 'audit', label: 'Activity Feed', icon: History }
+        { id: 'command-center', label: 'Command Center Overview', icon: LayoutDashboard },
+        { id: 'analytics', label: 'Executive Analytics & KPIs', icon: TrendingUp },
+        { id: 'ai-construction-intelligence', label: 'AI Construction Intelligence', icon: Sparkles }
       ]
     },
     {
-      id: 'corporate-governance-group',
-      title: '🏛️ CORPORATE LEGAL & DIVISIONS',
+      id: 'corporate-group',
+      title: '02. Corporate & Governance',
       icon: Scale,
       items: [
         { id: 'corporate-profile', label: 'Business Profile & Legal Registration', icon: Building2 },
@@ -1979,207 +1995,156 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
       ]
     },
     {
-      id: 'sales-group',
-      title: '🛒 KRR BOOKSTORE & SALES',
-      icon: ShoppingBag,
+      id: 'erp-group',
+      title: '03. Construction ERP & Operations',
+      icon: FolderKanban,
       items: [
-        { id: 'sales-hub', label: 'KRR Bookstore, Orders & Verifications', icon: ShoppingBag }
+        { id: 'projects', label: 'Manage Projects Portfolio', icon: Building2 },
+        { id: 'erp-clients', label: 'Client Directory & Accounts', icon: Users },
+        { id: 'erp-portal', label: 'Client Portal Access Control', icon: ShieldCheck },
+        { id: 'erp-progress', label: 'Site Progress Tracking', icon: Clock },
+        { id: 'erp-media', label: 'Site Progress Photos & Videos', icon: Camera },
+        { id: 'erp-milestones', label: 'Project Milestones & Stages', icon: CheckCircle2 },
+        { id: 'erp-inventory', label: 'Materials & Stock Inventory', icon: Package },
+        { id: 'erp-equipment', label: 'Equipment & Fleet Management', icon: Truck },
+        { id: 'erp-subcontractors', label: 'Subcontractor Management', icon: Wrench },
+        { id: 'erp-workforce', label: 'Site Workforce & Roster', icon: UserCheck },
+        { id: 'erp-reports', label: 'ERP Operations Analytics', icon: BarChart3 }
       ]
     },
     {
-      id: 'analytics-group',
-      title: '📊 ANALYTICS & REPORTING',
-      icon: BarChart3,
-      items: [
-        { id: 'analytics', label: 'Dashboard Analytics', icon: TrendingUp },
-        { id: 'projects', label: 'Project Analytics', icon: Building2 },
-        { id: 'quote-requests', label: 'Sales & Leads Analytics', icon: FileSpreadsheet, badgeKey: 'pendingQuotes' },
-        { id: 'banners', label: 'Website Analytics', icon: Sliders },
-        { id: 'social-studio', label: 'SEO & Social Analytics', icon: Megaphone }
-      ]
-    },
-    {
-      id: 'construction-erp-group',
-      title: '🏗️ CONSTRUCTION ERP & CLIENT SUITE',
-      icon: Building2,
-      items: [
-        { id: 'erp-clients', label: '1. Client Management', icon: Users },
-        { id: 'erp-portal', label: '2. Client Portal Access', icon: ShieldCheck },
-        { id: 'erp-progress', label: '3. Project Progress', icon: Clock },
-        { id: 'erp-media', label: '4. Progress Photos & Videos', icon: Camera },
-        { id: 'erp-milestones', label: '5. Project Milestones', icon: CheckCircle2 },
-        { id: 'erp-invoices', label: '6. Project Invoices', icon: DollarSign },
-        { id: 'erp-estimator', label: '7. Cost Estimator', icon: Calculator },
-        { id: 'erp-boq', label: '8. BOQ Management', icon: FileSpreadsheet },
-        { id: 'erp-inventory', label: '9. Materials Inventory', icon: Package },
-        { id: 'erp-equipment', label: '10. Equipment Management', icon: Truck },
-        { id: 'erp-subcontractors', label: '11. Subcontractor Management', icon: Wrench },
-        { id: 'erp-workforce', label: '12. Workforce Management', icon: UserCheck },
-        { id: 'erp-reports', label: '13. Reports and Analytics', icon: BarChart3 }
-      ]
-    },
-    {
-      id: 'saas-cloud-group',
-      title: '☁️ SAAS CLOUD & TENANTS',
-      icon: Layers,
-      items: [
-        { id: 'saas-cloud', label: 'SaaS Control Plane & Billing', icon: Layers }
-      ]
-    },
-    {
-      id: 'projects-group',
-      title: '🏗️ PROJECTS & OPERATIONS',
-      icon: Building2,
-      items: [
-        { id: 'projects', label: 'Manage Projects', icon: Building2 },
-        { id: 'gallery', label: 'Portfolio Updates', icon: Video },
-        { id: 'appointments', label: 'Consultations Queue', icon: Calendar, badgeKey: 'pendingAppointments' },
-        { id: 'enterprise-erp', label: 'Site / Project Operations (ERP)', icon: Building2 }
-      ]
-    },
-    {
-      id: 'qs-group',
-      title: '📐 ENGINEERING & QUANTITY SURVEYING',
+      id: 'engineering-group',
+      title: '04. Engineering & Quantity Surveying',
       icon: Calculator,
       items: [
         { id: 'boq-studio', label: 'Enterprise QS & BOQ Studio', icon: FileSpreadsheet },
-        { id: 'drawing-studio', label: 'Quantity Take-Off (CAD)', icon: Layers },
+        { id: 'drawing-studio', label: 'Quantity Take-Off (CAD Studio)', icon: Layers },
         { id: 'structural-calculator', label: 'Structural Loads & Weights', icon: Calculator },
-        { id: 'labour-calculator', label: 'Labour Calculator', icon: Calculator }
+        { id: 'labour-calculator', label: 'Labour & Crew Calculator', icon: Calculator },
+        { id: 'erp-estimator', label: 'ERP Project Cost Estimator', icon: DollarSign },
+        { id: 'erp-boq', label: 'ERP Project BOQ Manager', icon: FileSpreadsheet }
       ]
     },
     {
-      id: 'ai-group',
-      title: '🤖 AI CONSTRUCTION PLATFORM',
-      icon: Sparkles,
+      id: 'crm-commerce-group',
+      title: '05. Commerce, CRM & Engagement',
+      icon: ShoppingBag,
       items: [
-        { id: 'ai-construction-intelligence', label: 'AI Construction Platform', icon: Sparkles }
-      ]
-    },
-    {
-      id: 'crm-group',
-      title: '💼 BUSINESS DEVELOPMENT & CRM',
-      icon: Briefcase,
-      items: [
-        { id: 'quote-requests', label: 'Quote Requests & Leads', icon: FileSpreadsheet, badgeKey: 'pendingQuotes' },
-        { id: 'contacts', label: 'Inquiries / Contacts', icon: Mail, badgeKey: 'unreadInquiries' },
+        { id: 'sales-hub', label: 'KRR Bookstore, Orders & Verification', icon: ShoppingBag },
+        { id: 'quote-requests', label: 'Quote Requests & Leads Pipeline', icon: FileSpreadsheet, badgeKey: 'pendingQuotes' },
+        { id: 'appointments', label: 'Consultations Queue', icon: Calendar, badgeKey: 'pendingAppointments' },
+        { id: 'contacts', label: 'Client Inquiries & Messages', icon: Mail, badgeKey: 'unreadInquiries' },
         { id: 'tenders-cms', label: 'Tenders & Opportunities CMS', icon: FileSpreadsheet },
-        { id: 'suppliers-cms', label: 'Suppliers & Vendors CMS', icon: Building2 },
-        { id: 'appointments', label: 'Consultations Queue', icon: Calendar, badgeKey: 'pendingAppointments' }
+        { id: 'suppliers-cms', label: 'Suppliers & Vendors CMS', icon: Building2 }
       ]
     },
     {
-      id: 'docs-group',
-      title: '📄 DOCUMENTS & COMMERCIAL',
+      id: 'finance-group',
+      title: '06. Finance, Billing & Payments',
+      icon: CreditCard,
+      items: [
+        { id: 'payment-confirmations', label: 'Payment Confirmations (999 / 2,199 XAF)', icon: CreditCard, badgeKey: 'pendingPayments' },
+        { id: 'erp-invoices', label: 'Client Project Invoices', icon: DollarSign },
+        { id: 'receipts', label: 'Official Receipt Generator', icon: Receipt },
+        { id: 'doc-history', label: 'Receipt & Contract Ledger', icon: ShieldCheck },
+        { id: 'enterprise-erp', label: 'ERP Financial Statements', icon: Building2 }
+      ]
+    },
+    {
+      id: 'documents-group',
+      title: '07. Documents, Legal & Manuals',
       icon: FileText,
       items: [
-        { id: 'pro-document-studio', label: 'Document Studio', icon: FileText },
-        { id: 'documents', label: 'Company Documents', icon: FileText },
-        { id: 'legal-contracts', label: 'Contract Generator', icon: Scale },
-        { id: 'proposal-studio', label: 'Proposal Manager', icon: FileText },
-        { id: 'receipts', label: 'Receipt Generator', icon: Receipt },
-        { id: 'doc-history', label: 'Receipt & Contract History', icon: ShieldCheck },
-        { id: 'cv-generator', label: 'CV Builder', icon: Award },
-        { id: 'letter-generator', label: 'Application Letters', icon: FileText }
+        { id: 'pro-document-studio', label: 'Pro Document Studio', icon: FileText },
+        { id: 'proposal-studio', label: 'Commercial Proposal Manager', icon: FileText },
+        { id: 'legal-contracts', label: 'OHADA Contract Generator', icon: Scale },
+        { id: 'documents', label: 'Company Policy Documents', icon: FileText },
+        { id: 'manuals-hub', label: 'Manuals & Handover Guides (A4 PDF)', icon: FileDown },
+        { id: 'cv-generator', label: 'Engineering CV Builder', icon: Award },
+        { id: 'letter-generator', label: 'Application & Official Letters', icon: FileText }
       ]
     },
     {
       id: 'cms-group',
-      title: '🌐 WEBSITE MANAGEMENT',
+      title: '08. Website CMS & Publishing',
       icon: Globe,
       items: [
-        { id: 'cms-overview', label: '1. Website Overview', icon: Globe },
-        { id: 'cms-publishing', label: '2. Page Management & Publishing', icon: Layers },
-        { id: 'cms-editor', label: '3. Content Editor', icon: Edit3 },
-        { id: 'cms-media', label: '4. Media Library', icon: ImageIcon },
-        { id: 'cms-videos', label: '5. Video Library', icon: Video },
-        { id: 'cms-seo', label: '6. SEO Manager', icon: SearchCheck },
-        { id: 'cms-human-review', label: '7. Human Content Review', icon: ShieldCheck },
-        { id: 'cms-revisions', label: '8. Revision History', icon: GitCompare },
-        { id: 'cms-legal', label: '9. Legal Pages Manager', icon: Scale },
-        { id: 'cms-developer-api', label: '10. Developer & API Portal CMS', icon: Code },
-        { id: 'cms-sitemap', label: '11. Sitemap & Architecture', icon: Network },
-        { id: 'cms-maintenance', label: '12. Maintenance Scheduler', icon: Wrench },
-        { id: 'cms-announcements', label: '13. Visitor Announcements', icon: Megaphone },
-        { id: 'cms-logs', label: '14. Publishing Activity Logs', icon: History },
-        { id: 'cms-settings', label: '15. Website Settings', icon: Settings },
-        { id: 'website-optimizer', label: '⚡ Live Website Optimizer & Customizer', icon: Sparkles },
-        { id: 'cms-pages', label: 'Frontend Page & Hero Studio', icon: Globe },
+        { id: 'cms-overview', label: 'Website Overview & Status', icon: Globe },
+        { id: 'cms-pages', label: 'Page Builder & Hero Studio', icon: Globe },
+        { id: 'cms-editor', label: 'Section Content Editor', icon: Edit3 },
+        { id: 'cms-publishing', label: 'Publishing & Staging Queue', icon: Layers },
+        { id: 'cms-human-review', label: 'Human Content Review', icon: ShieldCheck },
+        { id: 'cms-revisions', label: 'Content Revision History', icon: GitCompare },
+        { id: 'cms-media', label: 'Media Library (10 GB Direct Upload)', icon: ImageIcon },
+        { id: 'cms-videos', label: 'Video Library & Reels', icon: Video },
+        { id: 'banners', label: 'Home Hero Sliders', icon: Sliders },
+        { id: 'gallery', label: 'Projects Gallery & Portfolio Media', icon: Video },
         { id: 'services-cms', label: 'Services CMS Management', icon: Layers },
         { id: 'sustainability-cms', label: 'Sustainability & ESG CMS', icon: Layers },
-        { id: 'faq-cms', label: 'FAQ / Help Centre CMS', icon: FileText },
-        { id: 'blogs', label: 'Manage Blogs', icon: BookOpen },
-        { id: 'reviews', label: 'Approve Reviews', icon: Star, badgeKey: 'pendingReviews' },
-        { id: 'banners', label: 'Home Hero Sliders', icon: Sliders },
-        { id: 'gallery', label: 'Projects & Portfolio Content', icon: Video }
+        { id: 'faq-cms', label: 'FAQ & Help Centre CMS', icon: FileText },
+        { id: 'blogs', label: 'Insights & Blog Posts', icon: BookOpen },
+        { id: 'reviews', label: 'Client Reviews Moderation', icon: Star, badgeKey: 'pendingReviews' },
+        { id: 'cms-legal', label: 'Legal Pages Manager', icon: Scale },
+        { id: 'cms-seo', label: 'Technical SEO Manager', icon: SearchCheck },
+        { id: 'cms-sitemap', label: 'Sitemap & Route Architecture', icon: Network },
+        { id: 'cms-announcements', label: 'Visitor Announcements', icon: Megaphone },
+        { id: 'website-optimizer', label: 'Live Website Optimizer & Customizer', icon: Sparkles },
+        { id: 'cms-settings', label: 'Global Site Branding & Settings', icon: Settings }
       ]
     },
     {
       id: 'marketing-group',
-      title: '📣 MARKETING & SOCIAL MEDIA',
+      title: '09. Marketing & Social Media',
       icon: Megaphone,
       items: [
         { id: 'social-studio', label: 'SEO & Social Media Publisher', icon: Megaphone }
       ]
     },
     {
-      id: 'hr-group',
-      title: '👥 PEOPLE & HR',
+      id: 'people-edu-group',
+      title: '10. People, HR & Education',
       icon: Users,
       items: [
-        { id: 'staff-access', label: 'Staff Access & HR Management', icon: Key },
-        { id: 'team', label: 'Team Management', icon: UserIcon }
-      ]
-    },
-    {
-      id: 'minesec-group',
-      title: '🎓 EDUCATION & MINESEC',
-      icon: GraduationCap,
-      items: [
-        { id: 'lesson-studio', label: 'MINESEC Lesson Prep', icon: GraduationCap },
-        { id: 'syllabus-upload', label: 'Syllabus Manager', icon: BookOpen },
+        { id: 'staff-access', label: 'Staff Access & Role Permissions', icon: Key },
+        { id: 'team', label: 'Leadership & Team Directory', icon: UserIcon },
+        { id: 'lesson-studio', label: 'MINESEC Lesson Prep Studio', icon: GraduationCap },
+        { id: 'syllabus-upload', label: 'Curriculum & Syllabus Manager', icon: BookOpen },
         { id: 'extended-lesson-architect', label: 'Extended Lesson Architect', icon: Sparkles }
       ]
     },
     {
-      id: 'finance-group',
-      title: '💰 FINANCE & TRANSACTIONS',
-      icon: DollarSign,
-      items: [
-        { id: 'api-platform', label: 'API Platform & MoMo Verification', icon: Key },
-        { id: 'doc-history', label: 'Receipt & Contract History', icon: ShieldCheck },
-        { id: 'enterprise-erp', label: 'ERP Financial Statements', icon: Building2 }
-      ]
-    },
-    {
-      id: 'api-platform-group',
-      title: '🔌 DEVELOPER API PLATFORM',
-      icon: Key,
-      items: [
-        { id: 'api-platform', label: 'API Products, Keys & MoMo', icon: Key },
-        { id: 'db-architecture', label: 'DB & API Documentation', icon: Database }
-      ]
-    },
-    {
       id: 'system-group',
-      title: '🗃️ DATA, SECURITY & SYSTEM',
+      title: '11. Platform, Security & Infrastructure',
       icon: Shield,
       items: [
+        { id: 'saas-cloud', label: 'SaaS Control Plane & Tenants', icon: Layers },
+        { id: 'api-platform', label: 'API Platform & MoMo Verification', icon: Key },
+        { id: 'cms-developer-api', label: 'Developer & API Portal CMS', icon: Code },
+        { id: 'maintenance-handover', label: 'Maintenance Mode & Brand Handover', icon: Wrench },
+        { id: 'playstore-cpanel', label: 'Play Store (TWA) & cPanel Hosting', icon: Smartphone },
+        { id: 'cms-maintenance', label: 'CMS Maintenance Scheduler', icon: Clock },
         { id: 'security-monitoring', label: 'Security & Threat Monitoring', icon: Shield },
         { id: 'audit', label: 'Database Audit Logs', icon: History },
-        { id: 'db-architecture', label: 'DB & API Documentation', icon: Database }
-      ]
-    },
-    {
-      id: 'admin-group',
-      title: '⚙️ ADMINISTRATION & CONFIGURATION',
-      icon: Settings,
-      items: [
-        { id: 'staff-access', label: 'Roles & Staff Permissions', icon: Key },
-        { id: 'db-architecture', label: 'API Diagnostics & System Config', icon: Database }
+        { id: 'cms-logs', label: 'Publishing Activity Logs', icon: Activity },
+        { id: 'db-architecture', label: 'Database & API Documentation', icon: Database }
       ]
     }
   ];
+
+  useEffect(() => {
+    const parentGroup = ADMIN_NAV_GROUPS.find(g => g.items.some(i => i.id === activeAdminTab));
+    if (parentGroup) {
+      setOpenGroups(prev => (prev[parentGroup.id] ? prev : { ...prev, [parentGroup.id]: true }));
+    }
+  }, [activeAdminTab]);
+
+  const activeNavMeta = (() => {
+    for (const group of ADMIN_NAV_GROUPS) {
+      const found = group.items.find(i => i.id === activeAdminTab);
+      if (found) return { groupTitle: group.title, itemLabel: found.label };
+    }
+    return { groupTitle: '01. Overview & Intelligence', itemLabel: activeAdminTab };
+  })();
 
   const getBadgeCount = (badgeKey?: string) => {
     if (!badgeKey) return 0;
@@ -2187,6 +2152,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     if (badgeKey === 'unreadInquiries') return contacts.filter(c => c.status === 'new').length;
     if (badgeKey === 'pendingReviews') return reviews.filter(r => !r.approved).length;
     if (badgeKey === 'pendingQuotes') return dbAnalytics?.pendingConsultations || 0;
+    if (badgeKey === 'pendingPayments') {
+      return paymentRequestsQueue.filter(r => !r.isPaid || r.status === 'PENDING_ADMIN_CONFIRMATION').length;
+    }
     return 0;
   };
 
@@ -2387,42 +2355,103 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         >
           <div className="p-3 space-y-4">
             
-            {/* Sidebar Branding Header */}
+            {/* Sidebar Branding Header & Module Filter */}
             {!sidebarCollapsed && (
-              <div className="px-3 py-2 bg-slate-900/60 border border-slate-800 rounded-2xl mb-2 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-mono tracking-widest text-amber-500 uppercase font-bold block">NAVIGATION PORTAL</span>
-                  <span className="text-white font-extrabold text-sm block">MADECC ADMIN</span>
-                  <span className="text-[10px] text-slate-400 font-mono block">15 Collapsible Enterprise Modules</span>
+              <div className="space-y-2.5 mb-2">
+                <div className="px-3 py-2.5 bg-slate-900/60 border border-slate-800 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-mono tracking-widest text-amber-500 uppercase font-bold block">NAVIGATION PORTAL</span>
+                    <span className="text-white font-extrabold text-sm block">MADECC ADMIN</span>
+                    <span className="text-[10px] text-slate-400 font-mono block">11 Functional Categories</span>
+                  </div>
+                  {mobileMenuOpen && (
+                    <button 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="md:hidden p-1.5 text-slate-400 hover:text-white bg-slate-800/80 rounded-lg shrink-0 ml-2"
+                      title="Close navigation"
+                      aria-label="Close navigation"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                {mobileMenuOpen && (
-                  <button 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="md:hidden p-1.5 text-slate-400 hover:text-white bg-slate-800/80 rounded-lg shrink-0 ml-2"
-                    title="Close navigation"
-                    aria-label="Close navigation"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+
+                {dbUser?.role !== 'social_media_reviewer' && (
+                  <div className="space-y-1.5">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={sidebarFilter}
+                        onChange={(e) => setSidebarFilter(e.target.value)}
+                        placeholder="Filter navigation modules..."
+                        aria-label="Filter admin navigation modules"
+                        className="w-full pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-500/60"
+                      />
+                      {sidebarFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setSidebarFilter('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                          aria-label="Clear filter"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5 px-1">
+                      <button
+                        type="button"
+                        onClick={() => setAllGroupsExpanded(true)}
+                        className="text-[10px] font-mono font-bold text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+                      >
+                        Expand All
+                      </button>
+                      <span className="text-slate-700 text-[10px]">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setAllGroupsExpanded(false)}
+                        className="text-[10px] font-mono font-bold text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+                      >
+                        Collapse All
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
 
             {/* Collapsible Groups Nav */}
-            <nav className="space-y-2">
+            <nav className="space-y-2" aria-label="Admin Navigation Categories">
               {(dbUser?.role === 'social_media_reviewer'
                 ? ADMIN_NAV_GROUPS.filter(g => g.id === 'marketing-group')
                 : ADMIN_NAV_GROUPS
               ).map((group) => {
                 const GroupIcon = group.icon;
-                const isOpen = !!openGroups[group.id];
+                const normalizedFilter = sidebarFilter.trim().toLowerCase();
+                const visibleItems = normalizedFilter
+                  ? group.items.filter(
+                      item =>
+                        item.label.toLowerCase().includes(normalizedFilter) ||
+                        group.title.toLowerCase().includes(normalizedFilter)
+                    )
+                  : group.items;
+
+                if (normalizedFilter && visibleItems.length === 0) {
+                  return null;
+                }
+
+                const isOpen = normalizedFilter ? true : !!openGroups[group.id];
                 const hasActiveItem = group.items.some(item => item.id === activeAdminTab);
 
                 if (sidebarCollapsed) {
                   return (
                     <div key={group.id} className="relative group/collapsed flex flex-col items-center">
                       <button
-                        onClick={() => toggleGroup(group.id)}
+                        onClick={() => {
+                          setSidebarCollapsed(false);
+                          setOpenGroups(prev => ({ ...prev, [group.id]: true }));
+                        }}
                         className={`p-3 rounded-xl transition-all ${
                           hasActiveItem 
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
@@ -2441,7 +2470,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     {/* Group Header Button */}
                     <button
                       onClick={() => toggleGroup(group.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors text-left ${
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors text-left ${
                         hasActiveItem 
                           ? 'bg-slate-900 text-amber-400 font-extrabold' 
                           : 'text-slate-300 hover:text-white hover:bg-slate-900/60'
@@ -2461,7 +2490,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     {/* Group Sub-Items */}
                     {isOpen && (
                       <div className="px-1.5 py-1 space-y-0.5 border-t border-slate-900/80 bg-slate-950/80">
-                        {group.items.map((subItem) => {
+                        {visibleItems.map((subItem) => {
                           const SubIcon = subItem.icon;
                           const isActive = activeAdminTab === subItem.id;
                           const count = getBadgeCount(subItem.badgeKey);
@@ -2485,7 +2514,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                                 <span className="truncate">{subItem.label}</span>
                               </span>
                               {count > 0 && (
-                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                                <span className={`text-[10px] font-mono font-bold tabular-nums px-1.5 py-0.2 rounded-full ${
                                   isActive ? 'bg-slate-950 text-amber-400' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                 }`}>
                                   {count}
@@ -2577,6 +2606,41 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
             </div>
           ) : (
             <>
+          {/* CONTEXTUAL WORKSPACE BREADCRUMB BAR */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setActiveAdminTab('command-center')}
+                className="font-mono text-[11px] font-bold uppercase text-amber-400 hover:text-amber-300 cursor-pointer shrink-0"
+              >
+                Admin
+              </button>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <span className="font-mono text-[11px] text-slate-400 truncate">{activeNavMeta.groupTitle}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <span className="font-bold text-white truncate">{activeNavMeta.itemLabel}</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {activeAdminTab !== 'command-center' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveAdminTab('command-center')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-semibold text-slate-300 cursor-pointer"
+                >
+                  Back to Command Center
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveAdminTab('manuals-hub')}
+                className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[11px] font-bold text-amber-400 cursor-pointer"
+              >
+                Manuals Hub
+              </button>
+            </div>
+          </div>
+
           {/* COMMAND CENTER EXECUTIVE DASHBOARD VIEW */}
           {activeAdminTab === 'command-center' && (
             <div className="space-y-8 animate-in fade-in duration-300" id="command-center-view">
@@ -2655,14 +2719,68 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 })}
               </div>
 
-              {/* Client Payment Confirmation & Download Unlock Queue (2,199 XAF -> SMTP kreboya603@gmail.com) */}
-              {renderClientPaymentConfirmationCenter()}
+              {/* Rearranged Dedicated Workspace Shortcut Strip */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveAdminTab('payment-confirmations')}
+                  className="p-4 rounded-2xl bg-slate-950/90 hover:bg-slate-900 border border-amber-500/40 text-left transition-all flex items-start justify-between gap-3 cursor-pointer"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-bold uppercase text-amber-400">06. Finance &amp; Billing</span>
+                    <h3 className="text-sm font-extrabold text-white">Payment Confirmations</h3>
+                    <p className="text-[11px] text-slate-400 tabular-nums">
+                      {paymentRequestsQueue.filter(r => !r.isPaid || r.status === 'PENDING_ADMIN_CONFIRMATION').length} awaiting Admin OK (999 / 2,199 XAF)
+                    </p>
+                  </div>
+                  <CreditCard className="w-5 h-5 text-amber-400 shrink-0" />
+                </button>
 
-              {/* Non-Intrusive Website Maintenance Mode Trigger (SMTP kreboya603@gmail.com) & Buyer Brand Handover Manual */}
-              <AdminMaintenanceAndHandoverHub />
+                <button
+                  type="button"
+                  onClick={() => setActiveAdminTab('manuals-hub')}
+                  className="p-4 rounded-2xl bg-slate-950/90 hover:bg-slate-900 border border-emerald-500/40 text-left transition-all flex items-start justify-between gap-3 cursor-pointer"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">07. Documents &amp; Manuals</span>
+                    <h3 className="text-sm font-extrabold text-white">Manuals &amp; Handover Guides</h3>
+                    <p className="text-[11px] text-slate-400">
+                      A4 Navigation Manual &amp; Buyer Brand Handover (Admin Free)
+                    </p>
+                  </div>
+                  <FileDown className="w-5 h-5 text-emerald-400 shrink-0" />
+                </button>
 
-              {/* Google Play Store (TWA) & cPanel Hosting Migration Command Center */}
-              <AdminPlaystoreAndCpanelHub />
+                <button
+                  type="button"
+                  onClick={() => setActiveAdminTab('maintenance-handover')}
+                  className="p-4 rounded-2xl bg-slate-950/90 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-left transition-all flex items-start justify-between gap-3 cursor-pointer"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-bold uppercase text-sky-400">11. Platform &amp; Infra</span>
+                    <h3 className="text-sm font-extrabold text-white">Maintenance &amp; Handover Hub</h3>
+                    <p className="text-[11px] text-slate-400">
+                      Non-intrusive SMTP notice &amp; brand ownership transfer specs
+                    </p>
+                  </div>
+                  <Wrench className="w-5 h-5 text-sky-400 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveAdminTab('playstore-cpanel')}
+                  className="p-4 rounded-2xl bg-slate-950/90 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-left transition-all flex items-start justify-between gap-3 cursor-pointer"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-bold uppercase text-purple-400">11. Platform &amp; Infra</span>
+                    <h3 className="text-sm font-extrabold text-white">Play Store &amp; cPanel Hosting</h3>
+                    <p className="text-[11px] text-slate-400">
+                      Android TWA Digital Asset Links &amp; cPanel migration suite
+                    </p>
+                  </div>
+                  <Smartphone className="w-5 h-5 text-purple-400 shrink-0" />
+                </button>
+              </div>
 
               {/* Two-Column Dashboard Body */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -2678,7 +2796,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                         </h2>
                         <p className="text-xs text-slate-400">Consultations, client feedback, and lead submissions awaiting admin review.</p>
                       </div>
-                      <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
+                      <span className="text-xs font-mono font-bold tabular-nums text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
                         {appointments.filter(a => a.status === 'pending').length + reviews.filter(r => !r.approved).length} Pending
                       </span>
                     </div>
@@ -2747,16 +2865,16 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       {[
                         { title: 'Client Management', desc: 'Register clients, credentials & project assignments', tab: 'erp-clients', icon: Users, color: 'text-emerald-400' },
                         { title: 'Client Portal Access', desc: 'Portal permissions, progress media & preview', tab: 'erp-portal', icon: ShieldCheck, color: 'text-emerald-400' },
-                        { title: 'Invoices & Cost Estimator', desc: 'Client invoices, MoMo payments & BOQ engine', tab: 'erp-invoices', icon: DollarSign, color: 'text-amber-400' },
+                        { title: 'Payment Confirmations', desc: 'Approve 999 & 2,199 XAF MoMo/OM unlocks', tab: 'payment-confirmations', icon: CreditCard, color: 'text-amber-400' },
+                        { title: 'Manuals & Handover Guides', desc: 'Navigation & Buyer Handover PDFs (Admin Free)', tab: 'manuals-hub', icon: FileDown, color: 'text-emerald-400' },
                         { title: 'Global Site Customizer', desc: 'Identity, Mbankolo HQ, contacts & theme', tab: 'cms-settings', icon: Settings, color: 'text-amber-400' },
                         { title: 'Page Builder Studio', desc: 'Frontend pages, heroes & custom content', tab: 'cms-pages', icon: Globe, color: 'text-sky-400' },
                         { title: 'Services CMS', desc: 'Manage civil & construction services', tab: 'services-cms', icon: Layers, color: 'text-emerald-400' },
                         { title: 'QS & BOQ Studio', desc: 'Civil engineering bill of quantities', tab: 'boq-studio', icon: FileSpreadsheet, color: 'text-amber-400' },
                         { title: 'AI Construction Platform', desc: 'Blueprint vision takeoff & estimates', tab: 'ai-construction-intelligence', icon: Sparkles, color: 'text-purple-400' },
                         { title: 'Equipment & Workforce ERP', desc: 'Machinery fleet, subcontractors & daily roster', tab: 'erp-equipment', icon: Truck, color: 'text-teal-400' },
-                        { title: 'Quote Requests & Leads', desc: 'Commercial proposals & client pipeline', tab: 'quote-requests', icon: FileSpreadsheet, color: 'text-blue-400' },
-                        { title: 'Social Media Studio', desc: 'OAuth 2.0 publisher & scheduler', tab: 'social-studio', icon: Megaphone, color: 'text-pink-400' },
-                        { title: 'Contract Generator', desc: 'Legal contract agreement builder', tab: 'legal-contracts', icon: Scale, color: 'text-indigo-400' }
+                        { title: 'Maintenance & Handover', desc: 'SMTP maintenance mode & brand transfer', tab: 'maintenance-handover', icon: Wrench, color: 'text-sky-400' },
+                        { title: 'Play Store & cPanel', desc: 'Android TWA & cPanel hosting migration', tab: 'playstore-cpanel', icon: Smartphone, color: 'text-purple-400' }
                       ].map((hub, idx) => {
                         const HubIcon = hub.icon;
                         return (
@@ -2792,13 +2910,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-xl flex justify-between items-center">
                         <span className="text-slate-400">Neon PostgreSQL DB</span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Connected
+                          <span className="w-2 h-2 rounded-full bg-emerald-400" /> Connected
                         </span>
                       </div>
                       <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-xl flex justify-between items-center">
                         <span className="text-slate-400">Firebase Auth JWT</span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Verified
+                          <span className="w-2 h-2 rounded-full bg-emerald-400" /> Verified
                         </span>
                       </div>
                       <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-xl flex justify-between items-center">
@@ -2857,6 +2975,189 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           <div className="flex items-center gap-2 mb-6 bg-slate-800/40 border border-slate-700 p-3 rounded-lg text-xs text-amber-500 font-mono animate-pulse">
             <span className="w-3 h-3 rounded-full border border-t-amber-500 animate-spin shrink-0" />
             <span>Syncing database tables in real-time...</span>
+          </div>
+        )}
+
+        {/* DEDICATED PAYMENT CONFIRMATION QUEUE (999 / 2,199 XAF) */}
+        {activeAdminTab === 'payment-confirmations' && (
+          <div className="space-y-6 animate-in fade-in duration-300" id="admin-tab-payment-confirmations">
+            {renderClientPaymentConfirmationCenter()}
+          </div>
+        )}
+
+        {/* DEDICATED MANUALS & HANDOVER GUIDES HUB */}
+        {activeAdminTab === 'manuals-hub' && (
+          <div className="space-y-6 animate-in fade-in duration-300" id="admin-tab-manuals-hub">
+            <div className="bg-slate-950/90 border border-slate-800 p-6 rounded-3xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">
+                    07. Documents, Legal &amp; Manuals
+                  </span>
+                  <h1 className="text-2xl font-extrabold text-white mt-1">
+                    Manuals &amp; Handover Guides Studio (A4 PDF)
+                  </h1>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Generate, personalize, and preview both official manuals. Visitors pay 999 XAF; Administrators download free.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveAdminTab('maintenance-handover')}
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer"
+                  >
+                    Maintenance &amp; Handover Settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveAdminTab('playstore-cpanel')}
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer"
+                  >
+                    Play Store &amp; cPanel Hosting
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Card 1: Navigation Manual */}
+                <div className="bg-slate-900/70 border border-amber-500/40 rounded-2xl p-5 flex flex-col justify-between space-y-5">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold uppercase text-amber-400">
+                        4-Page A4 Operational Guide • v4.0
+                      </span>
+                      <span className="font-mono text-xs font-bold text-emerald-400">
+                        999 XAF (Admin Free)
+                      </span>
+                    </div>
+                    <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                      <Compass className="w-5 h-5 text-amber-400" />
+                      Navigation Manual (A4 PDF)
+                    </h2>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Covers all 18 public portals, the rearranged 11-category Admin Dashboard, 10 GB chunked Cloudinary/Supabase TUS upload workflow, 999 / 2,199 XAF payment verification, and Meta App Review protocol.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        downloadWebsiteNavigationGuidePdf({
+                          generatedBy: dbUser?.name || dbUser?.email || 'MADECC Administrator',
+                          bypassPaymentGate: true
+                        });
+                        showToast('Generated Navigation Manual (A4 PDF) — Admin Free download.', 'success');
+                      }}
+                      className="flex-1 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download A4 PDF (Admin Free)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentTab('navigation-manual')}
+                      className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Open Public Manual Page</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card 2: Buyer Brand Handover Manual */}
+                <div className="bg-slate-900/70 border border-emerald-500/40 rounded-2xl p-5 flex flex-col justify-between space-y-5">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">
+                        4-Page A4 Transfer Dossier • 2026
+                      </span>
+                      <span className="font-mono text-xs font-bold text-emerald-400">
+                        999 XAF (Admin Free)
+                      </span>
+                    </div>
+                    <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                      Buyer Brand Handover Manual (PDF)
+                    </h2>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Personalize the Buyer Ownership Transfer Certificate below and export an A4 PDF covering no-code CMS rebranding, paymentDomain.ts transfer, Neon + Drizzle + Cloudinary + Supabase cutover, and launch checks.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                      <input
+                        type="text"
+                        value={handoverBuyerName}
+                        onChange={(e) => setHandoverBuyerName(e.target.value)}
+                        placeholder="Buyer Full Name"
+                        aria-label="Buyer Full Name"
+                        className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                      <input
+                        type="text"
+                        value={handoverBuyerCompany}
+                        onChange={(e) => setHandoverBuyerCompany(e.target.value)}
+                        placeholder="Buyer Company Name"
+                        aria-label="Buyer Company Name"
+                        className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                      <input
+                        type="text"
+                        value={handoverBuyerDomain}
+                        onChange={(e) => setHandoverBuyerDomain(e.target.value)}
+                        placeholder="Target Domain (e.g. brand.com)"
+                        aria-label="Buyer Target Domain"
+                        className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        downloadBuyerHandoverManualPdf({
+                          buyerName: handoverBuyerName.trim() || undefined,
+                          buyerCompany: handoverBuyerCompany.trim() || undefined,
+                          buyerDomain: handoverBuyerDomain.trim() || undefined,
+                          sellerName: dbUser?.name || 'Eric Kreboya',
+                          sellerEmail: ADMIN_SMTP_USER_EMAIL,
+                          bypassPaymentGate: true
+                        });
+                        showToast('Generated Buyer Brand Handover Manual (PDF) — Admin Free download.', 'success');
+                      }}
+                      className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs inline-flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Handover PDF (Admin Free)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentTab('buyer-handover-manual')}
+                      className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Open Public Handover Page</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DEDICATED MAINTENANCE MODE & BRAND HANDOVER HUB */}
+        {activeAdminTab === 'maintenance-handover' && (
+          <div className="animate-in fade-in duration-300" id="admin-tab-maintenance-handover">
+            <AdminMaintenanceAndHandoverHub />
+          </div>
+        )}
+
+        {/* DEDICATED PLAY STORE (TWA) & CPANEL HOSTING HUB */}
+        {activeAdminTab === 'playstore-cpanel' && (
+          <div className="animate-in fade-in duration-300" id="admin-tab-playstore-cpanel">
+            <AdminPlaystoreAndCpanelHub />
           </div>
         )}
 
@@ -5898,23 +6199,6 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           />
         )}
 
-        {activeAdminTab === 'ai-construction-intelligence' && (
-          <AIConstructionIntelligence
-            dbUser={dbUser}
-            showToast={showToast}
-            getAuthHeaders={async () => {
-              const token = await getAuthToken();
-              return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
-            }}
-          />
-        )}
-
-        {activeAdminTab === 'social-studio' && (
-          <SocialMediaStudio
-            currentUser={dbUser}
-          />
-        )}
-
         {activeAdminTab === 'db-architecture' && (
           <div className="space-y-8 animate-in fade-in duration-500" id="admin-tab-db-architecture">
             {/* Header */}
@@ -6302,47 +6586,6 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           </div>
         )}
 
-        {/* CAD TAKE-OFF QUANTITY STUDIO VIEW */}
-        {activeAdminTab === 'drawing-studio' && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/20 border border-slate-800 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-500 font-bold bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
-                Engineering Quantity Surveying
-              </span>
-              <h1 className="text-3xl font-extrabold text-white mt-2 flex items-center gap-3">
-                <Layers className="w-8 h-8 text-amber-500" /> Quantity Take-Off & CAD Studio
-              </h1>
-              <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-                Upload architectural DWG, DXF, or PDF blueprints for automated linear, area, and volumetric material take-off integration with BOQ Studio.
-              </p>
-            </div>
-
-            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center space-y-4">
-              <div className="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/20">
-                <FolderKanban className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-white">Upload Architectural Drawing / Structural PDF</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Select a CAD or PDF blueprint to perform digital scale calibration and auto-calculate concrete volume, rebar tonnage, and wall masonry quantities.
-              </p>
-              <div className="pt-2 flex justify-center gap-3">
-                <button 
-                  onClick={() => setActiveAdminTab('boq-studio')}
-                  className="px-5 py-2.5 bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow hover:bg-amber-400 transition-colors"
-                >
-                  Go to BOQ Studio
-                </button>
-                <button 
-                  onClick={() => setActiveAdminTab('ai-construction-intelligence')}
-                  className="px-5 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl border border-slate-700 hover:bg-slate-800 transition-colors"
-                >
-                  Run AI Blueprint Vision Take-Off
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* DEVELOPER API PLATFORM MONETIZATION & APPROVAL VIEW */}
         {activeAdminTab === 'api-platform' && (
           <div className="animate-in fade-in duration-300">
@@ -6496,6 +6739,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
 
             <div className="grid grid-cols-2 gap-3">
               {[
+                { title: 'Payment Confirmations', desc: 'Approve 999 & 2,199 XAF MoMo unlocks', tab: 'payment-confirmations', icon: CreditCard, color: 'text-amber-400' },
+                { title: 'Manuals & Handover Guides', desc: 'Navigation & Buyer Handover A4 PDFs', tab: 'manuals-hub', icon: FileDown, color: 'text-emerald-400' },
+                { title: 'Maintenance & Handover', desc: 'SMTP maintenance mode & brand transfer', tab: 'maintenance-handover', icon: Wrench, color: 'text-sky-400' },
+                { title: 'Play Store & cPanel Hosting', desc: 'Android TWA & cPanel server migration', tab: 'playstore-cpanel', icon: Smartphone, color: 'text-purple-400' },
                 { title: 'Frontend Page Studio', desc: 'Edit Hero video, CTAs, SEO & Sections', tab: 'cms-pages', icon: Globe, color: 'text-amber-400' },
                 { title: 'Media & Video Assets', desc: 'Upload HD clips, posters & brochures', tab: 'cms-media', icon: Video, color: 'text-sky-400' },
                 { title: 'Global Site Branding', desc: 'Phones, addresses & social links', tab: 'cms-settings', icon: Settings, color: 'text-emerald-400' },
@@ -6503,10 +6750,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 { title: 'Publish Social Post', desc: 'OAuth 2.0 Multi-channel publisher', tab: 'social-studio', icon: Megaphone, color: 'text-pink-400' },
                 { title: 'Add Project Record', desc: 'Manage civil engineering projects', tab: 'projects', icon: Building2, color: 'text-sky-400' },
                 { title: 'Generate Contract', desc: 'Legal agreements & contracts', tab: 'legal-contracts', icon: Scale, color: 'text-indigo-400' },
-                { title: 'Create Proposal', desc: 'Client proposal builder', tab: 'proposal-studio', icon: FileText, color: 'text-purple-400' },
-                { title: 'Generate Receipt', desc: 'Official payment receipt builder', tab: 'receipts', icon: Receipt, color: 'text-emerald-400' },
-                { title: 'Staff Access & Roles', desc: 'User permissions & security', tab: 'staff-access', icon: Key, color: 'text-amber-500' },
-                { title: 'View Audit Trail', desc: 'Database operations security logs', tab: 'audit', icon: History, color: 'text-cyan-400' }
+                { title: 'Staff Access & Roles', desc: 'User permissions & security', tab: 'staff-access', icon: Key, color: 'text-amber-500' }
               ].map((act, idx) => {
                 const ActIcon = act.icon;
                 return (

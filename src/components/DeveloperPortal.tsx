@@ -29,6 +29,7 @@ import {
   Send
 } from 'lucide-react';
 import { useToast } from './Toast.tsx';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 
 interface DeveloperPortalProps {
   onNavigateToTab?: (tab: string, state?: any) => void;
@@ -202,31 +203,22 @@ export default function DeveloperPortal({ onNavigateToTab }: DeveloperPortalProp
     }
   };
 
-  // Upload payment proof receipt (supports up to 2000 MB / 2 GB)
+  // Upload payment proof receipt directly via chunked Cloudinary / Supabase TUS
   const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingReceipt(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', 'api_payment_proofs');
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
+      const result = await uploadMediaAssetDirect({
+        file,
+        folder: 'api_payment_proofs',
+        useCmsEndpoint: false,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        setCheckoutReceiptUrl(data.url || data.secure_url);
-        showToast('Payment proof uploaded successfully!', 'success');
-      } else {
-        showToast('Could not upload receipt image. Please paste transaction ref manually.', 'error');
-      }
+      setCheckoutReceiptUrl(result.url);
+      showToast('Payment proof uploaded successfully!', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Upload error', 'error');
+      showToast(err?.message || 'Could not upload receipt image. Please paste transaction ref manually.', 'error');
     } finally {
       setIsUploadingReceipt(false);
     }

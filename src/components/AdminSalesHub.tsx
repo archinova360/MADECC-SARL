@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast.tsx';
 import { getAuthToken } from '../lib/firebase.ts';
+import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
 
 interface Product {
   id: number;
@@ -342,64 +343,16 @@ export const AdminSalesHub: React.FC = () => {
     }
   };
 
-  // Helper to upload files: tries direct signed Cloudinary upload first (bypassing Netlify 6MB body limit),
-  // then falls back to /api/upload proxy if signature is unavailable.
+  // Upload files directly to cloud storage using chunked Cloudinary or Supabase TUS resumable protocol
   const uploadFileWithFallback = async (file: File): Promise<string> => {
-    const headers = await getAuthHeaders(false);
-    
-    // 1. Try direct Cloudinary upload via signed signature
-    try {
-      const sigRes = await fetch('/api/cloudinary-signature', {
-        headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
-        credentials: 'include'
-      });
-      if (sigRes.ok) {
-        const ticket = await sigRes.json();
-        if (ticket.signature && ticket.cloudName && ticket.apiKey && ticket.timestamp) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('api_key', ticket.apiKey);
-          formData.append('timestamp', String(ticket.timestamp));
-          formData.append('signature', ticket.signature);
-          formData.append('folder', ticket.folder || 'madecc');
-          
-          const uploadUrl = `https://api.cloudinary.com/v1_1/${ticket.cloudName}/auto/upload`;
-          const cloudRes = await fetch(uploadUrl, {
-            method: 'POST',
-            body: formData
-          });
-          if (cloudRes.ok) {
-            const cloudData = await cloudRes.json();
-            if (cloudData.secure_url || cloudData.url) {
-              return cloudData.secure_url || cloudData.url;
-            }
-          }
-        }
-      }
-    } catch (directErr) {
-      console.warn('[UPLOAD] Direct Cloudinary upload skipped, falling back to server proxy:', directErr);
-    }
-
-    // 2. Server-side proxy upload fallback
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      headers: headers.Authorization ? { 'Authorization': headers.Authorization } : undefined,
-      credentials: 'include',
-      body: formData
+    const authToken = await getAuthToken();
+    const result = await uploadMediaAssetDirect({
+      file,
+      folder: 'madecc',
+      authToken,
+      useCmsEndpoint: false,
     });
-    const rawText = await res.text();
-    let data: any = {};
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      throw new Error(`Upload server returned status ${res.status}`);
-    }
-    if (!res.ok || (!data.url && !data.secure_url)) {
-      throw new Error(data.error || 'Server rejected file upload');
-    }
-    return data.secure_url || data.url;
+    return result.url;
   };
 
   // Handle Image Upload for Product Cover

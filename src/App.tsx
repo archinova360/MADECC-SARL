@@ -67,6 +67,7 @@ const KrrSalesStore = lazyRetry(() => import('./components/KrrSalesStore.tsx').t
 const KrrOrderTracking = lazyRetry(() => import('./components/KrrOrderTracking.tsx').then(m => ({ default: m.KrrOrderTracking })));
 const SiteMap = lazyRetry(() => import('./components/SiteMap.tsx'));
 const ClientPortal = lazyRetry(() => import('./components/ClientPortal.tsx'));
+const Sustainability = lazyRetry(() => import('./components/Sustainability.tsx').then(m => ({ default: m.Sustainability })));
 const SharedDocumentViewer = lazyRetry(() => import('./components/SharedDocumentViewer.tsx').then(m => ({ default: m.SharedDocumentViewer })));
 
 // Code-Split Dynamic SaaS Multi-Tenant & Heavy Modules
@@ -88,6 +89,9 @@ import { TenantService } from './services/tenantService.ts';
 import { ThemeProvider, useTheme } from './lib/ThemeContext.tsx';
 import { LanguageProvider } from './lib/LanguageContext.tsx';
 import { SiteSettingsProvider, useSiteSettings } from './lib/SiteSettingsContext.tsx';
+import { useCmsPage, useCmsPagesRegistry } from './lib/useCmsPage.ts';
+import HeroVideoPlayer from './components/HeroVideoPlayer.tsx';
+import { CmsCustomSections } from './components/cms/CmsCustomSections.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import {
   parsePaymentUrlParams,
@@ -102,6 +106,68 @@ function RouteLoadingFallback() {
     <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3" role="status" aria-live="polite">
       <div className="w-10 h-10 border-4 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
       <span className="text-xs font-mono uppercase tracking-widest text-slate-400">Loading module...</span>
+    </div>
+  );
+}
+
+function DynamicCmsPageView({
+  slug,
+  onNavigateToTab,
+  setSelectedProjectId,
+  currentTenant
+}: {
+  slug: string;
+  onNavigateToTab: (tab: string) => void;
+  setSelectedProjectId: (id: number | null) => void;
+  currentTenant: Tenant;
+}) {
+  const { page, hero, orderedSections, isUnpublished, loading } = useCmsPage(slug);
+  if (loading) return <RouteLoadingFallback />;
+  if (isUnpublished || !page) {
+    return <Home setCurrentTab={onNavigateToTab} setSelectedProjectId={setSelectedProjectId} currentTenant={currentTenant} />;
+  }
+  return (
+    <div className="min-h-screen">
+      {hero.showHero !== false && (
+        <HeroVideoPlayer config={hero}>
+          <div className="max-w-3xl text-white space-y-4">
+            {hero.eyebrow && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
+                {hero.eyebrow}
+              </span>
+            )}
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
+              {hero.title || page.title}
+            </h1>
+            {hero.subtitle && (
+              <p className="text-sm sm:text-lg text-slate-300 leading-relaxed max-w-2xl">
+                {hero.subtitle}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3 pt-2">
+              {hero.primaryCta?.visible !== false && hero.primaryCta?.text && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToTab((hero.primaryCta?.link || '/request-a-quote').replace(/^\//, '') || 'request-a-quote')}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl text-sm shadow-lg transition-all cursor-pointer"
+                >
+                  {hero.primaryCta.text}
+                </button>
+              )}
+              {hero.secondaryCta?.visible !== false && hero.secondaryCta?.text && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToTab((hero.secondaryCta?.link || '/contact').replace(/^\//, '') || 'contact')}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 rounded-xl text-sm border border-slate-700 transition-all cursor-pointer"
+                >
+                  {hero.secondaryCta.text}
+                </button>
+              )}
+            </div>
+          </div>
+        </HeroVideoPlayer>
+      )}
+      <CmsCustomSections sections={orderedSections} onNavigateToTab={onNavigateToTab} />
     </div>
   );
 }
@@ -145,6 +211,7 @@ function AppContent({
 }) {
   const { theme } = useTheme();
   const { settings, isFollowModalOpen, closeFollowModal } = useSiteSettings();
+  const { isSlugHidden } = useCmsPagesRegistry();
   const [preselectedService, setPreselectedService] = useState<string>('');
   const [onboardingPrefill, setOnboardingPrefill] = useState<{
     planCode?: PlanCode;
@@ -208,20 +275,6 @@ function AppContent({
       }>;
       const detail = customEvent.detail;
       if (!detail?.manualType) return;
-
-      // Admin does not need to pay before downloading
-      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
-        if (detail.manualType === 'navigation_manual') {
-          import('./utils/navigationGuidePdf.ts').then((m) =>
-            m.forceDownloadWebsiteNavigationGuidePdf(detail.options || {})
-          ).catch(() => {});
-        } else {
-          import('./utils/buyerHandoverPdf.ts').then((m) =>
-            m.forceDownloadBuyerHandoverManualPdf(detail.options || {})
-          ).catch(() => {});
-        }
-        return;
-      }
 
       setManualPaymentGate({
         manualType: detail.manualType,
@@ -446,6 +499,8 @@ function AppContent({
       case 'developers':
       case 'api-platform':
         return <DeveloperPortal onNavigateToTab={handleNavigateWithState} />;
+      case 'sustainability':
+        return <Sustainability onNavigateToTab={handleNavigateWithState} />;
       case 'tenders':
         return <Tenders onNavigateToTab={handleNavigateWithState} />;
       case 'verify':
@@ -504,16 +559,30 @@ function AppContent({
         );
       default:
         return (
-          <Home 
-            setCurrentTab={setCurrentTab} 
-            setSelectedProjectId={setSelectedProjectId} 
+          <DynamicCmsPageView
+            slug={currentTab}
+            onNavigateToTab={handleNavigateWithState}
+            setSelectedProjectId={setSelectedProjectId}
+            currentTenant={currentTenant}
           />
         );
     }
   };
 
+  const isAdminOrStaff = Boolean(dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff'));
+  const isRouteUnpublished =
+    currentTab !== 'home' &&
+    currentTab !== 'admin' &&
+    currentTab !== 'super-admin' &&
+    currentTab !== 'verify' &&
+    isSlugHidden(currentTab);
+
   return (
-    <div className={`flex flex-col min-h-screen w-full max-w-full overflow-x-hidden font-sans transition-colors duration-300 ${
+    <div
+      data-btn-style={settings?.themeSettings?.buttonStyle || 'rounded'}
+      data-layout={settings?.themeSettings?.homepageLayout || 'standard'}
+      data-mobile-compact={settings?.themeSettings?.mobileCompactSpacing ? 'true' : 'false'}
+      className={`flex flex-col min-h-screen w-full max-w-full overflow-x-hidden font-sans transition-colors duration-300 ${
       theme === 'light'
         ? 'bg-slate-50 text-slate-800 selection:bg-amber-200 selection:text-slate-900'
         : 'bg-[#0A0A0B] text-slate-200 selection:bg-amber-500 selection:text-slate-950'
@@ -586,8 +655,32 @@ function AppContent({
             <div className={`w-10 h-10 border-4 rounded-full animate-spin ${theme === 'light' ? 'border-slate-300 border-t-amber-500' : 'border-slate-800 border-t-amber-500'}`} />
             <span className={`text-xs font-mono uppercase tracking-widest ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>Verifying secure profile...</span>
           </div>
+        ) : isRouteUnpublished && !isAdminOrStaff ? (
+          <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-5">
+            <span className="inline-block px-3 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
+              Page Temporarily Unpublished
+            </span>
+            <h1 className="text-3xl font-extrabold tracking-tight">This section is currently offline for updates</h1>
+            <p className="text-sm text-slate-400">
+              Our editorial team has temporarily unpublished this page. Please return to the homepage or browse our active services and projects.
+            </p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentTab('home')}
+                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition-colors cursor-pointer"
+              >
+                Return to Homepage
+              </button>
+            </div>
+          </div>
         ) : (
           <Suspense fallback={<RouteLoadingFallback />}>
+            {isRouteUnpublished && isAdminOrStaff && (
+              <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 text-center text-xs font-mono text-amber-300">
+                Admin Preview: This page is currently <strong>UNPUBLISHED</strong> to public visitors.
+              </div>
+            )}
             {renderActiveScreen()}
           </Suspense>
         )}
@@ -723,15 +816,20 @@ function AppContent({
                 ? 'Download Navigation Manual (A4 PDF)'
                 : 'Download Buyer Brand Handover Manual (PDF)'
             }
-            onUnlockCustomDownload={() => {
+            onUnlockCustomDownload={async () => {
+              const { verifyServerReceiptDownloadAllowed } = await import('./utils/paymentDomain.ts');
+              const receiptCode =
+                manualPaymentGate.manualType === 'navigation_manual'
+                  ? NAVIGATION_MANUAL_RECEIPT_NO
+                  : BUYER_HANDOVER_MANUAL_RECEIPT_NO;
+              const check = await verifyServerReceiptDownloadAllowed(receiptCode);
+              if (!check.allowed) return;
               if (manualPaymentGate.manualType === 'navigation_manual') {
-                import('./utils/navigationGuidePdf.ts').then((m) =>
-                  m.forceDownloadWebsiteNavigationGuidePdf(manualPaymentGate.options || {})
-                ).catch(() => {});
+                const m = await import('./utils/navigationGuidePdf.ts');
+                m.forceDownloadWebsiteNavigationGuidePdf(manualPaymentGate.options || {});
               } else {
-                import('./utils/buyerHandoverPdf.ts').then((m) =>
-                  m.forceDownloadBuyerHandoverManualPdf(manualPaymentGate.options || {})
-                ).catch(() => {});
+                const m = await import('./utils/buyerHandoverPdf.ts');
+                m.forceDownloadBuyerHandoverManualPdf(manualPaymentGate.options || {});
               }
             }}
           />
@@ -787,8 +885,11 @@ function getTabFromPath(pathname: string, searchStr: string): string {
   if (path.includes('booking')) return 'booking';
   if (path.includes('client-portal') || path === '/portal' || path.startsWith('/client/') || params.get('tab') === 'client-portal') return 'client-portal';
   if (path.includes('sitemap') || path.includes('site-map') || params.get('tab') === 'sitemap') return 'sitemap';
+  if (path.includes('sustainability') || params.get('tab') === 'sustainability') return 'sustainability';
   if (path.includes('developers') || path.includes('api-platform')) return 'developers';
   if (path.includes('admin')) return 'admin';
+  const cleanSlug = path.replace(/^\/+|\/+$/g, '');
+  if (cleanSlug && /^[a-z0-9-]+$/.test(cleanSlug)) return cleanSlug;
   return 'home';
 }
 

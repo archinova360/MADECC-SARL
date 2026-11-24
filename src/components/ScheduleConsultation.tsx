@@ -16,6 +16,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { getCsrfHeaders } from '../lib/csrf.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface ScheduleConsultationProps {
   onNavigateToTab: (tab: string, extraState?: any) => void;
@@ -36,6 +39,10 @@ const MEETING_MODES = [
 ];
 
 export const ScheduleConsultation: React.FC<ScheduleConsultationProps> = ({ onNavigateToTab }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('schedule-consultation');
+  const siteName = settings?.siteName || 'MADECC GROUP';
+
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -159,19 +166,21 @@ export const ScheduleConsultation: React.FC<ScheduleConsultationProps> = ({ onNa
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
       
       {/* Header */}
+      {cmsHero?.showHero !== false && (
       <div className="bg-slate-900 text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
         <div className="max-w-3xl mx-auto text-center space-y-3">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-extrabold uppercase tracking-wider border border-amber-500/30">
-            <Sparkles className="w-3.5 h-3.5" /> Direct Technical Advisory
+            <Sparkles className="w-3.5 h-3.5" /> {cmsHero?.eyebrow || 'Direct Technical Advisory'}
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-            Schedule an Engineering Consultation
+            {cmsHero?.title || 'Schedule an Engineering Consultation'}
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl mx-auto">
-            Book a dedicated 1-on-1 session with MADECC GROUP civil engineers or quantity surveyors to review drawings, cost estimates, or site feasibility across Cameroon and Central Africa.
+            {cmsHero?.subtitle || `Book a dedicated 1-on-1 session with ${siteName} civil engineers or quantity surveyors to review drawings, cost estimates, or site feasibility across Cameroon and Central Africa.`}
           </p>
         </div>
       </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
@@ -321,7 +330,7 @@ export const ScheduleConsultation: React.FC<ScheduleConsultationProps> = ({ onNa
                   required
                 />
                 <span className="text-xs text-slate-600 leading-relaxed">
-                  I agree to the <button type="button" onClick={() => onNavigateToTab('terms')} className="text-amber-600 underline font-semibold hover:text-amber-700">Terms &amp; Conditions</button> and <button type="button" onClick={() => onNavigateToTab('privacy')} className="text-amber-600 underline font-semibold hover:text-amber-700">Privacy Policy</button>. I consent to MADECC GROUP contacting me regarding this consultation request.
+                  I agree to the <button type="button" onClick={() => onNavigateToTab('terms')} className="text-amber-600 underline font-semibold hover:text-amber-700">Terms &amp; Conditions</button> and <button type="button" onClick={() => onNavigateToTab('privacy')} className="text-amber-600 underline font-semibold hover:text-amber-700">Privacy Policy</button>. I consent to {siteName} contacting me regarding this consultation request.
                 </span>
               </label>
             </div>
@@ -346,6 +355,8 @@ export const ScheduleConsultation: React.FC<ScheduleConsultationProps> = ({ onNa
           </div>
 
         </form>
+
+        <CmsCustomSections sections={getCustomSections()} onNavigateToTab={onNavigateToTab} className="mt-10" />
       </div>
 
     </div>

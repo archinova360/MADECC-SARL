@@ -8,14 +8,12 @@ import {
   OFFICIAL_PAYMENT_CONFIG,
   STANDARD_RECEIPT_FEE_XAF,
   TARGET_OFFICIAL_DOMAIN,
-  isCurrentUserAdmin,
-  isReceiptPaid
+  verifyServerReceiptDownloadAllowed
 } from './paymentDomain';
 
 export interface NavigationGuideOptions {
   includeMetaReviewerProtocol?: boolean;
   generatedBy?: string;
-  bypassPaymentGate?: boolean;
 }
 
 export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): jsPDF {
@@ -121,7 +119,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
     `Welcome to the official MADECC GROUP S.A.R.L digital ecosystem (${TARGET_OFFICIAL_DOMAIN}). This v4.0 A4 Navigation ` +
     'Manual documents all 18 public visitor portals, the reorganized 11-category Enterprise Administrative Dashboard, ' +
     'our direct 10 GB chunked media upload pipeline (Cloudinary + Supabase TUS), and our dual-tier Mobile Money / Orange Money ' +
-    `verification flow (${MANUAL_DOWNLOAD_FEE_XAF} XAF for Platform Manuals; ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF for Certified Receipts, BOQs & Contracts; Admin Free).`;
+    `verification flow (${MANUAL_DOWNLOAD_FEE_XAF} XAF for Platform Manuals; ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF for Certified Receipts, BOQs & Contracts — paid verification mandatory before download).`;
   const splitIntro = doc.splitTextToSize(introText, contentWidth);
   doc.text(splitIntro, margin, y);
   y += splitIntro.length * 4.2 + 3;
@@ -171,8 +169,8 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
       ['Developer APIs', '#developers', 'REST API catalog, subscription keys, webhooks & live endpoint sandbox', 'Public / API'],
       ['Cloud SaaS Platform', '#saas-cloud', 'Multi-tenant construction ERP workspaces for partner engineering firms', 'Public / SaaS'],
       ['Walkthrough & Site Map', '#walkthrough-guide / #sitemap', 'Interactive 6-phase visitor tour, FAQ hub, and full XML/HTML sitemap index', 'Public'],
-      ['Navigation Manual Page', '#navigation-manual', 'Interactive A4 navigation guide chapter browser & 999 XAF PDF unlock', '999 XAF / Free'],
-      ['Buyer Handover Manual', '#buyer-handover-manual', 'Interactive white-label brand transfer & 999 XAF Ownership Certificate PDF', '999 XAF / Free']
+      ['Navigation Manual Page', '#navigation-manual', 'Interactive A4 navigation guide chapter browser & 999 XAF PDF unlock', '999 XAF Paid'],
+      ['Buyer Handover Manual', '#buyer-handover-manual', 'Interactive white-label brand transfer & 999 XAF Ownership Certificate PDF', '999 XAF Paid']
     ]
   });
 
@@ -334,7 +332,7 @@ export function generateWebsiteNavigationGuidePdf(options: NavigationGuideOption
   const paymentSteps = [
     {
       title: `Step 1 — Select Manual (${MANUAL_DOWNLOAD_FEE_XAF} XAF) or Certified Receipt / BOQ (${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF)`,
-      body: `Visitors pay ${MANUAL_DOWNLOAD_FEE_XAF} XAF for the Navigation Manual (${NAVIGATION_MANUAL_RECEIPT_NO}) or Buyer Handover Manual (${BUYER_HANDOVER_MANUAL_RECEIPT_NO}), or ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF for Certified Receipts, BOQs, Cost Guides, and Contracts. Signed-in Admins & Staff bypass payment gates automatically.`
+      body: `Every user pays ${MANUAL_DOWNLOAD_FEE_XAF} XAF for the Navigation Manual (${NAVIGATION_MANUAL_RECEIPT_NO}) or Buyer Handover Manual (${BUYER_HANDOVER_MANUAL_RECEIPT_NO}), or ${STANDARD_RECEIPT_FEE_XAF.toLocaleString()} XAF for Certified Receipts, BOQs, Cost Guides, and Contracts before download unlocks.`
     },
     {
       title: 'Step 2 — Transfer via MTN Mobile Money or Orange Money',
@@ -500,12 +498,9 @@ export function forceDownloadWebsiteNavigationGuidePdf(options: NavigationGuideO
   doc.save('MADECC_Group_Website_Navigation_Manual_A4.pdf');
 }
 
-export function downloadWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): void {
-  if (options.bypassPaymentGate) {
-    forceDownloadWebsiteNavigationGuidePdf(options);
-    return;
-  }
-  if (!isCurrentUserAdmin() && isReceiptPaid(NAVIGATION_MANUAL_RECEIPT_NO)) {
+export async function downloadWebsiteNavigationGuidePdf(options: NavigationGuideOptions = {}): Promise<void> {
+  const verification = await verifyServerReceiptDownloadAllowed(NAVIGATION_MANUAL_RECEIPT_NO);
+  if (verification.allowed) {
     forceDownloadWebsiteNavigationGuidePdf(options);
     return;
   }

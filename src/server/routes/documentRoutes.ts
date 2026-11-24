@@ -61,11 +61,109 @@ async function ensureDocumentTablesExist() {
         signed_at TIMESTAMP DEFAULT NOW() NOT NULL,
         updated_at TIMESTAMP DEFAULT NOW() NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS receipt_payment_requests (
+        id TEXT PRIMARY KEY,
+        receipt_no TEXT NOT NULL UNIQUE,
+        is_paid BOOLEAN NOT NULL DEFAULT FALSE,
+        status TEXT NOT NULL DEFAULT 'PENDING_ADMIN_CONFIRMATION',
+        admin_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+        amount INTEGER NOT NULL DEFAULT 2199,
+        currency TEXT NOT NULL DEFAULT 'XAF',
+        payment_method TEXT NOT NULL DEFAULT 'MTN Mobile Money (671063511)',
+        recipient_number TEXT NOT NULL DEFAULT '671063511',
+        transaction_id TEXT NOT NULL,
+        paid_at TEXT NOT NULL,
+        payer_name TEXT NOT NULL DEFAULT 'Client',
+        payer_phone TEXT NOT NULL DEFAULT '',
+        client_email TEXT NOT NULL DEFAULT '',
+        project_name TEXT NOT NULL DEFAULT 'MADECC Infrastructure Project',
+        doc_type TEXT NOT NULL DEFAULT 'boq_receipt',
+        domain_used TEXT NOT NULL DEFAULT 'https://madeccgroup.online',
+        confirmed_at TEXT,
+        confirmed_by TEXT,
+        smtp_dispatched_to TEXT,
+        smtp_dispatched_at TEXT,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
     `);
     documentTablesChecked = true;
   } catch (err) {
     console.warn('[DB Init] Document tables check note:', err);
   }
+}
+
+let seededPaymentRequestsChecked = false;
+async function ensureSeededPaymentRequests() {
+  await ensureDocumentTablesExist();
+  if (seededPaymentRequestsChecked) return;
+  try {
+    const countRes = await db.execute(sql`SELECT COUNT(*)::int AS cnt FROM receipt_payment_requests`);
+    const cnt = Number((countRes.rows[0] as any)?.cnt || 0);
+    if (cnt === 0) {
+      const nowMinus15 = new Date(Date.now() - 1000 * 60 * 15).toISOString().replace('T', ' ').slice(0, 19);
+      const nowMinus42 = new Date(Date.now() - 1000 * 60 * 42).toISOString().replace('T', ' ').slice(0, 19);
+      await db.execute(sql`
+        INSERT INTO receipt_payment_requests (
+          id, receipt_no, is_paid, status, admin_confirmed, amount, currency,
+          payment_method, recipient_number, transaction_id, paid_at,
+          payer_name, payer_phone, client_email, project_name, doc_type, domain_used
+        )
+        VALUES
+        (
+          'PAY-REQ-1001', 'RCP-2026-0001', FALSE, 'PENDING_ADMIN_CONFIRMATION', FALSE, 2199, 'XAF',
+          'MTN Mobile Money (671063511)', '671063511', 'TXN-MOMO-849201', ${nowMinus15},
+          'Société Générale de Construction (SGC)', '677 412 890', 'direction@sgc-cameroun.cm',
+          'R+4 Commercial Complex & BOQ Dossier — Douala Akwa', 'boq_receipt', 'https://madeccgroup.online'
+        ),
+        (
+          'PAY-REQ-1002', 'RCP-PROP-2026-02', FALSE, 'PENDING_ADMIN_CONFIRMATION', FALSE, 2199, 'XAF',
+          'Orange Money (689115595)', '689115595', 'TXN-OM-519034', ${nowMinus42},
+          'Dr. Emmanuel Ndi & Associates', '699 104 522', 'emmanuel.ndi@cabinet-ndi.cm',
+          'Yaoundé Mbankolo Duplex Villa — Certified Proposal & Receipt', 'proposal_receipt', 'https://madeccgroup.online'
+        )
+        ON CONFLICT (receipt_no) DO NOTHING
+      `);
+    }
+    seededPaymentRequestsChecked = true;
+  } catch (err) {
+    console.warn('[DB Init] Seed payment requests note:', err);
+  }
+}
+
+function formatPaymentRequestRow(r: any) {
+  if (!r) return null;
+  const amount = Number(r.amount || 0);
+  const confirmedPaid = Boolean(
+    r.is_paid === true &&
+      r.admin_confirmed === true &&
+      r.status === 'ADMIN_CONFIRMED' &&
+      amount > 0
+  );
+  return {
+    id: r.id,
+    receiptNo: r.receipt_no,
+    isPaid: confirmedPaid,
+    status: confirmedPaid ? 'ADMIN_CONFIRMED' : (r.status === 'ADMIN_FREE_CLEARANCE' ? 'UNPAID' : r.status),
+    adminConfirmed: confirmedPaid,
+    amount,
+    currency: r.currency || 'XAF',
+    paymentMethod: r.payment_method,
+    recipientNumber: r.recipient_number,
+    transactionId: r.transaction_id,
+    paidAt: r.paid_at,
+    payerName: r.payer_name,
+    payerPhone: r.payer_phone,
+    clientEmail: r.client_email,
+    projectName: r.project_name,
+    docType: r.doc_type,
+    domainUsed: r.domain_used,
+    confirmedAt: r.confirmed_at || undefined,
+    confirmedBy: r.confirmed_by || undefined,
+    smtpDispatchedTo: r.smtp_dispatched_to || undefined,
+    smtpDispatchedAt: r.smtp_dispatched_at || undefined
+  };
 }
 
 export function setupDocumentRoutes(app: express.Express) {
@@ -619,106 +717,146 @@ export function setupDocumentRoutes(app: express.Express) {
   });
 
   // ==========================================
-  // --- CLIENT PAYMENT CONFIRMATION & ADMIN UNLOCK QUEUE (2,199 XAF) ---
+  // --- CLIENT PAYMENT CONFIRMATION & ADMIN UNLOCK QUEUE (NEON POSTGRESQL) ---
   // ==========================================
 
   const ADMIN_SMTP_USER = 'kreboya603@gmail.com';
-  const paymentRequestsStore = new Map<string, any>([
-    [
-      'RCP-2026-0001',
-      {
-        id: 'PAY-REQ-1001',
-        receiptNo: 'RCP-2026-0001',
-        isPaid: false,
-        status: 'PENDING_ADMIN_CONFIRMATION',
-        adminConfirmed: false,
-        amount: 2199,
-        currency: 'XAF',
-        paymentMethod: 'MTN Mobile Money (671063511)',
-        recipientNumber: '671063511',
-        transactionId: 'TXN-MOMO-849201',
-        paidAt: new Date(Date.now() - 1000 * 60 * 15).toISOString().replace('T', ' ').slice(0, 19),
-        payerName: 'Société Générale de Construction (SGC)',
-        payerPhone: '677 412 890',
-        clientEmail: 'direction@sgc-cameroun.cm',
-        projectName: 'R+4 Commercial Complex & BOQ Dossier — Douala Akwa',
-        docType: 'boq_receipt',
-        domainUsed: 'https://madeccgroup.online'
-      }
-    ],
-    [
-      'RCP-PROP-2026-02',
-      {
-        id: 'PAY-REQ-1002',
-        receiptNo: 'RCP-PROP-2026-02',
-        isPaid: false,
-        status: 'PENDING_ADMIN_CONFIRMATION',
-        adminConfirmed: false,
-        amount: 2199,
-        currency: 'XAF',
-        paymentMethod: 'Orange Money (689115595)',
-        recipientNumber: '689115595',
-        transactionId: 'TXN-OM-519034',
-        paidAt: new Date(Date.now() - 1000 * 60 * 42).toISOString().replace('T', ' ').slice(0, 19),
-        payerName: 'Dr. Emmanuel Ndi & Associates',
-        payerPhone: '699 104 522',
-        clientEmail: 'emmanuel.ndi@cabinet-ndi.cm',
-        projectName: 'Yaoundé Mbankolo Duplex Villa — Certified Proposal & Receipt',
-        docType: 'proposal_receipt',
-        domainUsed: 'https://madeccgroup.online'
-      }
-    ]
-  ]);
 
   // 13. Get all payment requests (for Admin Dashboard & Client Sync)
-  app.get('/api/receipts/payment-requests', async (req, res) => {
+  app.get('/api/receipts/payment-requests', requireStaffOrAdmin, async (_req, res) => {
     try {
-      const records = Array.from(paymentRequestsStore.values());
+      await ensureSeededPaymentRequests();
+      const result = await db.execute(sql`
+        SELECT * FROM receipt_payment_requests ORDER BY created_at DESC LIMIT 200
+      `);
+      const records = (result.rows || []).map(formatPaymentRequestRow);
       res.json({ success: true, records });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to fetch payment requests' });
     }
   });
 
-  // 14. Get single payment status by receiptNo
+  // 14. Get single payment status by receiptNo (Authoritative PostgreSQL check)
   app.get('/api/receipts/payment-requests/status/:receiptNo', async (req, res) => {
     try {
-      const receiptNo = req.params.receiptNo;
-      const record = paymentRequestsStore.get(receiptNo) || null;
-      res.json({ success: true, record });
+      await ensureSeededPaymentRequests();
+      const receiptNo = String(req.params.receiptNo || '').trim();
+      const result = await db.execute(sql`
+        SELECT * FROM receipt_payment_requests WHERE receipt_no = ${receiptNo} LIMIT 1
+      `);
+      const record = formatPaymentRequestRow(result.rows[0]);
+      res.json({
+        success: true,
+        isPaid: Boolean(record?.isPaid),
+        record
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // 15. Client submits 2,199 XAF payment -> awaits Admin confirmation (OK) in Admin Dashboard
+  // 14b. Strict download authorization check — returns HTTP 402 unless paid & confirmed in Neon PostgreSQL
+  app.get('/api/receipts/verify-download/:receiptNo', async (req, res) => {
+    try {
+      await ensureSeededPaymentRequests();
+      const receiptNo = String(req.params.receiptNo || '').trim();
+      if (!receiptNo) {
+        return res.status(400).json({ allowed: false, error: 'Receipt reference is required.' });
+      }
+
+      const result = await db.execute(sql`
+        SELECT * FROM receipt_payment_requests WHERE receipt_no = ${receiptNo} LIMIT 1
+      `);
+      const record = formatPaymentRequestRow(result.rows[0]);
+
+      if (!record || !record.isPaid || !record.adminConfirmed || record.status !== 'ADMIN_CONFIRMED' || record.amount <= 0) {
+        return res.status(402).json({
+          allowed: false,
+          receiptNo,
+          status: record?.status || 'UNPAID',
+          record: record || null,
+          error: `Payment of required fee for ${receiptNo} is not yet paid and confirmed by Administrator. Downloads remain locked until payment is verified.`
+        });
+      }
+
+      return res.json({
+        allowed: true,
+        receiptNo,
+        status: record.status,
+        record
+      });
+    } catch (error: any) {
+      return res.status(500).json({ allowed: false, error: error.message || 'Failed to verify download permission' });
+    }
+  });
+
+  // 15. Client submits 999 / 2,199 XAF payment -> awaits Admin confirmation (OK) in Admin Dashboard
   app.post('/api/receipts/payment-requests', async (req, res) => {
     try {
+      await ensureSeededPaymentRequests();
       const body = req.body || {};
-      const receiptNo = body.receiptNo || `RCP-${Date.now().toString().slice(-6)}`;
+      const receiptNo = String(body.receiptNo || `RCP-${Date.now().toString().slice(-6)}`).trim();
+      const transactionId = String(body.transactionId || '').trim();
+      const amount = Number(body.amount);
+
+      if (!transactionId || transactionId.length < 4) {
+        return res.status(400).json({
+          error: 'Valid Mobile Money / Orange Money or Bank transaction reference is required (minimum 4 characters).'
+        });
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({
+          error: 'Valid non-zero payment amount is required.'
+        });
+      }
+
       const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      const reqId = String(body.id || `PAY-REQ-${Date.now().toString().slice(-5)}`);
+      const currency = String(body.currency || 'XAF');
+      const paymentMethod = String(body.paymentMethod || 'MTN Mobile Money (671063511)');
+      const recipientNumber = String(body.recipientNumber || '671063511');
+      const paidAt = String(body.paidAt || nowStr);
+      const payerName = String(body.payerName || 'Valued Client');
+      const payerPhone = String(body.payerPhone || '671063511');
+      const clientEmail = String(body.clientEmail || '');
+      const projectName = String(body.projectName || 'MADECC Infrastructure Project');
+      const docType = String(body.docType || 'boq_receipt');
+      const domainUsed = String(body.domainUsed || 'https://madeccgroup.online');
 
-      const pendingRecord = {
-        id: body.id || `PAY-REQ-${Date.now().toString().slice(-5)}`,
-        receiptNo,
-        isPaid: false,
-        status: 'PENDING_ADMIN_CONFIRMATION',
-        adminConfirmed: false,
-        amount: Number(body.amount) || 2199,
-        currency: body.currency || 'XAF',
-        paymentMethod: body.paymentMethod || 'MTN Mobile Money (671063511)',
-        recipientNumber: body.recipientNumber || '671063511',
-        transactionId: body.transactionId || `TXN-${Date.now().toString().slice(-6)}`,
-        paidAt: body.paidAt || nowStr,
-        payerName: body.payerName || 'Valued Client',
-        payerPhone: body.payerPhone || '671063511',
-        clientEmail: body.clientEmail || '',
-        projectName: body.projectName || 'MADECC Infrastructure Project',
-        docType: body.docType || 'boq_receipt',
-        domainUsed: body.domainUsed || 'https://madeccgroup.online'
-      };
+      const upsertRes = await db.execute(sql`
+        INSERT INTO receipt_payment_requests (
+          id, receipt_no, is_paid, status, admin_confirmed, amount, currency,
+          payment_method, recipient_number, transaction_id, paid_at,
+          payer_name, payer_phone, client_email, project_name, doc_type, domain_used, updated_at
+        )
+        VALUES (
+          ${reqId}, ${receiptNo}, FALSE, 'PENDING_ADMIN_CONFIRMATION', FALSE, ${Math.round(amount)}, ${currency},
+          ${paymentMethod}, ${recipientNumber}, ${transactionId}, ${paidAt},
+          ${payerName}, ${payerPhone}, ${clientEmail}, ${projectName}, ${docType}, ${domainUsed}, NOW()
+        )
+        ON CONFLICT (receipt_no) DO UPDATE SET
+          is_paid = FALSE,
+          status = 'PENDING_ADMIN_CONFIRMATION',
+          admin_confirmed = FALSE,
+          amount = EXCLUDED.amount,
+          currency = EXCLUDED.currency,
+          payment_method = EXCLUDED.payment_method,
+          recipient_number = EXCLUDED.recipient_number,
+          transaction_id = EXCLUDED.transaction_id,
+          paid_at = EXCLUDED.paid_at,
+          payer_name = EXCLUDED.payer_name,
+          payer_phone = EXCLUDED.payer_phone,
+          client_email = EXCLUDED.client_email,
+          project_name = EXCLUDED.project_name,
+          doc_type = EXCLUDED.doc_type,
+          domain_used = EXCLUDED.domain_used,
+          confirmed_at = NULL,
+          confirmed_by = NULL,
+          updated_at = NOW()
+        RETURNING *
+      `);
 
-      paymentRequestsStore.set(receiptNo, pendingRecord);
+      const pendingRecord = formatPaymentRequestRow(upsertRes.rows[0])!;
 
       // Alert Admin (kreboya603@gmail.com) that a payment is awaiting confirmation in Admin Dashboard
       const alertSubject = `[MADECC ACTION REQUIRED] Client Paid ${pendingRecord.amount.toLocaleString()} ${pendingRecord.currency} — Confirm & Press OK in Admin Dashboard (${receiptNo})`;
@@ -752,38 +890,74 @@ export function setupDocumentRoutes(app: express.Express) {
     }
   });
 
-  // 16. Admin presses "Confirm & OK" in Admin Dashboard -> Dispatches message to SMTP user kreboya603@gmail.com & unlocks downloads
-  app.post('/api/receipts/payment-requests/confirm', async (req, res) => {
+  // 16. Admin presses "Confirm & OK" in Admin Dashboard -> Verifies payment, dispatches SMTP, & unlocks downloads
+  app.post('/api/receipts/payment-requests/confirm', requireStaffOrAdmin, async (req: any, res) => {
     try {
+      await ensureSeededPaymentRequests();
       const body = req.body || {};
-      const receiptNo = body.receiptNo;
+      const receiptNo = String(body.receiptNo || '').trim();
       if (!receiptNo) {
         return res.status(400).json({ error: 'receiptNo is required to confirm payment.' });
       }
 
-      const existing = paymentRequestsStore.get(receiptNo) || {};
+      const existingRes = await db.execute(sql`
+        SELECT * FROM receipt_payment_requests WHERE receipt_no = ${receiptNo} LIMIT 1
+      `);
+      const existing = existingRes.rows[0] as any;
+
+      const amount = Number(body.amount || existing?.amount || 2199);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'Cannot confirm zero-amount or unpaid receipt download.' });
+      }
+
       const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      const currency = String(body.currency || existing?.currency || 'XAF');
+      const paymentMethod = String(body.paymentMethod || existing?.payment_method || 'MTN Mobile Money');
+      const recipientNumber = String(body.recipientNumber || existing?.recipient_number || '671063511');
+      const transactionId = String(body.transactionId || existing?.transaction_id || `TXN-${Date.now().toString().slice(-6)}`);
+      const paidAt = String(body.paidAt || existing?.paid_at || nowStr);
+      const payerName = String(body.payerName || existing?.payer_name || 'Client');
+      const payerPhone = String(body.payerPhone || existing?.payer_phone || '');
+      const clientEmail = String(body.clientEmail || existing?.client_email || '');
+      const projectName = String(body.projectName || existing?.project_name || 'MADECC Infrastructure Project');
+      const docType = String(body.docType || existing?.doc_type || 'boq_receipt');
+      const domainUsed = String(body.domainUsed || existing?.domain_used || 'https://madeccgroup.online');
+      const confirmedBy = String(req.dbUser?.email || ADMIN_SMTP_USER);
+      const reqId = String(existing?.id || body.id || `PAY-REQ-${Date.now().toString().slice(-5)}`);
 
-      const confirmedRecord = {
-        ...existing,
-        ...body,
-        receiptNo,
-        amount: Number(body.amount || existing.amount) || 2199,
-        currency: body.currency || existing.currency || 'XAF',
-        isPaid: true,
-        adminConfirmed: true,
-        status: 'ADMIN_CONFIRMED',
-        confirmedAt: nowStr,
-        confirmedBy: ADMIN_SMTP_USER,
-        smtpDispatchedTo: ADMIN_SMTP_USER,
-        smtpDispatchedAt: nowStr
-      };
+      const confirmRes = await db.execute(sql`
+        INSERT INTO receipt_payment_requests (
+          id, receipt_no, is_paid, status, admin_confirmed, amount, currency,
+          payment_method, recipient_number, transaction_id, paid_at,
+          payer_name, payer_phone, client_email, project_name, doc_type, domain_used,
+          confirmed_at, confirmed_by, smtp_dispatched_to, smtp_dispatched_at, updated_at
+        )
+        VALUES (
+          ${reqId}, ${receiptNo}, TRUE, 'ADMIN_CONFIRMED', TRUE, ${Math.round(amount)}, ${currency},
+          ${paymentMethod}, ${recipientNumber}, ${transactionId}, ${paidAt},
+          ${payerName}, ${payerPhone}, ${clientEmail}, ${projectName}, ${docType}, ${domainUsed},
+          ${nowStr}, ${confirmedBy}, ${ADMIN_SMTP_USER}, ${nowStr}, NOW()
+        )
+        ON CONFLICT (receipt_no) DO UPDATE SET
+          is_paid = TRUE,
+          status = 'ADMIN_CONFIRMED',
+          admin_confirmed = TRUE,
+          amount = EXCLUDED.amount,
+          currency = EXCLUDED.currency,
+          payment_method = EXCLUDED.payment_method,
+          transaction_id = EXCLUDED.transaction_id,
+          confirmed_at = ${nowStr},
+          confirmed_by = ${confirmedBy},
+          smtp_dispatched_to = ${ADMIN_SMTP_USER},
+          smtp_dispatched_at = ${nowStr},
+          updated_at = NOW()
+        RETURNING *
+      `);
 
-      paymentRequestsStore.set(receiptNo, confirmedRecord);
+      const confirmedRecord = formatPaymentRequestRow(confirmRes.rows[0])!;
 
       const verifyAndDownloadUrl = `${confirmedRecord.domainUsed || 'https://madeccgroup.online'}/?pay=1&receipt=${encodeURIComponent(receiptNo)}&amount=${confirmedRecord.amount}&currency=${confirmedRecord.currency}&client=${encodeURIComponent(confirmedRecord.payerName || 'Client')}&project=${encodeURIComponent(confirmedRecord.projectName || 'Project')}`;
 
-      // Dispatch official confirmation message to SMTP user kreboya603@gmail.com
       const smtpSubject = `[MADECC ADMIN CONFIRMED - OK] Payment of ${confirmedRecord.amount.toLocaleString()} ${confirmedRecord.currency} Approved & Download Links Unlocked (${receiptNo})`;
       const smtpText = `ADMIN CONFIRMATION (OK) DISPATCHED TO ${ADMIN_SMTP_USER}\n\nPayment for Receipt/Document ${receiptNo} has been confirmed and approved by the Administrator.\n\nAmount Confirmed: ${confirmedRecord.amount.toLocaleString()} ${confirmedRecord.currency}\nPayment Method: ${confirmedRecord.paymentMethod || 'Mobile Money'}\nTransaction ID: ${confirmedRecord.transactionId}\nClient / Payer: ${confirmedRecord.payerName} (${confirmedRecord.payerPhone || 'N/A'})\nProject: ${confirmedRecord.projectName}\nConfirmed At: ${nowStr}\nSMTP User Dispatched: ${ADMIN_SMTP_USER}\n\nSTATUS: ALL RECEIPT & DOCUMENT DOWNLOAD LINKS ARE NOW UNLOCKED AND ACTIVE.\nDownload & Verification Link: ${verifyAndDownloadUrl}`;
       const smtpHtml = `
@@ -802,7 +976,7 @@ export function setupDocumentRoutes(app: express.Express) {
             <div><strong>Transaction Reference:</strong> <span style="font-family: monospace;">${confirmedRecord.transactionId}</span></div>
             <div><strong>Client / Payer:</strong> ${confirmedRecord.payerName} (${confirmedRecord.payerPhone || 'N/A'})</div>
             <div><strong>Project:</strong> ${confirmedRecord.projectName}</div>
-            <div><strong>Confirmed By (SMTP User):</strong> <span style="font-family: monospace;">${ADMIN_SMTP_USER}</span></div>
+            <div><strong>Confirmed By:</strong> <span style="font-family: monospace;">${confirmedBy}</span></div>
             <div><strong>Download Links Status:</strong> <span style="color: #16a34a; font-weight: bold;">UNLOCKED &amp; ACTIVE</span></div>
           </div>
           <div style="text-align: center; margin: 24px 0;">
@@ -822,7 +996,6 @@ export function setupDocumentRoutes(app: express.Express) {
         replyTo: confirmedRecord.clientEmail || ADMIN_SMTP_USER
       });
 
-      // Also notify client email if provided so their download link works directly from email
       if (confirmedRecord.clientEmail && confirmedRecord.clientEmail.includes('@')) {
         sendEmail(confirmedRecord.clientEmail.trim(), smtpSubject, smtpText, smtpHtml).catch(err => {
           console.warn('Client unlock email note:', err);
@@ -838,6 +1011,18 @@ export function setupDocumentRoutes(app: express.Express) {
     } catch (error: any) {
       console.error('Error confirming payment request:', error);
       res.status(500).json({ error: error.message || 'Failed to confirm payment' });
+    }
+  });
+
+  // 16b. Admin revoke / delete payment confirmation record
+  app.delete('/api/receipts/payment-requests/:receiptNo', requireStaffOrAdmin, async (req, res) => {
+    try {
+      await ensureSeededPaymentRequests();
+      const receiptNo = String(req.params.receiptNo || '').trim();
+      await db.execute(sql`DELETE FROM receipt_payment_requests WHERE receipt_no = ${receiptNo}`);
+      res.json({ success: true, receiptNo });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to remove payment request' });
     }
   });
 

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Tenant } from '../types.ts';
 import { TenantContentService } from '../services/tenantContentService.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 interface SEOHandlerProps {
   currentTab: string;
@@ -11,24 +12,27 @@ interface SEOHandlerProps {
 /**
  * High-fidelity Multi-Tenant SEO handler that dynamically updates document title,
  * meta tags, Open Graph properties, Twitter cards, and appends 
- * rich structured JSON-LD schemas as the user navigates, customized per tenant.
+ * rich structured JSON-LD schemas as the user navigates, customized per tenant & CMS settings.
  */
 export default function SEOHandler({ currentTab, selectedProjectId, currentTenant }: SEOHandlerProps) {
+  const { settings } = useSiteSettings();
   const tenantId = currentTenant?.id || 1;
   const profile = TenantContentService.getProfile(tenantId);
   const tenant = currentTenant || profile.tenant;
+  const isFlagship = tenant.isFlagship !== false;
 
   useEffect(() => {
-    const brandName = tenant.name;
+    const brandName = (isFlagship && settings?.siteName) ? settings.siteName : tenant.name;
     const legalName = tenant.legalName || brandName;
     const country = tenant.country || 'Cameroon';
-    const city = tenant.address?.includes('Douala') ? 'Douala' : tenant.address?.includes('Yaoundé') ? 'Yaoundé' : 'Cameroon';
+    const addressText = (isFlagship && settings?.officeAddressYaounde) ? settings.officeAddressYaounde : (tenant.address || 'Yaoundé, Cameroon');
+    const city = addressText.includes('Douala') ? 'Douala' : addressText.includes('Yaoundé') ? 'Yaoundé' : 'Cameroon';
 
     const TAB_META: Record<string, { title: string; description: string; keywords: string; ogType?: string }> = {
       home: {
-        title: profile.seo.metaTitle || `${brandName} | Premier Civil Engineering & Construction Firm`,
-        description: profile.seo.metaDescription || `${brandName} delivers certified structural engineering, infrastructure development, and transparent cost estimates across ${country}.`,
-        keywords: profile.seo.keywords || `construction ${country}, civil engineering ${city}, building contractor, ${brandName}`,
+        title: (isFlagship && settings?.globalSeo?.seoTitle) || profile.seo.metaTitle || `${brandName} | Premier Civil Engineering & Construction Firm`,
+        description: (isFlagship && settings?.globalSeo?.metaDescription) || profile.seo.metaDescription || `${brandName} delivers certified structural engineering, infrastructure development, and transparent cost estimates across ${country}.`,
+        keywords: (isFlagship && settings?.globalSeo?.keywords) || profile.seo.keywords || `construction ${country}, civil engineering ${city}, building contractor, ${brandName}`,
         ogType: 'website'
       },
       about: {
@@ -47,6 +51,18 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         title: `Civil Engineering & Construction Services | ${brandName}`,
         description: `Explore comprehensive engineering services from ${brandName}: structural design, general contracting, earthworks, and turnkey execution.`,
         keywords: `civil engineering services, structural design ${city}, EPC contractor ${country}, ${brandName} services`,
+        ogType: 'website'
+      },
+      sustainability: {
+        title: `Sustainability & Social Impact | ${brandName}`,
+        description: `Low-carbon construction, local economic empowerment, and ISO-aligned QHSE practices by ${brandName} across ${country}.`,
+        keywords: `sustainable construction ${country}, ESG, QHSE safety, green building, ${brandName}`,
+        ogType: 'website'
+      },
+      blog: {
+        title: `Insights & Technical Publications | ${brandName}`,
+        description: `Read engineering whitepapers, regulatory updates, and structural construction guides published by ${brandName}.`,
+        keywords: `construction insights, engineering blog ${country}, Eurocode articles, ${brandName}`,
         ogType: 'website'
       },
       'website-development': {
@@ -195,9 +211,13 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
       }
     };
 
-    let title = TAB_META[currentTab]?.title || `${brandName} | Construction & Engineering`;
-    let description = TAB_META[currentTab]?.description || `${brandName} is a leading multi-disciplinary civil engineering firm.`;
-    let keywords = TAB_META[currentTab]?.keywords || `construction, engineering, ${country}, ${brandName}`;
+    const formattedTabTitle = currentTab
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+
+    let title = TAB_META[currentTab]?.title || `${formattedTabTitle} | ${brandName}`;
+    let description = TAB_META[currentTab]?.description || (isFlagship && settings?.globalSeo?.metaDescription) || `${brandName} is a leading multi-disciplinary civil engineering firm.`;
+    let keywords = TAB_META[currentTab]?.keywords || (isFlagship && settings?.globalSeo?.keywords) || `construction, engineering, ${country}, ${brandName}`;
     let ogType = TAB_META[currentTab]?.ogType || 'website';
 
     if (currentTab === 'projects' && selectedProjectId) {
@@ -207,10 +227,8 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
       ogType = 'article';
     }
 
-    // 1. Set Document Title
     document.title = title;
 
-    // Helper to set or update dynamic meta tags
     const setMetaTag = (attrName: string, attrVal: string, content: string) => {
       let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
       if (!el) {
@@ -221,7 +239,6 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
       el.setAttribute('content', content);
     };
 
-    // Helper to set or update canonical link tag
     const setCanonicalTag = (url: string) => {
       let el = document.querySelector('link[rel="canonical"]');
       if (!el) {
@@ -232,48 +249,62 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
       el.setAttribute('href', url);
     };
 
-    const PRODUCTION_ORIGIN = 'https://madeccgroup.online';
+    const PRODUCTION_ORIGIN = (isFlagship && settings?.globalSeo?.canonicalUrl) || 'https://madeccgroup.online';
     const origin = window.location.hostname.includes('madeccgroup.online') ? 'https://madeccgroup.online' : window.location.origin;
     const path = currentTab === 'home' ? '' : currentTab;
-    const canonicalUrl = `${PRODUCTION_ORIGIN}/${path}`;
+    const canonicalBase = PRODUCTION_ORIGIN.replace(/\/$/, '');
+    const canonicalUrl = `${canonicalBase}/${path}`;
     const currentUrl = `${origin}/${path}`;
-    const shareImage = profile.seo.ogImage && !profile.seo.ogImage.endsWith('/logo.png')
-      ? profile.seo.ogImage
-      : `${PRODUCTION_ORIGIN}/logo.webp`;
+    const rawLogoUrl = isFlagship && settings?.logoUrl && settings.logoUrl !== '/logo.png' ? settings.logoUrl : tenant.logoUrl;
+    const shareImage = (isFlagship && settings?.globalSeo?.ogImage)
+      ? settings.globalSeo.ogImage
+      : profile.seo.ogImage && !profile.seo.ogImage.endsWith('/logo.png')
+        ? profile.seo.ogImage
+        : (rawLogoUrl && rawLogoUrl !== '/logo.png'
+          ? (rawLogoUrl.startsWith('http') ? rawLogoUrl : `${canonicalBase}${rawLogoUrl}`)
+          : `${canonicalBase}/logo.webp`);
 
-    // Always ensure production canonical tag is set correctly
     setCanonicalTag(canonicalUrl);
 
-    // 2. Set Standard Meta Tags
     setMetaTag('name', 'description', description);
     setMetaTag('name', 'keywords', keywords);
     setMetaTag('name', 'author', legalName);
-    setMetaTag('name', 'robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
+    const defaultRobotsIndex = (isFlagship && settings?.globalSeo?.robotsIndex === false) ? 'noindex' : 'index';
+    setMetaTag('name', 'robots', `${defaultRobotsIndex}, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1`);
 
-    // 3. Set Open Graph Tags
-    setMetaTag('property', 'og:title', title);
-    setMetaTag('property', 'og:description', description);
+    setMetaTag('property', 'og:title', (isFlagship && currentTab === 'home' && settings?.globalSeo?.ogTitle) || title);
+    setMetaTag('property', 'og:description', (isFlagship && currentTab === 'home' && settings?.globalSeo?.ogDescription) || description);
     setMetaTag('property', 'og:type', ogType);
     setMetaTag('property', 'og:url', currentUrl);
     setMetaTag('property', 'og:image', shareImage);
     setMetaTag('property', 'og:site_name', brandName);
 
-    // 4. Set Twitter Card Tags
     setMetaTag('name', 'twitter:card', 'summary_large_image');
     setMetaTag('name', 'twitter:title', title);
     setMetaTag('name', 'twitter:description', description);
     setMetaTag('name', 'twitter:image', shareImage);
 
-    // 5. Generate Dynamic JSON-LD Structured Schema
-    const primaryPhone = tenant.phone || tenant.settings?.phone || '+237671063511';
-    const primaryEmail = tenant.email || tenant.settings?.email || 'contact@madeccgroup.online';
-    const primaryAddress = tenant.address || tenant.settings?.companyAddress || 'Yaoundé, Cameroon';
+    const primaryPhone = (isFlagship && settings?.phone) || tenant.phone || tenant.settings?.phone || '+237 683 316 486';
+    const primaryEmail = (isFlagship && settings?.email) || tenant.email || tenant.settings?.email || 'kreboya603@gmail.com';
+    const primaryAddress = addressText;
+
+    const cmsSocialLinks = isFlagship && settings
+      ? [
+          settings.linkedinUrl,
+          settings.facebookUrl,
+          settings.youtubeUrl,
+          settings.twitterUrl,
+          settings.instagramUrl,
+          settings.tiktokUrl,
+          settings.pinterestUrl
+        ].filter(Boolean)
+      : Object.values(tenant.settings?.socialLinks || {}).filter(Boolean);
 
     let schemaObj: any = null;
 
     if (currentTab === 'home') {
-      const resolvedLogo = tenant.logoUrl && tenant.logoUrl !== '/logo.png'
-        ? (tenant.logoUrl.startsWith('http') ? tenant.logoUrl : `${origin}${tenant.logoUrl}`)
+      const resolvedLogo = rawLogoUrl && rawLogoUrl !== '/logo.png'
+        ? (rawLogoUrl.startsWith('http') ? rawLogoUrl : `${origin}${rawLogoUrl}`)
         : `${origin}/logo.webp`;
       schemaObj = {
         '@context': 'https://schema.org',
@@ -283,23 +314,23 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
             '@id': `${origin}/#organization`,
             'name': brandName,
             'legalName': legalName,
-            'taxID': tenant.settings?.taxNumber || 'P030217852934P',
+            'taxID': (isFlagship && settings?.niuTaxId) || tenant.settings?.taxNumber || 'P030217852934P',
             'founder': {
               '@type': 'Person',
-              'name': 'Kasah Rodrick Reboya'
+              'name': (isFlagship && settings?.developerName) || 'Kasah Rodrick Reboya'
             },
             'url': origin,
             'logo': resolvedLogo,
-            'description': profile.seo.metaDescription,
+            'description': description,
             'email': primaryEmail,
             'telephone': primaryPhone,
-            'sameAs': Object.values(tenant.settings?.socialLinks || {}).filter(Boolean)
+            'sameAs': cmsSocialLinks
           },
           {
             '@type': profile.seo.schemaType || 'GeneralContractor',
             '@id': `${origin}/#localbusiness`,
             'name': `${brandName} Headquarters`,
-            'description': profile.hero.subtitle,
+            'description': (isFlagship && settings?.tagline) || profile.hero.subtitle,
             'telephone': primaryPhone,
             'email': primaryEmail,
             'address': {
@@ -325,7 +356,7 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         '@context': 'https://schema.org',
         '@type': 'AboutPage',
         'name': `About ${brandName}`,
-        'description': profile.about.story,
+        'description': description,
         'publisher': {
           '@type': 'Organization',
           'name': brandName,
@@ -389,47 +420,10 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
         'areaServed': {
           '@type': 'Country',
           'name': country
-        },
-        'hasOfferCatalog': {
-          '@type': 'OfferCatalog',
-          'name': currentTab === 'website-development'
-            ? `${brandName} Website Development Packages`
-            : `${brandName} Engineering & Web Services Catalog`,
-          'itemListElement': [
-            {
-              '@type': 'Offer',
-              'itemOffered': {
-                '@type': 'Service',
-                'name': 'Corporate & Business Website Development'
-              }
-            },
-            {
-              '@type': 'Offer',
-              'itemOffered': {
-                '@type': 'Service',
-                'name': 'Custom Web Applications & Client Portals'
-              }
-            },
-            {
-              '@type': 'Offer',
-              'itemOffered': {
-                '@type': 'Service',
-                'name': 'E-Commerce & Mobile Money Platforms'
-              }
-            },
-            {
-              '@type': 'Offer',
-              'itemOffered': {
-                '@type': 'Service',
-                'name': 'Technical SEO, Performance & Cloud Hosting'
-              }
-            }
-          ]
         }
       };
     }
 
-    // Append/update JSON-LD script tag in the document head
     if (schemaObj) {
       let jsonLdScript = document.getElementById('seo-jsonld') as HTMLScriptElement | null;
       if (!jsonLdScript) {
@@ -479,15 +473,13 @@ export default function SEOHandler({ currentTab, selectedProjectId, currentTenan
           const flw = cmsSeo.robotsFollow === false ? 'nofollow' : 'follow';
           setMetaTag('name', 'robots', `${idx}, ${flw}, max-snippet:-1, max-image-preview:large, max-video-preview:-1`);
         })
-        .catch(() => {
-          // Non-blocking fallback keeps static TAB_META intact
-        });
+        .catch(() => {});
     }
 
     return () => {
       cancelled = true;
     };
-  }, [currentTab, selectedProjectId, tenantId, tenant]);
+  }, [currentTab, selectedProjectId, tenantId, tenant, isFlagship, settings]);
 
-  return null; // Renderless helper
+  return null;
 }

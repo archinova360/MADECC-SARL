@@ -45,6 +45,7 @@ import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { TenantService } from '../services/tenantService.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPagesRegistry } from '../lib/useCmsPage.ts';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
 
 const MobileNavDrawer = lazy(() =>
@@ -79,6 +80,7 @@ export default function Navbar({
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { settings, openFollowModal } = useSiteSettings();
+  const { isSlugHidden } = useCmsPagesRegistry();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
@@ -390,8 +392,7 @@ export default function Navbar({
     { id: 'contact', label: t('nav_contact') },
   ];
 
-  // Core direct desktop links
-  const primaryDesktopNav = [
+  const defaultDesktopNav = [
     { id: 'home', label: t('nav_home') },
     { id: 'store', label: 'Bookstore' },
     { id: 'services', label: 'Services' },
@@ -400,17 +401,69 @@ export default function Navbar({
     { id: 'blog', label: 'Insights' },
   ];
 
+  // Merge CMS navigationLinks (allow renaming, toggling visibility, reordering, and adding custom routes)
+  const cmsNavLinks = Array.isArray(settings?.navigationLinks) ? settings.navigationLinks : [];
+  const cmsNavBySlug = new Map(
+    cmsNavLinks.map((lnk) => {
+      const slug = (lnk.href || lnk.id || 'home').replace(/^\//, '').trim() || 'home';
+      return [slug.toLowerCase(), lnk] as const;
+    })
+  );
+  const dropdownOwnedIds = new Set([
+    'budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'navigation-manual',
+    'buyer-handover-manual', 'saas-cloud', 'developers', 'client-portal', 'website-development',
+    'about', 'faq', 'contact', 'order-tracking'
+  ]);
+  const builtInMerged = defaultDesktopNav
+    .map((item) => {
+      const cmsOverride = cmsNavBySlug.get(item.id.toLowerCase());
+      if (cmsOverride && cmsOverride.isEnabled === false) return null;
+      if (isSlugHidden(item.id)) return null;
+      return {
+        id: item.id,
+        label: cmsOverride?.label?.trim() || item.label
+      };
+    })
+    .filter((x): x is { id: string; label: string } => Boolean(x));
+
+  const builtInIds = new Set(defaultDesktopNav.map((d) => d.id.toLowerCase()));
+  const extraCmsDesktopNav = cmsNavLinks
+    .filter((lnk) => lnk.isEnabled !== false)
+    .map((lnk) => {
+      const slug = ((lnk.href || lnk.id || '').replace(/^\//, '').trim() || 'home').toLowerCase();
+      return { id: slug, label: lnk.label, order: lnk.order ?? 99 };
+    })
+    .filter(
+      (item) =>
+        !builtInIds.has(item.id) &&
+        !dropdownOwnedIds.has(item.id) &&
+        !isSlugHidden(item.id)
+    )
+    .sort((a, b) => a.order - b.order);
+
+  const primaryDesktopNav = [...builtInMerged, ...extraCmsDesktopNav];
+
+  const isFlagship = currentTenant.isFlagship !== false;
+  const resolvedBrandName = (isFlagship && settings?.siteName) ? settings.siteName : currentTenant.name;
+  const resolvedLogoUrl = isFlagship
+    ? (settings?.logoUrl && settings.logoUrl !== '/logo.png' ? settings.logoUrl : '/logo.webp')
+    : (currentTenant.logoUrl && currentTenant.logoUrl !== '/logo.png' ? currentTenant.logoUrl : '/logo.webp');
+
+  const headerStyle = settings?.themeSettings?.headerStyle || 'sticky';
+  const navPositionClass = headerStyle === 'static' ? 'relative' : 'sticky top-0';
+  const navHeightClass = headerStyle === 'compact' ? 'h-16' : 'h-20';
+
   const isToolsActive = ['budget-calculator', 'construction-cost-guide', 'walkthrough-guide', 'navigation-manual', 'buyer-handover-manual', 'saas-cloud', 'developers', 'client-portal', 'website-development'].includes(currentTab);
   const isCompanyActive = ['about', 'faq', 'contact', 'walkthrough-guide'].includes(currentTab);
 
   return (
-    <nav className={`sticky top-0 z-50 border-b transition-colors duration-300 w-full max-w-full overflow-x-clip ${
+    <nav className={`${navPositionClass} z-50 border-b transition-colors duration-300 w-full max-w-full overflow-x-clip ${
       theme === 'light'
         ? 'bg-white border-slate-200 text-slate-800 shadow-sm'
         : 'bg-slate-900 border-slate-800 text-white'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="flex items-center justify-between h-20">
+        <div className={`flex items-center justify-between ${navHeightClass}`}>
           
           {/* Logo & Tenant Brand */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 max-w-[calc(100%-110px)] xl:max-w-none">
@@ -419,20 +472,20 @@ export default function Navbar({
               className="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0 text-left" 
               onClick={() => setCurrentTab('home')}
               id="nav-logo"
-              aria-label={`Go to ${currentTenant.name} home page`}
+              aria-label={`Go to ${resolvedBrandName} home page`}
             >
               <div className={`h-11 w-11 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center overflow-hidden border shadow-inner shrink-0 ${
                 theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800/80'
               }`}>
                 <img 
-                  src={currentTenant.logoUrl && currentTenant.logoUrl !== '/logo.png' ? currentTenant.logoUrl : '/logo.webp'} 
+                  src={resolvedLogoUrl} 
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     if (!target.src.endsWith('/logo.webp')) {
                       target.src = '/logo.webp';
                     }
                   }}
-                  alt={`${currentTenant.name} Logo`} 
+                  alt={`${resolvedBrandName} Logo`} 
                   width={48}
                   height={48}
                   className="h-full w-full object-contain"
@@ -443,12 +496,12 @@ export default function Navbar({
                 <span className={`font-sans font-extrabold text-base sm:text-lg lg:text-xl tracking-tight block truncate ${
                   theme === 'light' ? 'text-slate-900' : 'text-white'
                 }`}>
-                  {currentTenant.name.toUpperCase()}
+                  {resolvedBrandName.toUpperCase()}
                 </span>
                 <span className={`text-[9px] sm:text-[10px] font-mono tracking-widest block -mt-1 truncate ${
                   theme === 'light' ? 'text-slate-700' : 'text-slate-400'
                 }`}>
-                  {currentTenant.isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
+                  {isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
                 </span>
               </div>
             </button>
@@ -534,6 +587,7 @@ export default function Navbar({
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
                       }`}
                     >
+                      {!isSlugHidden('store') && (
                       <button
                         onClick={() => {
                           setCurrentTab('store');
@@ -556,7 +610,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Engineering textbooks, BOQs & manuals with MTN/Orange MoMo</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('order-tracking') && (
                       <button
                         onClick={() => {
                           setCurrentTab('order-tracking');
@@ -576,7 +632,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Check payment status & download unlocked PDFs</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('walkthrough-guide') && (
                       <button
                         onClick={() => {
                           setCurrentTab('walkthrough-guide');
@@ -599,7 +657,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Complete step-by-step client &amp; visitor manual</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('navigation-manual') && (
                       <button
                         onClick={() => {
                           setCurrentTab('navigation-manual');
@@ -622,7 +682,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Full platform &amp; 11-category Admin A4 guide</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('buyer-handover-manual') && (
                       <button
                         onClick={() => {
                           setCurrentTab('buyer-handover-manual');
@@ -645,7 +707,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Ownership transfer certificate &amp; domain cutover PDF</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('budget-calculator') && (
                       <button
                         onClick={() => {
                           setCurrentTab('budget-calculator');
@@ -665,7 +729,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Instant estimate for residential & commercial builds</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('construction-cost-guide') && (
                       <button
                         onClick={() => {
                           setCurrentTab('construction-cost-guide');
@@ -685,9 +751,11 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Material rates & regional benchmarks</div>
                         </div>
                       </button>
+                      )}
 
                       <div className="my-1 border-t border-slate-800/60" />
 
+                      {!isSlugHidden('saas-cloud') && (
                       <button
                         onClick={() => {
                           setCurrentTab('saas-cloud');
@@ -710,7 +778,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Multi-tenant construction workspace suite</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('developers') && (
                       <button
                         onClick={() => {
                           setCurrentTab('developers');
@@ -733,7 +803,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Endpoints, BOQ calculators & webhooks</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('website-development') && (
                       <button
                         onClick={() => {
                           setCurrentTab('website-development');
@@ -756,7 +828,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Corporate sites, portals, MoMo stores &amp; technical SEO</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('client-portal') && (
                       <button
                         onClick={() => {
                           setCurrentTab('client-portal');
@@ -779,6 +853,7 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Site progress, photos & invoices</div>
                         </div>
                       </button>
+                      )}
                     </div>
                   )}
               </div>
@@ -820,6 +895,7 @@ export default function Navbar({
                           : 'bg-slate-900 border-slate-800 text-slate-100 shadow-black/80'
                       }`}
                     >
+                      {!isSlugHidden('about') && (
                       <button
                         onClick={() => {
                           setCurrentTab('about');
@@ -839,7 +915,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">History, certifications & leadership</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('walkthrough-guide') && (
                       <button
                         onClick={() => {
                           setCurrentTab('walkthrough-guide');
@@ -859,7 +937,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Step-by-step tour &amp; 2,199 XAF unlock guide</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('faq') && (
                       <button
                         onClick={() => {
                           setCurrentTab('faq');
@@ -879,7 +959,9 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Contracts, timelines & warranties</div>
                         </div>
                       </button>
+                      )}
 
+                      {!isSlugHidden('contact') && (
                       <button
                         onClick={() => {
                           setCurrentTab('contact');
@@ -899,6 +981,7 @@ export default function Navbar({
                           <div className="text-[11px] text-slate-400 leading-tight">Yaoundé HQ & 24/7 hotline</div>
                         </div>
                       </button>
+                      )}
                     </div>
                   )}
               </div>

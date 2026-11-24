@@ -13,10 +13,15 @@ import {
   Building2 
 } from 'lucide-react';
 import { FadeIn, StaggerContainer, StaggerItem } from './MotionReveal.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 export default function Contact() {
   const { t } = useLanguage();
   const { settings } = useSiteSettings();
+  const { hero: cmsHero, getSection, getCustomSections } = useCmsPage('contact');
+  const formSec = getSection('contact');
+  const customSections = getCustomSections(['hero', 'contact', 'map']);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -99,16 +104,18 @@ export default function Contact() {
     <div className="font-sans text-slate-200 bg-[#0A0A0B] min-h-screen">
       
       {/* Contact Header */}
+      {cmsHero?.showHero !== false && (
       <section className="bg-slate-950/80 border-b border-slate-850/60 text-white py-16 relative overflow-hidden" id="contact-header">
          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-           <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest block mb-2">{t('office_directory')}</span>
-           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{t('contact_header_title')}</h1>
+           <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest block mb-2">{cmsHero?.eyebrow || t('office_directory')}</span>
+           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{cmsHero?.title || t('contact_header_title')}</h1>
            <p className="text-slate-400 text-sm mt-2 max-w-xl">
-             {t('contact_header_subtitle')}
+             {cmsHero?.subtitle || t('contact_header_subtitle')}
            </p>
          </div>
        </section>
+      )}
 
        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
@@ -199,9 +206,9 @@ export default function Contact() {
           <FadeIn direction="left" className="lg:col-span-7 bg-[#0E0E10]/90 border border-slate-850 rounded-2xl p-8 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
             <div className="space-y-2 mb-8">
-              <h3 className="font-bold text-xl text-white">{t('send_message')}</h3>
+              <h3 className="font-bold text-xl text-white">{formSec?.title || t('send_message')}</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                {t('send_message_desc')}
+                {formSec?.subtitle || t('send_message_desc')}
               </p>
             </div>
 
@@ -339,6 +346,8 @@ export default function Contact() {
 
         </div>
       </div>
+
+      <CmsCustomSections sections={customSections} />
 
     </div>
   );

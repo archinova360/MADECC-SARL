@@ -16,6 +16,27 @@ html, body {
   contain-intrinsic-size: auto 700px;
 }
 
+h1, h2, h3 {
+  font-family: var(--font-heading, var(--font-sans));
+}
+
+[data-btn-style="pill"] button.rounded-xl,
+[data-btn-style="pill"] a.rounded-xl {
+  border-radius: 9999px;
+}
+
+[data-btn-style="sharp"] button.rounded-xl,
+[data-btn-style="sharp"] a.rounded-xl {
+  border-radius: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  [data-mobile-compact="true"] main section {
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+}
+
 /* Custom Keyframe Animations & Transitions */
 @keyframes marquee {
   0% {

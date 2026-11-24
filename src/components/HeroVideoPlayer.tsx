@@ -20,6 +20,7 @@ import { getOptimizedImageUrl } from '../lib/utils.ts';
 export interface HeroVideoItem {
   id: string | number;
   title: string;
+  alt?: string;
   subtitle?: string | null;
   category?: string;
   location?: string;
@@ -80,6 +81,7 @@ interface HeroVideoPlayerProps {
   defaultSubtitle?: string;
   children?: React.ReactNode;
   isPreview?: boolean;
+  disableVideo?: boolean;
 }
 
 // Helper to extract YouTube video ID if URL is from YouTube
@@ -94,7 +96,8 @@ export default function HeroVideoPlayer({
   config,
   banners,
   children,
-  isPreview = false
+  isPreview = false,
+  disableVideo = false
 }: HeroVideoPlayerProps) {
   // Combine dynamic uploaded banners from Admin / DB with CMS config & default fallbacks
   const slides = useMemo(() => {
@@ -125,6 +128,7 @@ export default function HeroVideoPlayer({
       const configItem: HeroVideoItem = {
         id: 'cms-hero-config',
         title: config.title || 'MADECC Flagship Video Reel',
+        alt: config.imageAlt || config.title || 'MADECC Flagship Hero Banner',
         subtitle: config.subtitle || null,
         category: config.eyebrow || 'Featured Engineering',
         location: 'Yaoundé & Douala, Cameroon',
@@ -140,6 +144,11 @@ export default function HeroVideoPlayer({
       );
       if (!isDuplicate) {
         list.unshift(configItem);
+      } else if (config.imageAlt) {
+        const idx = list.findIndex(
+          (s) => s.title === configItem.title || (configBasePoster && normalizeBaseUrl(s.posterUrl) === configBasePoster)
+        );
+        if (idx >= 0) list[idx] = { ...list[idx], alt: config.imageAlt };
       }
     }
 
@@ -163,7 +172,23 @@ export default function HeroVideoPlayer({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [videoRequested, setVideoRequested] = useState(Boolean(isPreview));
 
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobileViewport(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
+
+  const effectiveShowVideo =
+    config?.showVideo !== false &&
+    config?.mediaType !== 'image' &&
+    !(disableVideo && isMobileViewport) &&
+    !(config?.videoSettings?.disableOnMobile && isMobileViewport);
 
   const overlayOpacity = config?.videoSettings?.overlayOpacity !== undefined 
     ? config.videoSettings.overlayOpacity 
@@ -265,7 +290,7 @@ export default function HeroVideoPlayer({
   };
 
   const currentSlide = slides[currentIndex] || slides[0];
-  const hasCurrentVideo = Boolean(currentSlide?.videoUrl);
+  const hasCurrentVideo = effectiveShowVideo && Boolean(currentSlide?.videoUrl);
 
   return (
     <div 
@@ -305,7 +330,7 @@ export default function HeroVideoPlayer({
                 src={getOptimizedImageUrl(item.posterUrl, 800, 75)}
                 srcSet={`${getOptimizedImageUrl(item.posterUrl, 480, 70)} 480w, ${getOptimizedImageUrl(item.posterUrl, 768, 75)} 768w, ${getOptimizedImageUrl(item.posterUrl, 1200, 80)} 1200w`}
                 sizes="(max-width: 768px) 100vw, 1200px"
-                alt={item.title}
+                alt={item.alt || (idx === 0 && config?.imageAlt ? config.imageAlt : item.title)}
                 width={800}
                 height={450}
                 decoding={idx === 0 ? 'sync' : 'async'}
@@ -315,7 +340,7 @@ export default function HeroVideoPlayer({
               />
 
               {/* YouTube Video Player Embed - only active slide on explicit user request */}
-              {ytId && isActive && videoRequested && (
+              {effectiveShowVideo && ytId && isActive && videoRequested && (
                 <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none opacity-80">
                   <iframe
                     className="w-full h-full object-cover scale-125"
@@ -328,7 +353,7 @@ export default function HeroVideoPlayer({
               )}
 
               {/* HTML5 Video Player - mounted only when user opts in to play reel video */}
-              {videoRequested && isActive && item.videoUrl && !ytId && (
+              {effectiveShowVideo && videoRequested && isActive && item.videoUrl && !ytId && (
                 <video
                   ref={el => { videoRefs.current[idx] = el; }}
                   className="absolute inset-0 w-full h-full object-cover opacity-80 transition-opacity duration-500"
@@ -477,7 +502,7 @@ export default function HeroVideoPlayer({
         </button>
 
         {/* Audio Mute/Unmute Button */}
-        {videoRequested && (
+        {effectiveShowVideo && videoRequested && (
           <button
             type="button"
             onClick={toggleMute}

@@ -30,6 +30,9 @@ import {
 import { jsPDF } from 'jspdf';
 import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
 import { STANDARD_RECEIPT_FEE_XAF, isReceiptPaid } from '../utils/paymentDomain.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface ConstructionCostGuideProps {
   onNavigateToTab?: (tab: string, extraState?: any) => void;
@@ -40,6 +43,14 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
   onNavigateToTab,
   showToast 
 }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('construction-cost-guide');
+  const siteName = settings?.siteName || 'MADECC GROUP';
+  const primaryPhone = settings?.phone || '+237 683 316 486';
+  const secondaryPhone = settings?.phoneSecondary || '+237 671 063 511';
+  const contactEmail = settings?.email || 'kreboya603@gmail.com';
+  const waDigits = (settings?.whatsappNumber || primaryPhone).replace(/[^0-9]/g, '');
+
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +196,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
       doc.text('DISCLAIMER: Prices shown are indicative market rates for feasibility estimation and do not constitute a binding quotation.', 14, y);
-      doc.text('Contact MADECC GROUP for formal BOQs: +237 671 063 511 / +237 683 316 486 | kreboya603@gmail.com', 14, y + 4);
+      doc.text(`Contact ${siteName} for formal BOQs: ${secondaryPhone} / ${primaryPhone} | ${contactEmail}`, 14, y + 4);
 
       doc.save(`MADECC-Cameroon-Construction-Cost-Guide-${selectedRegion}-2026.pdf`);
       if (showToast) showToast('Cost guide PDF downloaded successfully.', 'success');
@@ -196,14 +207,15 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
   };
 
   const getWhatsAppUrl = (topic: string = 'General Inquiry') => {
-    const msg = `Hello MADECC GROUP, I am reviewing your Cameroon Construction Cost Guide 2026 (${topic}). I would like to request assistance for my construction project in ${selectedRegion}.`;
-    return `https://wa.me/237683316486?text=${encodeURIComponent(msg)}`;
+    const msg = `Hello ${siteName}, I am reviewing your Cameroon Construction Cost Guide 2026 (${topic}). I would like to request assistance for my construction project in ${selectedRegion}.`;
+    return `https://wa.me/${waDigits}?text=${encodeURIComponent(msg)}`;
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
       
       {/* 1. HERO HEADER */}
+      {cmsHero?.showHero !== false && (
       <div className="bg-slate-900 text-white border-b border-slate-800 py-12 lg:py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
@@ -212,7 +224,7 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
           {/* Metadata Badges Bar */}
           <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-semibold">
             <span className="px-3 py-1 bg-amber-500 text-slate-950 rounded-full font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Official MADECC Index
+              <Sparkles className="w-3.5 h-3.5" /> {cmsHero?.eyebrow || 'Official MADECC Index'}
             </span>
             <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full border border-slate-700 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-amber-400" /> Last Updated: {data?.lastUpdated ? new Date(data.lastUpdated).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'August 2026'}
@@ -226,10 +238,10 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4 leading-tight">
-            Cameroon Construction Cost Guide & Price Index 2026
+            {cmsHero?.title || 'Cameroon Construction Cost Guide & Price Index 2026'}
           </h1>
           <p className="text-slate-300 text-base sm:text-lg max-w-3xl leading-relaxed mb-8">
-            Transparent, administrator-maintained construction rate intelligence. Track current prices for building materials, labour trades, and per-square-metre construction benchmarks across Douala, Yaoundé, Kribi, and Cameroon’s 10 regions.
+            {cmsHero?.subtitle || 'Transparent, administrator-maintained construction rate intelligence. Track current prices for building materials, labour trades, and per-square-metre construction benchmarks across Douala, Yaoundé, Kribi, and Cameroon’s 10 regions.'}
           </p>
 
           {/* Action CTAs */}
@@ -254,12 +266,13 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
               rel="noopener noreferrer"
               className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
             >
-              <MessageSquare className="w-4 h-4" /> Talk to MADECC GROUP
+              <MessageSquare className="w-4 h-4" /> Talk to {siteName}
             </a>
           </div>
 
         </div>
       </div>
+      )}
 
       {/* Main Content Area */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
@@ -678,14 +691,16 @@ export const ConstructionCostGuide: React.FC<ConstructionCostGuideProps> = ({
               </a>
 
               <a
-                href="tel:+237671063511"
+                href={`tel:${secondaryPhone.replace(/\s+/g, '')}`}
                 className="px-6 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl transition-all flex items-center gap-2"
               >
-                <Phone className="w-4 h-4 text-amber-600" /> Call Office (+237 671 063 511)
+                <Phone className="w-4 h-4 text-amber-600" /> Call Office ({secondaryPhone})
               </a>
             </div>
           </div>
         </div>
+
+        <CmsCustomSections sections={getCustomSections()} onNavigateToTab={onNavigateToTab} className="mt-8" />
 
         {isPaymentGateOpen && (
           <ReceiptPaymentGateModal

@@ -32,6 +32,17 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import CmsMediaLibrary from './CmsMediaLibrary.tsx';
+
+const safeConfirm = (message: string): boolean => {
+  if (typeof window === 'undefined') return true;
+  if (window.self !== window.top) return true;
+  try {
+    return window.confirm(message);
+  } catch {
+    return true;
+  }
+};
 
 export interface ServiceCMS {
   id: number;
@@ -116,9 +127,16 @@ export const AdminServices: React.FC = () => {
   const [editingService, setEditingService] = useState<ServiceCMS | null>(null);
   const [editorTab, setEditorTab] = useState<'basic' | 'content' | 'sections' | 'media' | 'seo' | 'cta'>('basic');
   const [saving, setSaving] = useState<boolean>(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<null | 'cover' | 'gallery'>(null);
 
   // Preview Modal State
   const [previewService, setPreviewService] = useState<ServiceCMS | null>(null);
+
+  const showNotice = (type: 'success' | 'error', text: string) => {
+    setNotice({ type, text });
+    setTimeout(() => setNotice(null), 4000);
+  };
 
   const fetchServices = async () => {
     setLoading(true);
@@ -248,7 +266,7 @@ export const AdminServices: React.FC = () => {
     if (!editingService) return;
 
     if (!editingService.name.trim()) {
-      alert('Please enter a valid Service Name.');
+      showNotice('error', 'Please enter a valid Service Name.');
       return;
     }
 
@@ -284,9 +302,10 @@ export const AdminServices: React.FC = () => {
 
       setIsEditorOpen(false);
       setEditingService(null);
+      showNotice('success', `Service "${payload.name}" saved successfully.`);
       fetchServices();
     } catch (err: any) {
-      alert(err.message || 'Error saving service.');
+      showNotice('error', err.message || 'Error saving service.');
     } finally {
       setSaving(false);
     }
@@ -306,14 +325,15 @@ export const AdminServices: React.FC = () => {
       });
 
       if (!res.ok) throw new Error('Status update failed');
+      showNotice('success', `Service status updated to ${newStatus}.`);
       fetchServices();
     } catch (err: any) {
-      alert(err.message || 'Status change failed');
+      showNotice('error', err.message || 'Status change failed');
     }
   };
 
   const handleDuplicateService = async (service: ServiceCMS) => {
-    if (!confirm(`Duplicate service "${service.name}" into a new DRAFT service?`)) return;
+    if (!safeConfirm(`Duplicate service "${service.name}" into a new DRAFT service?`)) return;
 
     try {
       const copyPayload = {
@@ -339,14 +359,15 @@ export const AdminServices: React.FC = () => {
       });
 
       if (!res.ok) throw new Error('Duplicate failed');
+      showNotice('success', `Duplicated "${service.name}" as DRAFT.`);
       fetchServices();
     } catch (err: any) {
-      alert(err.message || 'Failed to duplicate service');
+      showNotice('error', err.message || 'Failed to duplicate service');
     }
   };
 
   const handleDeleteService = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete service "${name}"? This action removes it from database records.`)) return;
+    if (!safeConfirm(`Are you sure you want to delete service "${name}"? This action removes it from database records.`)) return;
 
     try {
       const token = await getAuthToken();
@@ -359,15 +380,16 @@ export const AdminServices: React.FC = () => {
       });
 
       if (!res.ok) throw new Error('Delete failed');
+      showNotice('success', `Service "${name}" deleted.`);
       fetchServices();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete service');
+      showNotice('error', err.message || 'Failed to delete service');
     }
   };
 
   const handleBulkAction = async (action: 'PUBLISH' | 'UNPUBLISH' | 'ARCHIVE' | 'DELETE') => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Apply bulk ${action} action on ${selectedIds.length} selected services?`)) return;
+    if (!safeConfirm(`Apply bulk ${action} action on ${selectedIds.length} selected services?`)) return;
 
     try {
       const token = await getAuthToken();
@@ -398,14 +420,25 @@ export const AdminServices: React.FC = () => {
       }
 
       setSelectedIds([]);
+      showNotice('success', `Bulk ${action} completed.`);
       fetchServices();
     } catch (err: any) {
-      alert('Error performing bulk action');
+      showNotice('error', 'Error performing bulk action');
     }
   };
 
   return (
     <div className="space-y-6 text-slate-800">
+      {notice && (
+        <div className={`p-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
+          notice.type === 'success'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-rose-50 border-rose-200 text-rose-800'
+        }`}>
+          <span>{notice.text}</span>
+          <button type="button" onClick={() => setNotice(null)}><X className="w-4 h-4" /></button>
+        </div>
+      )}
       
       {/* Top Banner Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
@@ -1078,13 +1111,22 @@ export const AdminServices: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Cover Image URL (Cloudinary / Unsplash)</label>
-                    <input
-                      type="url"
-                      placeholder="https://res.cloudinary.com/..."
-                      value={editingService.coverImage}
-                      onChange={(e) => setEditingService({ ...editingService, coverImage: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://res.cloudinary.com/..."
+                        value={editingService.coverImage}
+                        onChange={(e) => setEditingService({ ...editingService, coverImage: e.target.value })}
+                        className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMediaPickerTarget('cover')}
+                        className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl flex items-center gap-1.5 shrink-0"
+                      >
+                        <ImageIcon className="w-4 h-4" /> Media Library
+                      </button>
+                    </div>
                     {editingService.coverImage && (
                       <img
                         src={editingService.coverImage}
@@ -1092,6 +1134,36 @@ export const AdminServices: React.FC = () => {
                         className="mt-2 h-32 w-full object-cover rounded-xl border border-slate-200"
                       />
                     )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-700">Service Photo Gallery</label>
+                      <button
+                        type="button"
+                        onClick={() => setMediaPickerTarget('gallery')}
+                        className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add from Media Library
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {(editingService.gallery || []).map((imgUrl, gIdx) => (
+                        <div key={gIdx} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                          <img src={imgUrl} alt={`Gallery ${gIdx + 1}`} className="w-full h-20 object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setEditingService({
+                              ...editingService,
+                              gallery: (editingService.gallery || []).filter((_, i) => i !== gIdx)
+                            })}
+                            className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div>
@@ -1259,6 +1331,38 @@ export const AdminServices: React.FC = () => {
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDIA LIBRARY PICKER MODAL */}
+      {mediaPickerTarget && editingService && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-amber-500" />
+                Select {mediaPickerTarget === 'cover' ? 'Service Cover Image' : 'Gallery Photo'}
+              </h3>
+              <button type="button" onClick={() => setMediaPickerTarget(null)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <CmsMediaLibrary
+                isPickerMode={true}
+                filterType="image"
+                onSelectMedia={media => {
+                  if (mediaPickerTarget === 'cover') {
+                    setEditingService(prev => (prev ? { ...prev, coverImage: media.fileUrl } : prev));
+                  } else {
+                    setEditingService(prev => (prev ? { ...prev, gallery: [...(prev.gallery || []), media.fileUrl] } : prev));
+                  }
+                  setMediaPickerTarget(null);
+                  showNotice('success', `Selected "${media.title}" from Media Library.`);
+                }}
+              />
             </div>
           </div>
         </div>

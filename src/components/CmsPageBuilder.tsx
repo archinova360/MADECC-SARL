@@ -48,16 +48,21 @@ const safeConfirm = (message: string): boolean => {
 };
 
 const DEFAULT_PAGES_LIST = [
-
   { id: 1, slug: 'home', title: 'Home Page', status: 'PUBLISHED', version: 1 },
   { id: 2, slug: 'about', title: 'About Us', status: 'PUBLISHED', version: 1 },
   { id: 3, slug: 'services', title: 'Services & Engineering', status: 'PUBLISHED', version: 1 },
   { id: 4, slug: 'projects', title: 'Major Projects & Corridors', status: 'PUBLISHED', version: 1 },
-  { id: 5, slug: 'sustainability', title: 'Sustainability & ESG', status: 'PUBLISHED', version: 1 },
-  { id: 6, slug: 'tenders', title: 'Procurement & Tenders', status: 'PUBLISHED', version: 1 },
-  { id: 7, slug: 'suppliers', title: 'Supplier Registration', status: 'PUBLISHED', version: 1 },
-  { id: 8, slug: 'careers', title: 'Careers & Talent', status: 'PUBLISHED', version: 1 },
-  { id: 9, slug: 'contact', title: 'Contact & Offices', status: 'PUBLISHED', version: 1 }
+  { id: 5, slug: 'blog', title: 'Technical Insights & Blog', status: 'PUBLISHED', version: 1 },
+  { id: 6, slug: 'faq', title: 'FAQ & Help Centre', status: 'PUBLISHED', version: 1 },
+  { id: 7, slug: 'sustainability', title: 'Sustainability & ESG', status: 'PUBLISHED', version: 1 },
+  { id: 8, slug: 'construction-cost-guide', title: 'Construction Cost Guide', status: 'PUBLISHED', version: 1 },
+  { id: 9, slug: 'budget-calculator', title: 'Project Budget Calculator', status: 'PUBLISHED', version: 1 },
+  { id: 10, slug: 'tenders', title: 'Procurement & Tenders', status: 'PUBLISHED', version: 1 },
+  { id: 11, slug: 'suppliers', title: 'Supplier Registration', status: 'PUBLISHED', version: 1 },
+  { id: 12, slug: 'careers', title: 'Careers & Talent', status: 'PUBLISHED', version: 1 },
+  { id: 13, slug: 'contact', title: 'Contact & Offices', status: 'PUBLISHED', version: 1 },
+  { id: 14, slug: 'privacy-policy', title: 'Privacy Policy', status: 'PUBLISHED', version: 1 },
+  { id: 15, slug: 'terms-of-use', title: 'Terms of Use', status: 'PUBLISHED', version: 1 }
 ];
 
 const createDefaultPageContent = (slug: string): PageContent => ({
@@ -126,7 +131,16 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string>('');
+
+  // Create New Page inline modal state
+  const [showNewPageModal, setShowNewPageModal] = useState(false);
+  const [newPageTitle, setNewPageTitle] = useState('');
+  const [newPageSlug, setNewPageSlug] = useState('');
+  const [creatingPage, setCreatingPage] = useState(false);
 
   // Active builder tab: 'hero' | 'sections' | 'seo' | 'history'
   const [activeTab, setActiveTab] = useState<'hero' | 'sections' | 'seo' | 'history'>('hero');
@@ -139,8 +153,13 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
   const [revisions, setRevisions] = useState<CmsRevision[]>([]);
   const [loadingRevisions, setLoadingRevisions] = useState(false);
 
-  // Media picker modal state for Hero video/poster
-  const [showMediaPicker, setShowMediaPicker] = useState<null | 'video' | 'poster' | 'image'>(null);
+  // Media picker modal state for Hero / Sections / SEO
+  const [showMediaPicker, setShowMediaPicker] = useState<null | { target: 'video' | 'poster' | 'image' | 'ogImage' | 'sectionMedia'; sectionIndex?: number }>(null);
+
+  const computeSnapshot = (p: PageContent | null) =>
+    p ? JSON.stringify({ title: p.title, heroConfig: p.heroConfig, sections: p.sections, seo: p.seo }) : '';
+
+  const isDirty = Boolean(lastSavedSnapshot) && computeSnapshot(pageData) !== lastSavedSnapshot;
 
   // Load pages list
   const fetchPages = async () => {
@@ -160,21 +179,30 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
   // Load specific page data (draft or published)
   const fetchPageDetails = async (slug: string) => {
     setLoading(true);
+    setErrorBanner(null);
     try {
       const res = await fetch(`/api/cms/pages/${slug}?mode=draft`);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
           setPageData(data);
+          setLastSavedSnapshot(computeSnapshot(data));
         } else {
-          setPageData(prev => prev.slug === slug ? prev : createDefaultPageContent(slug));
+          const fallback = createDefaultPageContent(slug);
+          setPageData(fallback);
+          setLastSavedSnapshot(computeSnapshot(fallback));
         }
       } else {
-        setPageData(prev => prev.slug === slug ? prev : createDefaultPageContent(slug));
+        const fallback = createDefaultPageContent(slug);
+        setPageData(fallback);
+        setLastSavedSnapshot(computeSnapshot(fallback));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch page data:', err);
-      setPageData(prev => prev.slug === slug ? prev : createDefaultPageContent(slug));
+      setErrorBanner(err?.message || 'Unable to load page from CMS database.');
+      const fallback = createDefaultPageContent(slug);
+      setPageData(fallback);
+      setLastSavedSnapshot(computeSnapshot(fallback));
     } finally {
       setLoading(false);
     }
@@ -255,10 +283,14 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
         throw new Error(data.error || `Failed to save draft (HTTP ${res.status})`);
       }
 
-      setPageData(prev => prev ? { ...prev, status: 'DRAFT', draftData: data.page?.draftData || prev.draftData } : null);
+      const updatedPage = { ...pageData, status: 'DRAFT' as const, draftData: data.page?.draftData || pageData.draftData };
+      setPageData(updatedPage);
+      setLastSavedSnapshot(computeSnapshot(updatedPage));
+      setErrorBanner(null);
       showToast('success', 'Draft saved safely without modifying live site.');
       fetchPages();
     } catch (err: any) {
+      setErrorBanner(err.message || 'Error saving draft');
       showToast('error', err.message || 'Error saving draft');
     } finally {
       setSavingDraft(false);
@@ -285,6 +317,7 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
         credentials: 'include',
         headers,
         body: JSON.stringify({
+          title: pageData.title,
           heroConfig: pageData.heroConfig,
           sections: pageData.sections,
           seo: pageData.seo,
@@ -302,20 +335,119 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
         throw new Error(data.error || `Failed to publish changes (HTTP ${res.status})`);
       }
 
-      setPageData(prev => prev ? { 
-        ...prev, 
-        status: 'PUBLISHED', 
-        version: data.version || (prev.version + 1), 
-        publishedAt: new Date().toISOString() 
-      } : null);
+      const publishedPage = {
+        ...pageData,
+        status: 'PUBLISHED' as const,
+        version: data.version || (pageData.version + 1),
+        publishedAt: new Date().toISOString()
+      };
+      setPageData(publishedPage);
+      setLastSavedSnapshot(computeSnapshot(publishedPage));
+      setErrorBanner(null);
       showToast('success', `Version ${data.version || ''} is now LIVE on the public website!`);
       fetchPages();
       fetchRevisions(selectedSlug);
     } catch (err: any) {
-
+      setErrorBanner(err.message || 'Error publishing page');
       showToast('error', err.message || 'Error publishing page');
     } finally {
       setPublishing(false);
+    }
+  };
+
+  // Unpublish Page Handler
+  const handleUnpublishPage = async () => {
+    if (!pageData) return;
+    if (!safeConfirm(`Unpublish "${pageData.title}" (${selectedSlug})? Public visitors will no longer see this page until republished.`)) {
+      return;
+    }
+    setUnpublishing(true);
+    try {
+      const csrf = await getCsrfHeaders();
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...csrf
+      };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`/api/cms/pages/${selectedSlug}/unpublish`, {
+        method: 'POST',
+        credentials: 'include',
+        headers
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Failed to unpublish page (HTTP ${res.status})`);
+      }
+      setPageData(prev => (prev ? { ...prev, status: 'UNPUBLISHED' } : prev));
+      setErrorBanner(null);
+      showToast('success', `"${pageData.title}" has been unpublished from the public website.`);
+      fetchPages();
+    } catch (err: any) {
+      setErrorBanner(err.message || 'Failed to unpublish page');
+      showToast('error', err.message || 'Failed to unpublish page');
+    } finally {
+      setUnpublishing(false);
+    }
+  };
+
+  // Create New Custom Page Handler
+  const handleCreateNewPage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanTitle = newPageTitle.trim();
+    const rawSlug = (newPageSlug.trim() || cleanTitle)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    if (!cleanTitle || !rawSlug) {
+      showToast('error', 'Please enter both a valid page title and URL slug.');
+      return;
+    }
+    setCreatingPage(true);
+    try {
+      const template = createDefaultPageContent(rawSlug);
+      template.title = cleanTitle;
+      template.heroConfig.title = cleanTitle;
+      template.seo.seoTitle = `${cleanTitle} | MADECC GROUP`;
+
+      const csrf = await getCsrfHeaders();
+      const token = await getAuthToken().catch(() => null);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...csrf
+      };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`/api/cms/pages/${rawSlug}/draft`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({
+          title: template.title,
+          heroConfig: template.heroConfig,
+          sections: template.sections,
+          seo: template.seo
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create page draft');
+      }
+      setShowNewPageModal(false);
+      setNewPageTitle('');
+      setNewPageSlug('');
+      await fetchPages();
+      setSelectedSlug(rawSlug);
+      showToast('success', `Page "/${rawSlug}" created as draft! Publish when ready.`);
+    } catch (err: any) {
+      showToast('error', err.message || 'Error creating page');
+    } finally {
+      setCreatingPage(false);
     }
   };
 
@@ -408,28 +540,39 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
       {/* Top Header & Page Selector */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
-              <Layout className="w-5 h-5 text-amber-500" /> Full-Stack CMS & Frontend Page Studio
+              <Layout className="w-5 h-5 text-amber-500" /> Full-Stack CMS &amp; Page Studio
             </h2>
 
             {/* Status Pill */}
             <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase ${
-              pageData.status === 'PUBLISHED' 
+              pageData.status === 'PUBLISHED'
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                : pageData.status === 'UNPUBLISHED'
+                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
                 : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
             }`}>
               {pageData.status} (v{pageData.version})
             </span>
+
+            {/* Dirty / Saved Badge */}
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase ${
+              isDirty
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'bg-slate-800 text-slate-300 border border-slate-700'
+            }`}>
+              {isDirty ? 'Unsaved Changes' : 'Saved'}
+            </span>
           </div>
 
           <p className="text-xs text-slate-400 mt-1">
-            Edit text, high-definition background video reels, layouts, and SEO for all public pages in real time.
+            Edit copy, headings, images, background video reels, custom sections, and SEO for all public pages without touching code.
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Page Picker */}
           <select
             value={selectedSlug}
@@ -438,26 +581,37 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
           >
             {pages.map(p => (
               <option key={p.slug} value={p.slug}>
-                {p.title} ({p.slug})
+                {p.title} (/{p.slug}) [{p.status}]
               </option>
             ))}
           </select>
 
+          <button
+            type="button"
+            onClick={() => setShowNewPageModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-colors"
+            id="cms-new-page-btn"
+          >
+            <Plus className="w-3.5 h-3.5" /> New Page
+          </button>
+
           {/* Real-time Preview Toggle */}
           <button
+            type="button"
             onClick={() => setShowPreview(!showPreview)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors border ${
-              showPreview 
-                ? 'bg-amber-500 text-slate-950 border-amber-400' 
+              showPreview
+                ? 'bg-amber-500 text-slate-950 border-amber-400'
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
-            {showPreview ? 'Close Preview' : 'Interactive Preview'}
+            {showPreview ? 'Close Preview' : 'Preview'}
           </button>
 
           {/* Save Draft */}
           <button
+            type="button"
             onClick={handleSaveDraft}
             disabled={savingDraft}
             className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3.5 py-2 rounded-lg text-xs border border-slate-700 transition-colors disabled:opacity-50"
@@ -467,8 +621,23 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
             Save Draft
           </button>
 
+          {/* Unpublish */}
+          {pageData.status !== 'UNPUBLISHED' && (
+            <button
+              type="button"
+              onClick={handleUnpublishPage}
+              disabled={unpublishing}
+              className="flex items-center gap-1.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 font-bold px-3 py-2 rounded-lg text-xs border border-rose-700/60 transition-colors disabled:opacity-50"
+              id="cms-unpublish-btn"
+            >
+              {unpublishing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <AlertCircle className="w-3.5 h-3.5" />}
+              Unpublish
+            </button>
+          )}
+
           {/* Publish Live */}
           <button
+            type="button"
             onClick={handlePublishLive}
             disabled={publishing}
             className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition-all shadow-md shadow-amber-500/10 disabled:opacity-50"
@@ -479,6 +648,13 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
           </button>
         </div>
       </div>
+
+      {errorBanner && (
+        <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /> {errorBanner}</span>
+          <button type="button" onClick={() => setErrorBanner(null)} className="text-rose-200 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Interactive Device Preview Overlay */}
       {showPreview && (
@@ -652,7 +828,7 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowMediaPicker('video')}
+                    onClick={() => setShowMediaPicker({ target: 'video' })}
                     className="px-3 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs rounded-lg border border-slate-700 flex items-center gap-1 shrink-0"
                   >
                     <Film className="w-3.5 h-3.5" /> Library
@@ -665,7 +841,7 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Fallback Poster & Instant Frame (High-Res Image)
+                  Fallback Poster &amp; Hero Image (High-Res Image)
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -677,15 +853,48 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowMediaPicker('poster')}
+                    onClick={() => setShowMediaPicker({ target: 'poster' })}
                     className="px-3 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs rounded-lg border border-slate-700 flex items-center gap-1 shrink-0"
                   >
                     <ImageIcon className="w-3.5 h-3.5" /> Library
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Displays immediately before video streams or if user disables background video.
+                  Displays immediately before video streams or when static image mode is active.
                 </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Hero Image Alt Text (SEO &amp; Screen Readers)</label>
+                <input
+                  type="text"
+                  value={heroConfig.imageAlt || ''}
+                  onChange={e => updateHero('imageAlt', e.target.value)}
+                  placeholder="Describe the hero photograph or construction scene..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-5 pt-6">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={heroConfig.showHero !== false}
+                    onChange={e => updateHero('showHero', e.target.checked)}
+                    className="rounded text-amber-500"
+                  />
+                  Show Hero Banner
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={heroConfig.showVideo !== false}
+                    onChange={e => updateHero('showVideo', e.target.checked)}
+                    className="rounded text-amber-500"
+                  />
+                  Enable Hero Video Playback
+                </label>
               </div>
             </div>
 
@@ -735,18 +944,29 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
           {/* Hero Typography & Text Content */}
           <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-4">
             <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-              Hero Copywriting & Headings
+              Hero Copywriting &amp; Headings
             </h3>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Top Eyebrow Badge</label>
-              <input
-                type="text"
-                value={heroConfig.eyebrow || ''}
-                onChange={e => updateHero('eyebrow', e.target.value)}
-                placeholder="e.g. Construction & Civil Engineering — Cameroon"
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Page Display Title (Admin / Nav)</label>
+                <input
+                  type="text"
+                  value={pageData.title || ''}
+                  onChange={e => setPageData({ ...pageData, title: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Top Eyebrow Badge</label>
+                <input
+                  type="text"
+                  value={heroConfig.eyebrow || ''}
+                  onChange={e => updateHero('eyebrow', e.target.value)}
+                  placeholder="e.g. Construction & Civil Engineering — Cameroon"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
             </div>
 
             <div>
@@ -761,7 +981,7 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Hero Subtitle & Scope</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Hero Subtitle &amp; Scope</label>
               <textarea
                 rows={3}
                 value={heroConfig.subtitle || ''}
@@ -771,39 +991,143 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
               />
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Extended Hero Description (Optional)</label>
+              <textarea
+                rows={2}
+                value={heroConfig.description || ''}
+                onChange={e => updateHero('description', e.target.value)}
+                placeholder="Additional supporting summary..."
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
             {/* CTAs */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Primary Button CTA</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-300">Primary Button CTA</label>
+                  <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={heroConfig.primaryCta?.visible !== false}
+                      onChange={e => updateHero('primaryCta', { ...heroConfig.primaryCta, visible: e.target.checked })}
+                      className="rounded text-amber-500"
+                    />
+                    Visible
+                  </label>
+                </div>
                 <input
                   type="text"
                   value={heroConfig.primaryCta?.text || ''}
                   onChange={e => updateHero('primaryCta', { ...heroConfig.primaryCta, text: e.target.value })}
                   placeholder="Request a Free Quote"
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white"
+                />
+                <input
+                  type="text"
+                  value={heroConfig.primaryCta?.link || ''}
+                  onChange={e => updateHero('primaryCta', { ...heroConfig.primaryCta, link: e.target.value })}
+                  placeholder="/request-a-quote"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-amber-300 font-mono"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Secondary Button CTA</label>
+              <div className="p-3 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-300">Secondary Button CTA</label>
+                  <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={heroConfig.secondaryCta?.visible !== false}
+                      onChange={e => updateHero('secondaryCta', { ...heroConfig.secondaryCta, visible: e.target.checked })}
+                      className="rounded text-amber-500"
+                    />
+                    Visible
+                  </label>
+                </div>
                 <input
                   type="text"
                   value={heroConfig.secondaryCta?.text || ''}
                   onChange={e => updateHero('secondaryCta', { ...heroConfig.secondaryCta, text: e.target.value })}
                   placeholder="Calculate Budget (FCFA)"
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white"
+                />
+                <input
+                  type="text"
+                  value={heroConfig.secondaryCta?.link || ''}
+                  onChange={e => updateHero('secondaryCta', { ...heroConfig.secondaryCta, link: e.target.value })}
+                  placeholder="/budget-calculator"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-amber-300 font-mono"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Tertiary Link CTA</label>
+              <div className="p-3 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-300">Tertiary Link CTA</label>
+                  <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={heroConfig.tertiaryCta?.visible !== false}
+                      onChange={e => updateHero('tertiaryCta', { ...heroConfig.tertiaryCta, visible: e.target.checked })}
+                      className="rounded text-amber-500"
+                    />
+                    Visible
+                  </label>
+                </div>
                 <input
                   type="text"
                   value={heroConfig.tertiaryCta?.text || ''}
                   onChange={e => updateHero('tertiaryCta', { ...heroConfig.tertiaryCta, text: e.target.value })}
                   placeholder="Schedule Consultation →"
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white"
                 />
+                <input
+                  type="text"
+                  value={heroConfig.tertiaryCta?.link || ''}
+                  onChange={e => updateHero('tertiaryCta', { ...heroConfig.tertiaryCta, link: e.target.value })}
+                  placeholder="/schedule-consultation"
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-amber-300 font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Trust Badges Editor */}
+            <div className="pt-3 border-t border-slate-900 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300">Hero Trust Badges</label>
+                <button
+                  type="button"
+                  onClick={() => updateHero('trustBadges', [...(heroConfig.trustBadges || []), { icon: 'ShieldCheck', text: 'Certified Engineering Standard' }])}
+                  className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded text-[11px] font-bold hover:bg-amber-500/20"
+                >
+                  + Add Badge
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {(heroConfig.trustBadges || []).map((badge, bIdx) => (
+                  <div key={bIdx} className="flex items-center gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                    <input
+                      type="text"
+                      value={badge.text}
+                      onChange={e => {
+                        const updated = [...(heroConfig.trustBadges || [])];
+                        updated[bIdx] = { ...updated[bIdx], text: e.target.value };
+                        updateHero('trustBadges', updated);
+                      }}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white"
+                      placeholder="Trust badge text"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateHero('trustBadges', (heroConfig.trustBadges || []).filter((_, i) => i !== bIdx))}
+                      className="p-1 text-slate-400 hover:text-rose-400"
+                      title="Remove badge"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -858,8 +1182,17 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
                       <option value="custom">custom</option>
                       <option value="rich_text">rich_text</option>
                       <option value="media_showcase">media_showcase</option>
+                      <option value="pillars">pillars</option>
+                      <option value="blueprint">blueprint</option>
+                      <option value="estimator">estimator</option>
+                      <option value="divisions">divisions</option>
+                      <option value="workflow">workflow</option>
                       <option value="services">services</option>
                       <option value="stats">stats</option>
+                      <option value="why_choose_us">why_choose_us</option>
+                      <option value="process">process</option>
+                      <option value="team">team</option>
+                      <option value="testimonials">testimonials</option>
                       <option value="cta">cta</option>
                       <option value="about">about</option>
                       <option value="projects">projects</option>
@@ -987,17 +1320,85 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Optional Media / Video / Document URL</label>
+                    <label className="block text-[11px] text-slate-400 mb-1">Optional Media / Image / Video URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={sec.mediaUrl || ''}
+                        onChange={e => {
+                          const updated = [...(pageData.sections || [])];
+                          updated[idx].mediaUrl = e.target.value;
+                          setPageData({ ...pageData, sections: updated });
+                        }}
+                        placeholder="https://..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowMediaPicker({ target: 'sectionMedia', sectionIndex: idx })}
+                        className="px-2.5 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-[11px] rounded border border-slate-700 flex items-center gap-1 shrink-0"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" /> Library
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Image Alt Text</label>
                     <input
-                      type="url"
-                      value={sec.mediaUrl || ''}
+                      type="text"
+                      value={sec.imageAlt || ''}
                       onChange={e => {
                         const updated = [...(pageData.sections || [])];
-                        updated[idx].mediaUrl = e.target.value;
+                        updated[idx].imageAlt = e.target.value;
                         setPageData({ ...pageData, sections: updated });
                       }}
-                      placeholder="https://..."
-                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono"
+                      placeholder="Descriptive alt text"
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Media Caption</label>
+                    <input
+                      type="text"
+                      value={sec.caption || ''}
+                      onChange={e => {
+                        const updated = [...(pageData.sections || [])];
+                        updated[idx].caption = e.target.value;
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      placeholder="Optional caption"
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Section Button Label</label>
+                    <input
+                      type="text"
+                      value={sec.ctaText || ''}
+                      onChange={e => {
+                        const updated = [...(pageData.sections || [])];
+                        updated[idx].ctaText = e.target.value;
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      placeholder="e.g. Learn More"
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Section Button URL</label>
+                    <input
+                      type="text"
+                      value={sec.ctaLink || ''}
+                      onChange={e => {
+                        const updated = [...(pageData.sections || [])];
+                        updated[idx].ctaLink = e.target.value;
+                        setPageData({ ...pageData, sections: updated });
+                      }}
+                      placeholder="/contact"
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-amber-300 font-mono"
                     />
                   </div>
                 </div>
@@ -1065,7 +1466,74 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
             />
           </div>
 
-          <div className="pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">OpenGraph Social Share Title (og:title)</label>
+              <input
+                type="text"
+                value={pageData.seo?.ogTitle || ''}
+                onChange={e => setPageData({
+                  ...pageData,
+                  seo: { ...pageData.seo, ogTitle: e.target.value }
+                })}
+                placeholder="Defaults to Meta Page Title if blank"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Canonical URL (Optional)</label>
+              <input
+                type="url"
+                value={pageData.seo?.canonicalUrl || ''}
+                onChange={e => setPageData({
+                  ...pageData,
+                  seo: { ...pageData.seo, canonicalUrl: e.target.value }
+                })}
+                placeholder="https://madeccgroup.online/..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">OpenGraph Social Description (og:description)</label>
+              <textarea
+                rows={2}
+                value={pageData.seo?.ogDescription || ''}
+                onChange={e => setPageData({
+                  ...pageData,
+                  seo: { ...pageData.seo, ogDescription: e.target.value }
+                })}
+                placeholder="Defaults to Meta Description if blank"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">OpenGraph Share Image URL (og:image)</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={pageData.seo?.ogImage || ''}
+                  onChange={e => setPageData({
+                    ...pageData,
+                    seo: { ...pageData.seo, ogImage: e.target.value }
+                  })}
+                  placeholder="https://res.cloudinary.com/..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker({ target: 'ogImage' })}
+                  className="px-3 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs rounded-lg border border-slate-700 flex items-center gap-1 shrink-0"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" /> Library
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-wrap gap-6">
             <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
               <input
                 type="checkbox"
@@ -1076,7 +1544,19 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
                 })}
                 className="rounded text-amber-500"
               />
-              Allow Google & Search Engines to Index this Page (Recommended for AdSense approval)
+              Allow Search Engines to Index this Page (index)
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={pageData.seo?.robotsFollow !== false}
+                onChange={e => setPageData({
+                  ...pageData,
+                  seo: { ...pageData.seo, robotsFollow: e.target.checked }
+                })}
+                className="rounded text-amber-500"
+              />
+              Allow Search Engines to Follow Links (follow)
             </label>
           </div>
         </div>
@@ -1131,6 +1611,62 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
         </div>
       )}
 
+      {/* Create New Custom Page Modal */}
+      {showNewPageModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-amber-500" /> Create New Public Page
+              </h3>
+              <button type="button" onClick={() => setShowNewPageModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateNewPage} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Page Title</label>
+                <input
+                  type="text"
+                  required
+                  value={newPageTitle}
+                  onChange={e => {
+                    setNewPageTitle(e.target.value);
+                    if (!newPageSlug) {
+                      setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, ''));
+                    }
+                  }}
+                  placeholder="e.g. Investor Relations"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">URL Slug</label>
+                <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                  <span className="px-2.5 text-slate-500 font-mono">/</span>
+                  <input
+                    type="text"
+                    required
+                    value={newPageSlug}
+                    onChange={e => setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-'))}
+                    placeholder="investor-relations"
+                    className="w-full bg-transparent px-1 py-2 text-amber-300 font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowNewPageModal(false)} className="px-3.5 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold">
+                  Cancel
+                </button>
+                <button type="submit" disabled={creatingPage} className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-bold disabled:opacity-50">
+                  {creatingPage ? 'Creating...' : 'Create Page Draft'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Media Library Picker Modal */}
       {showMediaPicker && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1140,6 +1676,7 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
                 <Film className="w-4 h-4 text-amber-500" /> Select Media Asset from Library
               </h3>
               <button
+                type="button"
                 onClick={() => setShowMediaPicker(null)}
                 className="p-1 text-slate-400 hover:text-white"
               >
@@ -1150,18 +1687,37 @@ export default function CmsPageBuilder({ initialSlug }: CmsPageBuilderProps = {}
             <div className="flex-1 overflow-y-auto p-4">
               <CmsMediaLibrary
                 isPickerMode={true}
-                filterType={showMediaPicker === 'video' ? 'video' : 'image'}
+                filterType={showMediaPicker.target === 'video' ? 'video' : showMediaPicker.target === 'sectionMedia' ? 'all' : 'image'}
                 onSelectMedia={media => {
-                  if (showMediaPicker === 'video') {
+                  if (showMediaPicker.target === 'video') {
                     updateHero('videoUrl', media.fileUrl);
-                    if (media.caption) updateHero('title', media.caption);
-                  } else if (showMediaPicker === 'poster') {
+                  } else if (showMediaPicker.target === 'poster') {
                     updateHero('posterUrl', media.fileUrl);
-                  } else if (showMediaPicker === 'image') {
                     updateHero('imageUrl', media.fileUrl);
+                    if (media.altText) updateHero('imageAlt', media.altText);
+                  } else if (showMediaPicker.target === 'image') {
+                    updateHero('imageUrl', media.fileUrl);
+                    if (media.altText) updateHero('imageAlt', media.altText);
+                  } else if (showMediaPicker.target === 'ogImage') {
+                    setPageData(prev => ({
+                      ...prev,
+                      seo: { ...prev.seo, ogImage: media.fileUrl }
+                    }));
+                  } else if (showMediaPicker.target === 'sectionMedia' && typeof showMediaPicker.sectionIndex === 'number') {
+                    const updated = [...(pageData.sections || [])];
+                    if (updated[showMediaPicker.sectionIndex]) {
+                      updated[showMediaPicker.sectionIndex] = {
+                        ...updated[showMediaPicker.sectionIndex],
+                        mediaUrl: media.fileUrl,
+                        mediaType: media.fileType === 'video' ? 'video' : 'image',
+                        imageAlt: media.altText || updated[showMediaPicker.sectionIndex].imageAlt,
+                        caption: media.caption || updated[showMediaPicker.sectionIndex].caption
+                      };
+                      setPageData({ ...pageData, sections: updated });
+                    }
                   }
                   setShowMediaPicker(null);
-                  showToast('success', `Linked "${media.title}" to Hero configuration.`);
+                  showToast('success', `Linked "${media.title}" from Media Library.`);
                 }}
               />
             </div>

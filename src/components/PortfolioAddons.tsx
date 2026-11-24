@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RotatingMovingText from './RotatingMovingText.tsx';
+import { HeroSectionConfig } from '../types.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 // ==========================================
 // 1. BEFORE AND AFTER INTERACTIVE SLIDER
@@ -351,30 +353,37 @@ export function TestimonialsAndPartners() {
 // ==========================================
 // 6. HERO SECTION
 // ==========================================
-export function PortfolioHero() {
+export function PortfolioHero({ hero }: { hero?: HeroSectionConfig }) {
+  const customTitle = hero?.title && !hero.title.includes('Structural Projects in Cameroon');
   return (
     <section className="bg-slate-950/80 border-b border-slate-850/60 text-white py-20 relative overflow-hidden" id="projects-header">
       <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center max-w-3xl">
         <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full inline-block mb-4">
-          Construction Execution Portfolio
+          {hero?.eyebrow || 'Construction Execution Portfolio'}
         </span>
         <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-          Structural Projects in Cameroon:{' '}
-          <RotatingMovingText 
-            words={[
-              'Commercial Towers',
-              'Luxury Duplexes',
-              'Highway Arteries',
-              'Hydraulic Drainage',
-              'Industrial Complexes'
-            ]}
-            highlightClassName="text-amber-400 decoration-amber-500/50 underline decoration-wavy decoration-2 underline-offset-8"
-          />
+          {customTitle ? (
+            hero?.title
+          ) : (
+            <>
+              Structural Projects in Cameroon:{' '}
+              <RotatingMovingText 
+                words={[
+                  'Commercial Towers',
+                  'Luxury Duplexes',
+                  'Highway Arteries',
+                  'Hydraulic Drainage',
+                  'Industrial Complexes'
+                ]}
+                highlightClassName="text-amber-400 decoration-amber-500/50 underline decoration-wavy decoration-2 underline-offset-8"
+              />
+            </>
+          )}
         </h1>
         <p className="text-slate-400 text-sm sm:text-base mt-4 leading-relaxed">
-          Explore completed and active residential villas, apartment complexes, commercial facilities, and earthwork developments managed by MADECC GROUP across Cameroon.
+          {hero?.subtitle || 'Explore completed and active residential villas, apartment complexes, commercial facilities, and earthwork developments managed by MADECC GROUP across Cameroon.'}
         </p>
 
         {/* Highlight Badges */}
@@ -410,10 +419,11 @@ export function PortfolioHero() {
 // 7. GOOGLE ADSENSE PRIVACY AND DISCLAIMER LINKS
 // ==========================================
 export function AdSenseReadinessBlock() {
+  const { settings } = useSiteSettings();
   return (
     <div className="py-8 bg-[#070709] border-t border-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-500 text-[10px] font-mono space-y-2">
-        <p>© {new Date().getFullYear()} MADECC GROUP Cameroon. All rights reserved.</p>
+        <p>{settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings?.siteName || 'MADECC GROUP'} Cameroon. All rights reserved.`}</p>
         <div className="flex justify-center gap-4 text-slate-400">
           <a href="/privacy-policy" className="hover:text-amber-500 transition-colors">Privacy Policy</a>
           <span>•</span>

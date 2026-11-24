@@ -226,23 +226,22 @@ export function isCurrentUserAdmin(): boolean {
   return false;
 }
 
-export function verifyAdminDownloadCredential(input: string): boolean {
-  const normalized = (input || '').trim().toLowerCase();
-  if (!normalized) return false;
-  const customEnvKey = ((import.meta as any).env?.VITE_ADMIN_SECRET_KEY || '').trim().toLowerCase();
-  const validCredentials = [
-    'kreboya603@gmail.com',
-    'adminmadeccgroup',
-    'admin_bypass:adminmadeccgroup',
-    'madecc group admin',
-    'admin_bypass:madecc group admin',
-    'madecc_group_admin',
-    'admin_bypass:madecc_group_admin',
-    'madecc2026',
-    'admin_bypass:madecc2026',
-    ...(customEnvKey ? [customEnvKey] : [])
-  ];
-  return validCredentials.includes(normalized);
+export function verifyAdminDownloadCredential(_input: string): boolean {
+  // Unpaid admin free bypasses are strictly disabled: every download requires confirmed payment.
+  return false;
+}
+
+function getClientAuthHeader(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const token =
+      localStorage.getItem('madecc_auth_token') ||
+      sessionStorage.getItem('madecc_auth_token');
+    if (token && token !== 'null' && token !== 'undefined') {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {}
+  return {};
 }
 
 export function isReceiptPaid(receiptNo: string): boolean {
@@ -254,9 +253,63 @@ export function isReceiptPaid(receiptNo: string): boolean {
     if (record?.status === 'ADMIN_FREE_CLEARANCE' || record?.paymentMethod === 'Admin Free Clearance') {
       return false;
     }
-    return Boolean(record && record.isPaid === true && record.adminConfirmed !== false && record.status !== 'PENDING_ADMIN_CONFIRMATION');
+    return Boolean(
+      record &&
+        record.isPaid === true &&
+        record.adminConfirmed === true &&
+        record.status === 'ADMIN_CONFIRMED' &&
+        Number(record.amount || 0) > 0
+    );
   } catch {
     return false;
+  }
+}
+
+export async function syncReceiptStatusFromServer(receiptNo: string): Promise<ReceiptPaymentRecord | null> {
+  if (!receiptNo) return null;
+  try {
+    const res = await fetch(`/api/receipts/payment-requests/status/${encodeURIComponent(receiptNo)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.record) {
+      recordReceiptPayment(data.record);
+      return data.record;
+    } else if (typeof window !== 'undefined') {
+      localStorage.removeItem(`${STORAGE_PREFIX}${receiptNo}`);
+    }
+  } catch {}
+  return null;
+}
+
+export async function verifyServerReceiptDownloadAllowed(receiptNo: string): Promise<{
+  allowed: boolean;
+  record: ReceiptPaymentRecord | null;
+  error?: string;
+}> {
+  if (!receiptNo) {
+    return { allowed: false, record: null, error: 'Missing receipt reference.' };
+  }
+  try {
+    const res = await fetch(`/api/receipts/verify-download/${encodeURIComponent(receiptNo)}`);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data?.allowed === true && data?.record?.isPaid === true) {
+      recordReceiptPayment(data.record);
+      return { allowed: true, record: data.record };
+    }
+    if (typeof window !== 'undefined' && (!data?.record || !data?.record?.isPaid)) {
+      localStorage.removeItem(`${STORAGE_PREFIX}${receiptNo}`);
+    }
+    return {
+      allowed: false,
+      record: data?.record || null,
+      error: data?.error || 'Payment required before download.'
+    };
+  } catch (err: any) {
+    return {
+      allowed: false,
+      record: null,
+      error: err?.message || 'Unable to verify payment status with server.'
+    };
   }
 }
 
@@ -266,7 +319,7 @@ export function isReceiptPendingAdminConfirmation(receiptNo: string): boolean {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${receiptNo}`);
     if (!raw) return false;
     const record: ReceiptPaymentRecord = JSON.parse(raw);
-    return Boolean(record && (record.status === 'PENDING_ADMIN_CONFIRMATION' || record.adminConfirmed === false));
+    return Boolean(record && record.status === 'PENDING_ADMIN_CONFIRMATION' && record.isPaid === false);
   } catch {
     return false;
   }
@@ -287,7 +340,6 @@ export function recordReceiptPayment(data: ReceiptPaymentRecord): void {
   if (!data?.receiptNo || typeof window === 'undefined') return;
   try {
     localStorage.setItem(`${STORAGE_PREFIX}${data.receiptNo}`, JSON.stringify(data));
-    // Also maintain a master list for Admin Dashboard queue
     const listRaw = localStorage.getItem(REGISTRY_LIST_KEY);
     const list: ReceiptPaymentRecord[] = listRaw ? JSON.parse(listRaw) : [];
     const idx = list.findIndex(r => r.receiptNo === data.receiptNo);
@@ -307,7 +359,6 @@ export function getAllLocalPaymentRecords(): ReceiptPaymentRecord[] {
   try {
     const listRaw = localStorage.getItem(REGISTRY_LIST_KEY);
     const list: ReceiptPaymentRecord[] = listRaw ? JSON.parse(listRaw) : [];
-    // Also scan any individual keys
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.startsWith(STORAGE_PREFIX)) {
@@ -326,7 +377,7 @@ export function getAllLocalPaymentRecords(): ReceiptPaymentRecord[] {
 }
 
 /**
- * Submits a client payment (2,199 XAF) as PENDING_ADMIN_CONFIRMATION.
+ * Submits a client payment (999 / 2,199 XAF) to PostgreSQL as PENDING_ADMIN_CONFIRMATION.
  * Downloads remain locked until Admin confirms and presses OK in the Admin Dashboard.
  */
 export async function submitClientPaymentRequest(record: ReceiptPaymentRecord): Promise<ReceiptPaymentRecord> {
@@ -336,31 +387,30 @@ export async function submitClientPaymentRequest(record: ReceiptPaymentRecord): 
     adminConfirmed: false,
     status: 'PENDING_ADMIN_CONFIRMATION'
   };
-  recordReceiptPayment(pendingRecord);
 
-  try {
-    const res = await fetch('/api/receipts/payment-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pendingRecord)
-    });
-    if (res.ok) {
-      const serverData = await res.json();
-      if (serverData?.record) {
-        recordReceiptPayment(serverData.record);
-        return serverData.record;
-      }
-    }
-  } catch (err) {
-    console.warn('Server payment request sync fallback to local storage:', err);
+  const res = await fetch('/api/receipts/payment-requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pendingRecord)
+  });
+
+  const serverData = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(serverData?.error || 'Failed to submit payment request.');
   }
 
+  if (serverData?.record) {
+    recordReceiptPayment(serverData.record);
+    return serverData.record;
+  }
+
+  recordReceiptPayment(pendingRecord);
   return pendingRecord;
 }
 
 /**
  * Admin confirms and presses OK in the Admin Dashboard.
- * Dispatches message to SMTP user kreboya603@gmail.com and unlocks receipt & document download links.
+ * Requires valid Admin/Staff Bearer token and dispatches confirmation to SMTP user kreboya603@gmail.com.
  */
 export async function confirmClientPaymentByAdmin(receiptNo: string, existingRecord?: Partial<ReceiptPaymentRecord>): Promise<{
   record: ReceiptPaymentRecord;
@@ -370,7 +420,7 @@ export async function confirmClientPaymentByAdmin(receiptNo: string, existingRec
   const localRec = getReceiptPaymentRecord(receiptNo) || existingRecord || {};
   const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
-  const confirmedRecord: ReceiptPaymentRecord = {
+  const payload: ReceiptPaymentRecord = {
     receiptNo,
     amount: Number(localRec.amount) || STANDARD_RECEIPT_FEE_XAF,
     currency: localRec.currency || 'XAF',
@@ -393,41 +443,37 @@ export async function confirmClientPaymentByAdmin(receiptNo: string, existingRec
     smtpDispatchedAt: nowStr
   };
 
-  let serverMessage = `Payment confirmed & OK pressed! Message dispatched to SMTP user ${ADMIN_SMTP_USER_EMAIL}. Receipt and document download links are now unlocked.`;
+  const res = await fetch('/api/receipts/payment-requests/confirm', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getClientAuthHeader()
+    },
+    body: JSON.stringify(payload)
+  });
 
-  try {
-    const res = await fetch('/api/receipts/payment-requests/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(confirmedRecord)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.record) {
-        Object.assign(confirmedRecord, data.record);
-      }
-      if (data?.message) {
-        serverMessage = data.message;
-      }
-    }
-  } catch (err) {
-    console.warn('Admin confirm server sync fallback:', err);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || 'Admin authentication required to confirm payment.');
   }
 
+  const confirmedRecord = data?.record || payload;
   recordReceiptPayment(confirmedRecord);
   return {
     record: confirmedRecord,
-    smtpDispatchedTo: ADMIN_SMTP_USER_EMAIL,
-    message: serverMessage
+    smtpDispatchedTo: data?.smtpDispatchedTo || ADMIN_SMTP_USER_EMAIL,
+    message: data?.message || `Confirmed (OK)! Dispatch sent to ${ADMIN_SMTP_USER_EMAIL}.`
   };
 }
 
 /**
- * Syncs all payment requests from server + local storage for the Admin Dashboard & Client Modal.
+ * Syncs all payment requests from Neon PostgreSQL for the Admin Dashboard.
  */
 export async function syncPaymentRequestsWithServer(): Promise<ReceiptPaymentRecord[]> {
   try {
-    const res = await fetch('/api/receipts/payment-requests');
+    const res = await fetch('/api/receipts/payment-requests', {
+      headers: { ...getClientAuthHeader() }
+    });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data?.records)) {
@@ -436,11 +482,10 @@ export async function syncPaymentRequestsWithServer(): Promise<ReceiptPaymentRec
             recordReceiptPayment(srvRec);
           }
         }
+        return data.records;
       }
     }
-  } catch (err) {
-    // Fallback to local records
-  }
+  } catch (err) {}
   return getAllLocalPaymentRecords();
 }
 

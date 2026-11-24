@@ -21,6 +21,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPagesRegistry } from '../lib/useCmsPage.ts';
 
 interface FooterProps {
   setCurrentTab: (tab: string) => void;
@@ -28,6 +29,7 @@ interface FooterProps {
 
 export default function Footer({ setCurrentTab }: FooterProps) {
   const { settings, openFollowModal } = useSiteSettings();
+  const { isSlugHidden } = useCmsPagesRegistry();
   const [email, setEmail] = useState('');
   const [captcha, setCaptcha] = useState('');
   const [captchaError, setCaptchaError] = useState(false);
@@ -37,8 +39,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const websiteUrl = 'https://madeccgroup.online';
-  const shareText = 'MADECC GROUP — Premier Civil Engineering, Structural Design & Construction Firm in Cameroon.';
+  const websiteUrl = settings?.globalSeo?.canonicalUrl || 'https://madeccgroup.online';
+  const shareText = settings?.shareDescription || 'MADECC GROUP — Premier Civil Engineering, Structural Design & Construction Firm in Cameroon.';
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(websiteUrl);
@@ -217,6 +219,30 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                     ig
                   </a>
                 )}
+                {settings?.tiktokUrl && (
+                  <a
+                    href={settings.tiktokUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC TikTok Channel"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-emerald-600 hover:text-white text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
+                    title="TikTok"
+                  >
+                    tt
+                  </a>
+                )}
+                {settings?.pinterestUrl && (
+                  <a
+                    href={settings.pinterestUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="MADECC Pinterest Portfolio"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-slate-900 hover:bg-rose-600 hover:text-white text-slate-300 border border-slate-800 transition-colors flex items-center justify-center text-xs font-bold font-mono"
+                    title="Pinterest"
+                  >
+                    pt
+                  </a>
+                )}
                 {settings?.whatsappNumber && (
                   <a
                     href={`https://wa.me/${settings.whatsappNumber.replace(/[^0-9]/g, '')}`}
@@ -261,27 +287,36 @@ export default function Footer({ setCurrentTab }: FooterProps) {
           <div>
             <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-6 border-b border-slate-800 pb-2">Quick Links</h2>
             <ul className="space-y-1 text-sm">
-              {[
-                { label: 'Home Page', id: 'home' },
-                { label: 'Client Portal (Live Progress & Invoices)', id: 'client-portal' },
-                { label: 'KRR Bookstore & Textbooks', id: 'store' },
-                { label: 'Track Order & Downloads', id: 'order-tracking' },
-                { label: 'Visitor & Client Walkthrough Guide', id: 'walkthrough-guide' },
-                { label: 'Our Services', id: 'services' },
-                { label: 'Website Development Services', id: 'website-development' },
-                { label: 'Tenders & Procurement', id: 'tenders' },
-                { label: 'FAQ / Help Centre', id: 'faq' },
-                { label: 'Projects Portfolio', id: 'projects' },
-                { label: 'Project Budget Calculator', id: 'budget-calculator' },
-                { label: 'Schedule Consultation', id: 'schedule-consultation' },
-                { label: 'Construction Cost Guide', id: 'construction-cost-guide' },
-                { label: 'Developer & Paid API Platform', id: 'developers' },
-                { label: 'Request a Quote', id: 'request-a-quote' },
-                { label: 'About MADECC', id: 'about' },
-                { label: 'Contact Office', id: 'contact' },
-                { label: 'Site Map & Architecture Index', id: 'sitemap' },
-                { label: 'Data Deletion & Privacy', id: 'data-deletion' },
-              ].map((link) => (
+              {(Array.isArray(settings?.footerContent?.quickLinks) && settings.footerContent.quickLinks.length > 0
+                ? settings.footerContent.quickLinks.map((q) => ({
+                    label: q.label,
+                    id: (q.href || 'home').replace(/^\//, '').trim() || 'home'
+                  }))
+                : [
+                    { label: 'Home Page', id: 'home' },
+                    { label: 'Client Portal (Live Progress & Invoices)', id: 'client-portal' },
+                    { label: 'KRR Bookstore & Textbooks', id: 'store' },
+                    { label: 'Track Order & Downloads', id: 'order-tracking' },
+                    { label: 'Visitor & Client Walkthrough Guide', id: 'walkthrough-guide' },
+                    { label: 'Our Services', id: 'services' },
+                    { label: 'Website Development Services', id: 'website-development' },
+                    { label: 'Sustainability & ESG', id: 'sustainability' },
+                    { label: 'Tenders & Procurement', id: 'tenders' },
+                    { label: 'FAQ / Help Centre', id: 'faq' },
+                    { label: 'Projects Portfolio', id: 'projects' },
+                    { label: 'Project Budget Calculator', id: 'budget-calculator' },
+                    { label: 'Schedule Consultation', id: 'schedule-consultation' },
+                    { label: 'Construction Cost Guide', id: 'construction-cost-guide' },
+                    { label: 'Developer & Paid API Platform', id: 'developers' },
+                    { label: 'Request a Quote', id: 'request-a-quote' },
+                    { label: 'About MADECC', id: 'about' },
+                    { label: 'Contact Office', id: 'contact' },
+                    { label: 'Site Map & Architecture Index', id: 'sitemap' },
+                    { label: 'Data Deletion & Privacy', id: 'data-deletion' },
+                  ]
+              )
+                .filter((link) => !isSlugHidden(link.id))
+                .map((link) => (
                 <li key={link.id}>
                   <button
                     onClick={() => setCurrentTab(link.id)}
@@ -482,13 +517,25 @@ export default function Footer({ setCurrentTab }: FooterProps) {
         <div className="border-t border-slate-800/60 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4" id="footer-bottom-nav">
           <div className="space-y-1 text-center sm:text-left">
             <p>
-              {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} MADECC GROUP. All rights reserved.`}
+              {settings?.footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings?.siteName || 'MADECC GROUP'}. All rights reserved.`}
             </p>
             <p className="text-[11px] font-mono text-slate-400">
               {settings?.rccmNumber ? <span>RCCM: {settings.rccmNumber} · </span> : null}
               {settings?.niuTaxId ? <span>NIU: {settings.niuTaxId} · </span> : null}
               <span>{settings?.legalStatus || 'Individual establishment registration pending'}</span>
             </p>
+            {Array.isArray(settings?.footerContent?.accreditationBadges) && settings.footerContent.accreditationBadges.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1.5">
+                {settings.footerContent.accreditationBadges.map((badge, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-5">
             <button 

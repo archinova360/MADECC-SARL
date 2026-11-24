@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -35,8 +35,8 @@ import {
   NAVIGATION_MANUAL_RECEIPT_NO,
   OFFICIAL_PAYMENT_CONFIG,
   STANDARD_RECEIPT_FEE_XAF,
-  isCurrentUserAdmin,
-  isReceiptPaid
+  isReceiptPaid,
+  syncReceiptStatusFromServer
 } from '../utils/paymentDomain.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 import { useTheme } from '../lib/ThemeContext.tsx';
@@ -55,9 +55,38 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
   const [activeChapter, setActiveChapter] = useState<ChapterKey>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => isReceiptPaid(NAVIGATION_MANUAL_RECEIPT_NO));
 
-  const isAdminUser = isCurrentUserAdmin();
-  const isUnlocked = isAdminUser || isReceiptPaid(NAVIGATION_MANUAL_RECEIPT_NO);
+  useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      const rec = await syncReceiptStatusFromServer(NAVIGATION_MANUAL_RECEIPT_NO);
+      if (active) {
+        setIsUnlocked(
+          Boolean(
+            rec?.isPaid &&
+              rec?.adminConfirmed &&
+              rec?.status === 'ADMIN_CONFIRMED' &&
+              Number(rec?.amount || 0) > 0
+          ) || isReceiptPaid(NAVIGATION_MANUAL_RECEIPT_NO)
+        );
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const openPaymentGate = () => {
+    window.dispatchEvent(
+      new CustomEvent('madecc:open-manual-payment-gate', {
+        detail: { manualType: 'navigation_manual', options: { generatedBy: 'Navigation Manual Portal' } }
+      })
+    );
+  };
 
   const mtnMomoNumbers = OFFICIAL_PAYMENT_CONFIG?.mtnMomoNumbers || ['671063511', '683316486'];
   const orangeMoneyNumbers = OFFICIAL_PAYMENT_CONFIG?.orangeMoneyNumbers || ['689115595', '640194505'];
@@ -88,7 +117,7 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
       { id: 'developers', title: 'Developer REST API Platform', category: 'Platform', access: 'Public / Key', desc: 'Explore endpoints, rate cards, webhooks, and enterprise API key subscriptions.', icon: Key },
       { id: 'saas-cloud', title: 'Cloud SaaS Multi-Tenant Suite', category: 'Platform', access: 'Public / SaaS', desc: 'Isolated construction company workspaces with custom branding and billing.', icon: Globe },
       { id: 'walkthrough-guide', title: 'Visitor Walkthrough & FAQ', category: 'Guides', access: 'Public', desc: '6-phase interactive platform walkthrough, demo checklists, and FAQ center.', icon: BookOpen },
-      { id: 'navigation-manual', title: 'Navigation Manual (A4 PDF)', category: 'Manual', access: `${MANUAL_DOWNLOAD_FEE_XAF} XAF`, desc: '4-page A4 manual and searchable portal reference (Admin downloads free).', icon: Download },
+      { id: 'navigation-manual', title: 'Navigation Manual (A4 PDF)', category: 'Manual', access: `${MANUAL_DOWNLOAD_FEE_XAF} XAF`, desc: '4-page A4 manual and searchable portal reference (Verified 999 XAF payment required).', icon: Download },
       { id: 'buyer-handover-manual', title: 'Buyer Brand Handover Manual (PDF)', category: 'Manual', access: `${MANUAL_DOWNLOAD_FEE_XAF} XAF`, desc: 'White-label ownership transfer certificate and domain cutover guide.', icon: ShieldCheck }
     ],
     []
@@ -198,7 +227,7 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
                   }`}
                 >
                   {isUnlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                  {isAdminUser ? 'Admin Free Access' : isUnlocked ? 'Unlocked' : `${MANUAL_DOWNLOAD_FEE_XAF} XAF PDF Unlock`}
+                  {isUnlocked ? 'Payment Verified — Unlocked' : `${MANUAL_DOWNLOAD_FEE_XAF} XAF Required Before Download`}
                 </span>
               </div>
 
@@ -216,17 +245,33 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   type="button"
+                  disabled={!isUnlocked}
                   onClick={() => downloadWebsiteNavigationGuidePdf({ generatedBy: 'Navigation Manual Portal' })}
-                  className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                  className={`px-6 py-3 rounded-xl font-black text-xs sm:text-sm inline-flex items-center gap-2 transition-all ${
+                    isUnlocked
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 cursor-pointer'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-70'
+                  }`}
                   id="navigation-manual-download-btn"
                 >
-                  <Download className="w-4 h-4" />
+                  {isUnlocked ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4 text-amber-400" />}
                   <span>
                     {isUnlocked
                       ? 'Download Navigation Manual (A4 PDF)'
-                      : `Pay ${MANUAL_DOWNLOAD_FEE_XAF} XAF & Download A4 PDF`}
+                      : 'Download Locked Until Payment Verified'}
                   </span>
                 </button>
+                {!isUnlocked && (
+                  <button
+                    type="button"
+                    onClick={openPaymentGate}
+                    className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                    id="navigation-manual-pay-btn"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay {MANUAL_DOWNLOAD_FEE_XAF} XAF to Unlock PDF</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onNavigateToTab('sitemap')}
@@ -257,8 +302,8 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
                   <span className="font-mono font-bold text-amber-500 tabular-nums">{MANUAL_DOWNLOAD_FEE_XAF} XAF</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className={mutedText}>Admin / Staff Fee:</span>
-                  <span className="font-mono font-bold text-emerald-500">0 XAF (Instant Free)</span>
+                  <span className={mutedText}>Download Policy:</span>
+                  <span className="font-mono font-bold text-amber-400">Verified Payment Mandatory</span>
                 </div>
                 <div className="flex justify-between gap-3 pt-2 border-t border-slate-800/50">
                   <span className={mutedText}>SMTP Unlock Desk:</span>
@@ -441,14 +486,31 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
                   How 999 XAF manual downloads and 2,199 XAF certified BOQ/Receipt exports are verified via Admin OK + SMTP.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => downloadWebsiteNavigationGuidePdf({ generatedBy: 'Navigation Manual Page Payment Box' })}
-                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Manual ({MANUAL_DOWNLOAD_FEE_XAF} XAF)</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={!isUnlocked}
+                  onClick={() => downloadWebsiteNavigationGuidePdf({ generatedBy: 'Navigation Manual Page Payment Box' })}
+                  className={`px-5 py-2.5 rounded-xl font-black text-xs inline-flex items-center gap-2 whitespace-nowrap shrink-0 ${
+                    isUnlocked
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-70'
+                  }`}
+                >
+                  {isUnlocked ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4 text-amber-400" />}
+                  <span>{isUnlocked ? 'Download A4 PDF' : 'Download Locked (Unpaid)'}</span>
+                </button>
+                {!isUnlocked && (
+                  <button
+                    type="button"
+                    onClick={openPaymentGate}
+                    className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay {MANUAL_DOWNLOAD_FEE_XAF} XAF</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
@@ -471,7 +533,7 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
                 {
                   step: '04',
                   title: 'Instant PDF / Office Unlock',
-                  body: 'Download links unlock immediately. Signed-in Admins always download free without payment.'
+                  body: 'Download buttons unlock immediately once Neon confirms verified payment; zero unpaid downloads are permitted.'
                 }
               ].map((item) => (
                 <div key={item.step} className={`p-4 rounded-xl border space-y-2 ${subSurface}`}>
@@ -540,11 +602,11 @@ export const NavigationManualPage: React.FC<NavigationManualPageProps> = ({ onNa
               <div className="flex flex-wrap items-center gap-4 text-xs">
                 <span className="inline-flex items-center gap-1.5 font-semibold">
                   <Mail className="w-4 h-4 text-amber-500" />
-                  <span>{ADMIN_SMTP_USER_EMAIL}</span>
+                  <span>{settings?.email || ADMIN_SMTP_USER_EMAIL}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5 font-mono tabular-nums">
                   <Phone className="w-4 h-4 text-emerald-500" />
-                  <span>+237 671 063 511 / +237 640 194 505</span>
+                  <span>{`${settings?.phoneSecondary || '+237 671 063 511'} / ${settings?.phoneTertiary || '+237 640 194 505'}`}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <QrCode className="w-4 h-4 text-sky-500" />

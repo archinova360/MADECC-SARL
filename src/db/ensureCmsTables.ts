@@ -108,6 +108,12 @@ const DEFAULT_ROUTES_CONFIG = [
   { path: '/construction-cost-guide', pageGroup: 'services', title: 'Cameroon Construction Cost Guide', metaDescription: 'Market unit rates for structural materials and labour in Cameroon.', priority: '0.8', changefreq: 'weekly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
   { path: '/tenders', pageGroup: 'services', title: 'Tenders & Procurement', metaDescription: 'Contractor tender opportunities and vendor prequalification.', priority: '0.9', changefreq: 'weekly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
   { path: '/store', pageGroup: 'services', title: 'KRR Bookstore', metaDescription: 'Civil engineering textbooks and study manuals.', priority: '0.9', changefreq: 'daily', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
+  { path: '/blog', pageGroup: 'blog', title: 'Insights & Publications', metaDescription: 'Technical engineering articles, construction research, and project briefings.', priority: '0.8', changefreq: 'weekly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
+  { path: '/faq', pageGroup: 'faq', title: 'Frequently Asked Questions', metaDescription: 'Answers to common client questions about engineering, pricing, and timelines.', priority: '0.8', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
+  { path: '/sustainability', pageGroup: 'sustainability', title: 'Sustainability & ESG', metaDescription: 'Eco-conscious engineering, QHSE compliance, and resilient building practices.', priority: '0.7', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
+  { path: '/request-a-quote', pageGroup: 'services', title: 'Request a Project Quote', metaDescription: 'Submit architectural plans or project parameters for an itemized quotation.', priority: '0.8', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
+  { path: '/schedule-consultation', pageGroup: 'services', title: 'Schedule Consultation', metaDescription: 'Book an engineering or quantity surveying consultation with MADECC GROUP.', priority: '0.8', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
+  { path: '/walkthrough-guide', pageGroup: 'public', title: 'Visitor & Client Walkthrough Guide', metaDescription: 'Interactive guide to navigating MADECC GROUP portals and tools.', priority: '0.7', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
   { path: '/terms', pageGroup: 'legal', title: 'Terms & Conditions', metaDescription: 'Terms of service and civil engineering governance.', priority: '0.7', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
   { path: '/privacy', pageGroup: 'legal', title: 'Privacy Policy', metaDescription: 'Data privacy, session security, and user rights policy.', priority: '0.7', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
   { path: '/safety', pageGroup: 'legal', title: 'Health & Safety (QHSE)', metaDescription: 'Workplace safety and environmental compliance directive.', priority: '0.7', changefreq: 'monthly', robotsIndex: true, robotsFollow: true, includeInSitemap: true },
@@ -136,6 +142,11 @@ export async function ensureCmsTables(): Promise<void> {
       ALTER TABLE page_contents ADD COLUMN IF NOT EXISTS approved_by TEXT;
       ALTER TABLE page_contents ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITHOUT TIME ZONE;
       ALTER TABLE page_contents ADD COLUMN IF NOT EXISTS last_publish_error TEXT;
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS image_alt TEXT;
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS gallery_images JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS publish_status TEXT DEFAULT 'PUBLISHED';
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS image_alt TEXT;
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'PUBLISHED';
     `);
 
     await client.query(`

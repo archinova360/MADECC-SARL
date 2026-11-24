@@ -7,8 +7,7 @@ import {
   OFFICIAL_PAYMENT_CONFIG,
   STANDARD_RECEIPT_FEE_XAF,
   TARGET_OFFICIAL_DOMAIN,
-  isCurrentUserAdmin,
-  isReceiptPaid
+  verifyServerReceiptDownloadAllowed
 } from './paymentDomain';
 
 export interface BuyerHandoverOptions {
@@ -17,7 +16,6 @@ export interface BuyerHandoverOptions {
   buyerDomain?: string;
   sellerName?: string;
   sellerEmail?: string;
-  bypassPaymentGate?: boolean;
 }
 
 export function generateBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): jsPDF {
@@ -475,12 +473,9 @@ export function forceDownloadBuyerHandoverManualPdf(options: BuyerHandoverOption
   doc.save('Website_Buyer_Brand_Customization_Handover_Manual_A4.pdf');
 }
 
-export function downloadBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): void {
-  if (options.bypassPaymentGate) {
-    forceDownloadBuyerHandoverManualPdf(options);
-    return;
-  }
-  if (!isCurrentUserAdmin() && isReceiptPaid(BUYER_HANDOVER_MANUAL_RECEIPT_NO)) {
+export async function downloadBuyerHandoverManualPdf(options: BuyerHandoverOptions = {}): Promise<void> {
+  const verification = await verifyServerReceiptDownloadAllowed(BUYER_HANDOVER_MANUAL_RECEIPT_NO);
+  if (verification.allowed) {
     forceDownloadBuyerHandoverManualPdf(options);
     return;
   }

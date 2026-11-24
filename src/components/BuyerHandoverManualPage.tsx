@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,8 +30,8 @@ import {
   OFFICIAL_PAYMENT_CONFIG,
   STANDARD_RECEIPT_FEE_XAF,
   TARGET_OFFICIAL_DOMAIN,
-  isCurrentUserAdmin,
-  isReceiptPaid
+  isReceiptPaid,
+  syncReceiptStatusFromServer
 } from '../utils/paymentDomain.ts';
 import { useTheme } from '../lib/ThemeContext.tsx';
 
@@ -51,9 +51,47 @@ export const BuyerHandoverManualPage: React.FC<BuyerHandoverManualPageProps> = (
   const [buyerDomain, setBuyerDomain] = useState('');
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => isReceiptPaid(BUYER_HANDOVER_MANUAL_RECEIPT_NO));
 
-  const isAdminUser = isCurrentUserAdmin();
-  const isUnlocked = isAdminUser || isReceiptPaid(BUYER_HANDOVER_MANUAL_RECEIPT_NO);
+  useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      const rec = await syncReceiptStatusFromServer(BUYER_HANDOVER_MANUAL_RECEIPT_NO);
+      if (active) {
+        setIsUnlocked(
+          Boolean(
+            rec?.isPaid &&
+              rec?.adminConfirmed &&
+              rec?.status === 'ADMIN_CONFIRMED' &&
+              Number(rec?.amount || 0) > 0
+          ) || isReceiptPaid(BUYER_HANDOVER_MANUAL_RECEIPT_NO)
+        );
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const openPaymentGate = () => {
+    window.dispatchEvent(
+      new CustomEvent('madecc:open-manual-payment-gate', {
+        detail: {
+          manualType: 'buyer_handover_manual',
+          options: {
+            buyerName: buyerName.trim() || undefined,
+            buyerCompany: buyerCompany.trim() || undefined,
+            buyerDomain: buyerDomain.trim() || undefined,
+            sellerName: 'Eric Kreboya',
+            sellerEmail: ADMIN_SMTP_USER_EMAIL
+          }
+        }
+      })
+    );
+  };
 
   const mtnMomoNumbers = OFFICIAL_PAYMENT_CONFIG?.mtnMomoNumbers || ['671063511', '683316486'];
   const orangeMoneyNumbers = OFFICIAL_PAYMENT_CONFIG?.orangeMoneyNumbers || ['689115595', '640194505'];
@@ -205,7 +243,7 @@ export const BuyerHandoverManualPage: React.FC<BuyerHandoverManualPageProps> = (
                   }`}
                 >
                   {isUnlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                  {isAdminUser ? 'Admin Free Access' : isUnlocked ? 'Unlocked' : `${MANUAL_DOWNLOAD_FEE_XAF} XAF PDF Unlock`}
+                  {isUnlocked ? 'Payment Verified — Unlocked' : `${MANUAL_DOWNLOAD_FEE_XAF} XAF Required Before Download`}
                 </span>
               </div>
 
@@ -222,17 +260,33 @@ export const BuyerHandoverManualPage: React.FC<BuyerHandoverManualPageProps> = (
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   type="button"
+                  disabled={!isUnlocked}
                   onClick={triggerDownload}
-                  className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                  className={`px-6 py-3 rounded-xl font-black text-xs sm:text-sm inline-flex items-center gap-2 transition-all ${
+                    isUnlocked
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 cursor-pointer'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-70'
+                  }`}
                   id="buyer-handover-download-btn"
                 >
-                  <Download className="w-4 h-4" />
+                  {isUnlocked ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4 text-emerald-400" />}
                   <span>
                     {isUnlocked
                       ? 'Download Handover Manual (A4 PDF)'
-                      : `Pay ${MANUAL_DOWNLOAD_FEE_XAF} XAF & Download Handover PDF`}
+                      : 'Download Locked Until Payment Verified'}
                   </span>
                 </button>
+                {!isUnlocked && (
+                  <button
+                    type="button"
+                    onClick={openPaymentGate}
+                    className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                    id="buyer-handover-pay-btn"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay {MANUAL_DOWNLOAD_FEE_XAF} XAF to Unlock PDF</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onNavigateToTab('admin')}
@@ -519,14 +573,31 @@ export const BuyerHandoverManualPage: React.FC<BuyerHandoverManualPageProps> = (
                   <strong>Domain:</strong> <span className="font-mono">{buyerDomain.trim() || '[Target Domain]'}</span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={triggerDownload}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs inline-flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Personalized PDF ({isAdminUser ? 'Admin Free' : `${MANUAL_DOWNLOAD_FEE_XAF} XAF`})</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={!isUnlocked}
+                  onClick={triggerDownload}
+                  className={`px-5 py-2.5 rounded-xl font-black text-xs inline-flex items-center gap-2 whitespace-nowrap shrink-0 ${
+                    isUnlocked
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-70'
+                  }`}
+                >
+                  {isUnlocked ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4 text-emerald-400" />}
+                  <span>{isUnlocked ? 'Download Personalized A4 PDF' : 'Locked (Unpaid)'}</span>
+                </button>
+                {!isUnlocked && (
+                  <button
+                    type="button"
+                    onClick={openPaymentGate}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs inline-flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay {MANUAL_DOWNLOAD_FEE_XAF} XAF</span>
+                  </button>
+                )}
+              </div>
             </div>
           </section>
         )}

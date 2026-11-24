@@ -28,6 +28,8 @@ import { ProjectListSkeleton } from './Skeleton.tsx';
 import HeroVideoPlayer from './HeroVideoPlayer.tsx';
 import { TenantContentService } from '../services/tenantContentService.ts';
 import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 import { FadeIn, StaggerContainer, StaggerItem } from './MotionReveal.tsx';
 import RotatingMovingText from './RotatingMovingText.tsx';
 import {
@@ -76,7 +78,12 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
     }
   ];
 
-  const [cmsPageData, setCmsPageData] = useState<PageContent | null>(null);
+  const {
+    hero: cmsHero,
+    isSectionEnabled,
+    getSection,
+    getCustomSections
+  } = useCmsPage('home');
   const [banners, setBanners] = useState<HeroBanner[]>(tenantBanners);
   const [services, setServices] = useState<Service[]>(tenantProfile.services as unknown as Service[]);
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>(tenantProfile.projects as unknown as Project[]);
@@ -157,9 +164,8 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
     let mounted = true;
     const fetchHomeData = async () => {
       setLoading(true);
-      const [cmsResult, bannersResult, servicesResult, projectsResult, reviewsResult] =
+      const [bannersResult, servicesResult, projectsResult, reviewsResult] =
         await Promise.allSettled([
-          fetch('/api/cms/pages/home').then((r) => (r.ok ? r.json() : null)),
           fetch('/api/banners').then((r) => (r.ok ? r.json() : null)),
           fetch('/api/services').then((r) => (r.ok ? r.json() : null)),
           fetch('/api/projects').then((r) => (r.ok ? r.json() : null)),
@@ -167,20 +173,6 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
         ]);
 
       if (!mounted) return;
-
-      if (cmsResult.status === 'fulfilled' && cmsResult.value?.success) {
-        const cmsData = cmsResult.value;
-        setCmsPageData(cmsData);
-        if (cmsData.seo?.metaTitle) {
-          document.title = cmsData.seo.metaTitle;
-        }
-        if (cmsData.seo?.metaDescription) {
-          const metaDesc = document.querySelector('meta[name="description"]');
-          if (metaDesc) {
-            metaDesc.setAttribute('content', cmsData.seo.metaDescription);
-          }
-        }
-      }
 
       if (bannersResult.status === 'fulfilled' && Array.isArray(bannersResult.value) && bannersResult.value.length > 0) {
         setBanners(bannersResult.value);
@@ -191,7 +183,10 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
       }
 
       if (projectsResult.status === 'fulfilled' && Array.isArray(projectsResult.value)) {
-        setFeaturedProjects(projectsResult.value.slice(0, 3));
+        const visibleProjects = projectsResult.value.filter(
+          (p: Project) => p.publishStatus !== 'DRAFT' && p.publishStatus !== 'UNPUBLISHED'
+        );
+        setFeaturedProjects(visibleProjects.slice(0, 3));
       }
 
       if (reviewsResult.status === 'fulfilled' && Array.isArray(reviewsResult.value)) {
@@ -284,70 +279,140 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
     setCurrentTab('projects');
   };
 
+  const navigateHeroLink = (link: string | undefined, fallbackTab: string) => {
+    const raw = (link || '').trim();
+    if (!raw) {
+      setCurrentTab(fallbackTab);
+      return;
+    }
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('tel:') || raw.startsWith('mailto:')) {
+      window.location.href = raw;
+      return;
+    }
+    const clean = raw.replace(/^\//, '');
+    setCurrentTab(clean || 'home');
+  };
+
+  const isCustomHeroTitle = Boolean(
+    cmsHero?.title &&
+      cmsHero.title.trim() !== '' &&
+      !cmsHero.title.includes("Building Cameroon's") &&
+      !cmsHero.title.includes('MADECC GROUP — Premier')
+  );
+
+  const pillarsSec = getSection('pillars');
+  const blueprintSec = getSection('blueprint');
+  const servicesSec = getSection('services');
+  const workflowSec = getSection('workflow');
+  const projectsSec = getSection('projects');
+  const divisionsSec = getSection('divisions');
+  const testimonialsSec = getSection('testimonials');
+  const faqSec = getSection('faq');
+
+  const displayWhatsapp = settings?.whatsappNumber || settings?.phone || '+237 683 316 486';
+  const waHref = `https://wa.me/${displayWhatsapp.replace(/[^0-9]/g, '')}`;
+  const isCompactLayout = settings?.themeSettings?.homepageLayout === 'compact';
+  const sectionPad = isCompactLayout ? 'py-12' : 'py-20';
+  const customHomeSections = getCustomSections([
+    'hero',
+    'stats',
+    'pillars',
+    'blueprint',
+    'estimator',
+    'services',
+    'workflow',
+    'projects',
+    'divisions',
+    'testimonials',
+    'faq'
+  ]);
+
   return (
     <div className="font-sans text-slate-200 bg-[#0A0A0B] min-h-screen">
       
       {/* ==========================================
           CMS DRIVEN HERO BANNER & VIDEO REEL SECTION
           ========================================== */}
+      {cmsHero?.showHero !== false && (
       <section className="relative min-h-[680px] bg-slate-950 overflow-hidden" id="hero-section">
-        <HeroVideoPlayer config={cmsPageData?.heroConfig} banners={banners}>
+        <HeroVideoPlayer
+          config={cmsHero}
+          banners={banners}
+          disableVideo={Boolean(settings?.themeSettings?.mobileDisableHeroVideo)}
+        >
           <div className="max-w-3xl text-white space-y-6">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 rounded-md">
                 <span className="inline-flex rounded-full h-2 w-2 bg-amber-500" aria-hidden="true" />
-                <Building2 className="w-3.5 h-3.5" /> Construction &amp; Civil Engineering — Cameroon
+                <Building2 className="w-3.5 h-3.5" /> {cmsHero?.eyebrow || 'Construction & Civil Engineering — Cameroon'}
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 rounded-md shadow-sm">
-                <MapPin className="w-3 h-3 text-amber-500" /> Base: {corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}
+                <MapPin className="w-3 h-3 text-amber-500" /> Base: {settings?.officeAddressYaounde || corporateProfile?.displayLocation || 'Yaoundé, Cameroon'}
               </span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white drop-shadow-md">
-              {settings?.siteName || 'MADECC GROUP'} — Building Cameroon’s{' '}
-              <RotatingMovingText 
-                words={[
-                  'Future',
-                  'Modern Skylines',
-                  'Heavy Infrastructure',
-                  'Civil Landmarks',
-                  'Sustainable Tomorrow'
-                ]}
-                highlightClassName="text-amber-400 decoration-amber-500/60 decoration-wavy underline decoration-2 underline-offset-8"
-              />
+              {isCustomHeroTitle ? (
+                cmsHero.title
+              ) : (
+                <>
+                  {settings?.siteName || 'MADECC GROUP'} — Building Cameroon’s{' '}
+                  <RotatingMovingText 
+                    words={[
+                      'Future',
+                      'Modern Skylines',
+                      'Heavy Infrastructure',
+                      'Civil Landmarks',
+                      'Sustainable Tomorrow'
+                    ]}
+                    highlightClassName="text-amber-400 decoration-amber-500/60 decoration-wavy underline decoration-2 underline-offset-8"
+                  />
+                </>
+              )}
             </h1>
 
             <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
-              {settings?.tagline || 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon. Delivered with Eurocode 2 structural rigor and zero compromise.'}
+              {cmsHero?.subtitle || settings?.tagline || 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon. Delivered with Eurocode 2 structural rigor and zero compromise.'}
             </p>
+            {cmsHero?.description && (
+              <p className="text-sm text-slate-300 leading-relaxed max-w-2xl">
+                {cmsHero.description}
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center gap-4 pt-3">
+              {cmsHero?.primaryCta?.visible !== false && (
               <button
                 type="button"
-                onClick={() => setCurrentTab('request-a-quote')}
+                onClick={() => navigateHeroLink(cmsHero?.primaryCta?.link, 'request-a-quote')}
                 className="min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-7 py-3.5 rounded-xl text-sm transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] shadow-lg shadow-amber-500/25 flex items-center gap-2 cursor-pointer"
                 id="hero-cta-quote"
               >
-                Request a Free Quote <ArrowRight className="w-4 h-4" />
+                {cmsHero?.primaryCta?.text || 'Request a Free Quote'} <ArrowRight className="w-4 h-4" />
               </button>
+              )}
 
+              {cmsHero?.secondaryCta?.visible !== false && (
               <button
                 type="button"
-                onClick={() => setCurrentTab('budget-calculator')}
+                onClick={() => navigateHeroLink(cmsHero?.secondaryCta?.link, 'budget-calculator')}
                 className="min-h-[44px] bg-slate-900/90 hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl text-sm border border-slate-700 hover:border-amber-500/60 hover:text-amber-400 transition-[transform,background-color,border-color,color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] flex items-center gap-2 shadow-md cursor-pointer"
                 id="hero-cta-calculator"
               >
-                <Calculator className="w-4 h-4 text-amber-500" /> Calculate Budget (FCFA)
+                <Calculator className="w-4 h-4 text-amber-500" /> {cmsHero?.secondaryCta?.text || 'Calculate Budget (FCFA)'}
               </button>
+              )}
 
+              {cmsHero?.tertiaryCta?.visible !== false && (
               <button
                 type="button"
-                onClick={() => setCurrentTab('schedule-consultation')}
+                onClick={() => navigateHeroLink(cmsHero?.tertiaryCta?.link, 'schedule-consultation')}
                 className="min-h-[44px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
                 id="hero-cta-consultation"
               >
-                Schedule Consultation →
+                {cmsHero?.tertiaryCta?.text || 'Schedule Consultation →'}
               </button>
+              )}
 
               <button
                 type="button"
@@ -370,43 +435,69 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
             {/* Quick Trust Highlights with Interactive Modals */}
             <div className="pt-6 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTechnicalModal('eurocode')}
-                className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
-                title="Click to view Eurocode 2 & BAEL 91 structural standards"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="font-semibold">Eurocode 2 / BAEL 91 Codes</span>
-              </button>
+              {Array.isArray(cmsHero?.trustBadges) && cmsHero.trustBadges.length > 0 ? (
+                cmsHero.trustBadges.map((badge, bIdx) => {
+                  const badgeText = typeof badge === 'string' ? badge : (badge?.text || '');
+                  return (
+                    <button
+                      key={bIdx}
+                      type="button"
+                      onClick={() => {
+                        const low = badgeText.toLowerCase();
+                        if (low.includes('eurocode') || low.includes('bael')) setActiveTechnicalModal('eurocode');
+                        else if (low.includes('boq') || low.includes('price')) setActiveTechnicalModal('boq');
+                        else if (low.includes('cube') || low.includes('concrete')) setActiveTechnicalModal('cube-tests');
+                      }}
+                      className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="font-semibold">{badgeText}</span>
+                    </button>
+                  );
+                })
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTechnicalModal('eurocode')}
+                    className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
+                    title="Click to view Eurocode 2 & BAEL 91 structural standards"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold">Eurocode 2 / BAEL 91 Codes</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTechnicalModal('boq')}
-                className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
-                title="Click to view fixed-price BOQ details"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="font-semibold">Fixed-Price Itemized BOQ</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTechnicalModal('boq')}
+                    className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
+                    title="Click to view fixed-price BOQ details"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold">Fixed-Price Itemized BOQ</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTechnicalModal('cube-tests')}
-                className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
-                title="Click to view 28-day concrete cube crush test certification"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="font-semibold">28-Day Concrete Cube Tests</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTechnicalModal('cube-tests')}
+                    className="group min-h-[44px] flex items-center gap-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 p-2.5 rounded-xl transition-colors text-left text-slate-300 hover:text-white cursor-pointer"
+                    title="Click to view 28-day concrete cube crush test certification"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold">28-Day Concrete Cube Tests</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </HeroVideoPlayer>
       </section>
+      )}
 
       {/* ==========================================
           LIVE PERFORMANCE & STATS TICKER BANNER
           ========================================== */}
+      {isSectionEnabled('stats', true) && (
       <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-y border-amber-500/20 py-8 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
@@ -510,18 +601,20 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           </div>
         </div>
       </section>
+      )}
 
       {/* ==========================================
           ENGINEERING PILLARS & VALUE PROPOSITION
           ========================================== */}
-      <section className="py-16 bg-[#0E0E10] border-b border-slate-800/80">
+      {isSectionEnabled('pillars', true) && (
+      <section className={`${sectionPad} bg-[#0E0E10] border-b border-slate-800/80`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <FadeIn className="text-center max-w-3xl mx-auto mb-12 space-y-2">
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Why Property Owners Choose {tenant.name}</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Disciplined Engineering. Total Cost Transparency.</h2>
+            <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Why Property Owners Choose {settings?.siteName || tenant.name}</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{pillarsSec?.title || 'Disciplined Engineering. Total Cost Transparency.'}</h2>
             <p className="text-xs sm:text-sm text-slate-400">
-              We eliminate the common pitfalls of construction in Cameroon—untested concrete mixes, unverified soil bearing, unauthorized price inflation, and absent site supervisors.
+              {pillarsSec?.subtitle || 'We eliminate the common pitfalls of construction in Cameroon—untested concrete mixes, unverified soil bearing, unauthorized price inflation, and absent site supervisors.'}
             </p>
           </FadeIn>
 
@@ -559,12 +652,20 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
         </div>
       </section>
+      )}
 
       {/* ==========================================
           INTERACTIVE BLUEPRINT & CODE INSPECTOR
           ========================================== */}
-      <section className="py-16 bg-[#0A0A0B] border-b border-slate-800/80">
+      {isSectionEnabled('blueprint', true) && (
+      <section className={`${sectionPad} bg-[#0A0A0B] border-b border-slate-800/80`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {blueprintSec?.title && (
+            <div className="mb-6 text-center max-w-2xl mx-auto">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white">{blueprintSec.title}</h2>
+              {blueprintSec.subtitle && <p className="text-xs sm:text-sm text-slate-400 mt-1">{blueprintSec.subtitle}</p>}
+            </div>
+          )}
           <Suspense fallback={<div className="min-h-[420px] rounded-3xl bg-slate-900/60 border border-slate-800" />}>
             <FadeIn>
               <InteractiveBlueprintPreview onNavigateToTab={setCurrentTab} />
@@ -572,11 +673,13 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           </Suspense>
         </div>
       </section>
+      )}
 
       {/* ==========================================
           INTERACTIVE HOMEPAGE COST ESTIMATOR WIDGET
           ========================================== */}
-      <section className="cv-auto py-20 bg-gradient-to-b from-[#0A0A0B] via-[#0D0D10] to-[#0A0A0B] border-b border-slate-800/80" id="instant-cost-estimator">
+      {isSectionEnabled('estimator', true) && (
+      <section className={`cv-auto ${sectionPad} bg-gradient-to-b from-[#0A0A0B] via-[#0D0D10] to-[#0A0A0B] border-b border-slate-800/80`} id="instant-cost-estimator">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Suspense fallback={<div className="min-h-[520px] rounded-3xl bg-slate-900/60 border border-slate-800" />}>
             <FadeIn>
@@ -585,18 +688,20 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           </Suspense>
         </div>
       </section>
+      )}
 
       {/* ==========================================
           OUR CORE CONSTRUCTION & ENTERPRISE SERVICES
           ========================================== */}
-      <section className="cv-auto py-24 bg-[#0A0A0B]" id="services-section">
+      {isSectionEnabled('services', true) && (
+      <section className={`cv-auto ${sectionPad} bg-[#0A0A0B]`} id="services-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="max-w-3xl mx-auto text-center space-y-3 mb-16">
             <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Comprehensive Solutions</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Our Construction & Enterprise Services</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{servicesSec?.title || 'Our Construction & Enterprise Services'}</h2>
             <p className="text-slate-400 leading-relaxed text-sm">
-              MADECC GROUP provides end-to-end engineering, design-build execution, and commercial advisory across Cameroon.
+              {servicesSec?.subtitle || `${settings?.siteName || 'MADECC GROUP'} provides end-to-end engineering, design-build execution, and commercial advisory across Cameroon.`}
             </p>
           </div>
 
@@ -675,7 +780,14 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             </button>
           </div>
 
+          {isSectionEnabled('divisions', true) && (
           <div className="mt-16 pt-16 border-t border-slate-800/80">
+            {divisionsSec?.title && (
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-extrabold text-white">{divisionsSec.title}</h2>
+                {divisionsSec.subtitle && <p className="text-sm text-slate-400 mt-1">{divisionsSec.subtitle}</p>}
+              </div>
+            )}
             <CorporateDivisionsDirectory
               divisions={divisions}
               opportunities={opportunities}
@@ -683,21 +795,24 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
               theme="dark"
             />
           </div>
+          )}
 
         </div>
       </section>
+      )}
 
       {/* ==========================================
           STRUCTURED 6-STEP DELIVERY WORKFLOW
           ========================================== */}
-      <section className="py-20 bg-[#0E0E11] border-y border-slate-800/80">
+      {isSectionEnabled('workflow', true) && (
+      <section className={`${sectionPad} bg-[#0E0E11] border-y border-slate-800/80`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-2">
             <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Execution Protocol</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Our 6-Step Project Delivery Methodology</h2>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{workflowSec?.title || 'Our 6-Step Project Delivery Methodology'}</h2>
             <p className="text-xs sm:text-sm text-slate-400">
-              A disciplined, transparent process that eliminates uncertainty and ensures adherence to budget, schedule, and safety.
+              {workflowSec?.subtitle || 'A disciplined, transparent process that eliminates uncertainty and ensures adherence to budget, schedule, and safety.'}
             </p>
           </div>
 
@@ -746,19 +861,21 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
         </div>
       </section>
+      )}
 
       {/* ==========================================
           FEATURED PROJECTS PORTFOLIO
           ========================================== */}
-      <section className="cv-auto py-24 bg-[#0A0A0B]" id="featured-projects">
+      {isSectionEnabled('projects', true) && (
+      <section className={`cv-auto ${sectionPad} bg-[#0A0A0B]`} id="featured-projects">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-16">
             <div className="space-y-2">
               <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Structural Case Studies</span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Featured Projects in Cameroon</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{projectsSec?.title || 'Featured Projects in Cameroon'}</h2>
               <p className="text-slate-400 leading-relaxed text-sm max-w-xl">
-                A selection of contemporary residential villas, apartment complexes, and commercial facilities constructed across Cameroon.
+                {projectsSec?.subtitle || 'A selection of contemporary residential villas, apartment complexes, and commercial facilities constructed across Cameroon.'}
               </p>
             </div>
             <button
@@ -786,7 +903,7 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                       src={getOptimizedImageUrl(project.image, 640, 75)}
                       srcSet={`${getOptimizedImageUrl(project.image, 400, 70)} 400w, ${getOptimizedImageUrl(project.image, 640, 75)} 640w, ${getOptimizedImageUrl(project.image, 900, 80)} 900w`}
                       sizes="(max-width: 768px) 100vw, 400px"
-                      alt={project.title}
+                      alt={project.imageAlt || project.title}
                       width={400}
                       height={224}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
@@ -834,11 +951,13 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
           )}
         </div>
       </section>
+      )}
 
       {/* ==========================================
           REVIEWS & TESTIMONIALS + SUBMISSION
           ========================================== */}
-      <section className="cv-auto py-24 bg-[#0E0E10]/80 border-y border-slate-800/80" id="testimonials-section">
+      {isSectionEnabled('testimonials', true) && (
+      <section className={`cv-auto ${sectionPad} bg-[#0E0E10]/80 border-y border-slate-800/80`} id="testimonials-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
@@ -847,9 +966,9 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
             <div className="lg:col-span-7 space-y-8">
               <div className="space-y-2">
                 <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Client Feedback</span>
-                <h2 className="text-3xl font-extrabold text-white tracking-tight">Verified Client Reviews</h2>
+                <h2 className="text-3xl font-extrabold text-white tracking-tight">{testimonialsSec?.title || 'Verified Client Reviews'}</h2>
                 <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
-                  Client trust is our primary corporate asset. Below are verified feedback entries from completed construction handovers in Cameroon.
+                  {testimonialsSec?.subtitle || 'Client trust is our primary corporate asset. Below are verified feedback entries from completed construction handovers in Cameroon.'}
                 </p>
               </div>
 
@@ -1099,18 +1218,20 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
 
         </div>
       </section>
+      )}
 
       {/* ==========================================
           SEO FAQ SECTION (CAMEROON BUILDING CODES)
           ========================================== */}
-      <section className="cv-auto py-24 bg-[#0A0A0C]" id="seo-faq-section">
+      {isSectionEnabled('faq', true) && (
+      <section className={`cv-auto ${sectionPad} bg-[#0A0A0C]`} id="seo-faq-section">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center space-y-3 mb-16">
             <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Expert Answers & Guidelines</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Frequently Asked Questions</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{faqSec?.title || 'Frequently Asked Questions'}</h2>
             <p className="text-slate-400 leading-relaxed text-sm max-w-2xl mx-auto">
-              Answers regarding construction permits in Cameroon, soil testing, cost per square metre, concrete mix design, and diaspora project supervision.
+              {faqSec?.subtitle || 'Answers regarding construction permits in Cameroon, soil testing, cost per square metre, concrete mix design, and diaspora project supervision.'}
             </p>
           </div>
 
@@ -1195,18 +1316,22 @@ export default function Home({ setCurrentTab, setSelectedProjectId, currentTenan
                 Contact Our Engineering Office <ArrowRight className="w-3.5 h-3.5" />
               </button>
               <a 
-                href="https://wa.me/237683316486" 
+                href={waHref} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="min-h-[44px] inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider py-3 px-6 rounded-xl transition-colors"
               >
-                Chat on WhatsApp (+237 683 31 64 86)
+                Chat on WhatsApp ({displayWhatsapp})
               </a>
             </div>
           </div>
 
         </div>
       </section>
+      )}
+
+      {/* CMS Custom Sections added via Pages & Sections Studio */}
+      <CmsCustomSections sections={customHomeSections} onNavigateToTab={setCurrentTab} />
 
       {/* ==========================================
           INTERACTIVE TECHNICAL STANDARD MODALS

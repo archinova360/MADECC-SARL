@@ -80,7 +80,8 @@ import {
   ExternalLink,
   FileDown,
   Smartphone,
-  Compass
+  Compass,
+  Lock
 } from 'lucide-react';
 import AdminSalesHub from './AdminSalesHub.tsx';
 import { 
@@ -365,6 +366,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   const [projStatus, setProjStatus] = useState<'planning' | 'in-progress' | 'completed' | 'on-hold'>('planning');
   const [projCategory, setProjCategory] = useState<string>('');
   const [projImage, setProjImage] = useState('');
+  const [projImageAlt, setProjImageAlt] = useState('');
+  const [projGalleryImages, setProjGalleryImages] = useState<string[]>([]);
+  const [projGalleryInput, setProjGalleryInput] = useState('');
+  const [projPublishStatus, setProjPublishStatus] = useState<'PUBLISHED' | 'DRAFT' | 'UNPUBLISHED'>('PUBLISHED');
   const [projVideoUrl, setProjVideoUrl] = useState('');
 
   // Form states - Milestones
@@ -378,9 +383,14 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
   const [blogTitle, setBlogTitle] = useState('');
   const [blogContent, setBlogContent] = useState('');
   const [blogImage, setBlogImage] = useState('');
+  const [blogImageAlt, setBlogImageAlt] = useState('');
+  const [blogStatus, setBlogStatus] = useState<'PUBLISHED' | 'DRAFT' | 'UNPUBLISHED'>('PUBLISHED');
   const [blogVideoUrl, setBlogVideoUrl] = useState('');
   const [blogSummary, setBlogSummary] = useState('');
   const [blogCategory, setBlogCategory] = useState('');
+
+  // Shared Admin Media Library Picker target
+  const [showAdminMediaPicker, setShowAdminMediaPicker] = useState<null | 'projImage' | 'projGallery' | 'blogImage'>(null);
 
   // Shared file upload state
   const [uploadingFile, setUploadingFile] = useState<boolean>(false);
@@ -434,10 +444,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (150MB limit)
-    const maxBytes = 150 * 1024 * 1024;
+    // Check size (10 GB direct cloud limit)
+    const maxBytes = 10 * 1024 * 1024 * 1024;
     if (file.size > maxBytes) {
-      alert(`File is too large! Maximum limit is 150MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`);
+      showToast(`File is too large! Maximum direct upload limit is 10 GB. Your file is ${(file.size / (1024 * 1024 * 1024)).toFixed(2)} GB.`, 'error');
       return;
     }
 
@@ -528,10 +538,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         receiptsRes,
         analyticsRes
       ] = await Promise.all([
-        safeFetch('/api/projects'),
+        safeFetch('/api/projects?admin=true', { headers }),
         safeFetch('/api/categories'),
         safeFetch('/api/reviews/all', { headers }),
-        safeFetch('/api/blogs'),
+        safeFetch('/api/blogs?admin=true', { headers }),
         safeFetch('/api/appointments', { headers }),
         safeFetch('/api/contacts', { headers }),
         safeFetch('/api/subscribers', { headers }),
@@ -1167,7 +1177,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     className="w-full bg-slate-900 hover:bg-slate-800 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
                   >
                     <Download className="w-4 h-4 text-amber-400" />
-                    Navigation Manual (A4 PDF — Confirm Admin Key/Email)
+                    Navigation Manual (A4 PDF — 999 XAF)
                   </button>
                 </div>
               </form>
@@ -1208,6 +1218,9 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         status: projStatus,
         categoryId: projCategory ? parseInt(projCategory) : null,
         image: ensureAbsoluteUrl(projImage),
+        imageAlt: projImageAlt.trim() || null,
+        galleryImages: projGalleryImages.map(u => ensureAbsoluteUrl(u)).filter(Boolean),
+        publishStatus: projPublishStatus,
         videoUrl: ensureAbsoluteUrl(projVideoUrl) || null,
       };
 
@@ -1254,6 +1267,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     setProjStatus(p.status);
     setProjCategory(p.categoryId ? p.categoryId.toString() : '');
     setProjImage(p.image);
+    setProjImageAlt(p.imageAlt || '');
+    setProjGalleryImages(Array.isArray(p.galleryImages) ? p.galleryImages : []);
+    setProjGalleryInput('');
+    setProjPublishStatus((p.publishStatus as any) || 'PUBLISHED');
     setProjVideoUrl(p.videoUrl || '');
     setProjImageMode(p.image && p.image.startsWith('/uploads') ? 'upload' : 'url');
     setProjVideoMode(p.videoUrl && p.videoUrl.startsWith('/uploads') ? 'upload' : 'url');
@@ -1291,6 +1308,10 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     setProjStatus('planning');
     setProjCategory('');
     setProjImage('');
+    setProjImageAlt('');
+    setProjGalleryImages([]);
+    setProjGalleryInput('');
+    setProjPublishStatus('PUBLISHED');
     setProjVideoUrl('');
     setProjImageMode('url');
     setProjVideoMode('url');
@@ -1419,6 +1440,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     setBlogTitle('');
     setBlogContent('');
     setBlogImage('');
+    setBlogImageAlt('');
+    setBlogStatus('PUBLISHED');
     setBlogVideoUrl('');
     setBlogSummary('');
     setBlogCategory('');
@@ -1431,6 +1454,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     setBlogTitle(b.title);
     setBlogContent(b.content);
     setBlogImage(b.image);
+    setBlogImageAlt(b.imageAlt || '');
+    setBlogStatus((b.status as any) || 'PUBLISHED');
     setBlogVideoUrl(b.videoUrl || '');
     setBlogSummary(b.summary);
     setBlogCategory(b.category);
@@ -1447,6 +1472,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         title: blogTitle,
         content: blogContent,
         image: ensureAbsoluteUrl(blogImage),
+        imageAlt: blogImageAlt.trim() || null,
+        status: blogStatus,
         videoUrl: ensureAbsoluteUrl(blogVideoUrl) || null,
         summary: blogSummary,
         category: blogCategory
@@ -2066,11 +2093,11 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
     },
     {
       id: 'cms-group',
-      title: '08. Website CMS & Publishing',
+      title: '08. Website Content Manager',
       icon: Globe,
       items: [
-        { id: 'cms-overview', label: 'Website Overview & Status', icon: Globe },
-        { id: 'cms-pages', label: 'Page Builder & Hero Studio', icon: Globe },
+        { id: 'cms-overview', label: 'Website Content Overview', icon: Globe },
+        { id: 'cms-pages', label: 'Pages & Sections Studio', icon: Globe },
         { id: 'cms-editor', label: 'Section Content Editor', icon: Edit3 },
         { id: 'cms-publishing', label: 'Publishing & Staging Queue', icon: Layers },
         { id: 'cms-human-review', label: 'Human Content Review', icon: ShieldCheck },
@@ -2089,7 +2116,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
         { id: 'cms-sitemap', label: 'Sitemap & Route Architecture', icon: Network },
         { id: 'cms-announcements', label: 'Visitor Announcements', icon: Megaphone },
         { id: 'website-optimizer', label: 'Live Website Optimizer & Customizer', icon: Sparkles },
-        { id: 'cms-settings', label: 'Global Site Branding & Settings', icon: Settings }
+        { id: 'cms-settings', label: 'Appearance, Branding & Settings', icon: Settings }
       ]
     },
     {
@@ -2665,14 +2692,14 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       onClick={() => downloadWebsiteNavigationGuidePdf()}
                       className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white font-bold text-xs border border-amber-500/40 rounded-xl flex items-center gap-2 transition-all shadow"
                     >
-                      <Download className="w-4 h-4 text-amber-400" /> Navigation Manual (A4 PDF — Admin Free)
+                      <Download className="w-4 h-4 text-amber-400" /> Navigation Manual (A4 PDF — 999 XAF)
                     </button>
                     <button
                       onClick={() => downloadBuyerHandoverManualPdf({ sellerEmail: ADMIN_SMTP_USER_EMAIL })}
                       className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white font-bold text-xs border border-emerald-500/40 rounded-xl flex items-center gap-2 transition-all shadow"
                       id="admin-top-download-buyer-handover-btn"
                     >
-                      <Download className="w-4 h-4 text-emerald-400" /> Buyer Brand Handover Manual (PDF — Admin Free)
+                      <Download className="w-4 h-4 text-emerald-400" /> Buyer Brand Handover Manual (PDF — 999 XAF)
                     </button>
                     <button
                       onClick={() => setActiveAdminTab('boq-studio')}
@@ -2745,7 +2772,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                     <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">07. Documents &amp; Manuals</span>
                     <h3 className="text-sm font-extrabold text-white">Manuals &amp; Handover Guides</h3>
                     <p className="text-[11px] text-slate-400">
-                      A4 Navigation Manual &amp; Buyer Brand Handover (Admin Free)
+                      A4 Navigation Manual &amp; Buyer Brand Handover (999 XAF Paid Gate)
                     </p>
                   </div>
                   <FileDown className="w-5 h-5 text-emerald-400 shrink-0" />
@@ -2866,7 +2893,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                         { title: 'Client Management', desc: 'Register clients, credentials & project assignments', tab: 'erp-clients', icon: Users, color: 'text-emerald-400' },
                         { title: 'Client Portal Access', desc: 'Portal permissions, progress media & preview', tab: 'erp-portal', icon: ShieldCheck, color: 'text-emerald-400' },
                         { title: 'Payment Confirmations', desc: 'Approve 999 & 2,199 XAF MoMo/OM unlocks', tab: 'payment-confirmations', icon: CreditCard, color: 'text-amber-400' },
-                        { title: 'Manuals & Handover Guides', desc: 'Navigation & Buyer Handover PDFs (Admin Free)', tab: 'manuals-hub', icon: FileDown, color: 'text-emerald-400' },
+                        { title: 'Manuals & Handover Guides', desc: 'Navigation & Buyer Handover PDFs (999 XAF Paid)', tab: 'manuals-hub', icon: FileDown, color: 'text-emerald-400' },
                         { title: 'Global Site Customizer', desc: 'Identity, Mbankolo HQ, contacts & theme', tab: 'cms-settings', icon: Settings, color: 'text-amber-400' },
                         { title: 'Page Builder Studio', desc: 'Frontend pages, heroes & custom content', tab: 'cms-pages', icon: Globe, color: 'text-sky-400' },
                         { title: 'Services CMS', desc: 'Manage civil & construction services', tab: 'services-cms', icon: Layers, color: 'text-emerald-400' },
@@ -3027,8 +3054,8 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       <span className="text-[10px] font-mono font-bold uppercase text-amber-400">
                         4-Page A4 Operational Guide • v4.0
                       </span>
-                      <span className="font-mono text-xs font-bold text-emerald-400">
-                        999 XAF (Admin Free)
+                      <span className="font-mono text-xs font-bold text-amber-400">
+                        999 XAF (Paid Verification Required)
                       </span>
                     </div>
                     <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
@@ -3041,20 +3068,47 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   </div>
 
                   <div className="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        downloadWebsiteNavigationGuidePdf({
-                          generatedBy: dbUser?.name || dbUser?.email || 'MADECC Administrator',
-                          bypassPaymentGate: true
-                        });
-                        showToast('Generated Navigation Manual (A4 PDF) — Admin Free download.', 'success');
-                      }}
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download A4 PDF (Admin Free)</span>
-                    </button>
+                    {(() => {
+                      const navPaid = paymentRequestsQueue.some(
+                        (r) =>
+                          r.receiptNo === 'RCP-NAV-MANUAL-999' &&
+                          r.isPaid &&
+                          r.adminConfirmed &&
+                          r.status === 'ADMIN_CONFIRMED' &&
+                          Number(r.amount || 0) > 0
+                      );
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!navPaid}
+                            onClick={() => {
+                              downloadWebsiteNavigationGuidePdf({
+                                generatedBy: dbUser?.name || dbUser?.email || 'MADECC Administrator'
+                              });
+                            }}
+                            className={`flex-1 px-4 py-2.5 rounded-xl font-black text-xs inline-flex items-center justify-center gap-2 ${
+                              navPaid
+                                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-70'
+                            }`}
+                          >
+                            {navPaid ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4 text-amber-400" />}
+                            <span>{navPaid ? 'Download A4 PDF' : 'Locked (Payment Required)'}</span>
+                          </button>
+                          {!navPaid && (
+                            <button
+                              type="button"
+                              onClick={() => downloadWebsiteNavigationGuidePdf({ generatedBy: dbUser?.name || dbUser?.email || 'MADECC Administrator' })}
+                              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span>Pay 999 XAF</span>
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                     <button
                       type="button"
                       onClick={() => setCurrentTab('navigation-manual')}
@@ -3074,7 +3128,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                         4-Page A4 Transfer Dossier • 2026
                       </span>
                       <span className="font-mono text-xs font-bold text-emerald-400">
-                        999 XAF (Admin Free)
+                        999 XAF (Paid Verification Required)
                       </span>
                     </div>
                     <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
@@ -3114,24 +3168,59 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   </div>
 
                   <div className="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        downloadBuyerHandoverManualPdf({
-                          buyerName: handoverBuyerName.trim() || undefined,
-                          buyerCompany: handoverBuyerCompany.trim() || undefined,
-                          buyerDomain: handoverBuyerDomain.trim() || undefined,
-                          sellerName: dbUser?.name || 'Eric Kreboya',
-                          sellerEmail: ADMIN_SMTP_USER_EMAIL,
-                          bypassPaymentGate: true
-                        });
-                        showToast('Generated Buyer Brand Handover Manual (PDF) — Admin Free download.', 'success');
-                      }}
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs inline-flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download Handover PDF (Admin Free)</span>
-                    </button>
+                    {(() => {
+                      const handoverPaid = paymentRequestsQueue.some(
+                        (r) =>
+                          r.receiptNo === 'RCP-BUYER-HANDOVER-999' &&
+                          r.isPaid &&
+                          r.adminConfirmed &&
+                          r.status === 'ADMIN_CONFIRMED' &&
+                          Number(r.amount || 0) > 0
+                      );
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!handoverPaid}
+                            onClick={() => {
+                              downloadBuyerHandoverManualPdf({
+                                buyerName: handoverBuyerName.trim() || undefined,
+                                buyerCompany: handoverBuyerCompany.trim() || undefined,
+                                buyerDomain: handoverBuyerDomain.trim() || undefined,
+                                sellerName: dbUser?.name || 'Eric Kreboya',
+                                sellerEmail: ADMIN_SMTP_USER_EMAIL
+                              });
+                            }}
+                            className={`flex-1 px-4 py-2.5 rounded-xl font-black text-xs inline-flex items-center justify-center gap-2 ${
+                              handoverPaid
+                                ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-70'
+                            }`}
+                          >
+                            {handoverPaid ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4 text-emerald-400" />}
+                            <span>{handoverPaid ? 'Download Handover PDF' : 'Locked (Payment Required)'}</span>
+                          </button>
+                          {!handoverPaid && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                downloadBuyerHandoverManualPdf({
+                                  buyerName: handoverBuyerName.trim() || undefined,
+                                  buyerCompany: handoverBuyerCompany.trim() || undefined,
+                                  buyerDomain: handoverBuyerDomain.trim() || undefined,
+                                  sellerName: dbUser?.name || 'Eric Kreboya',
+                                  sellerEmail: ADMIN_SMTP_USER_EMAIL
+                                })
+                              }
+                              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span>Pay 999 XAF</span>
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                     <button
                       type="button"
                       onClick={() => setCurrentTab('buyer-handover-manual')}
@@ -3659,16 +3748,23 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                             </td>
                             <td className="p-4 font-medium text-slate-300">{p.location}</td>
                             <td className="p-4 font-mono font-bold text-white">
-                              {p.budget ? `£${Number(p.budget).toLocaleString()}` : 'TBA'}
+                              {p.budget ? `${Number(p.budget).toLocaleString()} ${p.currency_code || p.currency || 'XAF'}` : 'TBA'}
                             </td>
                             <td className="p-4">
-                              <span className={`inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider text-white ${
-                                p.status === 'completed' ? 'bg-emerald-600' :
-                                p.status === 'in-progress' ? 'bg-amber-500 text-slate-950' :
-                                'bg-indigo-600'
-                              }`}>
-                                {p.status}
-                              </span>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider text-white ${
+                                  p.status === 'completed' ? 'bg-emerald-600' :
+                                  p.status === 'in-progress' ? 'bg-amber-500 text-slate-950' :
+                                  'bg-indigo-600'
+                                }`}>
+                                  {p.status}
+                                </span>
+                                {p.publishStatus && p.publishStatus !== 'PUBLISHED' && (
+                                  <span className="inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-mono font-bold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                    {p.publishStatus}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-4 text-right space-x-2">
                               <button
@@ -3769,7 +3865,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Budget Value (£)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Budget Value (XAF)</label>
                         <input
                           type="number"
                           className="w-full bg-slate-955 border border-slate-800 focus:border-amber-500 rounded py-2 px-3 text-white outline-none"
@@ -3780,7 +3876,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Start Date</label>
                         <input
@@ -3802,7 +3898,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Current Status</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Execution Status</label>
                         <select
                           className="w-full bg-slate-955 border border-slate-800 rounded py-2 px-3 text-slate-300 outline-none"
                           value={projStatus}
@@ -3814,6 +3910,19 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                           <option value="on-hold">On-Hold</option>
                         </select>
                       </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Public Visibility</label>
+                        <select
+                          className="w-full bg-slate-955 border border-slate-800 rounded py-2 px-3 text-slate-300 outline-none"
+                          value={projPublishStatus}
+                          onChange={(e) => setProjPublishStatus(e.target.value as any)}
+                        >
+                          <option value="PUBLISHED">PUBLISHED (Live)</option>
+                          <option value="DRAFT">DRAFT (Hidden)</option>
+                          <option value="UNPUBLISHED">UNPUBLISHED (Hidden)</option>
+                        </select>
+                      </div>
                     </div>
                     {/* Media Assets Manager */}
                     <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 space-y-4">
@@ -3822,7 +3931,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Cover Image Upload/Link */}
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center gap-2">
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Cover Image</label>
                             <div className="flex gap-1 bg-slate-950 p-0.5 rounded-md border border-slate-800">
                               <button
@@ -3842,6 +3951,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                                 }`}
                               >
                                 Upload
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowAdminMediaPicker('projImage')}
+                                className="text-[9px] px-2 py-0.5 rounded font-bold uppercase bg-slate-800 text-amber-400 hover:bg-slate-700"
+                              >
+                                Library
                               </button>
                             </div>
                           </div>
@@ -3875,6 +3991,14 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                               </div>
                             </div>
                           )}
+
+                          <input
+                            type="text"
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded py-1.5 px-3 text-white text-xs outline-none"
+                            value={projImageAlt}
+                            onChange={(e) => setProjImageAlt(e.target.value)}
+                            placeholder="Cover image alt text (Accessibility & SEO)"
+                          />
                         </div>
 
                         {/* Video Upload/Link */}
@@ -3927,12 +4051,64 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                                 {projVideoUrl ? (
                                   <span className="text-[10px] text-amber-400 font-mono truncate block" title={projVideoUrl}>✓ Loaded: {projVideoUrl.split('/').pop()}</span>
                                 ) : (
-                                  <span className="text-[10px] text-slate-500 block">No file chosen (Max 150MB)</span>
+                                  <span className="text-[10px] text-slate-500 block">No file chosen (Up to 10 GB direct cloud upload)</span>
                                 )}
                               </div>
                             </div>
                           )}
                         </div>
+                      </div>
+
+                      {/* Project Gallery Photos Editor */}
+                      <div className="pt-2 border-t border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Project Photo Gallery ({projGalleryImages.length})</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowAdminMediaPicker('projGallery')}
+                            className="text-[10px] px-2.5 py-1 rounded bg-slate-800 text-amber-400 hover:bg-slate-700 font-bold"
+                          >
+                            + Add from Library
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            value={projGalleryInput}
+                            onChange={e => setProjGalleryInput(e.target.value)}
+                            placeholder="Paste extra gallery image URL..."
+                            className="flex-1 bg-slate-900 border border-slate-800 rounded py-1.5 px-3 text-white text-xs outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const trimmed = projGalleryInput.trim();
+                              if (trimmed) {
+                                setProjGalleryImages(prev => [...prev, trimmed]);
+                                setProjGalleryInput('');
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs"
+                          >
+                            Add
+                          </button>
+                        </div>
+                        {projGalleryImages.length > 0 && (
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 pt-1">
+                            {projGalleryImages.map((gUrl, gIdx) => (
+                              <div key={gIdx} className="relative rounded-lg overflow-hidden border border-slate-800 bg-slate-900">
+                                <img src={getOptimizedImageUrl(gUrl)} alt={`Gallery ${gIdx + 1}`} className="w-full h-16 object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => setProjGalleryImages(prev => prev.filter((_, i) => i !== gIdx))}
+                                  className="absolute top-1 right-1 p-0.5 bg-rose-600 text-white rounded-full"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Live Visual Media Preview Card */}
@@ -4073,7 +4249,12 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                 <div key={`blog-${post.id}`} className="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
-                      <span className="text-[10px] bg-slate-800 text-amber-500 font-bold uppercase tracking-wider px-2 py-0.5 rounded font-mono">{post.category}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-slate-800 text-amber-500 font-bold uppercase tracking-wider px-2 py-0.5 rounded font-mono">{post.category}</span>
+                        {post.status && post.status !== 'PUBLISHED' && (
+                          <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold uppercase tracking-wider px-2 py-0.5 rounded font-mono">{post.status}</span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-white text-base leading-tight line-clamp-1">{post.title}</h3>
                       <span className="block text-[10px] text-slate-500 font-mono">Published: {formatDateTime(post.publishedAt)}</span>
                     </div>
@@ -4113,7 +4294,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                   <h3 className="font-extrabold text-xl text-white border-b border-slate-800 pb-3">Draft Intelligence Briefing</h3>
 
                   <form onSubmit={handleSaveBlog} className="space-y-4 text-sm">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Article Title</label>
                         <input
@@ -4136,6 +4317,19 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                           placeholder="e.g. Engineering / Sustainability"
                           required
                         />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Publish Status</label>
+                        <select
+                          className="w-full bg-slate-955 border border-slate-800 rounded py-2 px-3 text-slate-200 outline-none"
+                          value={blogStatus}
+                          onChange={(e) => setBlogStatus(e.target.value as any)}
+                        >
+                          <option value="PUBLISHED">PUBLISHED (Live)</option>
+                          <option value="DRAFT">DRAFT (Hidden)</option>
+                          <option value="UNPUBLISHED">UNPUBLISHED (Hidden)</option>
+                        </select>
                       </div>
                     </div>
 
@@ -4170,7 +4364,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Cover Image Upload/Link */}
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center gap-2">
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Cover Image</label>
                             <div className="flex gap-1 bg-slate-950 p-0.5 rounded-md border border-slate-800">
                               <button
@@ -4190,6 +4384,13 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                                 }`}
                               >
                                 Upload
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowAdminMediaPicker('blogImage')}
+                                className="text-[9px] px-2 py-0.5 rounded font-bold uppercase bg-slate-800 text-amber-400 hover:bg-slate-700"
+                              >
+                                Library
                               </button>
                             </div>
                           </div>
@@ -4223,6 +4424,14 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                               </div>
                             </div>
                           )}
+
+                          <input
+                            type="text"
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded py-1.5 px-3 text-white text-xs outline-none"
+                            value={blogImageAlt}
+                            onChange={(e) => setBlogImageAlt(e.target.value)}
+                            placeholder="Article image alt text (Accessibility & SEO)"
+                          />
                         </div>
 
                         {/* Video Upload/Link */}
@@ -4275,7 +4484,7 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
                                 {blogVideoUrl ? (
                                   <span className="text-[10px] text-amber-400 font-mono truncate block" title={blogVideoUrl}>✓ Loaded: {blogVideoUrl.split('/').pop()}</span>
                                 ) : (
-                                  <span className="text-[10px] text-slate-500 block">No file chosen (Max 150MB)</span>
+                                  <span className="text-[10px] text-slate-500 block">No file chosen (Up to 10 GB direct cloud upload)</span>
                                 )}
                               </div>
                             </div>
@@ -6882,6 +7091,41 @@ export default function Admin({ dbUser, setDbUser, setCurrentTab, setVerificatio
           }}
           showToast={showToast}
         />
+      )}
+
+      {/* SHARED ADMIN MEDIA LIBRARY PICKER MODAL */}
+      {showAdminMediaPicker && (
+        <div className="fixed inset-0 z-[70] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-amber-500" /> Select Media from Cloudinary / CMS Library
+              </h3>
+              <button type="button" onClick={() => setShowAdminMediaPicker(null)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <CmsMediaLibrary
+                isPickerMode={true}
+                filterType="image"
+                onSelectMedia={media => {
+                  if (showAdminMediaPicker === 'projImage') {
+                    setProjImage(media.fileUrl);
+                    if (media.altText) setProjImageAlt(media.altText);
+                  } else if (showAdminMediaPicker === 'projGallery') {
+                    setProjGalleryImages(prev => [...prev, media.fileUrl]);
+                  } else if (showAdminMediaPicker === 'blogImage') {
+                    setBlogImage(media.fileUrl);
+                    if (media.altText) setBlogImageAlt(media.altText);
+                  }
+                  setShowAdminMediaPicker(null);
+                  showToast(`Selected "${media.title}" from Media Library.`, 'success');
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

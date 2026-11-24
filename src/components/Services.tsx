@@ -32,6 +32,9 @@ import {
   Leaf
 } from 'lucide-react';
 import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 import {
   usePublicCorporateData,
   CorporateRegistrationStatusCard,
@@ -443,6 +446,8 @@ export const SERVICES_DATA: ServiceItem[] = [
 ];
 
 export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getSection, isSectionEnabled, getCustomSections } = useCmsPage('services');
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [dbServicesList, setDbServicesList] = useState<ServiceItem[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'CONSTRUCTION' | 'WEBSITE'>('ALL');
@@ -452,6 +457,13 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
     opportunities: corporateOpportunities,
     realEstateProjects,
   } = usePublicCorporateData();
+
+  const servicesSec = getSection('services');
+  const processSec = getSection('process');
+  const whySec = getSection('why_choose_us');
+  const faqSec = getSection('faq');
+  const divisionsSec = getSection('divisions');
+  const customSections = getCustomSections(['hero', 'services', 'process', 'why_choose_us', 'faq', 'divisions']);
 
   useEffect(() => {
     const loadServicesFromDb = async () => {
@@ -514,36 +526,41 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
       
       {/* 1. HERO SECTION */}
+      {cmsHero?.showHero !== false && (
       <div className="bg-slate-900 text-white border-b border-slate-800 py-16 lg:py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="max-w-6xl mx-auto relative z-10 text-center md:text-left">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/20 text-amber-400 rounded-full text-xs font-extrabold uppercase tracking-wider mb-6 border border-amber-500/30">
-            <Sparkles className="w-3.5 h-3.5" /> Full-Spectrum Construction & Engineering
+            <Sparkles className="w-3.5 h-3.5" /> {cmsHero?.eyebrow || 'Full-Spectrum Construction & Engineering'}
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-6 leading-tight max-w-4xl">
-            Construction & Engineering Services Built Around Your Project
+            {cmsHero?.title || 'Construction & Engineering Services Built Around Your Project'}
           </h1>
 
           <p className="text-slate-300 text-base sm:text-xl max-w-3xl leading-relaxed mb-10 font-normal">
-            MADECC GROUP provides integrated construction, civil & structural engineering, quantity surveying, project management, and consultancy services for residential, commercial, industrial, and infrastructure projects across Cameroon.
+            {cmsHero?.subtitle || `${settings?.siteName || 'MADECC GROUP'} provides integrated construction, civil & structural engineering, quantity surveying, project management, and consultancy services for residential, commercial, industrial, and infrastructure projects across Cameroon.`}
           </p>
 
           <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start">
+            {cmsHero?.primaryCta?.visible !== false && (
             <button
-              onClick={() => onNavigateToTab('request-a-quote')}
-              className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2.5"
+              onClick={() => onNavigateToTab((cmsHero?.primaryCta?.link || 'request-a-quote').replace(/^\//, ''))}
+              className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2"
             >
-              Request a Quote <ArrowRight className="w-4 h-4" />
+              {cmsHero?.primaryCta?.text || 'Request a Quote'} <ArrowRight className="w-4 h-4" />
             </button>
+            )}
 
+            {cmsHero?.secondaryCta?.visible !== false && (
             <button
-              onClick={() => onNavigateToTab('projects')}
+              onClick={() => onNavigateToTab((cmsHero?.secondaryCta?.link || 'projects').replace(/^\//, ''))}
               className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-2xl border border-slate-700 transition-all flex items-center gap-2"
             >
-              Explore Our Projects
+              {cmsHero?.secondaryCta?.text || 'Explore Our Projects'}
             </button>
+            )}
 
             <button
               onClick={() => onNavigateToTab('schedule-consultation')}
@@ -562,21 +579,23 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Main Container */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
 
         {/* 2. SERVICES GRID SECTION */}
+        {isSectionEnabled('services', true) && (
         <div>
           <FadeIn className="text-center max-w-3xl mx-auto mb-8">
             <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 font-mono">
               Our Core Expertise
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              Engineering Excellence Across Physical &amp; Digital Builds
+              {servicesSec?.title || 'Engineering Excellence Across Physical & Digital Builds'}
             </h2>
             <p className="text-slate-600 text-sm sm:text-base mt-3">
-              Explore our civil construction, structural engineering, and professional website development capabilities fetched live from our operations catalog.
+              {servicesSec?.subtitle || 'Explore our civil construction, structural engineering, and professional website development capabilities fetched live from our operations catalog.'}
             </p>
           </FadeIn>
 
@@ -670,18 +689,20 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             })}
           </StaggerContainer>
         </div>
+        )}
 
         {/* 3. HOW WE WORK (PROCESS SECTION) */}
+        {isSectionEnabled('process', true) && (
         <FadeIn className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 border border-slate-800 shadow-2xl relative overflow-hidden">
           <div className="max-w-3xl mb-10">
             <div className="text-xs font-extrabold text-amber-400 uppercase tracking-widest mb-2 font-mono">
               Structured Project Delivery
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-white">
-              How We Work
+              {processSec?.title || 'How We Work'}
             </h2>
             <p className="text-slate-300 text-sm sm:text-base mt-2">
-              Our 5-phase engineering protocol guarantees transparency, cost precision, and quality execution on every job.
+              {processSec?.subtitle || 'Our 5-phase engineering protocol guarantees transparency, cost precision, and quality execution on every job.'}
             </p>
           </div>
 
@@ -703,15 +724,17 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             ))}
           </StaggerContainer>
         </FadeIn>
+        )}
 
         {/* 4. WHY CHOOSE MADECC */}
+        {isSectionEnabled('why_choose_us', true) && (
         <FadeIn className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl">
           <div className="text-center max-w-3xl mx-auto mb-10">
             <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 font-mono">
-              The MADECC Advantage
+              The {settings?.siteName || 'MADECC'} Advantage
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Why Project Owners Trust MADECC GROUP
+              {whySec?.title || `Why Project Owners Trust ${settings?.siteName || 'MADECC GROUP'}`}
             </h2>
           </div>
 
@@ -734,15 +757,17 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             ))}
           </StaggerContainer>
         </FadeIn>
+        )}
 
             {/* 5. FREQUENTLY ASKED QUESTIONS */}
+        {isSectionEnabled('faq', true) && (
         <FadeIn className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl space-y-6">
           <div>
             <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1 font-mono">
               Knowledge & Clarity
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Frequently Asked Questions About Our Services
+              {faqSec?.title || 'Frequently Asked Questions About Our Services'}
             </h2>
           </div>
 
@@ -780,9 +805,14 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             ))}
           </div>
         </FadeIn>
+        )}
 
         {/* Dynamic 10 Business Divisions, Services & Investment Opportunities */}
+        {isSectionEnabled('divisions', true) && (
         <section id="business-divisions" className="py-12 border-t border-slate-200 space-y-8 scroll-mt-20">
+          {divisionsSec?.title && (
+            <h2 className="text-2xl font-extrabold text-slate-900 text-center">{divisionsSec.title}</h2>
+          )}
           <CorporateRegistrationStatusCard profile={publicCorporateProfile} compact />
           <CorporateDivisionsDirectory
             divisions={corporateDivisions}
@@ -792,6 +822,7 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
             theme="light"
           />
         </section>
+        )}
 
         {/* 6. BOTTOM CTA BANNER */}
         <FadeIn className="bg-gradient-to-r from-amber-500 via-amber-600 to-slate-950 text-slate-950 rounded-3xl p-8 sm:p-12 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -822,6 +853,8 @@ export const Services: React.FC<ServicesProps> = ({ onNavigateToTab }) => {
         </FadeIn>
 
       </div>
+
+      <CmsCustomSections sections={customSections} onNavigateToTab={onNavigateToTab} className="mt-12" />
 
       {/* DYNAMIC SERVICE DETAIL MODAL */}
       {selectedService && (

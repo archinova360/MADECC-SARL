@@ -30,6 +30,9 @@ import {
 import { jsPDF } from 'jspdf';
 import { ReceiptPaymentGateModal } from './ReceiptPaymentGateModal.tsx';
 import { STANDARD_RECEIPT_FEE_XAF, isReceiptPaid } from '../utils/paymentDomain.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface ProjectBudgetCalculatorProps {
   onNavigateToTab?: (tab: string) => void;
@@ -40,6 +43,14 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
   onNavigateToTab,
   showToast 
 }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('budget-calculator');
+  const siteName = settings?.siteName || 'MADECC GROUP';
+  const primaryPhone = settings?.phone || '+237 683 316 486';
+  const secondaryPhone = settings?.phoneSecondary || '+237 671 063 511';
+  const contactEmail = settings?.email || 'kreboya603@gmail.com';
+  const waDigits = (settings?.whatsappNumber || primaryPhone).replace(/[^0-9]/g, '');
+
   // Mode selection
   const [mode, setMode] = useState<'quick' | 'detailed'>('quick');
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -357,7 +368,7 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
       doc.setTextColor(148, 163, 184);
       doc.text('DISCLAIMER: This document is an indicative preliminary budget estimate calculated using MADECC GROUP standard rate library data.', 14, yPos);
       doc.text('It does not constitute a final binding quotation, architectural drawing, or contractual offer. Final costs are subject to engineering surveys.', 14, yPos + 4);
-      doc.text('Contact MADECC GROUP: +237 671 063 511 / +237 683 316 486 (WhatsApp) | Email: kreboya603@gmail.com', 14, yPos + 8);
+      doc.text(`Contact ${siteName}: ${secondaryPhone} / ${primaryPhone} (WhatsApp) | Email: ${contactEmail}`, 14, yPos + 8);
 
       doc.save(`MADECC-Budget-Estimate-${ref}.pdf`);
       if (showToast) showToast('PDF downloaded successfully.', 'success');
@@ -369,15 +380,15 @@ export const ProjectBudgetCalculator: React.FC<ProjectBudgetCalculatorProps> = (
 
   // WhatsApp Trigger URL
   const getWhatsAppUrl = () => {
-    if (!calculationResult) return 'https://wa.me/237683316486';
-    const text = `Hello MADECC GROUP, I generated a Project Budget Estimate on your website:
+    if (!calculationResult) return `https://wa.me/${waDigits}`;
+    const text = `Hello ${siteName}, I generated a Project Budget Estimate on your website:
 Ref: ${calculationResult.estimateReference}
 Type: ${calculationResult.projectType}
 Area: ${calculationResult.totalFloorAreaM2} m²
 Location: ${calculationResult.location}
 Expected Budget: XAF ${calculationResult.estimatedBudgetExpected.toLocaleString()}
 I would like to discuss this project and request a formal BOQ.`;
-    return `https://wa.me/237683316486?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/${waDigits}?text=${encodeURIComponent(text)}`;
   };
 
   return (
@@ -387,13 +398,13 @@ I would like to discuss this project and request a formal BOQ.`;
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs tracking-wider uppercase mb-2">
             <Sparkles className="w-4 h-4" />
-            MADECC GROUP Estimating System
+            {cmsHero?.eyebrow || `${siteName} Estimating System`}
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
-            Project Budget Calculator
+            {cmsHero?.title || 'Project Budget Calculator'}
           </h1>
           <p className="text-slate-300 text-base max-w-3xl leading-relaxed mb-6">
-            Estimate the approximate budget required for your construction project using official, administrator-maintained MADECC construction rates, regional location factors, and structural parameters.
+            {cmsHero?.subtitle || 'Estimate the approximate budget required for your construction project using official, administrator-maintained MADECC construction rates, regional location factors, and structural parameters.'}
           </p>
 
           {/* Mode Switcher */}
@@ -980,10 +991,10 @@ I would like to discuss this project and request a formal BOQ.`;
                   </a>
 
                   <a
-                    href="tel:+237671063511"
+                    href={`tel:${secondaryPhone.replace(/\s+/g, '')}`}
                     className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-2"
                   >
-                    <Phone className="w-4 h-4 text-amber-400" /> Call MADECC (+237 671 063 511)
+                    <Phone className="w-4 h-4 text-amber-400" /> Call {siteName} ({secondaryPhone})
                   </a>
 
                   <button
@@ -1220,6 +1231,8 @@ I would like to discuss this project and request a formal BOQ.`;
             showToast={showToast}
           />
         )}
+
+        <CmsCustomSections sections={getCustomSections(['estimator'])} onNavigateToTab={onNavigateToTab} className="mt-8" />
 
       </div>
     </div>

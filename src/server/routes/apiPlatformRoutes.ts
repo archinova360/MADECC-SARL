@@ -1,19 +1,20 @@
 import express, { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { db } from '../../db/index.ts';
-import { 
-  apiProducts, 
-  apiPlans, 
-  apiCustomers, 
-  apiAccessRequests, 
-  apiPaymentTransactions, 
-  apiEntitlements, 
-  apiKeys, 
-  apiRequestsLog, 
+import {
+  apiProducts,
+  apiPlans,
+  apiCustomers,
+  apiAccessRequests,
+  apiPaymentTransactions,
+  apiEntitlements,
+  apiKeys,
+  apiRequestsLog,
   apiPlatformAuditLogs,
-  siteSettings 
+  costLibraryItems,
+  siteSettings
 } from '../../db/schema.ts';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, or, gt, sql } from 'drizzle-orm';
 import { requireAuth, requireAdmin } from '../../middleware/auth.ts';
 import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 import { getSiteSettings } from '../../db/ensureSiteSettings.ts';
@@ -28,22 +29,27 @@ function hashSecret(secret: string): string {
 }
 
 // =========================================================================
-// MIDDLEWARE: Verify Developer API Key & Enforce Rate Limits + Quotas
+// MIDDLEWARE: Verify Paid Developer API Key & Enforce Confirmed Payment + Quotas
 // =========================================================================
 export async function authenticateApiKey(req: Request, res: Response, next: NextFunction) {
   const startTime = Date.now();
-  const apiKeyHeader = (req.headers['x-api-key'] as string) || (req.headers['authorization']?.replace('Bearer ', ''));
+  const rawHeader = (req.headers['x-api-key'] as string) || (req.headers['authorization']?.replace(/^Bearer\s+/i, ''));
+  const token = (rawHeader || '').trim();
 
-  if (!apiKeyHeader) {
+  if (!token) {
     return res.status(401).json({
-      error: 'Unauthorized: Missing API Key. Provide key via X-API-Key or Authorization Bearer header.',
+      error: 'Unauthorized: Payment & Paid API Key required. Complete payment checkout first and pass X-API-Key or Authorization Bearer header.',
       documentation: 'https://madeccgroup.online/developers'
     });
   }
 
   try {
-    // Find key in database
-    const [keyRecord] = await db.select().from(apiKeys).where(eq(apiKeys.keyId, apiKeyHeader.trim())).limit(1);
+    const tokenHash = hashSecret(token);
+    const [keyRecord] = await db
+      .select()
+      .from(apiKeys)
+      .where(or(eq(apiKeys.keyId, token), eq(apiKeys.secretHash, tokenHash)))
+      .limit(1);
 
     if (!keyRecord) {
       return res.status(401).json({ error: 'Unauthorized: Invalid API key.' });
@@ -53,31 +59,69 @@ export async function authenticateApiKey(req: Request, res: Response, next: Next
       return res.status(403).json({ error: `Forbidden: API key is ${keyRecord.status.toLowerCase()}. Contact support.` });
     }
 
-    // Check expiration
     if (keyRecord.expiresAt && new Date(keyRecord.expiresAt) < new Date()) {
-      return res.status(403).json({ error: 'Forbidden: API key has expired. Please renew your subscription.' });
+      return res.status(403).json({ error: 'Forbidden: API key has expired. Please renew your paid subscription.' });
     }
 
-    // Check customer entitlement quota
-    const [entitlement] = await db.select().from(apiEntitlements)
+    // Strict Paid Entitlement Check
+    const [entitlement] = await db
+      .select()
+      .from(apiEntitlements)
       .where(and(eq(apiEntitlements.customerId, keyRecord.customerId), eq(apiEntitlements.status, 'ACTIVE')))
       .limit(1);
 
-    if (entitlement && !entitlement.isUnlimited && entitlement.monthlyQuota > 0) {
+    if (!entitlement) {
+      return res.status(402).json({
+        error: 'Payment Required: No active paid API entitlement found for this account. Complete subscription payment first.'
+      });
+    }
+
+    // Strict Paid Transaction Verification (must have confirmed payment > 0)
+    const [confirmedPayment] = await db
+      .select()
+      .from(apiPaymentTransactions)
+      .where(
+        and(
+          eq(apiPaymentTransactions.customerEmail, keyRecord.customerEmail),
+          eq(apiPaymentTransactions.status, 'APPROVED'),
+          gt(apiPaymentTransactions.amount, 0)
+        )
+      )
+      .limit(1);
+
+    const [confirmedPaidReq] = confirmedPayment
+      ? [confirmedPayment]
+      : await db
+          .select()
+          .from(apiAccessRequests)
+          .where(
+            and(
+              eq(apiAccessRequests.customerEmail, keyRecord.customerEmail),
+              eq(apiAccessRequests.status, 'APPROVED'),
+              gt(apiAccessRequests.amount, 0)
+            )
+          )
+          .limit(1);
+
+    if (!confirmedPayment && !confirmedPaidReq) {
+      return res.status(402).json({
+        error: 'Payment Required: Unpaid or pending API key cannot access production/sandbox endpoints or SDK downloads until Admin verifies payment.'
+      });
+    }
+
+    if (!entitlement.isUnlimited && entitlement.monthlyQuota > 0) {
       if (entitlement.quotaUsedThisMonth >= entitlement.monthlyQuota) {
         return res.status(429).json({
-          error: 'Rate Limit Exceeded: Monthly request quota depleted. Upgrade your plan at https://madeccgroup.online/developers',
+          error: 'Rate Limit Exceeded: Monthly request quota depleted. Upgrade your paid plan at https://madeccgroup.online/developers',
           quota: entitlement.monthlyQuota,
           used: entitlement.quotaUsedThisMonth
         });
       }
     }
 
-    // Attach key and customer info to request
     (req as any).apiKeyRecord = keyRecord;
     (req as any).apiEntitlement = entitlement;
 
-    // Log request on finish
     res.on('finish', async () => {
       const latency = Date.now() - startTime;
       const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
@@ -97,21 +141,17 @@ export async function authenticateApiKey(req: Request, res: Response, next: Next
           responseSize: 0,
         });
 
-        // Increment monthly usage
-        if (entitlement) {
-          await db.update(apiEntitlements)
-            .set({ 
-              quotaUsedThisMonth: sql`${apiEntitlements.quotaUsedThisMonth} + 1`,
-              updatedAt: new Date()
-            })
-            .where(eq(apiEntitlements.id, entitlement.id));
-        }
+        await db.update(apiEntitlements)
+          .set({
+            quotaUsedThisMonth: sql`${apiEntitlements.quotaUsedThisMonth} + 1`,
+            updatedAt: new Date()
+          })
+          .where(eq(apiEntitlements.id, entitlement.id));
 
-        // Update key last used timestamp
         await db.update(apiKeys)
-          .set({ 
-            lastUsedAt: new Date(), 
-            lastUsedIp: ipHash 
+          .set({
+            lastUsedAt: new Date(),
+            lastUsedIp: ipHash
           })
           .where(eq(apiKeys.id, keyRecord.id));
       } catch (logErr) {
@@ -153,10 +193,11 @@ router.get('/products/:slug', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/v1/plans — List all subscription tiers
+// GET /api/v1/plans — List all paid subscription tiers (no free tier permitted)
 router.get('/plans', async (req: Request, res: Response) => {
   try {
-    const plans = await db.select().from(apiPlans).where(eq(apiPlans.active, true)).orderBy(apiPlans.displayOrder);
+    const rawPlans = await db.select().from(apiPlans).where(eq(apiPlans.active, true)).orderBy(apiPlans.displayOrder);
+    const plans = rawPlans.map((p) => (p.price <= 0 ? { ...p, price: 9999, requiresApproval: true } : p));
     return res.json({ success: true, count: plans.length, plans });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Failed to fetch API plans' });
@@ -201,7 +242,7 @@ router.get('/company-payment-config', async (req: Request, res: Response) => {
 // 2. DEVELOPER ONBOARDING & PURCHASE CHECKOUT
 // =========================================================================
 
-// POST /api/v1/checkout/request-access — Submit paid plan or sandbox purchase
+// POST /api/v1/checkout/request-access — Strict Pay-First checkout (always requires payment & admin confirmation)
 router.post('/checkout/request-access', async (req: Request, res: Response) => {
   try {
     const {
@@ -224,11 +265,19 @@ router.post('/checkout/request-access', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing required fields: developerName, companyName, contactEmail, planCode, paymentMethod.' });
     }
 
-    // Verify Plan exists
+    const txRefClean = String(transactionReference || '').trim();
+    if ((!txRefClean || txRefClean.length < 4) && !paymentReceiptUrl) {
+      return res.status(400).json({
+        error: 'Payment transaction reference (min 4 characters) or payment receipt upload is required before access can be requested.'
+      });
+    }
+
+    // Verify Plan exists (and enforce non-zero paid fee)
     const [plan] = await db.select().from(apiPlans).where(eq(apiPlans.code, planCode)).limit(1);
     if (!plan) {
       return res.status(400).json({ error: `Invalid plan code: ${planCode}` });
     }
+    const effectivePrice = plan.price > 0 ? plan.price : 9999;
 
     // 1. Find or create Customer profile
     let [customer] = await db.select().from(apiCustomers).where(eq(apiCustomers.contactEmail, contactEmail.toLowerCase().trim())).limit(1);
@@ -248,9 +297,8 @@ router.post('/checkout/request-access', async (req: Request, res: Response) => {
       customer = newCust;
     }
 
-    // 2. Create Access Request
+    // 2. Create PENDING Access Request (No auto-approval or free keys ever)
     const requestId = `REQ-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const isFreeSandbox = plan.price === 0;
 
     const [accessRequest] = await db.insert(apiAccessRequests).values({
       requestId,
@@ -260,82 +308,36 @@ router.post('/checkout/request-access', async (req: Request, res: Response) => {
       companyName,
       planCode: plan.code,
       productSlug: productSlug || 'all-engineering-apis',
-      amount: plan.price,
-      currency: plan.currency,
+      amount: effectivePrice,
+      currency: plan.currency || 'XAF',
       paymentMethod,
-      transactionReference: transactionReference || (isFreeSandbox ? 'FREE_SANDBOX_EVALUATION' : 'PENDING_VERIFICATION'),
+      transactionReference: txRefClean || 'RECEIPT_UPLOADED',
       payerPhone: payerPhone || contactPhone || '',
       payerName: payerName || developerName,
       paymentReceiptUrl: paymentReceiptUrl || null,
-      status: isFreeSandbox ? 'APPROVED' : 'PENDING',
-      adminNotes: isFreeSandbox ? 'Auto-approved Developer Sandbox tier' : 'Awaiting manual MTN/Orange MoMo verification',
-      reviewedBy: isFreeSandbox ? 'SYSTEM_AUTO_PROVISIONER' : null,
-      reviewedAt: isFreeSandbox ? new Date() : null
+      status: 'PENDING',
+      adminNotes: 'Awaiting manual MTN/Orange MoMo payment verification by Administrator',
+      reviewedBy: null,
+      reviewedAt: null
     }).returning();
 
-    // 3. If Free Sandbox, immediately provision Entitlement & First API Key
-    let generatedKey = null;
-    if (isFreeSandbox) {
-      // Create entitlement
-      const [entitlement] = await db.insert(apiEntitlements).values({
-        customerId: customer.id,
-        customerEmail: customer.contactEmail,
-        planCode: plan.code,
-        permissions: plan.permissions || ['boq:calculate', 'budget:calculate', 'concrete:calculate', 'costs:read'],
-        rateLimitPerMinute: plan.rateLimitPerMinute,
-        monthlyQuota: plan.monthlyQuota,
-        quotaUsedThisMonth: 0,
-        isUnlimited: false,
-        status: 'ACTIVE',
-        approvedBy: 'SYSTEM_SANDBOX_AUTO_PROVISIONER'
-      }).returning();
+    const generatedKey = null;
 
-      // Generate key pair
-      const keyId = `mk_live_${crypto.randomBytes(16).toString('hex')}`;
-      const secret = `sec_live_${crypto.randomBytes(24).toString('hex')}`;
-      const secretHash = hashSecret(secret);
-      const secretPrefix = secret.substring(0, 14) + '...';
-
-      const [newKey] = await db.insert(apiKeys).values({
-        customerId: customer.id,
-        customerEmail: customer.contactEmail,
-        name: 'Default Sandbox Evaluation Key',
-        keyId,
-        secretHash,
-        secretPrefix,
-        environment: 'sandbox',
-        permissions: plan.permissions || ['boq:calculate'],
-        rateLimitPerMinute: plan.rateLimitPerMinute,
-        monthlyQuota: plan.monthlyQuota,
-        status: 'ACTIVE'
-      }).returning();
-
-      generatedKey = {
-        id: newKey.id,
-        keyId: newKey.keyId,
-        secret, // Plaintext returned ONLY once
-        secretPrefix: newKey.secretPrefix,
-        environment: newKey.environment,
-        monthlyQuota: newKey.monthlyQuota,
-        rateLimitPerMinute: newKey.rateLimitPerMinute
-      };
-    } else {
-      // Record transaction
-      const txnId = `TXN-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      await db.insert(apiPaymentTransactions).values({
-        transactionId: txnId,
-        accessRequestId: accessRequest.id,
-        customerEmail: customer.contactEmail,
-        amount: plan.price,
-        currency: plan.currency,
-        paymentMethod,
-        transactionRef: transactionReference || 'PENDING',
-        payerPhone: payerPhone || '',
-        payerName: payerName || developerName,
-        receiptUrl: paymentReceiptUrl || null,
-        status: 'PENDING'
-      });
-    }
+    // Record PENDING transaction
+    const txnId = `TXN-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    await db.insert(apiPaymentTransactions).values({
+      transactionId: txnId,
+      accessRequestId: accessRequest.id,
+      customerEmail: customer.contactEmail,
+      amount: effectivePrice,
+      currency: plan.currency || 'XAF',
+      paymentMethod,
+      transactionRef: txRefClean || 'RECEIPT_UPLOADED',
+      payerPhone: payerPhone || contactPhone || '',
+      payerName: payerName || developerName,
+      receiptUrl: paymentReceiptUrl || null,
+      status: 'PENDING'
+    });
 
     // Dispatch SMTP Email Notification to Admin (kreboya603@gmail.com)
     const adminSubject = `[MADECC API Platform] New Developer Access Request (${requestId}) - ${plan.name}`;
@@ -388,9 +390,7 @@ router.post('/checkout/request-access', async (req: Request, res: Response) => {
 
     return res.status(201).json({
       success: true,
-      message: isFreeSandbox 
-        ? 'Sandbox tier approved! Your API Key has been generated. Save your secret token securely.' 
-        : 'Payment access request submitted successfully. The MADECC Admin team will verify your transaction reference and approve access promptly.',
+      message: 'Payment access request submitted successfully. An administrator will verify your transaction reference before activating your API key.',
       requestId,
       status: accessRequest.status,
       generatedKey,
@@ -468,13 +468,29 @@ router.post('/developer/keys/generate', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Developer profile not found.' });
     }
 
-    // Check active entitlement
+    // Check active entitlement AND verified payment
     const [entitlement] = await db.select().from(apiEntitlements)
       .where(and(eq(apiEntitlements.customerId, customer.id), eq(apiEntitlements.status, 'ACTIVE')))
       .limit(1);
 
     if (!entitlement) {
-      return res.status(403).json({ error: 'You do not have an active subscription or entitlement. Request access first.' });
+      return res.status(402).json({ error: 'Payment Required: You do not have an active paid subscription or entitlement. Complete payment checkout first.' });
+    }
+
+    const [confirmedPayment] = await db
+      .select()
+      .from(apiPaymentTransactions)
+      .where(
+        and(
+          eq(apiPaymentTransactions.customerEmail, customer.contactEmail),
+          eq(apiPaymentTransactions.status, 'APPROVED'),
+          gt(apiPaymentTransactions.amount, 0)
+        )
+      )
+      .limit(1);
+
+    if (!confirmedPayment) {
+      return res.status(402).json({ error: 'Payment Required: Your API subscription payment has not yet been confirmed by an administrator.' });
     }
 
     // Generate cryptographic tokens
@@ -801,32 +817,131 @@ router.post('/reinforcement/calculate', authenticateApiKey, async (req: Request,
   }
 });
 
-// GET /api/v1/costs/materials — Central Africa Materials Price Index
-router.get('/costs/materials', authenticateApiKey, async (req: Request, res: Response) => {
+// GET & POST /api/v1/costs/materials — Central Africa Materials Price Index (Authenticated Paid Key)
+async function handleMaterialsIndex(req: Request, res: Response) {
   try {
-    const region = (req.query.region as string) || 'CENTRE_YAOUNDE';
-    
+    const region = (req.query.region as string) || (req.body?.location as string) || (req.body?.region as string) || 'CENTRE_YAOUNDE';
+    const categoryFilter = (req.body?.category as string) || (req.query.category as string) || '';
+
+    let dbItems: any[] = [];
+    try {
+      dbItems = await db.select().from(costLibraryItems).limit(30);
+    } catch {}
+
+    const baseIndex = dbItems.length > 0
+      ? dbItems
+          .filter(item => !categoryFilter || String(item.category || '').toLowerCase().includes(categoryFilter.toLowerCase()))
+          .map(item => {
+            const regionUpper = region.toUpperCase();
+            const regionalPrice =
+              regionUpper.includes('DOUALA')
+                ? Number(item.doualaPrice || item.basePriceXaf)
+                : regionUpper.includes('GAROUA')
+                  ? Number(item.garouaPrice || item.basePriceXaf)
+                  : Number(item.yaoundePrice || item.basePriceXaf);
+            return {
+              itemCode: item.itemCode,
+              category: item.category,
+              item: item.name,
+              brand: item.brand || item.supplierName || 'Cameroon Market Standard',
+              unit: item.unit,
+              price: regionalPrice || Number(item.basePriceXaf),
+              source: 'Neon Cost Library'
+            };
+          })
+      : [];
+
+    const fallbackIndex = [
+      { item: 'Portland Composite Cement (CPJ-35 50kg)', brand: 'CIMENCAM / DANGOTE / MIRA', unit: 'Bag (50kg)', price: 4750, trend30d: '+1.2%' },
+      { item: 'High-Strength Cement (CPJ-42.5R 50kg)', brand: 'CIMENCAM ROBUS', unit: 'Bag (50kg)', price: 5200, trend30d: '0.0%' },
+      { item: 'High-Yield Deformed Rebar HA12 (FeE500)', origin: 'PROMETAL / ALUCAM', unit: 'Ton (1,000kg)', price: 885000, trend30d: '+2.8%' },
+      { item: 'High-Yield Deformed Rebar HA10 (FeE500)', origin: 'PROMETAL', unit: 'Ton (1,000kg)', price: 890000, trend30d: '+2.5%' },
+      { item: 'Washed River Sand (Fine to Medium)', origin: 'Sanaga River Basin', unit: 'Truck (20 Ton / 14m³)', price: 165000, trend30d: '-1.5%' },
+      { item: 'Crushed Basalt Gravel (15/25 Aggregates)', origin: 'Yaoundé Quarries', unit: 'Truck (20 Ton / 14m³)', price: 210000, trend30d: '+0.5%' },
+      { item: 'Hollow Concrete Blocks 15x20x40cm', type: 'Vibrated Machine-Molded', unit: 'Piece', price: 380, trend30d: '0.0%' },
+      { item: 'Hollow Concrete Blocks 20x20x40cm', type: 'Vibrated Machine-Molded', unit: 'Piece', price: 450, trend30d: '0.0%' },
+      { item: 'Structural Sawn Timber (Ayous / Sapelli 5x15x400cm)', grade: 'Category 1 Construction Timber', unit: 'Piece', price: 4200, trend30d: '+1.0%' },
+      { item: 'Corrugated Aluzinc Prepainted Roofing (0.50mm)', brand: 'ALUBASSA', unit: 'Sheet (6m)', price: 17500, trend30d: '0.0%' }
+    ];
+
     return res.json({
       success: true,
       effectiveDate: new Date().toISOString().split('T')[0],
       marketRegion: region,
       currency: 'XAF',
-      materialsIndex: [
-        { item: 'Portland Composite Cement (CPJ-35 50kg)', brand: 'CIMENCAM / DANGOTE / MIRA', unit: 'Bag (50kg)', price: 4750, trend30d: '+1.2%' },
-        { item: 'High-Strength Cement (CPJ-42.5R 50kg)', brand: 'CIMENCAM ROBUS', unit: 'Bag (50kg)', price: 5200, trend30d: '0.0%' },
-        { item: 'High-Yield Deformed Rebar HA12 (FeE500)', origin: 'PROMETAL / ALUCAM', unit: 'Ton (1,000kg)', price: 885000, trend30d: '+2.8%' },
-        { item: 'High-Yield Deformed Rebar HA10 (FeE500)', origin: 'PROMETAL', unit: 'Ton (1,000kg)', price: 890000, trend30d: '+2.5%' },
-        { item: 'Washed River Sand (Fine to Medium)', origin: 'Sanaga River Basin', unit: 'Truck (20 Ton / 14m³)', price: 165000, trend30d: '-1.5%' },
-        { item: 'Crushed Basalt Gravel (15/25 Aggregates)', origin: 'Yaoundé Quarries', unit: 'Truck (20 Ton / 14m³)', price: 210000, trend30d: '+0.5%' },
-        { item: 'Hollow Concrete Blocks 15x20x40cm', type: 'Vibrated Machine-Molded', unit: 'Piece', price: 380, trend30d: '0.0%' },
-        { item: 'Hollow Concrete Blocks 20x20x40cm', type: 'Vibrated Machine-Molded', unit: 'Piece', price: 450, trend30d: '0.0%' },
-        { item: 'Structural Sawn Timber (Ayous / Sapelli 5x15x400cm)', grade: 'Category 1 Construction Timber', unit: 'Piece', price: 4200, trend30d: '+1.0%' },
-        { item: 'Corrugated Aluzinc Prepainted Roofing (0.50mm)', brand: 'ALUBASSA', unit: 'Sheet (6m)', price: 17500, trend30d: '0.0%' }
-      ]
+      materialsIndex: baseIndex.length > 0 ? baseIndex : fallbackIndex
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Materials index failed' });
   }
+}
+
+router.get('/costs/materials', authenticateApiKey, handleMaterialsIndex);
+router.post('/costs/materials', authenticateApiKey, handleMaterialsIndex);
+
+// POST /api/v1/budget/calculate — Parametric Building Budget Estimation (Authenticated Paid Key)
+router.post('/budget/calculate', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const areaM2 = Math.max(20, Number(req.body?.areaM2 || req.body?.builtUpArea || 220));
+    const floors = Math.max(1, Number(req.body?.floors || req.body?.numberOfFloors || 1));
+    const standard = String(req.body?.finishesLevel || 'STANDARD').toUpperCase();
+    const city = String(req.body?.location || 'Yaoundé');
+    const rateMap: Record<string, number> = {
+      ECONOMY: 185000,
+      STANDARD: 265000,
+      LUXURY: 420000,
+      HIGH_TECH: 650000
+    };
+    const regionalFactor = city.toLowerCase().includes('douala') ? 1.05 : city.toLowerCase().includes('garoua') ? 1.08 : 1.0;
+    const baseRate = Math.round((rateMap[standard] || 265000) * regionalFactor);
+    const totalArea = areaM2 * floors;
+    const directWorks = Math.round(totalArea * baseRate);
+    return res.json({
+      success: true,
+      currency: 'XAF',
+      parameters: { areaM2, floors, totalBuiltAreaM2: totalArea, finishesLevel: standard, location: city },
+      breakdown: {
+        substructureAndSite: Math.round(directWorks * 0.18),
+        superstructureConcreteAndSteel: Math.round(directWorks * 0.32),
+        masonryAndRoofing: Math.round(directWorks * 0.27),
+        mepAndFinishes: Math.round(directWorks * 0.23),
+        directWorksSubtotal: directWorks,
+        contingenciesAndFees: Math.round(directWorks * 0.13),
+        estimatedTurnkeyBudgetXaf: Math.round(directWorks * 1.13)
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Budget calculation failed' });
+  }
+});
+
+// GET /api/v1/sdk/openapi.json — Paid-Only OpenAPI 3.0.3 Specification Download
+router.get('/sdk/openapi.json', authenticateApiKey, async (req: Request, res: Response) => {
+  const spec = {
+    openapi: '3.0.3',
+    info: {
+      title: 'MADECC Civil Engineering & BOQ REST API',
+      version: '1.0.0',
+      description: 'Licensed commercial API specification for authenticated paid subscribers.'
+    },
+    servers: [{ url: 'https://madeccgroup.online/api/v1' }],
+    security: [{ ApiKeyAuth: [] }],
+    components: {
+      securitySchemes: {
+        ApiKeyAuth: { type: 'apiKey', in: 'header', name: 'X-API-Key' }
+      }
+    },
+    paths: {
+      '/boq/calculate': { post: { summary: 'Compute itemized Bill of Quantities (XAF)' } },
+      '/budget/calculate': { post: { summary: 'Parametric building turnkey budget estimator' } },
+      '/concrete/calculate-mix': { post: { summary: 'EN 1992 Concrete mix design & batching' } },
+      '/reinforcement/calculate': { post: { summary: 'EN 1992 / BS 8666 Steel reinforcement tonnage' } },
+      '/costs/materials': { get: { summary: 'Regional Cameroon materials price index' }, post: { summary: 'Regional Cameroon materials price index' } },
+      '/eurocode/bearing-capacity': { post: { summary: 'EN 1997 Geotechnical footing bearing capacity' } }
+    }
+  };
+  res.setHeader('Content-Disposition', 'attachment; filename="madecc-engineering-api-v1.openapi.json"');
+  return res.json(spec);
 });
 
 // POST /api/v1/eurocode/bearing-capacity — Soil Bearing Capacity

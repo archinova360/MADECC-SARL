@@ -32,19 +32,30 @@ export function sanitizeRichHtml(input: unknown): string {
 export function sanitizeCmsPagePayload(payload: any): any {
   if (!payload || typeof payload !== 'object') return {};
   const next = { ...payload };
+  const stripTags = (val: any) => (typeof val === 'string' ? val.replace(/[<>]/g, '').trim() : val);
   if (next.heroConfig && typeof next.heroConfig === 'object') {
     next.heroConfig = {
       ...next.heroConfig,
-      headline: typeof next.heroConfig.headline === 'string' ? next.heroConfig.headline.replace(/[<>]/g, '') : next.heroConfig.headline,
-      subheadline: typeof next.heroConfig.subheadline === 'string' ? next.heroConfig.subheadline.replace(/[<>]/g, '') : next.heroConfig.subheadline,
+      eyebrow: stripTags(next.heroConfig.eyebrow),
+      title: stripTags(next.heroConfig.title),
+      subtitle: stripTags(next.heroConfig.subtitle),
+      headline: stripTags(next.heroConfig.headline),
+      subheadline: stripTags(next.heroConfig.subheadline),
+      imageAlt: stripTags(next.heroConfig.imageAlt),
       description: typeof next.heroConfig.description === 'string' ? sanitizeRichHtml(next.heroConfig.description) : next.heroConfig.description,
     };
   }
   if (Array.isArray(next.sections)) {
-    next.sections = next.sections.map((sec: any) => ({
+    next.sections = next.sections.map((sec: any, idx: number) => ({
       ...sec,
-      title: typeof sec.title === 'string' ? sec.title : '',
-      subtitle: typeof sec.subtitle === 'string' ? sec.subtitle : '',
+      title: stripTags(sec.title) ?? '',
+      subtitle: stripTags(sec.subtitle) ?? '',
+      imageAlt: stripTags(sec.imageAlt),
+      caption: stripTags(sec.caption),
+      ctaText: stripTags(sec.ctaText),
+      ctaLink: typeof sec.ctaLink === 'string' ? sec.ctaLink.trim() : sec.ctaLink,
+      displayOrder: typeof sec.displayOrder === 'number' ? sec.displayOrder : idx + 1,
+      enabled: sec.enabled !== false,
       content: typeof sec.content === 'string' ? sanitizeRichHtml(sec.content) : sec.content,
       contentHtml: typeof sec.contentHtml === 'string' ? sanitizeRichHtml(sec.contentHtml) : sec.contentHtml,
     }));

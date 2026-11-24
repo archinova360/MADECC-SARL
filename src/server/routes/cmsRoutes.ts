@@ -15,7 +15,9 @@ import { sendNotificationEmail, sendEmail } from '../../lib/email.ts';
 import { getSiteSettings, upsertSiteSettings } from '../../db/ensureSiteSettings.ts';
 import { ensureWebsiteDevelopmentServices } from '../../db/ensureWebServices.ts';
 import { sanitizeCmsPagePayload } from '../cmsSanitizer.ts';
-import { processDueCmsSchedules } from './cmsPublishingRoutes.ts';
+import { processDueCmsSchedules, ensureCoreCmsPagesExist } from './cmsPublishingRoutes.ts';
+import { ALL_PUBLIC_PAGE_TEMPLATES } from '../cmsDefaultPages.ts';
+import { ensureCmsTables } from '../../db/ensureCmsTables.ts';
 
   async function ensureFaqDefaults() {
     const existingCats = await db.select().from(faqCategories);
@@ -351,17 +353,18 @@ export function setupCmsRoutes(app: express.Express) {
   // --- PROJECTS & PROGRESS ENDPOINTS ---
   // ==========================================
   app.get('/api/projects', async (req, res) => {
-    const { categoryId } = req.query;
+    const { categoryId, admin } = req.query;
     try {
-      let query = db.select().from(projects);
-      if (categoryId) {
-        // Filter by category
-        const catId = parseInt(categoryId as string);
-        const filtered = await db.select().from(projects).where(eq(projects.categoryId, catId)).orderBy(desc(projects.createdAt));
-        return res.json(filtered);
+      await ensureCmsTables();
+      const isAdminView = admin === 'true';
+      let rows = categoryId
+        ? await db.select().from(projects).where(eq(projects.categoryId, parseInt(categoryId as string))).orderBy(desc(projects.createdAt))
+        : await db.select().from(projects).orderBy(desc(projects.createdAt));
+
+      if (!isAdminView) {
+        rows = rows.filter((p: any) => !p.publishStatus || p.publishStatus === 'PUBLISHED');
       }
-      const allProjects = await query.orderBy(desc(projects.createdAt));
-      res.json(allProjects);
+      res.json(rows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -370,6 +373,7 @@ export function setupCmsRoutes(app: express.Express) {
   app.get('/api/projects/:id', async (req, res) => {
     const projId = parseInt(req.params.id);
     try {
+      await ensureCmsTables();
       const proj = await db.select().from(projects).where(eq(projects.id, projId)).limit(1);
       if (proj.length === 0) return res.status(404).json({ error: 'Project not found' });
 
@@ -385,22 +389,32 @@ export function setupCmsRoutes(app: express.Express) {
   });
 
   app.post('/api/projects', requireAdmin, async (req: any, res) => {
-    let { title, description, budget, location, startDate, endDate, status, categoryId, image, videoUrl } = req.body;
+    await ensureCmsTables();
+    let { title, description, budget, location, startDate, endDate, status, publishStatus, categoryId, image, imageAlt, galleryImages, videoUrl } = req.body;
     if (!title || !description || !location) {
       return res.status(400).json({ error: 'Missing required project fields (title, description, location)' });
     }
     const finalImage = (image && image.trim()) ? image.trim() : (videoUrl || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=1200');
+    const cleanGallery = Array.isArray(galleryImages) ? galleryImages.filter((u: any) => typeof u === 'string' && u.trim()).map((u: string) => u.trim()) : [];
+    const safePublishStatus = ['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'].includes(String(publishStatus || '').toUpperCase())
+      ? String(publishStatus).toUpperCase()
+      : 'PUBLISHED';
+    const rawBudget = budget !== undefined && budget !== null ? String(budget).replace(/[^0-9.]/g, '') : '';
+    const cleanBudget = rawBudget && !Number.isNaN(Number(rawBudget)) ? rawBudget : null;
     try {
       const result = await db.insert(projects).values({
         title,
         description,
-        budget,
+        budget: cleanBudget,
         location,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         status: status || 'planning',
+        publishStatus: safePublishStatus,
         categoryId: categoryId ? parseInt(categoryId) : null,
         image: finalImage,
+        imageAlt: imageAlt ? String(imageAlt).trim() : null,
+        galleryImages: cleanGallery,
         videoUrl: videoUrl || null,
       }).returning();
 
@@ -410,7 +424,7 @@ export function setupCmsRoutes(app: express.Express) {
         { projectId: result[0].id, milestoneName: 'Site Planning & Surveying', percentage: 0, status: 'pending', description: 'Obtaining council permits and running soil resilience testing.' }
       ]);
 
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_PROJECT', `Created project: ${title}`);
+      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_PROJECT', `Created project: ${title} (${safePublishStatus})`);
       res.json(result[0]);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -418,38 +432,62 @@ export function setupCmsRoutes(app: express.Express) {
   });
 
   app.put('/api/projects/:id', requireAdmin, async (req: any, res) => {
+    await ensureCmsTables();
     const projId = parseInt(req.params.id);
-    let { title, description, budget, location, startDate, endDate, status, categoryId, image, videoUrl } = req.body;
-    const finalImage = (image && image.trim()) ? image.trim() : (videoUrl || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=1200');
+    let { title, description, budget, location, startDate, endDate, status, publishStatus, categoryId, image, imageAlt, galleryImages, videoUrl } = req.body;
     try {
-      // Fetch existing record to perform asset replacement check
       const existing = await db.select().from(projects).where(eq(projects.id, projId)).limit(1);
-      if (existing.length > 0) {
-        if (finalImage && finalImage !== existing[0].image) {
-          await deleteFileFromCloud(existing[0].image);
-        }
-        if (videoUrl !== undefined && videoUrl !== existing[0].videoUrl) {
-          await deleteFileFromCloud(existing[0].videoUrl);
+      if (existing.length === 0) return res.status(404).json({ error: 'Project not found' });
+      const prev = existing[0];
+
+      const finalImage = (image && image.trim()) ? image.trim() : prev.image;
+      if (finalImage && finalImage !== prev.image) {
+        await deleteFileFromCloud(prev.image);
+      }
+      if (videoUrl !== undefined && videoUrl !== prev.videoUrl) {
+        await deleteFileFromCloud(prev.videoUrl);
+      }
+
+      const cleanGallery = galleryImages !== undefined
+        ? (Array.isArray(galleryImages) ? galleryImages.filter((u: any) => typeof u === 'string' && u.trim()).map((u: string) => u.trim()) : [])
+        : prev.galleryImages || [];
+
+      const safePublishStatus = publishStatus !== undefined
+        ? (['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'].includes(String(publishStatus).toUpperCase())
+          ? String(publishStatus).toUpperCase()
+          : prev.publishStatus || 'PUBLISHED')
+        : prev.publishStatus || 'PUBLISHED';
+
+      let cleanBudget = prev.budget;
+      if (budget !== undefined) {
+        if (budget === null || budget === '') {
+          cleanBudget = null;
+        } else {
+          const parsedB = String(budget).replace(/[^0-9.]/g, '');
+          cleanBudget = parsedB && !Number.isNaN(Number(parsedB)) ? parsedB : prev.budget;
         }
       }
 
       const result = await db.update(projects)
         .set({
-          title,
-          description,
-          budget,
-          location,
-          startDate: startDate ? new Date(startDate) : null,
-          endDate: endDate ? new Date(endDate) : null,
-          status,
-          categoryId: categoryId ? parseInt(categoryId) : null,
+          title: title !== undefined ? title : prev.title,
+          description: description !== undefined ? description : prev.description,
+          budget: cleanBudget,
+          location: location !== undefined ? location : prev.location,
+          startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : prev.startDate,
+          endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : prev.endDate,
+          status: status !== undefined ? status : prev.status,
+          publishStatus: safePublishStatus,
+          categoryId: categoryId !== undefined ? (categoryId ? parseInt(categoryId) : null) : prev.categoryId,
           image: finalImage,
-          videoUrl: videoUrl || null,
+          imageAlt: imageAlt !== undefined ? (imageAlt ? String(imageAlt).trim() : null) : prev.imageAlt,
+          galleryImages: cleanGallery,
+          videoUrl: videoUrl !== undefined ? (videoUrl || null) : prev.videoUrl,
         })
         .where(eq(projects.id, projId))
         .returning();
 
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_PROJECT', `Updated project: ${title} (ID: ${projId})`);
+      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_PROJECT', `Updated project: ${result[0]?.title || title} (ID: ${projId}, ${safePublishStatus})`);
       res.json(result[0]);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -531,7 +569,12 @@ export function setupCmsRoutes(app: express.Express) {
   // ==========================================
   app.get('/api/blogs', async (req, res) => {
     try {
-      const posts = await db.select().from(blogPosts).orderBy(desc(blogPosts.publishedAt));
+      await ensureCmsTables();
+      const isAdminView = req.query.admin === 'true';
+      let posts = await db.select().from(blogPosts).orderBy(desc(blogPosts.publishedAt));
+      if (!isAdminView) {
+        posts = posts.filter((p: any) => !p.status || p.status === 'PUBLISHED');
+      }
       res.json(posts);
     } catch (error: any) {
       console.warn('[DB Fallback] /api/blogs:', error.message || error);
@@ -542,6 +585,7 @@ export function setupCmsRoutes(app: express.Express) {
   app.get('/api/blogs/:id', async (req, res) => {
     const blogId = parseInt(req.params.id);
     try {
+      await ensureCmsTables();
       const post = await db.select().from(blogPosts).where(eq(blogPosts.id, blogId)).limit(1);
       if (post.length === 0) return res.status(404).json({ error: 'Blog post not found' });
       res.json(post[0]);
@@ -551,23 +595,29 @@ export function setupCmsRoutes(app: express.Express) {
   });
 
   app.post('/api/blogs', requireAdmin, async (req: any, res) => {
-    let { title, content, image, videoUrl, summary, category } = req.body;
+    await ensureCmsTables();
+    let { title, content, image, imageAlt, videoUrl, summary, category, status } = req.body;
     if (!title || !content || !summary || !category) {
       return res.status(400).json({ error: 'Missing blog fields (title, content, summary, or category)' });
     }
     const finalImage = (image && image.trim()) ? image.trim() : (videoUrl || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200');
+    const safeStatus = ['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'].includes(String(status || '').toUpperCase())
+      ? String(status).toUpperCase()
+      : 'PUBLISHED';
     try {
       const result = await db.insert(blogPosts).values({
         title,
         content,
         image: finalImage,
+        imageAlt: imageAlt ? String(imageAlt).trim() : null,
         videoUrl: videoUrl || null,
         summary,
         category,
+        status: safeStatus,
         authorId: req.dbUser.id,
       }).returning();
 
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_BLOG', `Created blog post: ${title}`);
+      await logAudit(req.dbUser.uid, req.dbUser.email, 'CREATE_BLOG', `Created blog post: ${title} (${safeStatus})`);
       res.json(result[0]);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -575,27 +625,43 @@ export function setupCmsRoutes(app: express.Express) {
   });
 
   app.put('/api/blogs/:id', requireAdmin, async (req: any, res) => {
+    await ensureCmsTables();
     const blogId = parseInt(req.params.id);
-    let { title, content, image, videoUrl, summary, category } = req.body;
-    const finalImage = (image && image.trim()) ? image.trim() : (videoUrl || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200');
+    let { title, content, image, imageAlt, videoUrl, summary, category, status } = req.body;
     try {
-      // Fetch existing record to perform asset replacement check
       const existing = await db.select().from(blogPosts).where(eq(blogPosts.id, blogId)).limit(1);
-      if (existing.length > 0) {
-        if (finalImage && finalImage !== existing[0].image) {
-          await deleteFileFromCloud(existing[0].image);
-        }
-        if (videoUrl !== undefined && videoUrl !== existing[0].videoUrl) {
-          await deleteFileFromCloud(existing[0].videoUrl);
-        }
+      if (existing.length === 0) return res.status(404).json({ error: 'Blog post not found' });
+      const prev = existing[0];
+
+      const finalImage = (image && image.trim()) ? image.trim() : prev.image;
+      if (finalImage && finalImage !== prev.image) {
+        await deleteFileFromCloud(prev.image);
+      }
+      if (videoUrl !== undefined && videoUrl !== prev.videoUrl) {
+        await deleteFileFromCloud(prev.videoUrl);
       }
 
+      const safeStatus = status !== undefined
+        ? (['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'].includes(String(status).toUpperCase())
+          ? String(status).toUpperCase()
+          : prev.status || 'PUBLISHED')
+        : prev.status || 'PUBLISHED';
+
       const result = await db.update(blogPosts)
-        .set({ title, content, image: finalImage, videoUrl: videoUrl || null, summary, category })
+        .set({
+          title: title !== undefined ? title : prev.title,
+          content: content !== undefined ? content : prev.content,
+          image: finalImage,
+          imageAlt: imageAlt !== undefined ? (imageAlt ? String(imageAlt).trim() : null) : prev.imageAlt,
+          videoUrl: videoUrl !== undefined ? (videoUrl || null) : prev.videoUrl,
+          summary: summary !== undefined ? summary : prev.summary,
+          category: category !== undefined ? category : prev.category,
+          status: safeStatus,
+        })
         .where(eq(blogPosts.id, blogId))
         .returning();
 
-      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_BLOG', `Updated blog ID: ${blogId}`);
+      await logAudit(req.dbUser.uid, req.dbUser.email, 'UPDATE_BLOG', `Updated blog ID: ${blogId} (${safeStatus})`);
       res.json(result[0]);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1203,6 +1269,7 @@ export function setupCmsRoutes(app: express.Express) {
   app.get('/api/cms/pages', async (req, res) => {
     try {
       await processDueCmsSchedules();
+      await ensureCoreCmsPagesExist();
       let pages = await db.select({
         id: pageContents.id,
         slug: pageContents.slug,
@@ -1215,86 +1282,10 @@ export function setupCmsRoutes(app: express.Express) {
         lastSavedBy: pageContents.lastSavedBy,
         publishedAt: pageContents.publishedAt,
         updatedAt: pageContents.updatedAt
-      }).from(pageContents).orderBy(pageContents.slug);
+      }).from(pageContents).orderBy(pageContents.id, pageContents.slug);
 
-      // Auto-seed default pages if table is empty
-      if (pages.length === 0) {
-        const DEFAULT_PAGE_TEMPLATES = [
-          { slug: 'home', title: 'Home Page' },
-          { slug: 'about', title: 'About Us' },
-          { slug: 'services', title: 'Services & Engineering' },
-          { slug: 'projects', title: 'Major Projects & Corridors' },
-          { slug: 'sustainability', title: 'Sustainability & ESG' },
-          { slug: 'tenders', title: 'Procurement & Tenders' },
-          { slug: 'suppliers', title: 'Supplier Registration' },
-          { slug: 'careers', title: 'Careers & Talent' },
-          { slug: 'contact', title: 'Contact & Offices' },
-          { slug: 'privacy-policy', title: 'Privacy Policy' },
-          { slug: 'terms', title: 'Terms of Service' }
-        ];
-
-        for (const pt of DEFAULT_PAGE_TEMPLATES) {
-          try {
-            await db.insert(pageContents).values({
-              slug: pt.slug,
-              title: pt.title,
-              status: 'PUBLISHED',
-              version: 1,
-              heroConfig: {
-                title: pt.slug === 'home' ? "MADECC GROUP -- Building Cameroon's Future" : `${pt.title} | MADECC GROUP`,
-                subtitle: 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.',
-                eyebrow: 'Construction & Civil Engineering -- Cameroon',
-                mediaType: 'video',
-                videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-construction-site-with-cranes-and-workers-40915-large.mp4',
-                posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
-                imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
-                videoSettings: {
-                  autoplay: true,
-                  muted: true,
-                  loop: true,
-                  playsInline: true,
-                  disableOnMobile: false,
-                  overlayOpacity: 75
-                },
-                primaryCta: { text: 'Request a Free Quote', link: '/contact', visible: true },
-                secondaryCta: { text: 'Calculate Budget (FCFA)', link: '/budget-calculator', visible: true },
-                tertiaryCta: { text: 'Schedule Consultation ->', link: '/contact', visible: true }
-              },
-              sections: [
-                {
-                  id: `sec-${pt.slug}-1`,
-                  type: 'services',
-                  title: 'Core Capabilities & Heavy Engineering',
-                  subtitle: 'High-standard construction across Yaounde, Douala, and nationwide',
-                  enabled: true,
-                  displayOrder: 1
-                }
-              ],
-              seo: {
-                seoTitle: `${pt.title} | MADECC GROUP Cameroon`,
-                metaDescription: `Official ${pt.title} page for MADECC GROUP, leading civil engineering and building contractor in Cameroon.`,
-                keywords: 'construction cameroon, yaounde builder, civil engineering',
-                robotsIndex: true
-              },
-              lastSavedBy: 'MADECC System Auto-Initializer',
-              publishedAt: new Date(),
-              updatedAt: new Date()
-            });
-          } catch (seedErr) {
-            console.warn('[CMS_PAGE_SEED_WARN]', seedErr);
-          }
-        }
-
-        pages = await db.select({
-          id: pageContents.id,
-          slug: pageContents.slug,
-          title: pageContents.title,
-          status: pageContents.status,
-          version: pageContents.version,
-          lastSavedBy: pageContents.lastSavedBy,
-          publishedAt: pageContents.publishedAt,
-          updatedAt: pageContents.updatedAt
-        }).from(pageContents).orderBy(pageContents.slug);
+      if (req.query.publishedOnly === 'true') {
+        pages = pages.filter((p) => p.status !== 'UNPUBLISHED' && p.status !== 'ARCHIVED');
       }
 
       res.json({ success: true, pages });
@@ -1312,59 +1303,34 @@ export function setupCmsRoutes(app: express.Express) {
       const { mode } = req.query; // 'draft' or 'live' (default)
 
       let pages = await db.select().from(pageContents).where(eq(pageContents.slug, slug)).limit(1);
-      
-      // Only auto-create core landing slugs if missing (never auto-seed arbitrary public URLs)
-      const CORE_SLUGS = new Set(['home', 'about', 'services', 'projects', 'legal', 'developers', 'sitemap', 'contact', 'website-development']);
-      if (pages.length === 0 && CORE_SLUGS.has(slug)) {
-        const formattedTitle = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
+
+      const template = ALL_PUBLIC_PAGE_TEMPLATES.find((t) => t.slug === slug);
+      if (pages.length === 0 && template) {
+        const payload = {
+          heroConfig: template.heroConfig,
+          sections: template.sections,
+          seo: template.seo,
+        };
         const inserted = await db.insert(pageContents).values({
-          slug,
-          title: formattedTitle,
+          slug: template.slug,
+          title: template.title,
+          pageGroup: template.group,
           status: 'PUBLISHED',
           version: 1,
-          heroConfig: {
-            title: slug === 'home' ? "MADECC GROUP -- Building Cameroon's Future" : `${formattedTitle} | MADECC GROUP`,
-            subtitle: 'Excellence in Civil Engineering, Infrastructure, and Commercial Complex Construction in Cameroon.',
-            eyebrow: 'Construction & Civil Engineering -- Cameroon',
-            mediaType: 'video',
-            videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-            posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
-            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80',
-            videoSettings: {
-              autoplay: true,
-              muted: true,
-              loop: true,
-              playsInline: true,
-              disableOnMobile: false,
-              overlayOpacity: 75
-            },
-            primaryCta: { text: 'Request a Free Quote', link: '/contact', visible: true },
-            secondaryCta: { text: 'Calculate Budget (FCFA)', link: '/budget-calculator', visible: true },
-            tertiaryCta: { text: 'Schedule Consultation ->', link: '/contact', visible: true }
-          },
-          sections: [
-            {
-              id: `sec-${slug}-1`,
-              type: 'services',
-              title: 'Core Capabilities & Heavy Engineering',
-              subtitle: 'High-standard construction across Yaounde, Douala, and nationwide',
-              enabled: true,
-              displayOrder: 1
-            }
-          ],
-          seo: {
-            seoTitle: `${formattedTitle} | MADECC GROUP Cameroon`,
-            metaDescription: `Official ${formattedTitle} page for MADECC GROUP, leading civil engineering and building contractor in Cameroon.`,
-            keywords: 'construction cameroon, yaounde builder, civil engineering',
-            robotsIndex: true
-          },
+          heroConfig: template.heroConfig,
+          sections: template.sections,
+          seo: template.seo,
+          draftData: payload,
+          publishedData: payload,
           lastSavedBy: 'MADECC System Auto-Initializer',
           publishedAt: new Date(),
           updatedAt: new Date()
-        }).returning();
+        }).onConflictDoNothing().returning();
 
         if (inserted.length > 0) {
           pages = inserted;
+        } else {
+          pages = await db.select().from(pageContents).where(eq(pageContents.slug, slug)).limit(1);
         }
       }
 
@@ -1374,7 +1340,7 @@ export function setupCmsRoutes(app: express.Express) {
 
       const page = pages[0];
       if (mode !== 'draft' && (page.status === 'UNPUBLISHED' || page.status === 'ARCHIVED')) {
-        return res.status(404).json({ success: false, published: false, error: 'Page is not currently published' });
+        return res.status(404).json({ success: false, unpublished: true, status: page.status, error: 'Page is not currently published' });
       }
       let pageData: any = {};
 

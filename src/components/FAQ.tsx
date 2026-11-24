@@ -23,6 +23,9 @@ import {
   FileCheck
 } from 'lucide-react';
 import { exportFaqsPDF } from '../lib/exportEngine.ts';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface FAQItem {
   id: number;
@@ -41,6 +44,8 @@ interface FAQProps {
 }
 
 export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('faq');
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -48,6 +53,10 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
   const [openIds, setOpenIds] = useState<number[]>([]);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const customSections = getCustomSections(['hero', 'faq']);
+  const displayPhone = settings?.phone || '+237 683 316 486';
+  const displayEmail = settings?.email || 'kreboya603@gmail.com';
 
   // Modal for asking a question
   const [askModalOpen, setAskModalOpen] = useState(false);
@@ -224,8 +233,8 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
     },
     {
       id: 20,
-      question: 'How can I reach MADECC GROUP offices directly for project or emergency structural queries?',
-      answer: 'You can contact our central operations desk at:\n• Headquarters: Mbankolo, Yaoundé, Cameroon (Operating Everywhere in Cameroon & Across Africa)\n• Telephone / WhatsApp: +237 683 316 486\n• Official Emails: kreboya603@gmail.com / madecccons@gmail.com\n• Operating Hours: Monday to Friday, 08:00 - 18:00 WAT (West Africa Time).',
+      question: `How can I reach ${settings?.siteName || 'MADECC GROUP'} offices directly for project or emergency structural queries?`,
+      answer: `You can contact our central operations desk at:\n• Headquarters: ${settings?.officeAddressYaounde || 'Mbankolo, Yaoundé, Cameroon'} (Operating Everywhere in Cameroon & Across Africa)\n• Telephone / WhatsApp: ${displayPhone}\n• Official Emails: ${displayEmail}${settings?.secondaryEmail ? ' / ' + settings.secondaryEmail : ''}\n• Operating Hours: ${settings?.businessHours || 'Monday to Friday, 08:00 - 18:00 WAT (West Africa Time).'}` ,
       categoryName: 'Account & Support',
       tags: ['contact', 'phone', 'whatsapp', 'office', 'yaounde', 'mbankolo', 'cameroon', 'africa'],
       relatedPage: 'contact'
@@ -388,15 +397,15 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono uppercase tracking-widest mb-4">
             <HelpCircle className="w-4 h-4 text-amber-400" />
-            <span>MADECC GROUP Engineering & Client Knowledge Base</span>
+            <span>{cmsHero?.eyebrow || `${settings?.siteName || 'MADECC GROUP'} Engineering & Client Knowledge Base`}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
-            Frequently Asked Questions & Help Centre
+            {cmsHero?.title || 'Frequently Asked Questions & Help Centre'}
           </h1>
 
           <p className="text-slate-300 text-base max-w-2xl mx-auto mb-8 leading-relaxed">
-            Verified guidance on civil engineering standards, BOQ estimation, construction costs in Cameroon, project documentation, tender opportunities, and safety protocols.
+            {cmsHero?.subtitle || 'Verified guidance on civil engineering standards, BOQ estimation, construction costs in Cameroon, project documentation, tender opportunities, and safety protocols.'}
           </p>
 
           {/* Search Bar */}
@@ -588,11 +597,11 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
             <div className="flex flex-wrap items-center gap-4 mt-4 text-xs font-mono text-slate-300">
               <span className="flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-amber-500" />
-                <a href="tel:237683316486" className="hover:text-amber-400">+237 683 316 486</a>
+                <a href={`tel:${displayPhone.replace(/[^+0-9]/g, '')}`} className="hover:text-amber-400">{displayPhone}</a>
               </span>
               <span className="flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-amber-500" />
-                <a href="mailto:kreboya603@gmail.com" className="hover:text-amber-400">kreboya603@gmail.com</a>
+                <a href={`mailto:${displayEmail}`} className="hover:text-amber-400">{displayEmail}</a>
               </span>
             </div>
           </div>
@@ -760,6 +769,8 @@ export const FAQ: React.FC<FAQProps> = ({ onNavigateToTab }) => {
           </div>
         </div>
       )}
+
+      <CmsCustomSections sections={customSections} onNavigateToTab={onNavigateToTab} />
 
     </div>
   );

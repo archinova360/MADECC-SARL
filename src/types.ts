@@ -26,6 +26,9 @@ export interface Project {
   status: 'planning' | 'in-progress' | 'completed' | 'on-hold';
   categoryId: number | null;
   image: string;
+  imageAlt?: string | null;
+  galleryImages?: string[];
+  publishStatus?: 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
   videoUrl?: string | null;
   createdAt: string;
   progress?: ProjectProgress[];
@@ -48,9 +51,11 @@ export interface BlogPost {
   authorId: number | null;
   publishedAt: string;
   image: string;
+  imageAlt?: string | null;
   videoUrl?: string | null;
   summary: string;
   category: string;
+  status?: 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
 }
 
 export interface Review {
@@ -220,6 +225,7 @@ export interface HeroSectionConfig {
   videoUrl?: string | null;
   posterUrl?: string | null;
   imageUrl: string;
+  imageAlt?: string | null;
   mobileImageUrl?: string | null;
   videoSettings: {
     autoplay: boolean;
@@ -239,12 +245,33 @@ export interface HeroSectionConfig {
 
 export interface PageSection {
   id: string;
-  type: 'hero' | 'about' | 'services' | 'projects' | 'why_choose_us' | 'process' | 'stats' | 'testimonials' | 'team' | 'faq' | 'cta' | 'rich_text' | 'media_showcase' | 'custom';
+  type:
+    | 'hero'
+    | 'about'
+    | 'services'
+    | 'projects'
+    | 'why_choose_us'
+    | 'process'
+    | 'stats'
+    | 'testimonials'
+    | 'team'
+    | 'faq'
+    | 'cta'
+    | 'rich_text'
+    | 'media_showcase'
+    | 'pillars'
+    | 'blueprint'
+    | 'estimator'
+    | 'divisions'
+    | 'workflow'
+    | 'custom';
   title: string;
   subtitle?: string;
   content?: string;
   mediaUrl?: string | null;
   mediaType?: 'image' | 'video';
+  imageAlt?: string | null;
+  caption?: string | null;
   layout?: 'grid' | 'carousel' | 'split' | 'fullwidth' | 'stacked';
   enabled: boolean;
   displayOrder: number;
@@ -262,6 +289,7 @@ export interface SeoConfig {
   ogImage?: string;
   keywords?: string;
   robotsIndex: boolean;
+  robotsFollow?: boolean;
 }
 
 export interface PageContent {
@@ -358,10 +386,17 @@ export interface SiteSettings {
   faviconUrl?: string;
   themeSettings?: {
     primaryColor?: string;
+    secondaryColor?: string;
     accentColor?: string;
     fontHeading?: string;
     fontBody?: string;
     borderRadius?: string;
+    buttonStyle?: 'rounded' | 'pill' | 'sharp';
+    headerStyle?: 'sticky' | 'static' | 'transparent' | 'compact';
+    footerStyle?: 'standard' | 'minimal' | 'compact';
+    homepageLayout?: 'standard' | 'compact' | 'showcase';
+    mobileCompactSpacing?: boolean;
+    mobileDisableHeroVideo?: boolean;
     containerWidth?: string;
   };
   globalSeo: SeoConfig;
@@ -378,6 +413,7 @@ export interface SiteSettings {
     aboutText: string;
     copyrightText: string;
     accreditationBadges: string[];
+    quickLinks?: Array<{ label: string; href: string }>;
   };
   emergencyBanner?: {
     enabled: boolean;

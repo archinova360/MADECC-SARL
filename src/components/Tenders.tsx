@@ -27,6 +27,9 @@ import {
 } from 'lucide-react';
 import { exportTenderNoticePDF, exportTenderNoticeDOCX } from '../lib/exportEngine.ts';
 import { uploadMediaAssetDirect } from '../lib/directMediaUpload.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface Tender {
   id: number;
@@ -54,6 +57,13 @@ interface Props {
 }
 
 export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('tenders');
+  const siteName = settings?.siteName || 'MADECC GROUP';
+  const primaryPhone = settings?.phone || '+237 683 316 486';
+  const contactEmail = settings?.email || 'kreboya603@gmail.com';
+  const procurementEmail = settings?.secondaryEmail || settings?.email || 'procurement@madeccgroup.com';
+
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -98,7 +108,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
       openingDate: '2026-08-11',
       closingDate: '2026-09-10',
       status: 'OPEN',
-      contactInstructions: 'For tender clarifications, contact procurement@madeccgroup.com or call +237 683 316 486.'
+      contactInstructions: `For tender clarifications, contact ${procurementEmail} or call ${primaryPhone}.`
     },
     {
       id: 2,
@@ -116,7 +126,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
       openingDate: '2026-08-11',
       closingDate: '2026-09-15',
       status: 'CLOSING_SOON',
-      contactInstructions: 'Procurement desk hotline: +237 683 316 486.'
+      contactInstructions: `Procurement desk hotline: ${primaryPhone}.`
     },
     {
       id: 3,
@@ -126,7 +136,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
       categoryName: 'Engineering & Geotechnics',
       clientProject: 'Kribi Industrial Corridor Deep Foundation Project',
       location: 'Kribi, South Region',
-      description: 'MADECC GROUP is seeking certified geotechnical testing laboratories to conduct rotary core drilling to 35-meter depths, Standard Penetration Tests (SPT), dynamic cone penetrometer soundings, and laboratory soil mechanics analysis.',
+      description: `${siteName} is seeking certified geotechnical testing laboratories to conduct rotary core drilling to 35-meter depths, Standard Penetration Tests (SPT), dynamic cone penetrometer soundings, and laboratory soil mechanics analysis.`,
       scopeOfWork: '1. 8 exploratory boreholes to 35m depth with continuous core recovery.\n2. In-situ SPT testing at 1.5m intervals and groundwater level monitoring.\n3. Laboratory Triaxial, Oedometer consolidation, and Atterberg limits testing.\n4. Comprehensive Geotechnical Factual and Interpretative Engineering Report with safe bearing capacity recommendations.',
       eligibility: 'Accredited geotechnical engineering firms with owned drilling rigs and certified soil laboratory.',
       requiredExperience: 'Minimum 5 years of geotechnical investigation in coastal and alluvial geology of Cameroon.',
@@ -134,7 +144,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
       openingDate: '2026-02-15',
       closingDate: '2026-04-10',
       status: 'OPEN',
-      contactInstructions: 'Email bids to kreboya603@gmail.com with subject: EOI - Geotechnical Investigation Kribi.'
+      contactInstructions: `Email bids to ${contactEmail} with subject: EOI - Geotechnical Investigation Kribi.`
     }
   ];
 
@@ -320,6 +330,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
     <div className="bg-slate-950 text-slate-100 min-h-screen">
       
       {/* HERO BANNER */}
+      {cmsHero?.showHero !== false && (
       <section className="relative py-20 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           
@@ -343,15 +354,15 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono uppercase tracking-widest mb-4">
             <Briefcase className="w-4 h-4 text-amber-400" />
-            <span>Procurement & Subcontracting Opportunities</span>
+            <span>{cmsHero?.eyebrow || 'Procurement & Subcontracting Opportunities'}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
-            MADECC GROUP Tenders & Procurement Opportunities
+            {cmsHero?.title || `${siteName} Tenders & Procurement Opportunities`}
           </h1>
 
           <p className="text-slate-300 text-base max-w-2xl mx-auto mb-8 leading-relaxed">
-            Public Expressions of Interest (EOI), trade subcontracting packages, and materials supply tenders across civil engineering projects in Cameroon.
+            {cmsHero?.subtitle || 'Public Expressions of Interest (EOI), trade subcontracting packages, and materials supply tenders across civil engineering projects in Cameroon.'}
           </p>
 
           {/* Search Bar */}
@@ -377,6 +388,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
           </div>
         </div>
       </section>
+      )}
 
       {/* MAIN LISTINGS SECTION */}
       <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -524,7 +536,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
               </button>
             )}
             <a
-              href="mailto:procurement@madeccgroup.com"
+              href={`mailto:${procurementEmail}`}
               className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md"
             >
               <Mail className="w-4 h-4" />
@@ -532,6 +544,8 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
             </a>
           </div>
         </div>
+
+        <CmsCustomSections sections={getCustomSections()} onNavigateToTab={onNavigateToTab} className="mt-10" />
 
       </section>
 
@@ -735,7 +749,7 @@ export const Tenders: React.FC<Props> = ({ onNavigateToTab }) => {
                     required
                     value={eoiPhone}
                     onChange={(e) => setEoiPhone(e.target.value)}
-                    placeholder="+237 683 316 486"
+                    placeholder={primaryPhone}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-amber-500 focus:outline-none"
                   />
                 </div>

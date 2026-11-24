@@ -33,7 +33,10 @@ export const projects = pgTable('projects', {
   status: text('status').notNull().default('planning'), // planning, in-progress, completed, on-hold
   categoryId: integer('category_id').references(() => categories.id, { onDelete: 'cascade' }),
   image: text('image').notNull(),
-  videoUrl: text('video_url'), // Optional 150MB SEO Video Url
+  imageAlt: text('image_alt'),
+  galleryImages: json('gallery_images').$type<string[]>(),
+  publishStatus: text('publish_status').default('PUBLISHED').notNull(), // DRAFT, PUBLISHED, UNPUBLISHED, ARCHIVED
+  videoUrl: text('video_url'), // Optional SEO Video Url
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -56,9 +59,11 @@ export const blogPosts = pgTable('blog_posts', {
   authorId: integer('author_id').references(() => users.id, { onDelete: 'set null' }),
   publishedAt: timestamp('published_at').defaultNow().notNull(),
   image: text('image').notNull(),
-  videoUrl: text('video_url'), // Optional 150MB SEO Video Url
+  imageAlt: text('image_alt'),
+  videoUrl: text('video_url'), // Optional SEO Video Url
   summary: text('summary').notNull(),
   category: text('category').notNull(),
+  status: text('status').default('PUBLISHED').notNull(), // DRAFT, PUBLISHED, UNPUBLISHED, ARCHIVED
 });
 
 // 6. Reviews table (with approval system)

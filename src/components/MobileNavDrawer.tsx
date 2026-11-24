@@ -31,6 +31,8 @@ import {
 import { User, Tenant } from '../types.ts';
 import { TenantSwitcher } from './TenantSwitcher.tsx';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPagesRegistry } from '../lib/useCmsPage.ts';
 
 export interface MobileNavDrawerProps {
   isOpen: boolean;
@@ -77,6 +79,8 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
   handleDownloadNavigationGuide,
   triggerRef,
 }) => {
+  const { settings } = useSiteSettings();
+  const { isSlugHidden } = useCmsPagesRegistry();
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -140,6 +144,19 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
     onClose();
   };
 
+  const isFlagship = currentTenant.isFlagship !== false;
+  const resolvedBrandName = (isFlagship && settings?.siteName) ? settings.siteName : currentTenant.name;
+  const resolvedLogoUrl = isFlagship
+    ? (settings?.logoUrl && settings.logoUrl !== '/logo.png' ? settings.logoUrl : '/logo.webp')
+    : (currentTenant.logoUrl && currentTenant.logoUrl !== '/logo.png' ? currentTenant.logoUrl : '/logo.webp');
+
+  const cmsNavMap = new Map(
+    (Array.isArray(settings?.navigationLinks) ? settings.navigationLinks : []).map((lnk) => [
+      ((lnk.href || lnk.id || 'home').replace(/^\//, '').trim() || 'home').toLowerCase(),
+      lnk
+    ])
+  );
+
   const primaryLinks = [
     { id: 'home', label: t('nav_home'), icon: Home },
     { id: 'client-portal', label: 'Client Portal (Projects & Invoices)', icon: ShieldCheck },
@@ -149,7 +166,16 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
     { id: 'projects', label: t('nav_projects'), icon: FolderKanban },
     { id: 'schedule-consultation', label: 'Schedule Consultation', icon: Calendar },
     { id: 'blog', label: 'News & Insights', icon: BookOpen },
-  ];
+  ]
+    .filter((l) => {
+      const ov = cmsNavMap.get(l.id.toLowerCase());
+      if (ov && ov.isEnabled === false) return false;
+      return !isSlugHidden(l.id);
+    })
+    .map((l) => {
+      const ov = cmsNavMap.get(l.id.toLowerCase());
+      return { ...l, label: ov?.label?.trim() || l.label };
+    });
 
   const toolsLinks = [
     { 
@@ -215,14 +241,15 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
       icon: Key,
       badge: 'REST'
     },
-  ];
+  ].filter((l) => !isSlugHidden(l.id));
 
   const companyLinks = [
     { id: 'about', label: 'About Us', desc: 'Certifications, leadership & history', icon: Building2 },
+    { id: 'sustainability', label: 'Sustainability & ESG', desc: 'Environmental stewardship & QHSE', icon: Layers },
     { id: 'sitemap', label: 'Platform Site Map', desc: 'Architecture index, navigation & manuals', icon: Compass },
     { id: 'faq', label: 'Frequently Asked Questions', desc: 'Contracts, warranties & timelines', icon: HelpCircle },
     { id: 'contact', label: 'Contact Us & HQ', desc: 'Yaoundé office & 24/7 client desk', icon: Phone },
-  ];
+  ].filter((l) => !isSlugHidden(l.id));
 
   if (!isOpen) return null;
 
@@ -260,7 +287,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'
                 }`}>
                   <img 
-                    src={currentTenant.logoUrl && currentTenant.logoUrl !== '/logo.png' ? currentTenant.logoUrl : '/logo.webp'} 
+                    src={resolvedLogoUrl} 
                     alt="" 
                     width={40}
                     height={40}
@@ -271,12 +298,12 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                 </div>
                 <div className="min-w-0">
                   <span className="block font-sans font-extrabold text-sm tracking-tight truncate">
-                    {currentTenant.name.toUpperCase()}
+                    {resolvedBrandName.toUpperCase()}
                   </span>
                   <span className={`text-[10px] font-mono tracking-wider block ${
                     theme === 'light' ? 'text-slate-600' : 'text-slate-400'
                   }`}>
-                    {currentTenant.isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
+                    {isFlagship ? 'CONSTRUCTION & ENG' : `${currentTenant.planCode} WORKSPACE`}
                   </span>
                 </div>
               </div>

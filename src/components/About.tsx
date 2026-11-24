@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { CompanyDocument, TeamMember } from '../types.ts';
 import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections, sanitizeClientHtml } from './cms/CmsCustomSections.tsx';
 import {
   usePublicCorporateData,
   CorporateRegistrationStatusCard,
@@ -30,11 +32,21 @@ import {
 
 export default function About() {
   const { settings } = useSiteSettings();
+  const { hero: cmsHero, getSection, isSectionEnabled, getCustomSections } = useCmsPage('about');
   const { profile: corporateProfile, divisions, opportunities, realEstateProjects } = usePublicCorporateData();
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+
+  const aboutSec = getSection('about');
+  const pillarsSec = getSection('pillars');
+  const teamSec = getSection('team');
+  const customSections = getCustomSections(['hero', 'about', 'pillars', 'stats', 'divisions', 'team']);
+  const displayPhone = settings?.phone || '+237 683 316 486';
+  const telHref = `tel:${displayPhone.replace(/[^+0-9]/g, '')}`;
+  const displayWhatsapp = settings?.whatsappNumber || settings?.phone || '+237 683 316 486';
+  const waHref = `https://wa.me/${displayWhatsapp.replace(/[^0-9]/g, '')}`;
 
   const DEFAULT_FALLBACK = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80';
 
@@ -72,22 +84,24 @@ export default function About() {
     <div className="font-sans text-slate-200 bg-[#0A0A0B] min-h-screen">
       
       {/* Page Header */}
+      {cmsHero?.showHero !== false && (
       <section className="bg-slate-950/80 border-b border-slate-850/60 text-white py-20 relative overflow-hidden" id="about-header">
         <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="max-w-3xl">
             <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-md inline-block mb-3">
-              Corporate Overview & Engineering Philosophy
+              {cmsHero?.eyebrow || 'Corporate Overview & Engineering Philosophy'}
             </span>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-              About MADECC GROUP Cameroon
+              {cmsHero?.title || `About ${settings?.siteName || 'MADECC GROUP'} Cameroon`}
             </h1>
             <p className="text-slate-300 text-base sm:text-lg mt-4 leading-relaxed font-normal">
-              A multi-disciplinary civil engineering, building construction, and quantity surveying company based in Yaoundé, delivering robust structural execution, transparent cost control, and full regulatory compliance across Cameroon.
+              {cmsHero?.subtitle || 'A multi-disciplinary civil engineering, building construction, and quantity surveying company based in Yaoundé, delivering robust structural execution, transparent cost control, and full regulatory compliance across Cameroon.'}
             </p>
           </div>
         </div>
       </section>
+      )}
 
       {/* Main Content Sections */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -98,11 +112,18 @@ export default function About() {
           <div className="lg:col-span-7 space-y-12">
             
             {/* Who We Are */}
+            {isSectionEnabled('about', true) && (
             <FadeIn className="space-y-4">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
-                <Building2 className="w-6 h-6 text-amber-500" /> Who We Are
+                <Building2 className="w-6 h-6 text-amber-500" /> {aboutSec?.title || 'Who We Are'}
               </h2>
               <CorporateRegistrationStatusCard profile={corporateProfile} />
+              {typeof aboutSec?.content === 'string' && aboutSec.content.trim().length > 0 && (
+                <div
+                  className="prose prose-invert max-w-none text-sm text-slate-200 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: sanitizeClientHtml(aboutSec.content) }}
+                />
+              )}
 
               {corporateProfile?.corporateDescription ? (
                 corporateProfile.corporateDescription.split(/\n\n+/).map((para, idx) => (
@@ -121,6 +142,7 @@ export default function About() {
                 </>
               )}
             </FadeIn>
+            )}
 
             {/* Our Geographical Footprint in Cameroon */}
             <FadeIn delay={0.1} className="space-y-4 bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl hover:border-slate-700 transition-colors">
@@ -159,8 +181,9 @@ export default function About() {
             </FadeIn>
 
             {/* Core Values grid */}
+            {isSectionEnabled('pillars', true) && (
             <div className="space-y-6 pt-2">
-              <h3 className="text-xl font-bold text-white border-b border-slate-800 pb-3">Our Core Corporate Pillars</h3>
+              <h3 className="text-xl font-bold text-white border-b border-slate-800 pb-3">{pillarsSec?.title || 'Our Core Corporate Pillars'}</h3>
               <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <StaggerItem className="p-5 bg-slate-900/50 border border-slate-800/80 rounded-xl shadow-sm space-y-2 hover:border-amber-500/30 transition-colors">
                   <div className="flex items-center gap-2.5 text-amber-500">
@@ -195,6 +218,7 @@ export default function About() {
                 </StaggerItem>
               </StaggerContainer>
             </div>
+            )}
 
             {/* Who We Build For */}
             <div className="space-y-4 pt-2">
@@ -346,18 +370,18 @@ export default function About() {
               </p>
               <div className="pt-1 space-y-2">
                 <a 
-                  href="tel:+237683316486" 
+                  href={telHref} 
                   className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md hover:shadow-amber-500/20"
                 >
-                  Direct Call: (+237) 683 31 64 86
+                  Direct Call: {displayPhone}
                 </a>
                 <a 
-                  href="https://wa.me/237683316486" 
+                  href={waHref} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md"
                 >
-                  WhatsApp Engineering Line
+                  WhatsApp Engineering Line ({displayWhatsapp})
                 </a>
               </div>
             </div>
@@ -367,6 +391,7 @@ export default function About() {
         </div>
 
         {/* All 10 Business Divisions & Investment Opportunities */}
+        {isSectionEnabled('divisions', true) && (
         <div className="mt-20 border-t border-slate-900 pt-16">
           <CorporateDivisionsDirectory
             divisions={divisions}
@@ -375,16 +400,18 @@ export default function About() {
             theme="dark"
           />
         </div>
+        )}
 
         {/* Our Team Section */}
+        {isSectionEnabled('team', true) && (
         <div className="mt-24 border-t border-slate-900 pt-16 space-y-12" id="our-team-section">
           <FadeIn className="text-center space-y-3 max-w-2xl mx-auto">
             <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest block">
               Professional Engineering Organization
             </span>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">Our Technical Leadership Team</h2>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">{teamSec?.title || 'Our Technical Leadership Team'}</h2>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Our engineering team brings together certified civil engineers, quantity surveyors, architects, and on-site project supervisors committed to execution excellence in Cameroon.
+              {teamSec?.subtitle || 'Our engineering team brings together certified civil engineers, quantity surveyors, architects, and on-site project supervisors committed to execution excellence in Cameroon.'}
             </p>
           </FadeIn>
 
@@ -466,8 +493,11 @@ export default function About() {
             </div>
           )}
         </div>
+        )}
 
       </div>
+
+      <CmsCustomSections sections={customSections} />
 
     </div>
   );

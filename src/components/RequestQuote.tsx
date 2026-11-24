@@ -32,6 +32,9 @@ import {
   Home,
   Info
 } from 'lucide-react';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface RequestQuoteProps {
   onNavigateToTab: (tab: string, extraState?: any) => void;
@@ -123,6 +126,10 @@ const SITE_STATUSES = [
 ];
 
 export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, preselectedService }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('request-a-quote');
+  const siteName = settings?.siteName || 'MADECC GROUP';
+
   const [activeTab, setActiveTab] = useState<'request' | 'track'>('request');
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
@@ -521,10 +528,10 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Services
             </button>
             <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Request a Project Quote
+              {cmsHero?.title || 'Request a Project Quote'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
-              Get an official, quantity-surveyor verified construction budget estimate, structural proposal, or turnkey project quotation tailored to Cameroonian building standards.
+              {cmsHero?.subtitle || 'Get an official, quantity-surveyor verified construction budget estimate, structural proposal, or turnkey project quotation tailored to Cameroonian building standards.'}
             </p>
           </div>
 
@@ -1663,6 +1670,8 @@ export const RequestQuote: React.FC<RequestQuoteProps> = ({ onNavigateToTab, pre
             </form>
           </div>
         )}
+
+        <CmsCustomSections sections={getCustomSections()} onNavigateToTab={onNavigateToTab} />
 
       </div>
     </div>

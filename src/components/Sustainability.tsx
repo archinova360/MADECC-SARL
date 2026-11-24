@@ -16,6 +16,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { exportSustainabilityPDF, exportSustainabilityDOCX } from '../lib/exportEngine.ts';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface SustainabilityData {
   content: {
@@ -59,9 +61,11 @@ interface SustainabilityProps {
 }
 
 export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab }) => {
+  const { hero: cmsHero, getSection, isSectionEnabled, getCustomSections } = useCmsPage('sustainability');
   const [data, setData] = useState<SustainabilityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePillar, setActivePillar] = useState<'all' | 'environment' | 'safety' | 'social' | 'local'>('all');
+  const customSections = getCustomSections(['hero', 'sustainability', 'stats', 'initiatives', 'social']);
 
   useEffect(() => {
     fetch('/api/public/sustainability')
@@ -161,6 +165,7 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
     <div className="bg-slate-950 text-slate-100 min-h-screen">
       
       {/* HERO BANNER */}
+      {cmsHero?.showHero !== false && (
       <section className="relative py-24 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border-b border-slate-800/80 overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]" />
         
@@ -168,18 +173,22 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono tracking-wider uppercase mb-6">
               <Leaf className="w-4 h-4 text-emerald-400" />
-              <span>ESG & Environmental Responsibility</span>
+              <span>{cmsHero?.eyebrow || 'ESG & Environmental Responsibility'}</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-6">
-              Building Responsibly. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400">
-                Creating Lasting Value.
-              </span>
+              {cmsHero?.title || (
+                <>
+                  Building Responsibly. <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400">
+                    Creating Lasting Value.
+                  </span>
+                </>
+              )}
             </h1>
 
             <p className="text-lg text-slate-300 leading-relaxed mb-8">
-              {content.heroSubtitle} At MADECC GROUP, sustainable construction is not an afterthought — it is an engineering discipline that preserves Cameroon's natural resources and uplifts local communities.
+              {cmsHero?.subtitle || `${content.heroSubtitle} At MADECC GROUP, sustainable construction is not an afterthought — it is an engineering discipline that preserves Cameroon's natural resources and uplifts local communities.`}
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -202,6 +211,7 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
           </div>
         </div>
       </section>
+      )}
 
       {/* METRICS DASHBOARD */}
       <section className="py-12 bg-slate-900/60 border-b border-slate-800">
@@ -395,6 +405,8 @@ export const Sustainability: React.FC<SustainabilityProps> = ({ onNavigateToTab 
           </div>
         </div>
       </section>
+
+      <CmsCustomSections sections={customSections} onNavigateToTab={onNavigateToTab} />
 
     </div>
   );

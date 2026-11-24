@@ -18,6 +18,8 @@ import { Project, Category, ProjectProgress, GalleryItem } from '../types.ts';
 import { getOptimizedImageUrl, formatCurrency } from '../lib/utils.ts';
 import { ProjectListSkeleton } from './Skeleton.tsx';
 import { FadeIn, StaggerContainer, StaggerItem, InteractiveCard } from './MotionReveal.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 import { 
   PortfolioHero, 
   BeforeAfterGallery, 
@@ -34,6 +36,7 @@ interface ProjectsProps {
 }
 
 export default function Projects({ selectedProjectId, setSelectedProjectId }: ProjectsProps) {
+  const { hero: cmsHero, isSectionEnabled, getCustomSections } = useCmsPage('projects');
   const [projects, setProjects] = useState<Project[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -46,7 +49,10 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
   
   // Active Project Detail states
   const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [activePhotoUrl, setActivePhotoUrl] = useState<string | null>(null);
   const [loadingProjectDetail, setLoadingProjectDetail] = useState(false);
+
+  const customSections = getCustomSections(['hero', 'projects', 'stats', 'gallery', 'timeline', 'testimonials', 'faq']);
   
   // Fetch full lists of projects, categories, and gallery items
   useEffect(() => {
@@ -58,7 +64,10 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
           fetch('/api/categories'),
           fetch('/api/gallery')
         ]);
-        if (projRes.ok) setProjects(await projRes.json());
+        if (projRes.ok) {
+          const allProj: Project[] = await projRes.json();
+          setProjects(allProj.filter((p) => p.publishStatus !== 'DRAFT' && p.publishStatus !== 'UNPUBLISHED'));
+        }
         if (catRes.ok) setCategories(await catRes.json());
         if (galRes.ok) setGalleryItems(await galRes.json());
       } catch (err) {
@@ -83,6 +92,7 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
         if (res.ok) {
           const data = await res.json();
           setActiveProject(data);
+          setActivePhotoUrl(data.image || null);
         }
       } catch (err) {
         console.error(err);
@@ -171,12 +181,12 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
               
               {/* Column Left: Visual Specs & Details */}
-              <div className="lg:col-span-6 space-y-8">
+              <div className="lg:col-span-6 space-y-6">
                 <div className="relative h-96 bg-slate-950 rounded-2xl overflow-hidden shadow-md border border-slate-800">
                   <img
-                    src={getOptimizedImageUrl(activeProject.image, 1000, 85)}
-                    alt={activeProject.title}
-                    className="w-full h-full object-cover opacity-90"
+                    src={getOptimizedImageUrl(activePhotoUrl || activeProject.image, 1000, 85)}
+                    alt={activeProject.imageAlt || activeProject.title}
+                    className="w-full h-full object-cover opacity-95"
                     referrerPolicy="no-referrer"
                     loading="lazy"
                     decoding="async"
@@ -191,6 +201,31 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
                     </span>
                   </div>
                 </div>
+
+                {Array.isArray(activeProject.galleryImages) && activeProject.galleryImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {[activeProject.image, ...activeProject.galleryImages].filter(Boolean).map((imgUrl, gIdx) => {
+                      const currentUrl = activePhotoUrl || activeProject.image;
+                      return (
+                        <button
+                          key={gIdx}
+                          type="button"
+                          onClick={() => setActivePhotoUrl(imgUrl)}
+                          className={`w-16 h-14 rounded-lg overflow-hidden border transition-all cursor-pointer ${
+                            currentUrl === imgUrl ? 'border-amber-500 ring-2 ring-amber-500/40' : 'border-slate-800 hover:border-slate-600'
+                          }`}
+                        >
+                          <img
+                            src={getOptimizedImageUrl(imgUrl, 200, 75)}
+                            alt={`${activeProject.imageAlt || activeProject.title} view ${gIdx + 1}`}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="bg-[#0E0E10]/90 border border-slate-850 rounded-2xl p-8 shadow-sm space-y-6">
                   <div>
@@ -353,7 +388,7 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
     <div className="font-sans text-slate-200 bg-[#0A0A0B] min-h-screen">
       
       {/* Portfolio Header */}
-      <PortfolioHero />
+      {cmsHero?.showHero !== false && <PortfolioHero hero={cmsHero} />}
 
       {/* Portfolio Browser Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -429,7 +464,7 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
                     <div className="relative h-52 bg-slate-950 overflow-hidden">
                       <img
                         src={getOptimizedImageUrl(project.image, 800, 80)}
-                        alt={project.title}
+                        alt={project.imageAlt || project.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
                         referrerPolicy="no-referrer"
                         loading="lazy"
@@ -571,11 +606,12 @@ export default function Projects({ selectedProjectId, setSelectedProjectId }: Pr
       </div>
 
       {/* Premium Modular Portfolio Sections */}
-      <CompanyStats />
-      <BeforeAfterGallery />
-      <CompanyTimeline />
-      <TestimonialsAndPartners />
-      <FAQSection />
+      {isSectionEnabled('stats', true) && <CompanyStats />}
+      {isSectionEnabled('gallery', true) && <BeforeAfterGallery />}
+      {isSectionEnabled('timeline', true) && <CompanyTimeline />}
+      {isSectionEnabled('testimonials', true) && <TestimonialsAndPartners />}
+      {isSectionEnabled('faq', true) && <FAQSection />}
+      <CmsCustomSections sections={customSections} />
       <AdSenseReadinessBlock />
 
     </div>

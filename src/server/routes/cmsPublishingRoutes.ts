@@ -35,6 +35,7 @@ import {
 } from '../cmsSanitizer.ts';
 import { eq, desc, and, lte, gte, or, isNull, sql } from 'drizzle-orm';
 import { isSafePublicHttpsMediaUrl } from '../storageService.ts';
+import { ALL_PUBLIC_PAGE_TEMPLATES } from '../cmsDefaultPages.ts';
 
 const ADMIN_SMTP_USER = process.env.SMTP_USER || process.env.ADMIN_EMAIL || 'kreboya603@gmail.com';
 const CANONICAL_ORIGIN = 'https://madeccgroup.online';
@@ -226,44 +227,29 @@ export async function processDueCmsSchedules(): Promise<void> {
 /**
  * Ensure core 8 public page groups exist in page_contents without overwriting user edits.
  */
-async function ensureCoreCmsPagesExist(): Promise<void> {
+export async function ensureCoreCmsPagesExist(): Promise<void> {
   await ensureCmsTables();
   await db.delete(pageContents).where(eq(pageContents.slug, 'manage')).catch(() => {});
-  const corePages = [
-    { slug: 'home', title: 'Home Page', group: 'home' },
-    { slug: 'about', title: 'About MADECC GROUP', group: 'about' },
-    { slug: 'services', title: 'Services & Divisions', group: 'services' },
-    { slug: 'projects', title: 'Projects Portfolio', group: 'projects' },
-    { slug: 'legal', title: 'Legal & Governance Hub', group: 'legal' },
-    { slug: 'developers', title: 'Developer & Paid API Platform', group: 'developers' },
-    { slug: 'sitemap', title: 'Sitemap & Architecture Index', group: 'sitemap' },
-    { slug: 'contact', title: 'Contact & Offices', group: 'contact' },
-  ];
 
-  for (const cp of corePages) {
-    const existing = await db.select({ id: pageContents.id }).from(pageContents).where(eq(pageContents.slug, cp.slug)).limit(1);
+  for (const cp of ALL_PUBLIC_PAGE_TEMPLATES) {
+    const existing = await db
+      .select({
+        id: pageContents.id,
+        sections: pageContents.sections,
+        version: pageContents.version,
+        pageGroup: pageContents.pageGroup,
+      })
+      .from(pageContents)
+      .where(eq(pageContents.slug, cp.slug))
+      .limit(1);
+
+    const payload = {
+      heroConfig: cp.heroConfig,
+      sections: cp.sections,
+      seo: cp.seo,
+    };
+
     if (existing.length === 0) {
-      const payload = {
-        heroConfig: {
-          title: cp.slug === 'home' ? "MADECC GROUP — Building Cameroon's Future" : `${cp.title} | MADECC GROUP`,
-          subtitle: 'Excellence in Civil Engineering, Construction, and Multi-Service Execution across Cameroon.',
-          eyebrow: 'MADECC GROUP Cameroon',
-          mediaType: 'image',
-          posterUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
-          imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1600&q=80',
-          primaryCta: { text: 'Request a Quote', link: '/request-a-quote', visible: true },
-          secondaryCta: { text: 'Calculate Budget (FCFA)', link: '/budget-calculator', visible: true },
-        },
-        sections: [],
-        seo: {
-          seoTitle: `${cp.title} | MADECC GROUP Cameroon`,
-          metaDescription: `Official ${cp.title} section on madeccgroup.online.`,
-          canonicalUrl: `${CANONICAL_ORIGIN}/${cp.slug === 'home' ? '' : cp.slug}`,
-          keywords: `MADECC GROUP, ${cp.title}, Cameroon construction engineering`,
-          robotsIndex: true,
-          robotsFollow: true,
-        },
-      };
       await db
         .insert(pageContents)
         .values({
@@ -272,20 +258,35 @@ async function ensureCoreCmsPagesExist(): Promise<void> {
           pageGroup: cp.group,
           status: 'PUBLISHED',
           reviewStatus: 'NOT_REVIEWED',
-          heroConfig: payload.heroConfig,
-          sections: payload.sections,
-          seo: payload.seo,
+          heroConfig: cp.heroConfig,
+          sections: cp.sections,
+          seo: cp.seo,
           draftData: payload,
           publishedData: payload,
           version: 1,
           lastSavedBy: 'System Initializer',
+          publishedAt: new Date(),
         })
         .onConflictDoNothing();
     } else {
-      await db
-        .update(pageContents)
-        .set({ pageGroup: cp.group })
-        .where(and(eq(pageContents.slug, cp.slug), isNull(pageContents.pageGroup)));
+      const row = existing[0];
+      const hasEmptySections = !Array.isArray(row.sections) || row.sections.length === 0;
+      if (hasEmptySections && (row.version ?? 1) === 1 && cp.sections.length > 0) {
+        await db
+          .update(pageContents)
+          .set({
+            pageGroup: row.pageGroup || cp.group,
+            sections: cp.sections,
+            draftData: payload,
+            publishedData: payload,
+          })
+          .where(eq(pageContents.id, row.id));
+      } else if (!row.pageGroup) {
+        await db
+          .update(pageContents)
+          .set({ pageGroup: cp.group })
+          .where(and(eq(pageContents.slug, cp.slug), isNull(pageContents.pageGroup)));
+      }
     }
   }
 }

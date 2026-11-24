@@ -21,12 +21,16 @@ import {
 } from 'lucide-react';
 import { downloadWebsiteNavigationGuidePdf } from '../utils/navigationGuidePdf.ts';
 import { downloadBuyerHandoverManualPdf } from '../utils/buyerHandoverPdf.ts';
+import { useCmsPagesRegistry } from '../lib/useCmsPage.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
 
 interface SiteMapProps {
   onNavigateToTab?: (tab: string, state?: any) => void;
 }
 
 export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
+  const { settings } = useSiteSettings();
+  const { isSlugHidden } = useCmsPagesRegistry();
   const [filterQuery, setFilterQuery] = useState('');
   const [dynamicRoutes, setDynamicRoutes] = useState<Array<{ path: string; title: string; metaDescription?: string; status?: string }>>([]);
 
@@ -108,8 +112,10 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
   const filteredSections = sections.map(section => ({
     ...section,
     links: section.links.filter(l => 
-      l.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
-      l.desc.toLowerCase().includes(filterQuery.toLowerCase())
+      !isSlugHidden(l.tab) && (
+        l.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
+        l.desc.toLowerCase().includes(filterQuery.toLowerCase())
+      )
     )
   })).filter(section => section.links.length > 0 || filterQuery === '');
 
@@ -122,8 +128,8 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-amber-500/40 p-2 shadow-2xl flex items-center justify-center shrink-0">
               <img 
-                src="/logo.png" 
-                alt="MADECC GROUP Logo" 
+                src={settings?.logoUrl || '/logo.png'} 
+                alt={`${settings?.siteName || 'MADECC GROUP'} Logo`} 
                 className="w-full h-full object-contain rounded-xl"
               />
             </div>
@@ -211,7 +217,7 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
                 <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-mono text-slate-400">
                   <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">4-Page A4 PDF (v4.0)</span>
                   <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">11 Admin Categories</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Admin Free</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">999 XAF Paid PDF</span>
                 </div>
               </div>
 
@@ -398,8 +404,8 @@ export default function SiteMap({ onNavigateToTab }: SiteMapProps) {
         {/* Canonical Footnote & Contact Helpdesk */}
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <div>
-            <span className="font-bold text-white">MADECC GROUP S.A.R.L.</span> — Mbankolo, Yaoundé &amp; Akwa, Douala, Cameroon
-            <p className="text-[11px] text-slate-500 mt-0.5">Official Inquiries: Infomadeccconstruction@gmail.com • Primary Phone: +237 683 31 64 86</p>
+            <span className="font-bold text-white">{settings?.siteName || 'MADECC GROUP S.A.R.L.'}</span> — {settings?.officeAddressYaounde || 'Mbankolo, Yaoundé'} &amp; {settings?.officeAddressDouala || 'Akwa, Douala, Cameroon'}
+            <p className="text-[11px] text-slate-500 mt-0.5">Official Inquiries: {settings?.email || 'Infomadeccconstruction@gmail.com'} • Primary Phone: {settings?.phone || '+237 683 31 64 86'}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <button

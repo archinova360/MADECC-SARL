@@ -33,9 +33,8 @@ import {
   recordReceiptPayment,
   submitClientPaymentRequest,
   confirmClientPaymentByAdmin,
-  setCurrentUserAdminStatus,
-  isCurrentUserAdmin,
-  verifyAdminDownloadCredential,
+  syncReceiptStatusFromServer,
+  verifyServerReceiptDownloadAllowed,
   ReceiptPaymentRecord 
 } from '../utils/paymentDomain';
 import { generateBoqReceiptPdf, generateBoqReceiptDocx, BoqReceiptData } from '../utils/boqReceiptExport';
@@ -77,44 +76,6 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
   const isFrench = receiptDetails.language === 'fr';
   const currency = receiptDetails.currency || 'XAF';
 
-  // Admin bypass mode (admin does not need to pay, but must confirm Email or Command Key before download is available)
-  const [isAdminMode, setIsAdminMode] = useState<boolean>(() => Boolean(isAdmin) || isCurrentUserAdmin());
-  const [adminCredentialInput, setAdminCredentialInput] = useState<string>('');
-  const [isAdminDownloadVerified, setIsAdminDownloadVerified] = useState<boolean>(false);
-  const [adminVerifyError, setAdminVerifyError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsAdminMode(Boolean(isAdmin) || isCurrentUserAdmin());
-      setIsAdminDownloadVerified(false);
-      setAdminCredentialInput('');
-      setAdminVerifyError(null);
-    }
-  }, [isOpen, isAdmin, receiptDetails.receiptNo]);
-
-  const handleVerifyAdminCredential = () => {
-    if (verifyAdminDownloadCredential(adminCredentialInput)) {
-      setIsAdminDownloadVerified(true);
-      setAdminVerifyError(null);
-      setCurrentUserAdminStatus(true);
-      if (showToast) {
-        showToast(
-          isFrench
-            ? 'Identité Admin confirmée ! Les boutons de téléchargement gratuit sont maintenant disponibles.'
-            : 'Admin confirmed! Free download buttons are now unlocked and available.',
-          'success'
-        );
-      }
-    } else {
-      setIsAdminDownloadVerified(false);
-      setAdminVerifyError(
-        isFrench
-          ? 'Veuillez saisir votre email Admin (kreboya603@gmail.com) ou votre clé de commande Admin (ex: Adminmadeccgroup) valide.'
-          : 'Please enter a valid Admin Email (kreboya603@gmail.com) or Command Key (e.g. Adminmadeccgroup) to unlock downloading.'
-      );
-    }
-  };
-
   // Domain resolution state
   const [domainMode, setDomainMode] = useState<'target' | 'auto'>('target');
   const [domainInfo, setDomainInfo] = useState(() => resolvePaymentDomain('target'));
@@ -124,6 +85,7 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
   const [selectedRecipientLine, setSelectedRecipientLine] = useState<string>('671063511');
   const [phoneNumber, setPhoneNumber] = useState<string>('671063511');
   const [payerName, setPayerName] = useState<string>(receiptDetails.clientName || 'Arthur Sterling');
+  const [transactionIdInput, setTransactionIdInput] = useState<string>('');
   const [cardNumber, setCardNumber] = useState<string>('4242 •••• •••• 4242');
   const [cardExpiry, setCardExpiry] = useState<string>('12/28');
   const [cardCvc, setCardCvc] = useState<string>('892');
@@ -147,27 +109,17 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
     setDomainInfo(resolved);
   }, [domainMode, isOpen]);
 
-  // Check if receipt has already been paid & confirmed by Admin, or is pending Admin confirmation
+  // Check strictly against Neon PostgreSQL whether receipt is paid & confirmed by Admin, or pending
   const refreshReceiptApprovalStatus = async () => {
     if (!receiptDetails.receiptNo) return;
-    try {
-      const res = await fetch(`/api/receipts/payment-requests/status/${encodeURIComponent(receiptDetails.receiptNo)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.record) {
-          recordReceiptPayment(data.record);
-        }
-      }
-    } catch {}
+    await syncReceiptStatusFromServer(receiptDetails.receiptNo);
 
     const paid = isReceiptPaid(receiptDetails.receiptNo);
     const pending = isReceiptPendingAdminConfirmation(receiptDetails.receiptNo);
     const rec = getReceiptPaymentRecord(receiptDetails.receiptNo);
     setIsPaid(paid);
     setIsPendingAdmin(pending);
-    if (rec) {
-      setExistingRecord(rec);
-    }
+    setExistingRecord(rec);
   };
 
   useEffect(() => {
@@ -205,113 +157,25 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
     setTimeout(() => setCopiedNumber(null), 2500);
   };
 
-  // ADMIN DIRECT FREE DOWNLOADS (No payment required for admin, requires Email/Command Key confirmation first)
-  const handleAdminDirectDownloadPdf = async () => {
-    if (!isAdminDownloadVerified) {
-      setAdminVerifyError(
-        isFrench
-          ? 'Veuillez d\'abord confirmer votre email Admin ou clé de commande ci-dessus.'
-          : 'Please confirm your Admin Email or Command Key above before downloading.'
-      );
-      return;
-    }
-    try {
-      const adminRecord: ReceiptPaymentRecord = existingRecord || {
-        receiptNo: receiptDetails.receiptNo,
-        isPaid: true,
-        status: 'ADMIN_FREE_CLEARANCE',
-        amount: activeAmount,
-        currency,
-        paymentMethod: 'Admin Free Clearance',
-        transactionId: `ADM-${Date.now().toString().slice(-6)}`,
-        paidAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        payerName: 'MADECC Admin / Authorized QS',
-        payerPhone: '+237 671063511',
-        domainUsed: currentDomain
-      };
-      await handleDownloadReceiptPdf(adminRecord);
-    } catch (err: any) {
-      console.error('Admin PDF download error:', err);
-      if (showToast) showToast(`Admin PDF export error: ${err.message}`, 'error');
-    }
-  };
-
-  const handleAdminDirectDownloadDocx = async () => {
-    if (!isAdminDownloadVerified) {
-      setAdminVerifyError(
-        isFrench
-          ? 'Veuillez d\'abord confirmer votre email Admin ou clé de commande ci-dessus.'
-          : 'Please confirm your Admin Email or Command Key above before downloading.'
-      );
-      return;
-    }
-    try {
-      const adminRecord: ReceiptPaymentRecord = existingRecord || {
-        receiptNo: receiptDetails.receiptNo,
-        isPaid: true,
-        status: 'ADMIN_FREE_CLEARANCE',
-        amount: activeAmount,
-        currency,
-        paymentMethod: 'Admin Free Clearance',
-        transactionId: `ADM-${Date.now().toString().slice(-6)}`,
-        paidAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        payerName: 'MADECC Admin / Authorized QS',
-        payerPhone: '+237 671063511',
-        domainUsed: currentDomain
-      };
-      setExistingRecord(adminRecord);
-      await handleDownloadReceiptDocx();
-    } catch (err: any) {
-      console.error('Admin Word download error:', err);
-      if (showToast) showToast(`Admin Word export error: ${err.message}`, 'error');
-    }
-  };
-
-  const handleAdminMarkAsPaid = async () => {
-    try {
-      setIsProcessing(true);
-      const res = await confirmClientPaymentByAdmin(receiptDetails.receiptNo, {
-        receiptNo: receiptDetails.receiptNo,
-        amount: activeAmount,
-        currency,
-        paymentMethod: existingRecord?.paymentMethod || 'Admin Confirmed (OK)',
-        transactionId: existingRecord?.transactionId || `ADM-OK-${Date.now().toString().slice(-6)}`,
-        payerName: receiptDetails.clientName || payerName || 'Certified Client',
-        payerPhone: phoneNumber || '671063511',
-        clientEmail: receiptDetails.clientEmail || '',
-        projectName: receiptDetails.projectName,
-        docType: receiptDetails.docType || 'boq_receipt',
-        domainUsed: currentDomain
-      });
-      setIsPaid(true);
-      setIsPendingAdmin(false);
-      setExistingRecord(res.record);
+  const handleExecutePayment = async () => {
+    const cleanTxRef = transactionIdInput.trim();
+    if (!cleanTxRef || cleanTxRef.length < 4) {
       if (showToast) {
         showToast(
           isFrench
-            ? `Confirmé (OK) ! Message envoyé à ${ADMIN_SMTP_USER_EMAIL}. Téléchargements déverrouillés !`
-            : `Confirmed (OK)! Message dispatched to SMTP user ${ADMIN_SMTP_USER_EMAIL}. Receipt & download links unlocked!`,
-          'success'
+            ? 'Veuillez saisir la référence de transaction (minimum 4 caractères) avant de soumettre le paiement.'
+            : 'Please enter your Mobile Money / Bank Transaction Reference (min 4 characters) before submitting.',
+          'error'
         );
       }
-      if (onPaymentSuccess) {
-        onPaymentSuccess(res.record);
-      }
-    } catch (err: any) {
-      if (showToast) showToast(`Admin confirmation error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
+      return;
     }
-  };
 
-  const handleExecutePayment = async () => {
     try {
       setIsProcessing(true);
-      // Verify transaction submission with payment domain host
-      await new Promise(resolve => setTimeout(resolve, 900));
 
       const recipientUsed = paymentMethod === 'momo' ? '671063511 / 683316486' : paymentMethod === 'om' ? '689115595 / 640194505' : 'Bank / Card';
-      const txnId = `TXN-${Date.now().toString().slice(-6)}-${paymentMethod.toUpperCase()}`;
+      const txnId = cleanTxRef;
       const record: ReceiptPaymentRecord = {
         receiptNo: receiptDetails.receiptNo,
         isPaid: false,
@@ -379,7 +243,13 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
   const handleDownloadReceiptPdf = async (recordOverride?: ReceiptPaymentRecord) => {
     try {
       setIsDownloading(true);
-      const data = buildBoqReceiptData(recordOverride);
+      const serverCheck = await verifyServerReceiptDownloadAllowed(receiptDetails.receiptNo);
+      if (!serverCheck.allowed || !serverCheck.record) {
+        setIsPaid(false);
+        if (showToast) showToast(serverCheck.error || 'Payment confirmation required before PDF download.', 'error');
+        return;
+      }
+      const data = buildBoqReceiptData(recordOverride || serverCheck.record);
       const { pdf, filename } = await generateBoqReceiptPdf(data, currentDomain);
       pdf.save(filename);
       if (showToast) {
@@ -399,7 +269,13 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
   const handleDownloadReceiptDocx = async () => {
     try {
       setIsDownloading(true);
-      const data = buildBoqReceiptData();
+      const serverCheck = await verifyServerReceiptDownloadAllowed(receiptDetails.receiptNo);
+      if (!serverCheck.allowed || !serverCheck.record) {
+        setIsPaid(false);
+        if (showToast) showToast(serverCheck.error || 'Payment confirmation required before Word export.', 'error');
+        return;
+      }
+      const data = buildBoqReceiptData(serverCheck.record);
       const { blob, filename } = await generateBoqReceiptDocx(data, currentDomain);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -480,7 +356,6 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
                 }`}
               >
                 <span>Auto-Detect Live Host</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               </button>
             </div>
           </div>
@@ -529,251 +404,15 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
           </div>
         </div>
 
-        {/* ADMIN DIRECT FREE DOWNLOAD & CONFIRMATION PANEL */}
-        {!isAdminMode ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-emerald-950/50 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs">
-            <span className="text-emerald-300 font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>
-                {isFrench
-                  ? 'Êtes-vous l\'Administrateur ? L\'Admin ne paie pas (confirmez votre email ou clé de commande).'
-                  : 'Are you the Administrator? Admin does NOT pay — confirm with your Email or Command Key.'}
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsAdminMode(true)}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition cursor-pointer shrink-0"
-            >
-              {isFrench ? 'Accès Admin Gratuit (Confirmer Clé/Email)' : 'Admin Free Download (Confirm Email / Key)'}
-            </button>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-amber-950/60 border-2 border-emerald-500/60 rounded-2xl p-4 space-y-3.5 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2.5">
-                <span className="p-1.5 rounded-xl bg-emerald-500/25 text-emerald-400 border border-emerald-500/50">
-                  <ShieldCheck className="w-5 h-5" />
-                </span>
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                    <span>{isFrench ? 'Mode Administrateur — Téléchargement Gratuit (0 XAF)' : 'Admin Executive Mode — Free Download (0 XAF)'}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">ADMIN DOES NOT PAY</span>
-                  </h4>
-                  <p className="text-[11px] text-slate-300">
-                    {isFrench
-                      ? 'L\'administrateur ne paie pas, mais doit confirmer en entrant son email ou sa clé de commande avant que le téléchargement ne soit disponible.'
-                      : 'Admin does NOT pay, but must confirm by entering Admin Email or Command Key below before downloading becomes available.'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-1">
-                <button
-                  type="button"
-                  onClick={() => setIsAdminMode(!isAdminMode)}
-                  title="Toggle Admin Free Mode / Client Payment View"
-                  className="text-[10px] font-mono px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
-                >
-                  {isAdminMode ? 'Client View (999 / 2,199 XAF)' : 'Admin Mode'}
-                </button>
-              </div>
-            </div>
-
-            {/* STEP 1: ADMIN EMAIL OR COMMAND KEY CONFIRMATION INPUT */}
-            <div className="bg-slate-950/90 border border-emerald-500/40 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>
-                    {isFrench
-                      ? 'Confirmation Admin Requise (Email ou Clé de Commande)'
-                      : 'Admin Confirmation Required (Enter Admin Email or Command Key)'}
-                  </span>
-                </label>
-                {isAdminDownloadVerified ? (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Verified — Download Available
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    Awaiting Confirmation
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={adminCredentialInput}
-                  onChange={(e) => {
-                    setAdminCredentialInput(e.target.value);
-                    if (adminVerifyError) setAdminVerifyError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleVerifyAdminCredential();
-                    }
-                  }}
-                  placeholder={
-                    isFrench
-                      ? 'Entrez votre email Admin (kreboya603@gmail.com) ou clé de commande...'
-                      : 'Enter Admin Email (kreboya603@gmail.com) or Command Key...'
-                  }
-                  className="flex-1 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 outline-none font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={handleVerifyAdminCredential}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow cursor-pointer shrink-0"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>{isFrench ? 'Confirmer pour Déverrouiller' : 'Confirm to Enable Download'}</span>
-                </button>
-              </div>
-
-              {adminVerifyError && (
-                <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1.5 pt-0.5">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{adminVerifyError}</span>
-                </p>
-              )}
-              {isAdminDownloadVerified && (
-                <p className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 pt-0.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {isFrench
-                      ? 'Identité Admin confirmée ! Cliquez sur le bouton ci-dessous pour télécharger gratuitement.'
-                      : 'Admin identity confirmed! Click the unlocked button below to download for free (0 XAF).'}
-                  </span>
-                </p>
-              )}
-            </div>
-
-            {/* STEP 2: ADMIN DOWNLOAD BUTTONS (LOCKED UNTIL EMAIL OR COMMAND KEY IS CONFIRMED) */}
-            {onUnlockCustomDownload && (
-              <button
-                type="button"
-                disabled={!isAdminDownloadVerified}
-                onClick={() => {
-                  if (!isAdminDownloadVerified) {
-                    handleVerifyAdminCredential();
-                    return;
-                  }
-                  setCurrentUserAdminStatus(true);
-                  onUnlockCustomDownload();
-                }}
-                className={`w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center justify-center space-x-2 shadow-lg ${
-                  isAdminDownloadVerified
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
-                    : 'bg-slate-800/80 text-slate-400 border border-slate-700 cursor-not-allowed opacity-75'
-                }`}
-              >
-                {isAdminDownloadVerified ? (
-                  <Download className="w-4 h-4" />
-                ) : (
-                  <Lock className="w-4 h-4 text-amber-400" />
-                )}
-                <span>
-                  {isAdminDownloadVerified
-                    ? `${customDownloadLabel || (isFrench ? 'Télécharger le Document PDF' : 'Download Manual PDF')} — FREE FOR ADMIN (0 XAF)`
-                    : `${customDownloadLabel || (isFrench ? 'Télécharger le Document PDF' : 'Download Manual PDF')} — Confirm Email or Command Key Above First`}
-                </span>
-              </button>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleAdminDirectDownloadPdf}
-                disabled={isDownloading || !isAdminDownloadVerified}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-md ${
-                  isAdminDownloadVerified
-                    ? 'bg-red-600 hover:bg-red-500 text-white cursor-pointer'
-                    : 'bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed opacity-75'
-                }`}
-              >
-                {isAdminDownloadVerified ? (
-                  <Download className="w-4 h-4" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                )}
-                <span>
-                  {isDownloading
-                    ? 'Génération...'
-                    : isAdminDownloadVerified
-                    ? isFrench
-                      ? 'Télécharger Quittance A4 PDF (Gratuit)'
-                      : 'Download Receipt A4 PDF (Free)'
-                    : isFrench
-                    ? 'Quittance PDF (Confirmer Email/Clé)'
-                    : 'Receipt A4 PDF (Confirm Email/Key First)'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleAdminDirectDownloadDocx}
-                disabled={isDownloading || !isAdminDownloadVerified}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-md ${
-                  isAdminDownloadVerified
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'
-                    : 'bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed opacity-75'
-                }`}
-              >
-                {isAdminDownloadVerified ? (
-                  <FileText className="w-4 h-4" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                )}
-                <span>
-                  {isDownloading
-                    ? 'Génération...'
-                    : isAdminDownloadVerified
-                    ? isFrench
-                      ? 'Télécharger Word (.docx) (Gratuit)'
-                      : 'Download Word (.docx) (Free)'
-                    : isFrench
-                    ? 'Word .docx (Confirmer Email/Clé)'
-                    : 'Word .docx (Confirm Email/Key First)'}
-                </span>
-              </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-              <span className="italic text-emerald-400/90 text-[10px]">
-                {isAdminDownloadVerified
-                  ? isFrench
-                    ? 'Passe-droit certifié MADECC SARL actif.'
-                    : 'MADECC SARL executive clearance verified.'
-                  : isFrench
-                  ? 'Entrez votre email Admin ou clé de commande pour activer.'
-                  : 'Enter Admin Email or Command Key above to activate buttons.'}
-              </span>
-              <button
-                type="button"
-                onClick={handleAdminMarkAsPaid}
-                disabled={isProcessing || !isAdminDownloadVerified}
-                className={`px-3 py-1.5 font-extrabold rounded-lg text-[11px] transition flex items-center gap-1.5 shadow ${
-                  isAdminDownloadVerified
-                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer'
-                    : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-70'
-                }`}
-              >
-                {isAdminDownloadVerified ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                )}
-                <span>
-                  {isFrench
-                    ? `Confirmer & OK — Envoyer SMTP (${ADMIN_SMTP_USER_EMAIL}) & Déverrouiller`
-                    : `Confirm & Press OK — Dispatch SMTP (${ADMIN_SMTP_USER_EMAIL}) & Unlock Links`}
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
+        {/* STRICT PAY-BEFORE-DOWNLOAD ENFORCEMENT NOTICE */}
+        <div className="bg-amber-950/30 border border-amber-500/40 rounded-xl px-3.5 py-2.5 text-xs flex items-center gap-2 text-amber-200">
+          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            {isFrench
+              ? 'Paiement vérifié requis avant tout téléchargement — aucun accès ou export gratuit n’est autorisé sans confirmation de paiement.'
+              : 'Payment verification required before download — all PDF/DOCX exports remain strictly locked until payment confirmation.'}
+          </span>
+        </div>
 
         {/* RECEIPT SUMMARY CARD */}
         <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5 text-xs">
@@ -1225,11 +864,25 @@ export const ReceiptPaymentGateModal: React.FC<ReceiptPaymentGateModalProps> = (
               </div>
             )}
 
+            {/* Transaction Reference Input (Required for All Payment Methods) */}
+            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+              <label className="block text-[11px] font-semibold text-amber-300 mb-1">
+                {isFrench ? 'Référence de Transaction MoMo / OM / Bancaire (Obligatoire) :' : 'Official Transaction Reference / SMS Transfer ID (Required):'}
+              </label>
+              <input
+                type="text"
+                value={transactionIdInput}
+                onChange={(e) => setTransactionIdInput(e.target.value)}
+                placeholder="e.g. MP260902.1245.A44122 or TXN-884120"
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
             {/* Execute Payment Button */}
             <button
               type="button"
               onClick={handleExecutePayment}
-              disabled={isProcessing}
+              disabled={isProcessing || transactionIdInput.trim().length < 4}
               className="w-full py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2 shadow-lg disabled:opacity-50"
             >
               {isProcessing ? (

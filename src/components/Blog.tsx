@@ -20,6 +20,9 @@ import {
 import { BlogPost } from '../types.ts';
 import { getOptimizedImageUrl } from '../lib/utils.ts';
 import AdSenseSlot from './AdSenseSlot.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 // Comprehensive, authoritative engineering publications to ensure high editorial value for Google AdSense
 const EDITORIAL_ARTICLES: BlogPost[] = [
@@ -148,11 +151,15 @@ Use our interactive Project Budget Calculator to run verified preliminary estima
 ];
 
 export default function Blog() {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('blog');
   const [posts, setPosts] = useState<BlogPost[]>(EDITORIAL_ARTICLES);
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [loading, setLoading] = useState(false);
+
+  const customSections = getCustomSections(['hero', 'blog', 'posts']);
 
   useEffect(() => {
     const fetchBlogs = async () => {
@@ -160,12 +167,13 @@ export default function Blog() {
         setLoading(true);
         const res = await fetch('/api/blogs');
         if (res.ok) {
-          const apiPosts = await res.json();
+          const apiPosts: BlogPost[] = await res.json();
           if (Array.isArray(apiPosts) && apiPosts.length > 0) {
+            const visibleApi = apiPosts.filter((p) => p.status !== 'DRAFT' && p.status !== 'UNPUBLISHED');
             // Merge API posts with editorial articles, ensuring no duplicate titles
-            const existingTitles = new Set(apiPosts.map(p => p.title.toLowerCase()));
+            const existingTitles = new Set(visibleApi.map(p => p.title.toLowerCase()));
             const nonDuplicates = EDITORIAL_ARTICLES.filter(p => !existingTitles.has(p.title.toLowerCase()));
-            setPosts([...apiPosts, ...nonDuplicates]);
+            setPosts([...visibleApi, ...nonDuplicates]);
           } else {
             setPosts(EDITORIAL_ARTICLES);
           }
@@ -215,6 +223,7 @@ export default function Blog() {
     <div className="font-sans text-slate-200 bg-[#0A0A0B] min-h-screen">
       
       {/* Blog Header */}
+      {cmsHero?.showHero !== false && (
       <section className="bg-slate-950/80 border-b border-slate-850/60 text-white py-16 relative overflow-hidden" id="blog-header">
         <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative space-y-4">
@@ -223,14 +232,14 @@ export default function Blog() {
               <Award className="w-4 h-4" />
             </span>
             <span className="text-xs font-bold font-mono uppercase text-amber-500 tracking-widest block">
-              MADECC Technical Knowledge Directorate
+              {cmsHero?.eyebrow || `${settings?.siteName || 'MADECC'} Technical Knowledge Directorate`}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Cameroon Civil Engineering &amp; Construction Insights
+            {cmsHero?.title || 'Cameroon Civil Engineering & Construction Insights'}
           </h1>
           <p className="text-slate-400 text-sm max-w-3xl leading-relaxed">
-            Peer-reviewed technical guidelines, building permit procedures, geotechnical soil analysis, structural Eurocode calculation notes, and real-world construction cost management in Central Africa.
+            {cmsHero?.subtitle || 'Peer-reviewed technical guidelines, building permit procedures, geotechnical soil analysis, structural Eurocode calculation notes, and real-world construction cost management in Central Africa.'}
           </p>
 
           {/* Search and Category Filter */}
@@ -275,6 +284,7 @@ export default function Blog() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Main Blog Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
@@ -294,7 +304,7 @@ export default function Blog() {
                 <div className="h-52 bg-slate-950 shrink-0 relative overflow-hidden">
                   <img
                     src={getOptimizedImageUrl(post.image, 800, 80)}
-                    alt={post.title}
+                    alt={post.imageAlt || post.title}
                     className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
                     loading="lazy"
@@ -375,7 +385,7 @@ export default function Blog() {
             <div className="h-64 sm:h-72 bg-slate-950 relative">
               <img
                 src={getOptimizedImageUrl(activePost.image, 1200, 85)}
-                alt={activePost.title}
+                alt={activePost.imageAlt || activePost.title}
                 className="w-full h-full object-cover opacity-85"
                 referrerPolicy="no-referrer"
               />
@@ -438,6 +448,8 @@ export default function Blog() {
           </div>
         </div>
       )}
+
+      <CmsCustomSections sections={customSections} />
 
     </div>
   );

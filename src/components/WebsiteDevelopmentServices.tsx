@@ -19,6 +19,9 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { FadeIn, StaggerContainer, StaggerItem } from './MotionReveal.tsx';
+import { useSiteSettings } from '../lib/SiteSettingsContext.tsx';
+import { useCmsPage } from '../lib/useCmsPage.ts';
+import { CmsCustomSections } from './cms/CmsCustomSections.tsx';
 
 interface WebsiteDevelopmentServicesProps {
   onNavigateToTab: (tab: string, extraState?: any) => void;
@@ -57,6 +60,10 @@ const ICON_MAP: Record<string, any> = {
 export const WebsiteDevelopmentServices: React.FC<WebsiteDevelopmentServicesProps> = ({
   onNavigateToTab
 }) => {
+  const { settings } = useSiteSettings();
+  const { hero: cmsHero, getCustomSections } = useCmsPage('website-development');
+  const siteName = settings?.siteName || 'MADECC GROUP';
+
   const [services, setServices] = useState<WebServiceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -100,19 +107,20 @@ export const WebsiteDevelopmentServices: React.FC<WebsiteDevelopmentServicesProp
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
       {/* HERO SECTION */}
+      {cmsHero?.showHero !== false && (
       <section className="bg-slate-900 text-white border-b border-slate-800 py-16 lg:py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/15 text-amber-400 rounded-full text-xs font-extrabold uppercase tracking-wider mb-6 border border-amber-500/30">
-            <Globe className="w-3.5 h-3.5" /> MADECC GROUP Digital Engineering
+            <Globe className="w-3.5 h-3.5" /> {cmsHero?.eyebrow || `${siteName} Digital Engineering`}
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-6 leading-tight max-w-4xl">
-            Production Website &amp; Full-Stack Portal Development
+            {cmsHero?.title || 'Production Website & Full-Stack Portal Development'}
           </h1>
 
           <p className="text-slate-300 text-base sm:text-xl max-w-3xl leading-relaxed mb-10 font-normal">
-            From authoritative corporate websites to custom PostgreSQL client portals, MTN MoMo / Orange Money e-commerce checkouts, and technical Schema.org SEO—engineered with the same rigor as our civil infrastructure works.
+            {cmsHero?.subtitle || 'From authoritative corporate websites to custom PostgreSQL client portals, MTN MoMo / Orange Money e-commerce checkouts, and technical Schema.org SEO—engineered with the same rigor as our civil infrastructure works.'}
           </p>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -145,6 +153,7 @@ export const WebsiteDevelopmentServices: React.FC<WebsiteDevelopmentServicesProp
           </div>
         </div>
       </section>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
         {/* LIVE DATABASE CATALOG */}
@@ -351,6 +360,8 @@ export const WebsiteDevelopmentServices: React.FC<WebsiteDevelopmentServicesProp
             </button>
           </div>
         </FadeIn>
+
+        <CmsCustomSections sections={getCustomSections(['services'])} onNavigateToTab={onNavigateToTab} />
       </div>
 
       {/* SERVICE SPECIFICATION MODAL */}
